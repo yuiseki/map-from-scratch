@@ -1,0 +1,123 @@
+id: 26-ml-add-a-canvas-source
+request: >-
+  MapLibre の例「Add a canvas source」と同じものを作りたい。自分のページで描いているアニメーションの canvas
+  (400x400、円が5つ跳ね回る) を、ミャンマーの上の4隅の座標に合わせて地図に貼り、地図は動かせるようにする。
+  地図は MapLibre のデモの地図 (demotiles) と同じ見た目でよい。
+
+requirements:
+  - id: canvas-on-corners
+    need: canvas が4隅の経緯度にぴったり重なり、地図を動かしても付いてくる
+    unmeasured: 時間ではなく正しさの要件なので verification.checks の overlay-on-corners で確かめる
+  - id: animation-is-free
+    need: canvas のアニメーションが地図の描画を巻き込まない
+    rationale: MapLibre の canvas ソースは animate true のとき canvas を毎フレームテクスチャへ送り直し、地図全体を描き直す
+  - id: smooth
+    need: アニメーション中も、パンとズーム中もなめらか
+  - id: quick-start
+    need: 開いてすぐ地図が出る
+  - id: light-page
+    need: 地図のためのコードとデータが小さい
+  - id: same-look
+    need: demotiles と同じ配色 (国の塗り分け、海、境界線、国名、回帰線)
+    unmeasured: 配色の一部は verification.checks の basemap-colours で確かめ、全体は目で見て確かめる
+
+evaluation:
+  budgets:
+    - {metric: map_redraws_while_animating, max: 0, requirement: animation-is-free}
+    - {metric: anim_frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth}
+    - {metric: pan_60hz_frame_interval_ms, stat: p99, max: 20, unit: ms, requirement: smooth}
+    - {metric: pan_frame_interval_ms, stat: mean, max: 16.7, unit: ms, requirement: smooth}
+    - {metric: zoom_frame_interval_ms, stat: mean, max: 16.7, unit: ms, requirement: smooth}
+    - {metric: redraw_ms, stat: p95, max: 12, unit: ms, requirement: smooth}
+    - {metric: first_frame_ms, stat: p50, max: 600, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 5000, unit: B, requirement: light-page}
+    - {metric: data_gzip_bytes, max: 320000, unit: B, requirement: light-page}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/26-ml-add-a-canvas-source/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 5
+  scenarios:
+    - id: first-frame
+      what: ページの読み込みから、地図と canvas を描いた 2 回目の rAF まで
+      metrics: [first_frame_ms]
+    - id: animate
+      what: カメラを止めたまま、ページが canvas を描き直し続ける 240 フレーム。地図の描き直しの回数も数える
+      metrics: [anim_frame_interval_ms, map_redraws_while_animating]
+    - id: pan
+      what: 毎フレーム 6 px ずつ東へ 120 フレーム、西へ 120 フレーム。毎フレーム地図を描き直し canvas の変換を書き換える
+      metrics: [pan_frame_interval_ms, redraw_ms]
+    - id: zoom
+      what: ズーム 5 から最小の 4 へ、8 まで寄って 5 へ戻る 240 フレーム。z4 で見える国が最も多く、z8 で形が最も細かい
+      metrics: [zoom_frame_interval_ms, redraw_ms]
+    - id: pan-60hz
+      what: pan と同じ動きを 16.7 ms に1歩ずつ (60 Hz の画面が求める速さで) 240 フレーム。利用者に見えるつかえを数える
+      metrics: [pan_60hz_frame_interval_ms]
+
+datasets:
+  bake: [node, examples/26-ml-add-a-canvas-source/bake.ts]
+  sources:
+    - id: ne-admin0-10m
+      origin: Natural Earth 10m Admin 0 Countries v5.1.1 (demotiles と同じ元データ)
+      license: Public domain
+  outputs: [data/baked/26-ml-add-a-canvas-source/basemap.json]
+  preparation:
+    - Web Mercator の単位正方形を 65,536 単位のグリッドにし、グリッド上で Douglas–Peucker 4 単位 (ズーム 5 で 1 px) に単純化する
+    - 16 平方単位 (ズーム 5 で 1 px²) 未満の輪を落とす
+    - 1 国 1 本の SVG パス文字列 (輪の最初の点だけ絶対座標、あとは相対の整数) と外接矩形、ラベル点、配色の番号にする
+    - 国を Natural Earth の LABELRANK と面積の順に並べ、描画器はその順に貪欲にラベルを置く
+    - 配色は demotiles の style.json の countries-fill (ADM0_A3 で塗り分け) をそのまま写す
+
+performance_knowledge:
+  - id: compositor-not-texture
+    finding: ページが描く canvas は地図にコピーせず、CSS の matrix() で4隅に合わせた別要素として重ねれば、アニメーションの各フレームは地図の仕事にならない。カメラが動いたときに変換を1つ書き換えるだけでよい
+    evidence: 240 フレームのアニメーション中、地図の描き直しは 0 回 (map_redraws_while_animating)。MapLibre の canvas ソースは animate true のとき毎フレーム canvas をテクスチャに送り直して地図を描き直す (ref-repos/maplibre__maplibre-gl-js/src/source/canvas_source.ts)
+    applies_when: 重ねる画像の4隅が Web Mercator 上で長方形 (経緯度の矩形) か平行四辺形になるとき。台形にするには matrix3d が要る
+  - id: draw-on-demand
+    finding: 地図はカメラが動いたときだけ描く。アイドル中の描画は 0
+    evidence: animation-and-camera スキルの on-demand redraw の項。上の計測で確かめた
+    applies_when: 地図そのものが時間で変わらないとき
+  - id: uncapped-intervals-hide-backpressure
+    finding: ハーネスは vsync を切るので、毎フレーム地図を描き直す場面ではメインスレッドが GPU プロセスより先に走り、数十フレームごとに 35〜450 ms 止められる。p95 や max はこの待ちを測ってしまう。なめらかさは 60 Hz の歩調で動かして測り、vsync なしの値は平均で余裕を見る
+    evidence: vsync なしの pan は平均 4.4 ms・p50 1.4 ms で、約 33 フレームごとに 35〜70 ms (初回は 400 ms)。同じ pan を 60 Hz の歩調で動かすと 720 フレーム中 717 が 16.3〜16.9 ms、20 ms を超えたのは 3 つ (52、35、21 ms)
+    applies_when: Canvas 2D で毎フレーム全体を描き直す計測。WebGL でも GPU が詰まる描画なら同じ
+  - id: one-file-world
+    finding: 世界全体を1ファイル (gzip 300 KB) にしても、この依頼の画面 (z4〜z8 の東南アジア) では描き直しの記録が予算に収まる。画面外の国は外接矩形で飛ばし、Path2D は初めて画面に入ったときに作る
+    evidence: redraw_ms と zoom_frame_interval_ms (results/26-ml-add-a-canvas-source/latest.json)
+    applies_when: 国境程度の粗さで、データ全体が数百 KB に収まるとき。より細かい形やより広いズーム範囲ではタイルに分ける
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D (Path2D) と CSS transform
+    language: TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)
+    gpu: none
+    code: [examples/26-ml-add-a-canvas-source/canvasmap.ts, examples/26-ml-add-a-canvas-source/main.ts]
+    dependencies: []
+    why: 地図は国の塗りと境界と文字だけで、カメラが動いたときしか描かない。重ねる canvas は合成器に任せれば地図側の毎フレームの仕事がなくなる
+  alternatives:
+    - option: WebGL2 で地図を描き、canvas をテクスチャとして貼る (MapLibre と同じ方式)
+      rejected_because: アニメーションのたびにテクスチャの転送と地図全体の描き直しが要る。三角形分割、シェーダ、文字の描画も自分で持つことになる
+    - option: SVG の DOM で国を描く
+      rejected_because: 比べていない。数百の国と 13 万頂点を DOM に置くとパンのたびのレイアウトが重くなると見込んだ
+  not_doing: [回転, 傾き, 地球儀, ベクトルタイル, スタイルの解釈, 実行時の投影の切り替え, 都市や道路]
+
+verification:
+  checks:
+    - id: overlay-on-corners
+      what: 重ねた canvas の画面上の外接矩形が、4隅の経緯度を投影した位置と 0.5 px 以内で一致する
+      how: 原本の視点、z4、z7.3、経度を 360° ずらした視点で、canvas の getBoundingClientRect と map.project を比べる
+      expected: 4 視点すべてで誤差 0.5 px 未満
+    - id: basemap-colours
+      what: 地図の canvas から読み戻した色が demotiles の配色と合う
+      how: アンダマン海、ミャンマー北部、タイ東北部の1点ずつで getImageData
+      expected: '#D8F2FF, #EAB38F, #98DDA1 (各チャンネル ±3)'
+    - id: overlay-animates
+      what: 重ねた canvas の中身が動き続けている
+      how: 2 フレーム隔てて canvas の画素を比べる
+      expected: 変わった画素が 1 以上
+  harness:
+    - canvas の contextlost が起きたらエラーにする
