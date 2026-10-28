@@ -316,25 +316,6 @@ export async function run(map: FujiMap): Promise<void> {
   const hm = heightRuns.every((h) => h.n >= 20 && h.bad.length === 0);
   check('heights-match-truth', hm, heightRuns);
 
-  // ---- visit: what the shipped page downloads at the opening view: the
-  // view, then (300 ms after it is complete) the orbit prefetch. ?bench turns
-  // the timer off so the other scenarios stay cold; it is called here by
-  // hand. The original is read for the same chunks (view and ring). ----
-  {
-    const v = await loadedCold(VIEWS.default);
-    const viewIds = [...map.sel.want];
-    const ringIds = map.prefetchOrbit();
-    while (ringIds.some((id) => !map.loaded[id])) await sleep(20);
-    const all = [...new Set([...viewIds, ...ringIds])];
-    const ov = await orig.load(all);
-    emit({ metric: 'range_bytes_visit', value: net.bytes });
-    emit({ metric: 'range_requests_visit', value: net.requests });
-    emit({ metric: 'orig_range_bytes_visit', value: ov.bytes });
-    emit({ metric: 'bytes_ratio_visit', value: net.bytes / ov.bytes });
-    emit({ info: { visit: { view_bytes: v.bytes, prefetch_bytes: net.bytes - v.bytes, chunks: all.length, orig_tiles: ov.tiles, orig_requests: ov.requests } } });
-    orig.release();
-  }
-
   // ---- orbit after the prefetch: 120 frames, 3 degrees apart ----
   setView(VIEWS.default);
   map.frame();
@@ -356,6 +337,25 @@ export async function run(map: FujiMap): Promise<void> {
   for (let i = 0; i < 12; i++) { cam.yaw = 200 + 30 * i; map.frame(); orbitHoles.push(holes()); }
   holeCounts.orbit = Math.max(...orbitHoles);
   check('orbit-no-wait', waits === 0, { fallback_frames: waits, max_triangles: tris });
+
+  // ---- visit: what the shipped page downloads at the opening view: the
+  // view, then (300 ms after it is complete) the orbit prefetch. ?bench turns
+  // the timer off so the other scenarios stay cold; it is called here by
+  // hand. The original is read for the same chunks (view and ring). ----
+  {
+    const v = await loadedCold(VIEWS.default);
+    const viewIds = [...map.sel.want];
+    const ringIds = map.prefetchOrbit();
+    while (ringIds.some((id) => !map.loaded[id])) await sleep(20);
+    const all = [...new Set([...viewIds, ...ringIds])];
+    const ov = await orig.load(all);
+    emit({ metric: 'range_bytes_visit', value: net.bytes });
+    emit({ metric: 'range_requests_visit', value: net.requests });
+    emit({ metric: 'orig_range_bytes_visit', value: ov.bytes });
+    emit({ metric: 'bytes_ratio_visit', value: net.bytes / ov.bytes });
+    emit({ info: { visit: { view_bytes: v.bytes, prefetch_bytes: net.bytes - v.bytes, chunks: all.length, orig_tiles: ov.tiles, orig_requests: ov.requests } } });
+    orig.release();
+  }
 
   // ---- orbit from cold (no prefetch): one turn in 2 s, real time ----
   {

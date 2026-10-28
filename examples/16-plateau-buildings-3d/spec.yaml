@@ -33,9 +33,9 @@ evaluation:
   budgets:
     - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: see-soon}
     - {metric: settled_ms, stat: p50, max: 1200, unit: ms, requirement: see-soon}
-    - {metric: first_range_bytes, stat: max, max: 1250000, unit: B, requirement: see-soon}
+    - {metric: first_range_bytes, stat: max, max: 1150000, unit: B, requirement: see-soon}
     - {metric: settled_range_bytes, stat: max, max: 3950000, unit: B, requirement: see-soon}
-    - {metric: close_range_bytes, stat: max, max: 2550000, unit: B, requirement: see-soon}
+    - {metric: close_range_bytes, stat: max, max: 2470000, unit: B, requirement: see-soon}
     - {metric: first_range_requests, stat: max, max: 4, requirement: see-soon}
     - {metric: settled_range_requests, stat: max, max: 8, requirement: see-soon}
     - {metric: close_range_requests, stat: max, max: 12, requirement: see-soon}
@@ -63,7 +63,7 @@ benchmarks:
   network: {name: fast, latency_ms: 20, download_mbps: 50}
   cpu_throttle: 1
   iterations: 5
-  timeout_ms: 240000
+  timeout_ms: 180000
   scenarios:
     - id: first-frame
       what: >-

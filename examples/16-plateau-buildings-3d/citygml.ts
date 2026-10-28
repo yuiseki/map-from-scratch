@@ -96,16 +96,18 @@ export async function run(canvas: HTMLCanvasElement): Promise<void> {
   view.reset();
   const whole = new Archive(PLB);
   await whole.open(true);
-  view.loader = new Loader(whole, h, (t, l, m) => view.add(t, l, m));
-  view.loader.want(h.tiles.flatMap((_, i) => [2 * i, 2 * i + 1]));
-  while (view.loader.inflight || h.tiles.some((_, i) => !view.has(2 * i) || !view.has(2 * i + 1))) await new Promise((r) => setTimeout(r, 20));
-  view.loader = null;
+  // Not attached to the view: its draws would narrow the queue to the visible tiles.
+  const all = new Loader(whole, h, (t, l, m) => view.add(t, l, m));
+  all.want(h.tiles.flatMap((_, i) => [2 * i, 2 * i + 1]));
+  while (all.inflight || h.tiles.some((_, i) => !view.has(2 * i) || !view.has(2 * i + 1))) await new Promise((r) => setTimeout(r, 20));
   view.draw();
   const b = px();
   let diff = 0;
   for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) diff++;
   const same = placed.length === truth.buildings && got[0] === want[0] && got[1] === want[1] && diff / (W * H) < 0.01;
-  emit({ check: 'citygml-same-scene', pass: same, detail: `buildings ${placed.length}/${truth.buildings}, triangles+dropped ${got.join('+')} vs ${want.join('+')}, ${(100 * diff / (W * H)).toFixed(3)}% pixels differ from PLB` });
+  const detail = `buildings ${placed.length}/${truth.buildings}, triangles+dropped ${got.join('+')} vs ${want.join('+')}, ${(100 * diff / (W * H)).toFixed(3)}% pixels differ from PLB`;
+  emit({ check: 'citygml-same-scene', pass: same, detail });
+  emit({ info: { citygml_same_scene: `${same ? 'PASS' : 'FAIL'} ${detail}` } });
   clearTimeout(watchdog);
   emit({ info: { citygml_progress: progress.join(' ') } });
   emit({ done: true });
