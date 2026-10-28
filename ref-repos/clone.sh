@@ -26,6 +26,15 @@ maplibre/maplibre-native                  native            BSD-2-Clause
 maplibre/maplibre-rs                      rust              Apache-2.0/MIT
 maplibre/maplibre-tile-spec               tile-format       Apache-2.0/MIT (code), CC0-1.0 (spec/docs); MLT successor of MVT
 maplibre/navara                           web-3d-globe      see LICENSE
+MapConductor/react-sdk                    sdk-umbrella      MIT
+MapConductor/react-for-maplibre           sdk-adapter       Apache-2.0
+MapConductor/react-for-openlayers         sdk-adapter       Apache-2.0
+MapConductor/react-for-deckgl             sdk-adapter       Apache-2.0
+MapConductor/react-for-cesium             sdk-adapter       Apache-2.0 (LICENSE)
+MapConductor/android-sdk-core             sdk-core          Apache-2.0
+MapConductor/android-for-maplibre         sdk-adapter       Apache-2.0
+MapConductor/ios-sdk-core                 sdk-core          Apache-2.0
+MapConductor/ios-for-maplibre             sdk-adapter       Apache-2.0
 opengeos/RustGIS                          rust-gis          Apache-2.0
 reearth/reearth-papers                    research          MIT
 reearth/reearth-visualizer                web-3d-globe      Apache-2.0
