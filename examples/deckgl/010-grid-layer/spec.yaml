@@ -1,0 +1,84 @@
+id: deckgl-010-grid-layer
+request: パリの約20万本の街路樹を、ズームに応じた集計格子から個々の点へ滑らかに切り替えて見たい
+requirements:
+  - id: all-trees
+    need: 元例と同じ樹木を全件、各格子幅に集計する
+    unmeasured: 各格子の本数合計と樹木数を比較する
+  - id: bands
+    need: 2048〜16mの8段階格子と個々の樹木をズームで切り替える
+    unmeasured: 格子表示と個々の樹木表示のピクセルを比較する
+  - id: controls
+    need: 格子の画面幅と切替幅を変更できる
+    unmeasured: 操作で有効な格子帯が変わることを確認する
+  - id: hover
+    need: 格子の本数と個々の樹木の樹種・幹周を表示する
+    unmeasured: ホバーの文字列を確認する
+  - id: smooth-zoom
+    need: 広域から個別表示まで120Hzでズームできる
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-zoom}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-zoom}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-zoom}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: smooth-zoom}
+    - {metric: data_gzip_bytes, max: 2500000, unit: B, requirement: smooth-zoom}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/010-grid-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 約20万本と8段階格子の取得・GPU転送・初回描画・読み戻しまで
+      metrics: [first_frame_ms]
+    - id: zoom
+      what: 260フレームでzoom 10〜18の往復とパン
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/010-grid-layer/bake.ts]
+  sources:
+    - id: deckgl-paris-trees
+      origin: https://opendata.paris.fr/explore/dataset/les-arbres/
+      license: Ville de Paris / Paris Data の Open Database License (ODbL)。deck.gl-dataの固定版から加工
+  outputs: [data/baked/deckgl-010-grid-layer/trees.bin, data/baked/deckgl-010-grid-layer/species.json, data/baked/deckgl-010-grid-layer/grid-2048.bin, data/baked/deckgl-010-grid-layer/grid-1024.bin, data/baked/deckgl-010-grid-layer/grid-512.bin, data/baked/deckgl-010-grid-layer/grid-256.bin, data/baked/deckgl-010-grid-layer/grid-128.bin, data/baked/deckgl-010-grid-layer/grid-64.bin, data/baked/deckgl-010-grid-layer/grid-32.bin, data/baked/deckgl-010-grid-layer/grid-16.bin]
+  preparation:
+    - 樹木をパリ中心からの局所メートル座標へ変換し、5cm精度の符号付き24ビット座標を含む10バイト/本の点データにする
+    - 8段階の格子の占有セルだけを事前集計し、セル番号を16ビット整数で記録し、各帯の本数を分位点で6色に割り当てる
+performance_knowledge:
+  - id: sparse-preaggregated-bands
+    finding: 占有セルのみ事前集計すると細粒度帯の空セルをGPUに送らずに済み、ズーム時は帯の切替だけで済む
+    evidence: 公開用ビルド3反復でズーム中のフレームp95 1.24 ms、データgzip約2.06 MB
+    applies_when: 点群が固定で、格子幅が2の累乗系列の場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 GL_POINTS and preaggregated sparse grids
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/010-grid-layer/index.html, examples/deckgl/010-grid-layer/main.ts, examples/deckgl/010-grid-layer/renderer.ts]
+    dependencies: []
+    why: 集計を一度だけベイクし、ズーム中の再集計と不要帯の描画を避ける
+  alternatives:
+    - option: deck.gl GridLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [CARTO背景地図, 元例との同条件速度比較, 元データの週次自動更新]
+verification:
+  checks:
+    - {id: all-trees-2048, what: 2048m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-1024, what: 1024m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-512, what: 512m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-256, what: 256m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-128, what: 128m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-64, what: 64m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-32, what: 32m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: all-trees-16, what: 16m格子に全件割当, how: 本数合計, expected: 全樹木数}
+    - {id: visible-grid, what: 初期格子が見える, how: ピクセル確認, expected: 緑の1000ピクセル以上}
+    - {id: individual-trees, what: 拡大すると個々の点に切替, how: 有効帯確認, expected: 個別樹木帯}
+    - {id: zoom-changes-screen, what: ズームで画面が変わる, how: ピクセル比較, expected: 1000サンプル以上}
+    - {id: grid-hover-count, what: 格子に本数を表示, how: 格子中心のhover文字列, expected: 本数を含む}
+    - {id: tree-hover-species, what: 樹木に樹種を表示, how: 樹木中心のhover文字列, expected: 樹種を含む}

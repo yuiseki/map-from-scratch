@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // Paris Data les-arbres, ODbL; fixed copy used by the deck.gl GridLayer example.
+  'deckgl-paris-trees': {
+    out: 'deckgl_paris_trees.csv',
+    local: '/sata_hdd_24tb/hf_data/deckgl-paris-trees/les-arbres.csv',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/0535921160bdcd57ef55c712669c5a4d5eedbb3c/examples/scatterplot/les-arbres.csv',
+    copy: true,
+  },
   // D3 GeoTIFF contours notebook attachment; GRIB metadata identifies a 2016 surface-temperature forecast.
   'd3-geotiff-sfctmp': {
     out: 'd3_geotiff_sfctmp.tiff',
