@@ -192,7 +192,7 @@
 - [ ] `deckgl-004-brushing-extension` → `examples/deckgl/004-brushing-extension/` — [BrushingExtension](https://deck.gl/examples/brushing-extension)
 - [ ] `deckgl-005-bitmap-layer` → `examples/deckgl/005-bitmap-layer/` — [BitmapLayer](https://deck.gl/examples/bitmap-layer)
 - [x] `deckgl-006-contour-layer` → `examples/deckgl/006-contour-layer/` — [ContourLayer](https://deck.gl/examples/contour-layer)
-- [ ] `deckgl-007-geojson-layer-polygons` → `examples/deckgl/007-geojson-layer-polygons/` — [GeoJsonLayer (Polygons)](https://deck.gl/examples/geojson-layer-polygons)
+- [x] `deckgl-007-geojson-layer-polygons` → `examples/deckgl/007-geojson-layer-polygons/` — [GeoJsonLayer (Polygons)](https://deck.gl/examples/geojson-layer-polygons)
 - [ ] `deckgl-008-geojson-layer-paths` → `examples/deckgl/008-geojson-layer-paths/` — [GeoJsonLayer (Paths)](https://deck.gl/examples/geojson-layer-paths)
 - [ ] `deckgl-009-global-grids` → `examples/deckgl/009-global-grids/` — [Global Grid Layers](https://deck.gl/examples/global-grids)
 - [x] `deckgl-010-grid-layer` → `examples/deckgl/010-grid-layer/` — [GridLayer](https://deck.gl/examples/grid-layer)
@@ -263,5 +263,5 @@
 
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **8 件**（maplibre-056、deckgl-006、010、011、012、018、025、d3-016）。
+- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **9 件**（maplibre-056、deckgl-006、007、010、011、012、018、025、d3-016）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

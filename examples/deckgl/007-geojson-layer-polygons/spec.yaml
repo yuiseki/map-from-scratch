@@ -1,0 +1,73 @@
+id: deckgl-007-geojson-layer-polygons
+request: バンクーバーの区画ごとの土地評価額と伸び率を、回転・拡大できる3D区画で見たい
+requirements:
+  - id: accurate-data
+    need: 元例と同じ4627区画と評価額・伸び率を表示する
+    unmeasured: 区画数とホバー値を比較する
+  - id: extrusions
+    need: 評価額に応じた高さと伸び率に応じた色の立体区画を描く
+    unmeasured: 色付きピクセルとカメラ操作前後の画面を比較する
+  - id: hover
+    need: 区画にカーソルを重ねると評価額と伸び率が分かる
+    unmeasured: ピクセルIDから値を取り出す
+  - id: smooth-navigation
+    need: パン・回転・ズーム中も120Hzで描く
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-navigation}
+    - {metric: code_gzip_bytes, max: 15000, unit: B, requirement: smooth-navigation}
+    - {metric: data_gzip_bytes, max: 1500000, unit: B, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/007-geojson-layer-polygons/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 区画メッシュの取得・GPU転送・初回描画・ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 240フレームでパン・ズーム・回転
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/007-geojson-layer-polygons/bake.ts]
+  sources:
+    - id: deckgl-vancouver-blocks
+      origin: https://github.com/visgl/deck.gl-data/blob/0535921160bdcd57ef55c712669c5a4d5eedbb3c/examples/geojson/vancouver-blocks.json
+      license: City of Vancouver の Open Government Licence – Vancouver。データの加工を表示
+  outputs: [data/baked/deckgl-007-geojson-layer-polygons/mesh.bin, data/baked/deckgl-007-geojson-layer-polygons/values.json]
+  preparation:
+    - GeoJSONの4627区画をearcutで三角形分割し、屋根と壁を生成する
+    - 局所座標を0.5m精度の16ビット、高さを0.2m精度の16ビットに量子化する
+    - 伸び率の色区分、面ごとの光量、区画IDを各頂点に記録する
+performance_knowledge:
+  - id: prebaked-extrusion-mesh
+    finding: 区画の三角形分割と壁生成を事前に行い、描画時は1本の頂点バッファだけを使う
+    evidence: 公開用ビルド3反復でナビゲーション中フレームp95 1.48 ms、データgzip 590400 B
+    applies_when: 区画形状と属性が固定の場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 triangle mesh and offscreen ID picking
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/007-geojson-layer-polygons/index.html, examples/deckgl/007-geojson-layer-polygons/main.ts, examples/deckgl/007-geojson-layer-polygons/renderer.ts]
+    dependencies: []
+    why: 事前分割した立体メッシュを1回の描画で表示し、ホバー時のみIDを別のバッファへ描く
+  alternatives:
+    - option: deck.gl GeoJsonLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [OpenFreeMap背景地図, 元例との同条件速度比較, 更新され続ける不動産評価額への追従]
+verification:
+  checks:
+    - {id: all-blocks-loaded, what: 全区画を読み込む, how: 区画数を比較, expected: 4627}
+    - {id: visible-extrusions, what: 色付き立体区画が見える, how: ピクセル読み戻し, expected: 10000ピクセル以上}
+    - {id: camera-changes-screen, what: カメラ操作で見え方が変わる, how: 操作前後のピクセル比較, expected: 1000サンプル以上}
+    - {id: pick-block-values, what: 区画を選ぶと属性が分かる, how: IDと属性の読み戻し, expected: 有限の評価額と伸び率}

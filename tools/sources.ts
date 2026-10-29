@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // Vancouver property-value polygons used by deck.gl's GeoJsonLayer example.
+  'deckgl-vancouver-blocks': {
+    out: 'deckgl_vancouver_blocks.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-vancouver-blocks/vancouver-blocks.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/0535921160bdcd57ef55c712669c5a4d5eedbb3c/examples/geojson/vancouver-blocks.json',
+    copy: true,
+  },
   // Paris Data les-arbres, ODbL; fixed copy used by the deck.gl GridLayer example.
   'deckgl-paris-trees': {
     out: 'deckgl_paris_trees.csv',
