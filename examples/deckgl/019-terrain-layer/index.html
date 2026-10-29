@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>セントヘレンズ山 · 3D地形</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#09101a;color:#e8eef5;font:14px/1.5 system-ui,sans-serif}
+canvas{display:block;width:100vw;height:100vh;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}
+.panel{position:fixed;top:14px;left:14px;padding:14px 16px;background:#102034e8;border:1px solid #566b80;border-radius:12px;max-width:330px}
+h1{font-size:17px;margin:0 0 5px}p{margin:5px 0}label{display:block;margin:8px 0}select{background:#20374b;color:#fff;border:1px solid #63798d;border-radius:4px;padding:5px}
+footer{position:fixed;right:8px;bottom:8px;padding:5px 8px;background:#102034e8;border-radius:5px;font-size:11px}a{color:#a8dbff}
+</style>
+<canvas id="map" aria-label="セントヘレンズ山周辺の衛星画像付き3D地形"></canvas>
+<div class="panel"><h1>3D地形</h1><p id="status">標高と衛星画像を読み込み中…</p><label>場所 <select id="location"><option value="helens">セントヘレンズ山</option><option value="canyon">グランドキャニオン</option><option value="sanfrancisco">サンフランシスコ</option><option value="losangeles">ロサンゼルス</option><option value="newyork">ニューヨーク</option><option value="melbourne">メルボルン</option><option value="dallas">ダラス</option></select></label><label>地表 <select id="surface"><option value="0">衛星画像</option><option value="1">標高色</option></select></label><label><input type="checkbox" id="wireframe"> ワイヤーフレーム</label><p>ドラッグで移動、Shift または右ドラッグで回転。ホイールで拡大・縮小。</p></div>
+<footer>標高: <a href="https://mapterhorn.com/attribution/">Mapterhorn</a> · 地表: <a href="https://versatiles.org/sources/">VersaTiles</a></footer>
+<script type="module" src="./main.ts"></script>

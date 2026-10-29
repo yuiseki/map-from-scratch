@@ -1,0 +1,84 @@
+id: deckgl-019-terrain-layer
+request: Mapterhorn の標高と VersaTiles の衛星画像を使い、セントヘレンズ山の3D地形を滑らかに観察したい
+requirements:
+  - id: terrain
+    need: 元例と同じ Terrarium 標高タイルから3Dメッシュを描く
+    unmeasured: 標高タイルを取得した後の画面ピクセルを確認する
+  - id: satellite
+    need: 衛星画像を地形に貼り、標高色にも切り替える
+    unmeasured: 地表切替の前後の画面ピクセルを比較する
+  - id: wireframe
+    need: 地形メッシュのワイヤーフレームを確認できる
+    unmeasured: ワイヤーフレーム切替の前後の画面ピクセルを比較する
+  - id: navigation
+    need: 移動・回転・拡大縮小で地形を観察できる
+    unmeasured: 操作でカメラ値と表示タイルが変わることを確認する
+  - id: smooth
+    need: 傾斜した地形を60Hz以上で描画する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth}
+    - {metric: whole_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth}
+    - {metric: first_frame_ms, stat: p50, max: 10000, unit: ms, requirement: smooth}
+    - {metric: complete_view_ms, stat: p50, max: 10000, unit: ms, requirement: terrain}
+    - {metric: code_gzip_bytes, max: 30000, unit: B, requirement: smooth}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/019-terrain-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 中心付近9タイルの初回描画と初期画角25タイルの完成まで
+      metrics: [first_frame_ms, complete_view_ms]
+    - id: orbit
+      what: 180フレームで方位・傾斜・カメラ距離を変える
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: []
+  sources:
+    - id: mapterhorn-zxy
+      origin: https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
+      license: Mapterhorn の帰属表示に従う
+    - id: versatiles-satellite
+      origin: https://tiles.versatiles.org/tiles/satellite/{z}/{x}/{y}.webp
+      license: VersaTiles の帰属表示に従う
+  outputs: []
+  preparation:
+    - 標高と衛星画像の同じ z/x/y の512pxタイルを必要な範囲だけ取得する
+    - Terrarium 標高を頂点シェーダーでデコードして64×64セルのメッシュを変形する
+performance_knowledge:
+  - id: reusable-grid
+    finding: 全タイルが一つの64×64メッシュを共有し、標高と画像テクスチャだけを切り替える
+    evidence: RTX 3060・公開用ビルド3反復で操作フレームp95 1.545 ms、GPU p95 0.998 ms
+  - id: tile-concurrency
+    finding: この通信条件では同時取得数を増やすと初期25枚の完成が速かった
+    evidence: 同時8件で完成p50 4.04秒、16件で2.20秒、25件で1.34秒。ただし配信元の応答変動を含む
+    applies_when: 2ホストから合計50枚のHTTP/2タイルを取得する場合
+    applies_when: 同じズーム帯の標高タイルを一括表示するとき
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 with two textures per terrain tile
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/019-terrain-layer/index.html, examples/deckgl/019-terrain-layer/main.ts, examples/deckgl/019-terrain-layer/renderer.ts]
+    dependencies: []
+    why: 形状生成をGPUに置き、カメラ操作でメッシュを作り直さない
+  alternatives:
+    - option: deck.gl TerrainLayer
+      rejected_because: 元例側の比較対象であり、独立した描画器の実行時依存にしない
+  not_doing: [全球のGlobeView, z13以上の地域別PMTiles, OSM背景地図, 元例との同条件速度比較]
+verification:
+  checks:
+    - {id: initial-tiles-loaded, what: 初期画角の25タイルを取得, how: キャッシュ枚数確認, expected: 25枚以上}
+    - {id: terrain-visible, what: 地形が画面に見える, how: ピクセル読み戻し, expected: 明るいピクセル50000以上}
+    - {id: wireframe-changes-screen, what: ワイヤーフレームに切替, how: 切替前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: surface-changes-screen, what: 地表色に切替, how: 切替前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: orbit-changes-screen, what: 回転で視点が変わる, how: 回転前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: zoom-changes-screen, what: 拡大で視点が変わる, how: 拡大前後のピクセル比較, expected: 変化3000サンプル以上}
