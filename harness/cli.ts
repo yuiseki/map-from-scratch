@@ -97,6 +97,9 @@ function fmt(x: number | null | undefined): string {
 // instead of the repository, to check exactly what is published.
 async function bench(id: string, iterations: number | undefined, site?: string): Promise<boolean> {
   const spec = loadSpec(specDir(id));
+  if (site && spec.runtime === 'browser' && spec.run.page && !existsSync(join(site, spec.run.page))) {
+    throw new Error(`site page missing: ${spec.run.page}; run tools/build-site.ts first`);
+  }
   const outDir = join(root, 'results', id);
   mkdirSync(outDir, { recursive: true });
   const n = iterations ?? spec.iterations;

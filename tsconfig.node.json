@@ -15,6 +15,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["kits/**/*.ts", "harness/**/*.ts", "tools/**/*.ts", "examples/*/bake.ts", "baselines/*/bake.ts", "vendor/earcut/*.d.ts"],
+  "include": ["kits/**/*.ts", "harness/**/*.ts", "tools/**/*.ts", "examples/*/bake.ts", "examples/*/*/bake.ts", "baselines/*/bake.ts", "vendor/earcut/*.d.ts"],
   "exclude": ["harness/page/**", "harness/probe/**"]
 }
