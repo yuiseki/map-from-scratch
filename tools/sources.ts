@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // D3 GeoTIFF contours notebook attachment; GRIB metadata identifies a 2016 surface-temperature forecast.
+  'd3-geotiff-sfctmp': {
+    out: 'd3_geotiff_sfctmp.tiff',
+    local: '/sata_hdd_24tb/hf_data/d3-geotiff-contours/sfctmp.tiff',
+    remote: 'https://static.observableusercontent.com/files/6954c8d84aa4a9b4de4dfcc4cbe86556571ecdcbbac8f587cc98207c9a613b03ad260859f796a61b2facf50b50038f113c8cd5f55c4fbe1e2c1bc785e8ac3805',
+    copy: true,
+  },
   // deck.gl ContourLayer demo: county weekly COVID-19 reports derived from NYT data.
   'deckgl-contour-covid': {
     out: 'deckgl_contour_covid_by_county.json',

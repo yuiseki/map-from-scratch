@@ -1,0 +1,71 @@
+id: d3-016-geotiff-contours-ii
+request: 2016年8月2日の地表気温予報GeoTIFFをNatural Earth投影の等値帯で見たい
+requirements:
+  - id: accurate-data
+    need: 720×361の全格子点を欠損なく表示する
+    unmeasured: 格子点数と値域を記録する
+  - id: contours
+    need: 色付きの等値帯と境界線を世界全体で表示する
+    unmeasured: 描画ピクセルを読み戻す
+  - id: controls
+    need: 等値帯間隔を変えると画面が変わる
+    unmeasured: 変更前後の画面ピクセルを比較する
+  - id: responsive
+    need: 間隔の変更を120Hzのフレーム時間内に描画する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: responsive}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: responsive}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: responsive}
+    - {metric: data_gzip_bytes, max: 600000, unit: B, requirement: responsive}
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: responsive}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/d3/016-geotiff-contours-ii/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: データ取得からGPU描画とピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: style-updates
+      what: 180フレームで等値帯間隔を2〜12度に変える
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 60フレーム同じ画面を再描画する
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/d3/016-geotiff-contours-ii/bake.ts]
+  sources:
+    - id: d3-geotiff-sfctmp
+      origin: https://observablehq.com/@d3/geotiff-contours-ii
+      license: 原ファイルのGRIBメタデータは地表気温予報を示す。Observableの添付ファイルから数値変換し、出典と加工を表示する
+  outputs: [data/baked/d3-016-geotiff-contours-ii/temperature.bin]
+  preparation:
+    - GeoTIFFのFloat64を0.01度刻みの16ビット符号なし整数に変換
+    - 値に100度を加えて0以上にオフセットする
+performance_knowledge:
+  - id: static-grid-gpu-texture
+    finding: 固定気温格子をR16UIテクスチャへ一度だけ送り、間隔変更はuniformだけ更新できる
+    evidence: 公開用ビルド3反復で間隔変更中のフレームp95 1.31 ms、固定画面p95 0.26 ms、GPU p95 0.05837 ms
+    applies_when: 地理格子の値が固定で等値帯の間隔だけ頻繁に変わる場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 R16UI texture and full-screen fragment shader
+    language: TypeScript
+    gpu: hardware
+    code: [examples/d3/016-geotiff-contours-ii/index.html, examples/d3/016-geotiff-contours-ii/main.ts, examples/d3/016-geotiff-contours-ii/renderer.ts]
+    dependencies: []
+    why: 気温の格子は一度だけGPUへ送り、画面変更時はシェーダーの等値帯間隔だけ変える
+  alternatives:
+    - option: D3 contour polygons and SVG
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [元例との同条件速度比較, 格子間の補間, 気象予報の現在値への更新]
+verification:
+  checks:
+    - {id: grid-complete, what: 全格子点を読む, how: 件数確認, expected: 259920点}
+    - {id: visible-globe, what: 地球全体の等値帯が見える, how: ピクセル読み戻し, expected: 10万ピクセル以上}
+    - {id: step-changes-screen, what: 間隔変更で画面が変わる, how: ピクセル比較, expected: 1000サンプル以上}

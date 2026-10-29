@@ -244,7 +244,7 @@
 - [ ] `d3-013-clipped-map-tiles` → `examples/d3/013-clipped-map-tiles/` — [Clipped map tiles](https://observablehq.com/@d3/clipped-map-tiles)
 - [ ] `d3-014-raster-vector` → `examples/d3/014-raster-vector/` — [Raster & vector](https://observablehq.com/@d3/raster-vector)
 - [ ] `d3-015-vector-field` → `examples/d3/015-vector-field/` — [Vector field](https://observablehq.com/@d3/vector-field)
-- [ ] `d3-016-geotiff-contours-ii` → `examples/d3/016-geotiff-contours-ii/` — [GeoTIFF contours](https://observablehq.com/@d3/geotiff-contours-ii)
+- [x] `d3-016-geotiff-contours-ii` → `examples/d3/016-geotiff-contours-ii/` — [GeoTIFF contours](https://observablehq.com/@d3/geotiff-contours-ii)
 - [ ] `d3-017-us-airports-voronoi` → `examples/d3/017-us-airports-voronoi/` — [U.S. airports voronoi](https://observablehq.com/@d3/us-airports-voronoi)
 - [ ] `d3-018-world-airports-voronoi` → `examples/d3/018-world-airports-voronoi/` — [World airports voronoi](https://observablehq.com/@d3/world-airports-voronoi)
 - [ ] `d3-019-solar-terminator` → `examples/d3/019-solar-terminator/` — [Solar terminator](https://observablehq.com/@d3/solar-terminator)
@@ -263,5 +263,5 @@
 
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **4 件**（deckgl-011、deckgl-012、deckgl-018、deckgl-025）。
+- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **7 件**（maplibre-056、deckgl-006、011、012、018、025、d3-016）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
