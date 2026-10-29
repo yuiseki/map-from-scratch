@@ -1,0 +1,84 @@
+id: deckgl-008-geojson-layer-paths
+request: 米国の幹線道路事故を1990〜2015年で切り替え、死亡者数を色、事故件数を幅で見たい
+requirements:
+  - id: accurate-data
+    need: 元例と同じ20592道路と26年の事故記録を表示する
+    unmeasured: 道路数と線分数、年別値を照合する
+  - id: year-styles
+    need: 年の変更で死亡者数の色と事故件数の幅が変わる
+    unmeasured: 画面ピクセルを変更前後で比較する
+  - id: hover
+    need: 道路名と選択年の事故・死亡者数を見られる
+    unmeasured: 道路IDの読み戻しと属性の照合を行う
+  - id: smooth-navigation
+    need: 全国の道路をパン・ズーム中も120Hzで描画する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-navigation}
+    - {metric: year_update_ms, stat: p95, max: 20, unit: ms, requirement: year-styles}
+    - {metric: pick_ms, stat: p95, max: 16, unit: ms, requirement: hover}
+    - {metric: code_gzip_bytes, max: 18000, unit: B, requirement: smooth-navigation}
+    - {metric: data_gzip_bytes, max: 4000000, unit: B, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/008-geojson-layer-paths/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 道路・年別値の取得、GPU転送、初回描画、画面読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 240フレームの米国周辺パン・ズーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+    - id: year-update
+      what: 1991〜2015年に順に切り替え、GPUの色・幅表更新と描画完了を待つ読み戻しまで
+      metrics: [year_update_ms]
+    - id: hover-pick
+      what: 道路付近10地点で5px範囲の道路IDを読み戻す
+      metrics: [pick_ms]
+datasets:
+  bake: [node, examples/deckgl/008-geojson-layer-paths/bake.ts]
+  sources:
+    - id: deckgl-highway-roads
+      origin: https://github.com/visgl/deck.gl-data/blob/1cce5f323fb2d7f8a93fd1443cf83076d5daae40/examples/highway/roads.json
+      license: deck.gl-data のMITライセンス。元の道路形状の作成経路は未確認
+    - id: deckgl-highway-accidents
+      origin: https://www.nhtsa.gov/research-data/fatality-analysis-reporting-system-fars
+      license: NHTSA FARSを元データとする米国政府情報。deck.gl-dataの固定版を加工
+  outputs: [data/baked/deckgl-008-geojson-layer-paths/roads.bin, data/baked/deckgl-008-geojson-layer-paths/stats.bin, data/baked/deckgl-008-geojson-layer-paths/routes.json]
+  preparation:
+    - 線分端点を米国全域の範囲で16ビットに量子化し、道路IDとともに10バイト/線分へ保存
+    - 26年分の事故件数と死亡者数を道路IDごとの2バイトへ保存
+performance_knowledge:
+  - id: static-segments-dynamic-styles
+    finding: 道路線分はGPUに一度だけ転送し、年変更時は色・幅の小さなテクスチャだけ更新できる
+    evidence: 公開用ビルド3反復でパン・ズーム中フレームp95 1.365 ms、GPU完了込み年変更p95 3.135 ms、5px範囲の道路選択p95 1.895 ms
+    applies_when: 道路形状が固定で年別の属性だけ変わる場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 instanced line quads and integer style textures
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/008-geojson-layer-paths/index.html, examples/deckgl/008-geojson-layer-paths/main.ts, examples/deckgl/008-geojson-layer-paths/renderer.ts]
+    dependencies: []
+    why: 1つの道路線分バッファと年ごとの小さなスタイル表で画面を切り替える
+  alternatives:
+    - option: deck.gl GeoJsonLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [OpenFreeMap背景地図, 道路の全頂点の完全精度, 元例との同条件速度比較]
+verification:
+  checks:
+    - {id: all-roads-loaded, what: 全道路を読む, how: 件数確認, expected: 20592}
+    - {id: all-segments-loaded, what: 全線分を読む, how: 件数確認, expected: 272317}
+    - {id: visible-highways, what: 道路が画面に見える, how: ピクセル読み戻し, expected: 色付き1000ピクセル以上}
+    - {id: year-changes-screen, what: 年変更で画面が変わる, how: ピクセル比較, expected: 1000サンプル以上}
+    - {id: pick-road-stats, what: 道路選択で年別値が出る, how: IDを読み戻す, expected: 事故・死亡者数が整数}

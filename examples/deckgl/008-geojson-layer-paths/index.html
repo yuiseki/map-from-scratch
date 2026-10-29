@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>米国の幹線道路事故 · 年別表示</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d1724;color:#e7eef7;font:14px/1.5 system-ui,sans-serif}
+  canvas{display:block;width:100vw;height:100vh;touch-action:none;cursor:grab}
+  canvas:active{cursor:grabbing}
+  .panel{position:fixed;top:14px;left:14px;width:min(340px,calc(100% - 28px));padding:14px;border:1px solid #4a6077;border-radius:12px;background:#10263bed;box-shadow:0 8px 24px #0008}
+  h1{margin:0 0 5px;font-size:17px}p{margin:5px 0}label{display:block;margin-top:10px}input{width:100%;accent-color:#e79a59}
+  .legend{height:14px;margin:10px 0 4px;border-radius:4px;background:linear-gradient(90deg,#1a9850,#a6d96a,#ffffbf,#fdae61,#d73027,#a80000)}
+  .key{display:flex;justify-content:space-between;color:#c4d0de;font-size:11px}small{display:block;margin-top:9px;color:#c4d0de}
+  #tooltip{position:fixed;display:none;pointer-events:none;padding:7px 9px;background:#10263bf5;border:1px solid #6c8195;border-radius:5px;max-width:280px}
+  footer{position:fixed;right:8px;bottom:8px;max-width:min(520px,calc(100% - 16px));padding:5px 8px;background:#10263bed;border-radius:5px;font-size:11px}a{color:#a8dbff}
+</style>
+<canvas id="map" aria-label="米国の幹線道路事故の致死率を年別の色付き道路で示す地図"></canvas>
+<div class="panel">
+  <h1>米国の幹線道路事故</h1>
+  <p id="status">読み込み中…</p>
+  <p>色は道路1,000マイルあたりの死亡者数、幅は事故件数を示します。</p>
+  <label for="year">年 <strong id="year-value">1990</strong></label>
+  <input id="year" type="range" min="1990" max="2015" step="1" value="1990">
+  <div class="legend"></div><div class="key"><span>0</span><span>4</span><span>12</span><span>32</span><span>84</span><span>136+</span></div>
+  <small>ドラッグで移動、ホイールで拡大・縮小。道路に重ねると年別の事故件数を表示します。</small>
+</div>
+<div id="tooltip"></div>
+<footer>固定版: <a href="https://github.com/visgl/deck.gl-data/tree/master/examples/highway">deck.gl-data</a>（リポジトリ MIT、道路形状の原出典は未確認）。事故データの出典: <a href="https://www.nhtsa.gov/research-data/fatality-analysis-reporting-system-fars">NHTSA FARS</a>。量子化・集計して表示。</footer>
+<script type="module" src="./main.ts"></script>

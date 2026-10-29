@@ -13,6 +13,19 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // Deck.gl highway safety example: route geometries and annual FARS aggregates.
+  'deckgl-highway-roads': {
+    out: 'deckgl_highway_roads.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-highway/roads.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/1cce5f323fb2d7f8a93fd1443cf83076d5daae40/examples/highway/roads.json',
+    copy: true,
+  },
+  'deckgl-highway-accidents': {
+    out: 'deckgl_highway_accidents.csv',
+    local: '/sata_hdd_24tb/hf_data/deckgl-highway/accidents.csv',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/1cce5f323fb2d7f8a93fd1443cf83076d5daae40/examples/highway/accidents.csv',
+    copy: true,
+  },
   // Vancouver property-value polygons used by deck.gl's GeoJsonLayer example.
   'deckgl-vancouver-blocks': {
     out: 'deckgl_vancouver_blocks.json',
