@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // deck.gl HexagonLayer demo: 140,000 UK personal-injury road accidents.
+  'deckgl-uk-road-accidents': {
+    out: 'deckgl_uk_road_accidents.csv',
+    local: '/sata_hdd_24tb/hf_data/deckgl-uk-road-accidents/heatmap-data.csv',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/3d-heatmap/heatmap-data.csv',
+    copy: true,
+  },
   // deck.gl ScreenGridLayer demo: 100,000 weighted NYC Uber pickup locations.
   'deckgl-screen-grid-uber': {
     out: 'deckgl_screen_grid_uber_pickups.json',

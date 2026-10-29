@@ -1,0 +1,107 @@
+id: deckgl-012-hexagon-layer
+request: >-
+  英国の交通事故約14万件を六角セルへ集計し、件数を立体の高さと色で見たい。
+  地図を動かし、集計半径・列の幅・上位分位を操作したい。
+requirements:
+  - id: accurate-aggregation
+    need: 全事故を一つずつ六角セルへ割り当てる
+    unmeasured: セル件数の合計が有効な元レコード数と一致することを確認する
+  - id: three-dimensional-view
+    need: 件数に応じた立体の六角柱を表示する
+    unmeasured: 画面を読み戻し、色付きの柱と高密度の柱を確認する
+  - id: smooth-navigation
+    need: パン・ズーム・回転中も滑らかに表示する
+    rationale: 120 Hz の1フレームは8.3 ms
+  - id: controls
+    need: 半径・列幅・上位分位を変更できる
+    unmeasured: 件数とピクセルの変化を確認する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: regroup_ms, stat: p95, max: 200, unit: ms, requirement: controls}
+    - {metric: percentile_update_ms, stat: p95, max: 50, unit: ms, requirement: controls}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-navigation}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: smooth-navigation}
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/012-hexagon-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ページ開始から約14万件のデータ転送・集計・GPU描画・ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 300フレームのパン・ズーム・回転
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+    - id: regroup
+      what: 半径変更後に約14万件を再集計
+      metrics: [regroup_ms]
+    - id: percentile-update
+      what: 上位分位を変えた後に既存セルの色と高さを更新
+      metrics: [percentile_update_ms]
+datasets:
+  bake: [node, examples/deckgl/012-hexagon-layer/bake.ts]
+  sources:
+    - id: deckgl-uk-road-accidents
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/3d-heatmap
+      license: deck.gl-data は MIT、元データは Department for Transport の UK Open Government Licence
+  outputs: [data/baked/deckgl-012-hexagon-layer/points.bin]
+  preparation:
+    - 有効な経緯度をWeb Mercatorへ変換
+    - データ矩形内の16ビット座標に量子化して各点4バイトに格納
+performance_knowledge:
+  - id: regroup-on-radius-change
+    finding: 半径変更時だけ約14万件を再集計し、カメラ操作中は12119個のセルをインスタンス描画できる
+    evidence: 公開用ビルド3反復で再集計p95 20.27 ms、カメラ操作フレームp95 1.29 ms、GPU p95 0.164 ms
+    applies_when: 元点は固定で、集計半径だけが低頻度で変わる場合
+  - id: percentile-from-cells
+    finding: 上位分位の変更では元点を再集計せず、既存セルの件数を並べ直してインスタンスを更新できる
+    evidence: 公開用ビルド3反復で上位分位更新p95 3.175 ms
+    applies_when: セルの割り当てを変えずに色と高さの上限だけを変える場合
+  - id: quantized-accident-position
+    finding: 経緯度をデータ矩形内の16ビット座標へ量子化し、1点4バイトで保持できる
+    evidence: 有効140029件を560148 B、gzip 494900 Bに格納。座標刻みは東西9.6m、南北19.8m
+    applies_when: 集計半径が500m以上の場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 instanced hexagonal prisms
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/012-hexagon-layer/index.html, examples/deckgl/012-hexagon-layer/main.ts, examples/deckgl/012-hexagon-layer/hexagons.ts]
+    dependencies: []
+    why: 半径変更時だけ点を再集計し、カメラ操作中はセルのインスタンスバッファを再利用する
+  alternatives:
+    - option: 汎用deck.gl HexagonLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [背景タイル, 点ごとの選択, 動的なデータ追加]
+verification:
+  checks:
+    - id: all-accidents-binned
+      what: 全事故がどれか一つのセルに入る
+      how: セル件数の合計をデータ件数と比較
+      expected: 完全一致
+    - id: visible-prisms
+      what: 立体の六角柱と高密度色が画面に出る
+      how: ピクセルを読み戻して色を数える
+      expected: 色付き1000以上、高密度色10以上
+    - id: radius-changes-bins
+      what: 半径を小さくするとセル数が増える
+      how: 半径2000mと1000mのセル数・件数を比較
+      expected: セル数が増え、件数合計は同じ
+    - id: coverage-changes-screen
+      what: 列幅の操作が画面を変える
+      how: 列幅0.7と0.3のピクセルを比較
+      expected: 1000サンプル以上の変化
+    - id: percentile-changes-screen
+      what: 上位分位の操作が高さ・色を変える
+      how: 上位分位100と75のピクセルを比較
+      expected: 1000サンプル以上の変化
