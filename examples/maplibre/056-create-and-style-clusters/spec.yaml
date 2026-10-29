@@ -1,0 +1,91 @@
+id: maplibre-056-create-and-style-clusters
+request: >-
+  地震地点をズームに応じて集約し、件数を色・大きさ・数字で示したい。
+  クラスタをクリックすると展開し、単点ではマグニチュードと津波情報を見たい。
+requirements:
+  - id: accurate-counts
+    need: すべての地震が各ズーム段階で一つの円に割り当てられる
+    unmeasured: 各円の件数の合計を元地点数と比較する
+  - id: cluster-navigation
+    need: クラスタをクリックして展開し、単点の属性を読める
+    unmeasured: クラスタ数とズームの変化、単点での属性表示を確認する
+  - id: smooth-navigation
+    need: パンとズーム中も円と件数を滑らかに表示する
+    rationale: 120 Hz の1フレームは8.3 ms
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-navigation}
+    - {metric: data_gzip_bytes, max: 150000, unit: B, requirement: smooth-navigation}
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/056-create-and-style-clusters/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: データ取得・15段階の集約・GPU描画・画面ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 300フレームで米国周辺をパン・ズームし、円と件数を描く
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: expand
+      what: クラスタを選択して次の分割ズームを描く
+      metrics: [cluster_upload_ms]
+datasets:
+  bake: [node, examples/maplibre/056-create-and-style-clusters/bake.ts]
+  sources:
+    - id: maplibre-cluster-earthquakes
+      origin: https://maplibre.org/maplibre-gl-js/docs/assets/earthquakes.geojson
+      license: USGS の米国政府著作物としてパブリックドメイン
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-056-create-and-style-clusters/earthquakes.bin, data/baked/maplibre-056-create-and-style-clusters/land.json]
+  preparation:
+    - 元例が使う GeoJSON の有効な点を Web Mercator へ変換
+    - 位置・マグニチュード・津波フラグを各点16バイトに格納
+    - Natural Earth 110m 陸地を Web Mercator 座標のJSONへ変換
+performance_knowledge:
+  - id: precompute-zoom-clusters
+    finding: 6,107地点の15段階の集約を初回に作り、移動中はGPUの点バッファとズーム段階の集約結果を再利用できる
+    evidence: 公開用ビルド3反復で初回描画p50 114.7 ms、パン・ズームフレームp95 1.665 ms、GPU p95 0.01434 ms
+    applies_when: データは固定で、ズームとパンによる表示位置だけが頻繁に変わる場合
+  - id: compact-earthquake-data
+    finding: 必要な属性だけを16バイト/点にして6,107地点を97,728 Bで配信できる
+    evidence: 地震97,728 B、陸地112,356 B。両データの合計gzip 94,580 B
+    applies_when: 地震の位置・マグニチュード・津波フラグだけが必要な場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 point sprites and Canvas2D land and labels
+    language: TypeScript
+    gpu: hardware
+    code: [examples/maplibre/056-create-and-style-clusters/index.html, examples/maplibre/056-create-and-style-clusters/main.ts, examples/maplibre/056-create-and-style-clusters/clusters.ts]
+    dependencies: []
+    why: カメラ操作中は集約結果を再利用し、円を1回のGPU描画呼び出しで描く
+  alternatives:
+    - option: MapLibre の GeoJSON クラスタ
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [背景地図タイル, 道路・地名ラベル, ライブ地震データ, Superclusterとの境界完全一致]
+verification:
+  checks:
+    - id: all-earthquakes-accounted
+      what: 全地点が集約される
+      how: 円の件数合計をデータ件数と比較
+      expected: 完全一致
+    - id: visible-clusters
+      what: 円の色が画面に表示される
+      how: 画面ピクセルを読み戻す
+      expected: 色付き500ピクセル以上、高件数色10ピクセル以上
+    - id: cluster-click-expands
+      what: クラスタが展開できる
+      how: 大きなクラスタを展開してズームと円数を比較
+      expected: ズームと円数が増え、総件数は一定
+    - id: individual-earthquakes-at-high-zoom
+      what: ズーム15以降は全地点が単点になる
+      how: 円数とデータ件数を比較
+      expected: 完全一致

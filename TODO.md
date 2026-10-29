@@ -75,7 +75,7 @@
 - [ ] `maplibre-053-create-a-heatmap-layer` → `examples/maplibre/053-create-a-heatmap-layer/` — [Create a heatmap layer](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
 - [ ] `maplibre-054-create-a-hover-effect` → `examples/maplibre/054-create-a-hover-effect/` — [Create a hover effect](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-hover-effect/)
 - [ ] `maplibre-055-create-a-time-slider` → `examples/maplibre/055-create-a-time-slider/` — [Create a time slider](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-time-slider/)
-- [ ] `maplibre-056-create-and-style-clusters` → `examples/maplibre/056-create-and-style-clusters/` — [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
+- [x] `maplibre-056-create-and-style-clusters` → `examples/maplibre/056-create-and-style-clusters/` — [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
 - [ ] `maplibre-057-create-deckgl-layer-using-rest-api` → `examples/maplibre/057-create-deckgl-layer-using-rest-api/` — [Create deck.gl layer using REST API](https://maplibre.org/maplibre-gl-js/docs/examples/create-deckgl-layer-using-rest-api/)
 - [ ] `maplibre-058-customize-camera-animations` → `examples/maplibre/058-customize-camera-animations/` — [Customize camera animations](https://maplibre.org/maplibre-gl-js/docs/examples/customize-camera-animations/)
 - [ ] `maplibre-059-customize-the-map-transform-constrain` → `examples/maplibre/059-customize-the-map-transform-constrain/` — [Customize the map transform constrain](https://maplibre.org/maplibre-gl-js/docs/examples/customize-the-map-transform-constrain/)

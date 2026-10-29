@@ -13,6 +13,20 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // MapLibre cluster demo: the fixed USGS earthquake GeoJSON used by the official example.
+  'maplibre-cluster-earthquakes': {
+    out: 'maplibre_cluster_earthquakes.geojson',
+    local: '/sata_hdd_24tb/hf_data/maplibre-cluster-earthquakes/earthquakes.geojson',
+    remote: 'https://maplibre.org/maplibre-gl-js/docs/assets/earthquakes.geojson',
+    copy: true,
+  },
+  // Natural Earth 110m land, public domain: geographic context for the cluster demo.
+  'ne-110m-land': {
+    out: 'ne_110m_land.geojson',
+    local: '/sata_hdd_24tb/hf_data/natural-earth-110m/ne_110m_land.geojson',
+    remote: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson',
+    copy: true,
+  },
   // deck.gl TripsLayer demo: NYC taxi paths and Mapzen/OSM building footprints.
   'deckgl-trips-nyc': {
     out: 'deckgl_trips_nyc.json',
