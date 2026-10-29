@@ -196,7 +196,7 @@
 - [ ] `deckgl-008-geojson-layer-paths` → `examples/deckgl/008-geojson-layer-paths/` — [GeoJsonLayer (Paths)](https://deck.gl/examples/geojson-layer-paths)
 - [ ] `deckgl-009-global-grids` → `examples/deckgl/009-global-grids/` — [Global Grid Layers](https://deck.gl/examples/global-grids)
 - [ ] `deckgl-010-grid-layer` → `examples/deckgl/010-grid-layer/` — [GridLayer](https://deck.gl/examples/grid-layer)
-- [ ] `deckgl-011-heatmap-layer` → `examples/deckgl/011-heatmap-layer/` — [HeatmapLayer](https://deck.gl/examples/heatmap-layer)
+- [x] `deckgl-011-heatmap-layer` → `examples/deckgl/011-heatmap-layer/` — [HeatmapLayer](https://deck.gl/examples/heatmap-layer)
 - [ ] `deckgl-012-hexagon-layer` → `examples/deckgl/012-hexagon-layer/` — [HexagonLayer](https://deck.gl/examples/hexagon-layer)
 - [ ] `deckgl-013-icon-layer` → `examples/deckgl/013-icon-layer/` — [IconLayer](https://deck.gl/examples/icon-layer)
 - [ ] `deckgl-014-line-layer` → `examples/deckgl/014-line-layer/` — [LineLayer](https://deck.gl/examples/line-layer)
@@ -263,5 +263,5 @@
 
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **1 件**（deckgl-018）。
+- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **2 件**（deckgl-011、deckgl-018）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

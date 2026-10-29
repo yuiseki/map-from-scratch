@@ -1,0 +1,91 @@
+id: deckgl-011-heatmap-layer
+request: >-
+  ニューヨークの Uber 乗車地点10万個を重みに応じたヒートマップで見たい。
+  地図のパン・ズーム中も更新し、半径・強度・しきい値を操作したい。
+requirements:
+  - id: weighted-heatmap
+    need: 重み付き点の密度を滑らかな色の面として表示する
+    unmeasured: 画面のピクセルを読み戻して色と高密度域の存在を確認する
+  - id: smooth-navigation
+    need: パン・ズーム中も滑らかに密度を更新する
+    rationale: 120 Hz の1フレームは8.3 ms
+  - id: controls
+    need: 半径・強度・しきい値を変更できる
+    unmeasured: 値を変えた前後のピクセルを比較する
+  - id: quick-start
+    need: 最初のヒートマップをすぐ表示する
+    rationale: データ転送、GPUへの転送、初回描画を1秒以内に収める
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: quick-start}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/011-heatmap-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ページ開始からデータ転送・GPU上の密度集計・画面ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 10万個の重み付き点を毎フレーム再集計しながら300フレームのパン・ズーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: whole-view
+      what: 全点が入る画面で60フレーム再集計する高密度経路
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/011-heatmap-layer/bake.ts]
+  sources:
+    - id: deckgl-screen-grid-uber
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/screen-grid
+      license: MIT (deck.gl-data); 元データ FiveThirtyEight / NYC TLC FOIL
+  outputs: [data/baked/deckgl-011-heatmap-layer/points.bin]
+  preparation:
+    - deck.gl HeatmapLayer と同じ10万件の重み付き点をWeb Mercatorへ変換
+    - 点座標を矩形内の16ビットに量子化し、重みとともに6バイトずつ保存
+performance_knowledge:
+  - id: third-resolution-density
+    finding: 10万点のGaussian splatを画面3分の1解像度で集計し、全画面を双線形補間すると描画負荷を下げられる
+    evidence: RTX 3060の公開用ビルド計測3反復でframe_ms p95 3.99 ms、whole_frame_ms p95 3.985 ms。2分の1解像度ではframe_ms p95 7.10 ms
+    applies_when: 半径30px前後の滑らかなヒートマップを1280×800の画面へ描く場合
+  - id: compact-weighted-points
+    finding: 緯度経度と整数重みを1点6バイトへ量子化し、初回描画の転送とパースを減らせる
+    evidence: 10万点を600032 B、gzip 344200 Bに格納。公開用ビルドの初回描画p50 65.94 ms
+    applies_when: 点の位置と整数重みだけが必要な場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 (R32F加算ブレンドとGPU縮約)
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/011-heatmap-layer/index.html, examples/deckgl/011-heatmap-layer/main.ts, examples/deckgl/011-heatmap-layer/heatmap.ts]
+    dependencies: []
+    why: GPUへ1回転送した点を画面3分の1解像度の密度ターゲットへ描き、最大値と色をGPU内で決める
+  alternatives:
+    - option: 汎用deck.gl HeatmapLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [背景タイル, 各乗車地点の選択, 3D, 動的なデータ追加, 地名ラベル]
+verification:
+  checks:
+    - id: visible-heatmap
+      what: 画面に密度の色と高密度域が表示される
+      how: 描画結果の全ピクセルを読み戻して閾値判定
+      expected: 色付き1000ピクセル以上かつ高密度色10ピクセル以上
+    - id: radius-changes-screen
+      what: 半径を変えると密度面が変わる
+      how: 半径10pxと50pxの画面ピクセルを比較
+      expected: 1000サンプル以上の変化
+    - id: intensity-changes-screen
+      what: 強度を変えると色が変わる
+      how: 強度1と2の画面ピクセルを比較
+      expected: 1000サンプル以上の変化
+    - id: threshold-changes-screen
+      what: しきい値を変えると表示域が変わる
+      how: しきい値0.03と0.2の画面ピクセルを比較
+      expected: 1000サンプル以上の変化
