@@ -1,0 +1,103 @@
+id: deckgl-025-trips-layer
+request: >-
+  マンハッタンのイエローキャブとグリーンキャブの移動を、建物の間を通る軌跡として
+  時間とともに再生したい。軌跡の長さを変え、地図を動かして比較したい。
+requirements:
+  - id: animated-trips
+    need: 約996経路を時刻に応じた移動軌跡として表示する
+    unmeasured: 時刻を変えた前後の画面ピクセルを比較する
+  - id: buildings-context
+    need: 建物の立体形状の中で軌跡の位置を把握する
+    unmeasured: 建物と両ベンダーの軌跡の色を画面から読み戻す
+  - id: adjustable-trail
+    need: 軌跡の長さを変えて表示域を比較する
+    unmeasured: 長さ60秒と300秒の画面ピクセルを比較する
+  - id: smooth-animation
+    need: 再生とカメラ移動を滑らかに行う
+    rationale: 120 Hz の1フレームは8.3 ms
+  - id: quick-start
+    need: データ転送と初回描画をすぐ終える
+    rationale: 1秒以内に軌跡と建物を表示する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-animation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-animation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 800000, unit: B, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: quick-start}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/025-trips-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ページ開始から2種類のデータ転送・GPU転送・建物と軌跡の描画・画面読み戻しまで
+      metrics: [first_frame_ms]
+    - id: playback-navigation
+      what: 300フレームの時間再生とパン・ズーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 時刻900秒の初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/025-trips-layer/bake.ts]
+  sources:
+    - id: deckgl-trips-nyc
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/trips
+      license: deck.gl-data は MIT、元データは NYC Taxi and Limousine Commission
+    - id: deckgl-trips-buildings
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/trips
+      license: deck.gl-data は MIT、建物の元データは OpenStreetMap (ODbL) via Mapzen
+  outputs: [data/baked/deckgl-025-trips-layer/trips.bin, data/baked/deckgl-025-trips-layer/buildings.bin]
+  preparation:
+    - 時刻付き経路の地点を一度だけ保存し、GPUで隣り合う地点をセグメントにする。座標は全世界24ビット、時刻は0.1秒単位の16ビット
+    - 建物ポリゴンをearcutで三角形化し、屋根と壁を16ビットインデックス付きメッシュへ展開。インデックス差分を可変長整数で保存
+    - 面積がない3棟は三角形化できないため省く。残り996棟を表示
+    - 元データのNYC外の経路も保持する。建物の量子化範囲は建物だけで決める
+performance_knowledge:
+  - id: one-record-per-trip-vertex
+    finding: 時刻付き地点を一度だけ保存し、GPUの隣接するインスタンス属性からセグメントを組み立てると、転送データを減らせる
+    evidence: 46937セグメントの両端重複方式はデータgzip 667 KB。47933地点を一度だけ保存し、建物インデックスを差分符号化すると合計458150 B。公開用ビルド3反復でフレームp95 1.31 ms
+    applies_when: 経路が静的で、再生時刻だけが毎フレーム変わる場合
+  - id: delta-building-indices
+    finding: 単純な共有頂点と絶対インデックスはgzipでかえって大きくなるが、インデックス差分を可変長整数にすると減る
+    evidence: 建物ファイルのgzipは重複三角形194 KB、単純なインデックス302 KB、差分符号化161 KB（同じgzipコマンドで測定）
+    applies_when: 建物三角形の頂点番号が局所的に近い場合
+  - id: uniform-time-playback
+    finding: 経路と建物をGPUへ各1回転送し、再生中は時刻uniformだけを更新できる
+    evidence: 公開用ビルド3反復でGPU p95 0.116 ms、CPU p95 0.035 ms、300フレーム後もGPUバッファ転送は初期の3回だけ
+    applies_when: 時間とともに表示区間が動く固定経路の場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 instanced timed segments and indexed building triangles
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/025-trips-layer/index.html, examples/deckgl/025-trips-layer/main.ts, examples/deckgl/025-trips-layer/trips.ts]
+    dependencies: []
+    why: GPUへ経路の地点列・建物頂点・建物インデックスを1回ずつ転送し、再生中は時刻のuniformだけを変える
+  alternatives:
+    - option: 汎用deck.gl TripsLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [背景タイル, 道路ラベル, 建物のクリック, 動的なデータ追加]
+verification:
+  checks:
+    - id: visible-buildings-and-trips
+      what: 建物と両ベンダーの移動軌跡が画面にある
+      how: 全画面ピクセルを読み戻して各色を数える
+      expected: 建物1000ピクセル以上、橙と水色が各10ピクセル以上
+    - id: time-changes-trails
+      what: 再生時刻を変えると軌跡が変わる
+      how: 600秒と1200秒の画面ピクセルを比較する
+      expected: 500サンプル以上の変化
+    - id: trail-changes-screen
+      what: 軌跡の長さを変えると表示域が変わる
+      how: 60秒と300秒の画面ピクセルを比較する
+      expected: 300サンプル以上の変化
+    - id: static-gpu-upload
+      what: 再生中に経路の再アップロードをしない
+      how: 300フレーム終了時の初期バッファ転送回数を確認する
+      expected: 軌跡、建物頂点、建物インデックスの3回だけ

@@ -210,7 +210,7 @@
 - [ ] `deckgl-022-tile-layer` → `examples/deckgl/022-tile-layer/` — [TileLayer (Geospatial)](https://deck.gl/examples/tile-layer)
 - [ ] `deckgl-023-tile-layer-non-geospatial` → `examples/deckgl/023-tile-layer-non-geospatial/` — [TileLayer (Non-Geospatial)](https://deck.gl/examples/tile-layer-non-geospatial)
 - [ ] `deckgl-024-tile-3d-layer` → `examples/deckgl/024-tile-3d-layer/` — [Tile3DLayer](https://deck.gl/examples/tile-3d-layer)
-- [ ] `deckgl-025-trips-layer` → `examples/deckgl/025-trips-layer/` — [TripsLayer](https://deck.gl/examples/trips-layer)
+- [x] `deckgl-025-trips-layer` → `examples/deckgl/025-trips-layer/` — [TripsLayer](https://deck.gl/examples/trips-layer)
 - [ ] `deckgl-026-wms-layer` → `examples/deckgl/026-wms-layer/` — [WMSLayer](https://deck.gl/examples/wms-layer)
 - [ ] `deckgl-027-carto` → `examples/deckgl/027-carto/` — [CARTO](https://deck.gl/examples/carto)
 - [ ] `deckgl-028-google-3d-tiles` → `examples/deckgl/028-google-3d-tiles/` — [Google 3D Tiles](https://deck.gl/examples/google-3d-tiles)
@@ -263,5 +263,5 @@
 
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **3 件**（deckgl-011、deckgl-012、deckgl-018）。
+- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **4 件**（deckgl-011、deckgl-012、deckgl-018、deckgl-025）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

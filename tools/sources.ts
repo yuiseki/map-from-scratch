@@ -13,6 +13,19 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // deck.gl TripsLayer demo: NYC taxi paths and Mapzen/OSM building footprints.
+  'deckgl-trips-nyc': {
+    out: 'deckgl_trips_nyc.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-trips/trips-v7.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/trips-v7.json',
+    copy: true,
+  },
+  'deckgl-trips-buildings': {
+    out: 'deckgl_trips_buildings.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-trips/buildings.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/trips/buildings.json',
+    copy: true,
+  },
   // deck.gl HexagonLayer demo: 140,000 UK personal-injury road accidents.
   'deckgl-uk-road-accidents': {
     out: 'deckgl_uk_road_accidents.csv',
