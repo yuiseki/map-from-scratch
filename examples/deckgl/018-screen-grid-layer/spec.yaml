@@ -1,0 +1,87 @@
+id: deckgl-018-screen-grid-layer
+request: >-
+  ニューヨークの Uber 乗車地点10万個を画面上の正方格子で集計し、地図を動かしても
+  セルの件数と色を更新したい。セル幅を変えて密度を見比べたい。PCブラウザで滑らかに動かしたい。
+requirements:
+  - id: weighted-screen-grid
+    need: 点の重みを現在の画面上の格子ごとに合計する
+    unmeasured: 全点が入るビューで総重量を数値検証し、実際に画面へ描いた色も読み戻して確認する
+  - id: smooth-navigation
+    need: 地図のパンとズーム中も滑らかに格子を更新する
+    rationale: 120 Hz の1フレームは8.3 ms
+  - id: adjustable-cell-size
+    need: セル幅を変えると格子を作り直して表示する
+    unmeasured: 複数のセル幅で画面のピクセルが変化することを確認する
+  - id: quick-start
+    need: 最初の集計結果をすぐ表示する
+    rationale: 10万点の読み込み、GPUへの転送、初回描画を1秒以内に収める
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 10000, unit: B, requirement: quick-start}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/018-screen-grid-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ページ開始からデータ転送とGPU上の格子集計を終え、画面の1ピクセルを読み戻すまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 10万個の重み付き点を毎フレーム再集計しながら、300フレームのパン・ズーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: whole-view
+      what: 全点が視野に入る画面で60フレーム集計する最悪密度の経路
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/018-screen-grid-layer/bake.ts]
+  sources:
+    - id: deckgl-screen-grid-uber
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/screen-grid
+      license: MIT (deck.gl-data); 元データ FiveThirtyEight / NYC TLC FOIL
+  outputs: [data/baked/deckgl-018-screen-grid-layer/points.bin]
+  preparation:
+    - deck.glの同一デモデータ10万レコードを読み、経緯度をWeb Mercatorに変換
+    - 点座標を矩形内の16ビットに量子化し、重みとともに6バイトずつ保存
+performance_knowledge:
+  - id: weighted-grid-on-gpu
+    finding: 10万点の重み付き集計をR32Fターゲットへ1回のdrawArraysで加算し、最大値と色をGPU内で決められる
+    evidence: RTX 3060でパン・ズーム300フレームのframe_ms p95 1.40 ms、gpu_ms p95 0.331 ms、全点表示frame_ms p95 0.595 ms（ローカル配信、3反復）
+    applies_when: 画面座標で10万点程度を毎フレーム再集計する場合
+  - id: compact-weighted-points
+    finding: 元のJSON約2.19 MBを1点6バイトの量子化バイナリへ変換し、転送量とパース量を減らせる
+    evidence: 100000点・315055重みを600032 B、gzip 344 KBに格納。初回描画p50 62.13 ms（ローカル配信、3反復）
+    applies_when: 点の位置と整数重みだけが必要な場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 (R32F加算ブレンド)
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/018-screen-grid-layer/index.html, examples/deckgl/018-screen-grid-layer/main.ts, examples/deckgl/018-screen-grid-layer/grid.ts]
+    dependencies: []
+    why: 点をGPUへ1回転送し、画面サイズの格子へ加算ブレンドしてセルの色を決める
+  alternatives:
+    - option: 汎用deck.gl ScreenGridLayer
+      rejected_because: ベースラインで比較する対象。個別描画器の実行時依存にはしない
+  not_doing: [背景タイル, マーカー, 各乗車地点の選択, 3D, 動的なデータ追加, 地名ラベル]
+verification:
+  checks:
+    - id: weighted-total
+      what: 全点を含む画面で格子の合計が元データの重量に等しい
+      how: R32F集計結果を読み戻し、全セルを加算する
+      expected: 315055
+    - id: visible-grid
+      what: 実際の画面に密度の色が描かれる
+      how: 画面の全ピクセルを読み戻し、背景色以外と高密度色があることを確認
+      expected: 背景色以外と高密度色がそれぞれ存在
+    - id: cell-size-changes-screen
+      what: セル幅を変えると画面の格子が変わる
+      how: 同じカメラでセル幅10pxと40pxを描画してピクセル配列を比較
+      expected: ピクセル配列が異なる

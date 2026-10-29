@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // deck.gl ScreenGridLayer demo: 100,000 weighted NYC Uber pickup locations.
+  'deckgl-screen-grid-uber': {
+    out: 'deckgl_screen_grid_uber_pickups.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-screen-grid-uber/uber-pickup-locations.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json',
+    copy: true,
+  },
   // Kontur Population 2023-11-01, H3 resolution 4, CC BY.
   'kontur-population-r4': {
     out: 'kontur_population_20231101_r4.parquet',

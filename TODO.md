@@ -11,9 +11,9 @@
 
 ## 先行 TODO: ディレクトリ構成と計測
 
-- [ ] `harness/cli.ts` の1階層のみの `spec.yaml` 探索を、`examples/<source>/<number>-<slug>/` に対応させる。IDは `<source>-<number>-<slug>` とし、既存の `01-*` は維持する。
-- [ ] `tools/build-site.ts`、`tools/deploy-pages.sh`、結果保存先とサイトのカードを2階層の例に対応させる。元ギャラリー別に絞り込み、元例へのリンクを表示する。
-- [ ] `spec.yaml`・`REQUEST.md`・`bake.ts`・`main.ts`・`bench.ts` の新しい配置例を1件作り、データのライセンス・帰属・配信可能性を記録する。
+- [x] `harness/cli.ts` の1階層のみの `spec.yaml` 探索を、`examples/<source>/<number>-<slug>/` に対応させる。IDは `<source>-<number>-<slug>` とし、既存の `01-*` は維持する。
+- [ ] `tools/build-site.ts`、`tools/deploy-pages.sh`、結果保存先とサイトのカードを2階層の例に対応させる。元ギャラリー別の絞り込みと元例へのリンクは未実装。
+- [x] `spec.yaml`・`REQUEST.md`・`bake.ts`・`main.ts`・`bench.ts` の新しい配置例を1件作り、データのライセンス・帰属・配信可能性を記録する。
 - [ ] 比較計測の固定条件（データ、ビューポート、DPR、カメラ経路、端末、キャッシュ状態、反復数）と、元例側の比較が不可能な場合の記載方法を決める。
 
 ## MapLibre GL JS: 141 件
@@ -203,7 +203,7 @@
 - [ ] `deckgl-015-point-cloud-layer` → `examples/deckgl/015-point-cloud-layer/` — [PointCloudLayer](https://deck.gl/examples/point-cloud-layer)
 - [ ] `deckgl-016-scatterplot-layer` → `examples/deckgl/016-scatterplot-layer/` — [ScatterplotLayer](https://deck.gl/examples/scatterplot-layer)
 - [ ] `deckgl-017-scenegraph-layer` → `examples/deckgl/017-scenegraph-layer/` — [ScenegraphLayer](https://deck.gl/examples/scenegraph-layer)
-- [ ] `deckgl-018-screen-grid-layer` → `examples/deckgl/018-screen-grid-layer/` — [ScreenGridLayer](https://deck.gl/examples/screen-grid-layer)
+- [x] `deckgl-018-screen-grid-layer` → `examples/deckgl/018-screen-grid-layer/` — [ScreenGridLayer](https://deck.gl/examples/screen-grid-layer)
 - [ ] `deckgl-019-terrain-layer` → `examples/deckgl/019-terrain-layer/` — [TerrainLayer](https://deck.gl/examples/terrain-layer)
 - [ ] `deckgl-020-text-layer` → `examples/deckgl/020-text-layer/` — [TextLayer](https://deck.gl/examples/text-layer)
 - [ ] `deckgl-021-text-layer-clipping` → `examples/deckgl/021-text-layer-clipping/` — [TextLayer (Clipping)](https://deck.gl/examples/text-layer-clipping)
@@ -263,5 +263,5 @@
 
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。この棚卸し時点では新規描画器は未実装。
+- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **1 件**（deckgl-018）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
