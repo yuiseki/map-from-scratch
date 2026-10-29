@@ -1,0 +1,103 @@
+id: deckgl-006-contour-layer
+request: >-
+  米国の郡別COVID-19新規感染者数を人口10万人当たりに直し、
+  週と集計セルの大きさを変えながら等値帯・等値線で見たい。
+requirements:
+  - id: accurate-data
+    need: すべての郡を週別の人口10万人当たり新規感染者数で集計する
+    unmeasured: 有効郡数とグリッドへの割当数を比較する
+  - id: contour-views
+    need: 値を6段階の等値帯と等値線で見られる
+    unmeasured: 両表示の画面ピクセルを読み戻して比較する
+  - id: controls
+    need: 週とセル寸法を変更すると表示が変わる
+    unmeasured: 操作前後の画面ピクセルを比較する
+  - id: smooth-navigation
+    need: パンとズーム中も滑らかに表示する
+    rationale: 120 Hz の1フレームは8.3 ms
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth-navigation}
+    - {metric: week_update_ms, stat: p95, max: 100, unit: ms, requirement: controls}
+    - {metric: cell_size_update_ms, stat: p95, max: 100, unit: ms, requirement: controls}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: smooth-navigation}
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/006-contour-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: データ取得・週別値の復号・グリッド集計・GPU描画・画面ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: navigation
+      what: 300フレームで米国周辺をパン・ズームし、等値帯を描く
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレームを描く
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+    - id: updates
+      what: 週60とセル20 kmへの変更後、グリッドを再集計してGPUへ送る
+      metrics: [week_update_ms, cell_size_update_ms]
+datasets:
+  bake: [node, examples/deckgl/006-contour-layer/bake.ts]
+  sources:
+    - id: deckgl-contour-covid
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/contour
+      license: 元データThe New York Times COVID-19 Dataは非商用利用・公開時帰属表示必須
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/deckgl-006-contour-layer/counties.bin, data/baked/deckgl-006-contour-layer/land.json]
+  preparation:
+    - 週0〜86の人口10万人当たり新規感染者率を対数12ビットに量子化
+    - Natural Earth 110m陸地をWeb Mercator座標のJSONへ変換
+performance_knowledge:
+  - id: update-scalar-grid-on-controls
+    finding: 週とセル寸法が変わるときだけ郡の最大値グリッドを再作成し、ナビゲーション中はR32Fテクスチャを再利用できる
+    evidence: 公開用ビルド3反復でフレームp95 1.21 ms、週変更p95 2.355 ms、セル寸法変更p95 4.445 ms
+    applies_when: データ位置は固定で週やセル寸法の変更頻度がナビゲーションより低い場合
+  - id: log-twelve-bit-rates
+    finding: 87週の感染率を対数12ビットに詰めると、元の16ビット版より転送量を減らせる
+    evidence: 3,214郡の時系列バイナリ449,976 B、陸地112,356 B。両データの合計gzipは423,700 Bで、16ビット版の511,300 Bから約17%減
+    applies_when: 0.1〜12000件/10万人を一つの値形式で表現する場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 R32F scalar texture and Canvas2D land
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/006-contour-layer/index.html, examples/deckgl/006-contour-layer/main.ts, examples/deckgl/006-contour-layer/contours.ts]
+    dependencies: []
+    why: 週やセル寸法が変わるときだけ集計し、ナビゲーション中は1枚のGPUテクスチャを再利用する
+  alternatives:
+    - option: deck.gl ContourLayer
+      rejected_because: 元例側の比較対象であり、個別描画器の実行時依存にはしない
+  not_doing: [道路・地名ラベル, ライブCOVID-19データ, 元例とのグリッド境界完全一致]
+verification:
+  checks:
+    - id: all-counties-assigned
+      what: 全郡が集計グリッドへ入る
+      how: 割当数をデータ数と比較
+      expected: 完全一致
+    - id: visible-contour-bands
+      what: 等値帯が画面に表示される
+      how: 画面ピクセルを読み戻す
+      expected: 色付き1000ピクセル以上
+    - id: style-changes-screen
+      what: 等値帯と等値線の違いが表示される
+      how: 画面ピクセルを比較
+      expected: 1000サンプル以上の変化
+    - id: week-changes-screen
+      what: 週を変えると表示が変わる
+      how: 週30と60の画面ピクセルを比較
+      expected: 1000サンプル以上の変化
+    - id: cell-size-changes-screen
+      what: セル寸法を変えると表示が変わる
+      how: 60kmと20kmの画面ピクセルを比較
+      expected: 1000サンプル以上の変化

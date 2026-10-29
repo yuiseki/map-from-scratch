@@ -191,7 +191,7 @@
 - [ ] `deckgl-003-multi-view` → `examples/deckgl/003-multi-view/` — [Minimap](https://deck.gl/examples/multi-view)
 - [ ] `deckgl-004-brushing-extension` → `examples/deckgl/004-brushing-extension/` — [BrushingExtension](https://deck.gl/examples/brushing-extension)
 - [ ] `deckgl-005-bitmap-layer` → `examples/deckgl/005-bitmap-layer/` — [BitmapLayer](https://deck.gl/examples/bitmap-layer)
-- [ ] `deckgl-006-contour-layer` → `examples/deckgl/006-contour-layer/` — [ContourLayer](https://deck.gl/examples/contour-layer)
+- [x] `deckgl-006-contour-layer` → `examples/deckgl/006-contour-layer/` — [ContourLayer](https://deck.gl/examples/contour-layer)
 - [ ] `deckgl-007-geojson-layer-polygons` → `examples/deckgl/007-geojson-layer-polygons/` — [GeoJsonLayer (Polygons)](https://deck.gl/examples/geojson-layer-polygons)
 - [ ] `deckgl-008-geojson-layer-paths` → `examples/deckgl/008-geojson-layer-paths/` — [GeoJsonLayer (Paths)](https://deck.gl/examples/geojson-layer-paths)
 - [ ] `deckgl-009-global-grids` → `examples/deckgl/009-global-grids/` — [Global Grid Layers](https://deck.gl/examples/global-grids)

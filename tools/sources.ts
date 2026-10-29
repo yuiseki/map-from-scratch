@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // deck.gl ContourLayer demo: county weekly COVID-19 reports derived from NYT data.
+  'deckgl-contour-covid': {
+    out: 'deckgl_contour_covid_by_county.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-contour-covid/covid-by-county.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/contour/covid-by-county.json',
+    copy: true,
+  },
   // MapLibre cluster demo: the fixed USGS earthquake GeoJSON used by the official example.
   'maplibre-cluster-earthquakes': {
     out: 'maplibre_cluster_earthquakes.geojson',
