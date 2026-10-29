@@ -1,8 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
 import { CDP } from '../lib/cdp.ts';
 import { serve } from '../lib/serve.ts';
 import { Collector } from '../lib/protocol.ts';
@@ -28,7 +27,9 @@ const GPU_FLAGS = [
 ];
 
 export async function launchChrome(logFile?: string): Promise<Chrome> {
-  const userDir = mkdtempSync(join(tmpdir(), 'mfs-chrome-'));
+  const profileBase = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.cache');
+  mkdirSync(profileBase, { recursive: true });
+  const userDir = mkdtempSync(join(profileBase, 'mfs-chrome-'));
   const flags = process.env.MFS_CHROME_FLAGS ? process.env.MFS_CHROME_FLAGS.split(/\s+/) : GPU_FLAGS;
   const proc = spawn(process.env.CHROME_BIN ?? 'chromium', [
     '--headless=new',
