@@ -1,0 +1,80 @@
+id: deckgl-015-point-cloud-layer
+request: Kaarta の室内 LiDAR 点群を全点保ち、回転と拡大縮小で滑らかに立体観察したい
+requirements:
+  - id: all-points
+    need: 元例と同じ808042点を全件表示する
+    unmeasured: 読み込み後のGPU描画点数を照合する
+  - id: orbit
+    need: 自動回転とドラッグ操作で立体を異なる方向から見られる
+    unmeasured: 回転前後の画面ピクセルを比較する
+  - id: zoom
+    need: ホイールで拡大縮小できる
+    unmeasured: 距離制御と表示変化を確認する
+  - id: pan
+    need: 右ドラッグまたはShiftドラッグで平行移動できる
+    unmeasured: 平行移動前後の画面ピクセルを比較する
+  - id: smooth
+    need: 全点を表示したまま120Hz相当で回転できる
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: smooth}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: smooth}
+    - {metric: data_gzip_bytes, max: 2500000, unit: B, requirement: smooth}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/015-point-cloud-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 点群の取得・GPU転送・初回描画・ピクセル読み戻しまで
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 240フレームで360度回転しながら俯角と距離も変える
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角で60フレーム描画
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+datasets:
+  bake: [node, examples/deckgl/015-point-cloud-layer/bake.ts]
+  sources:
+    - id: deckgl-indoor-point-cloud
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/point-cloud-laz
+      license: deck.gl-data は MIT。点群の原出典は Kaarta.com で、元データ固有の許諾は未確認
+  outputs: [data/baked/deckgl-015-point-cloud-layer/points.bin]
+  preparation:
+    - 固定版 LAZ の全点を laspy と lazrs でベイク時に読み取る
+    - 各座標軸を10ビットに量子化し、各点を一つのuint32に格納する
+performance_knowledge:
+  - id: single-point-buffer
+    finding: 全点を1個のGPUバッファへ一度転送し、カメラ操作ではユニフォームのみ更新する
+    evidence: RTX 3060・公開用ビルド3反復で回転フレームp95 1.65 ms、初回表示p50 57.57 ms
+  - id: morton-sorted-points
+    finding: 点を空間順に並べると、各点の4バイト形式を変えずにgzipサイズを減らせる
+    evidence: 元の並びで約2.56 MB、Morton順で2,020,259 B。どちらも808,042点
+    applies_when: 静的な点群をブラウザへ一括配信する場合
+    applies_when: 点群が静的で室内規模の座標範囲に収まる場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 GL_POINTS
+    language: TypeScript
+    gpu: hardware
+    code: [examples/deckgl/015-point-cloud-layer/index.html, examples/deckgl/015-point-cloud-layer/main.ts, examples/deckgl/015-point-cloud-layer/renderer.ts]
+    dependencies: []
+    why: 静的な80万点を1回のdrawArraysで描き、実行時のLAZ展開と点ごとのオブジェクトをなくす
+  alternatives:
+    - option: deck.gl PointCloudLayer and loaders.gl LASLoader
+      rejected_because: 元例側の比較対象であり、専用描画器の実行時依存にしない
+  not_doing: [背景地図, 点群の色と法線, ストリーミングLOD, 元例との同条件速度比較]
+verification:
+  checks:
+    - {id: all-points-loaded, what: 全点をGPUへ転送, how: ヘッダーの点数とdrawArraysの点数を照合, expected: 808042点}
+    - {id: point-cloud-visible, what: 初期画面に点群が見える, how: ピクセル読み戻し, expected: 明るいピクセル15000以上}
+    - {id: orbit-changes-screen, what: 回転で視点が変わる, how: 回転前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: pan-changes-screen, what: 平行移動で視点が変わる, how: 移動前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: zoom-changes-screen, what: 拡大で視点が変わる, how: 拡大前後のピクセル比較, expected: 変化3000サンプル以上}

@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // Kaarta indoor point cloud, fixed copy from deck.gl-data.
+  'deckgl-indoor-point-cloud': {
+    out: 'deckgl_indoor_point_cloud.laz',
+    local: '/sata_hdd_24tb/hf_data/deckgl-point-cloud/indoor.0.1.laz',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/0535921160bdcd57ef55c712669c5a4d5eedbb3c/examples/point-cloud-laz/indoor.0.1.laz',
+    copy: true,
+  },
   // Deck.gl highway safety example: route geometries and annual FARS aggregates.
   'deckgl-highway-roads': {
     out: 'deckgl_highway_roads.json',

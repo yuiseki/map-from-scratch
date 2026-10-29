@@ -200,7 +200,7 @@
 - [x] `deckgl-012-hexagon-layer` → `examples/deckgl/012-hexagon-layer/` — [HexagonLayer](https://deck.gl/examples/hexagon-layer)
 - [ ] `deckgl-013-icon-layer` → `examples/deckgl/013-icon-layer/` — [IconLayer](https://deck.gl/examples/icon-layer)
 - [ ] `deckgl-014-line-layer` → `examples/deckgl/014-line-layer/` — [LineLayer](https://deck.gl/examples/line-layer)
-- [ ] `deckgl-015-point-cloud-layer` → `examples/deckgl/015-point-cloud-layer/` — [PointCloudLayer](https://deck.gl/examples/point-cloud-layer)
+- [x] `deckgl-015-point-cloud-layer` → `examples/deckgl/015-point-cloud-layer/` — [PointCloudLayer](https://deck.gl/examples/point-cloud-layer)
 - [ ] `deckgl-016-scatterplot-layer` → `examples/deckgl/016-scatterplot-layer/` — [ScatterplotLayer](https://deck.gl/examples/scatterplot-layer)
 - [ ] `deckgl-017-scenegraph-layer` → `examples/deckgl/017-scenegraph-layer/` — [ScenegraphLayer](https://deck.gl/examples/scenegraph-layer)
 - [x] `deckgl-018-screen-grid-layer` → `examples/deckgl/018-screen-grid-layer/` — [ScreenGridLayer](https://deck.gl/examples/screen-grid-layer)

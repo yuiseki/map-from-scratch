@@ -12,6 +12,7 @@ RUN apt-get update \
       libvulkan1 libegl1 libgles2 libegl-dev libgles-dev libx11-dev \
       clang lld llvm \
       gdal-bin \
+      python3-venv \
       osmium-tool \
       procps \
       fonts-noto-cjk \
@@ -33,5 +34,9 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Type checking only (bin/mfs test runs tsc --noEmit). Nothing here ships:
 # Node runs .ts directly and the static server strips types for browsers.
 RUN npm install -g --no-audit --no-fund typescript@6.0.3 @types/node@24.19.2
+
+# LAZ decoding is used only while baking point-cloud examples.
+RUN python3 -m venv /opt/mfs-python \
+ && /opt/mfs-python/bin/pip install --no-cache-dir laspy==2.7.0 lazrs==0.8.2
 
 ENV CHROME_BIN=/usr/bin/chromium
