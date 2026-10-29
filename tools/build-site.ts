@@ -84,8 +84,32 @@ function copyFile(abs: string): void {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
 
+// TODO.md is the inventory of the four original galleries. Keep the link on
+// each new example card without duplicating 225 URLs in individual specs.
+const originalUrls = new Map<string, string>();
+const inventory = readFileSync(join(root, 'TODO.md'), 'utf8');
+for (const match of inventory.matchAll(/^- \[[ x]\] `([a-z0-9]+-\d{3}-[^`]+)`.*? — \[[^\]]+\]\((https:\/\/[^)]+)\)/gm)) {
+  originalUrls.set(match[1], match[2]);
+}
+for (const match of inventory.matchAll(/^- \[[ x]\] `([a-z0-9]+-\d{3}-[^`]+)`/gm)) {
+  if (!originalUrls.has(match[1])) throw new Error(`${match[1]}: original gallery URL missing in TODO.md`);
+}
+
+const galleries = [
+  { id: 'maplibre', label: 'MapLibre GL JS' },
+  { id: 'leaflet', label: 'Leaflet' },
+  { id: 'deckgl', label: 'deck.gl' },
+  { id: 'd3', label: 'D3' },
+  { id: 'legacy', label: '既存の例' },
+] as const;
+const galleryOf = (dir: string) => galleries.find(({ id }) => dir.startsWith(`examples/${id}/`))?.id ?? 'legacy';
+
 // The examples, from spec.yaml, with their latest measurements when present.
 function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
+  const counts = new Map(galleries.map(({ id }) => [id, rows.filter(({ dir }) => galleryOf(dir) === id).length]));
+  const filterButtons = galleries.map(({ id, label }) =>
+    `<button type="button" data-filter="${id}" aria-pressed="false"${counts.get(id) ? '' : ' disabled'}>${label} <span>${counts.get(id)}</span></button>`
+  ).join('\n');
   const items = rows.map(({ id, dir, spec }) => {
     const d = spec.definition!;
     const chosen = d.architecture_selection.chosen;
@@ -108,10 +132,14 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
     const requestLink = existsSync(join(root, dir, 'REQUEST.md'))
       ? ` ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/REQUEST.md">設計と計測</a>`
       : '';
-    return `<li><div class="card-head"><span class="id">${esc(id)}</span>${tag}${runtimeTag}</div>
+    const original = originalUrls.get(id);
+    if (dir.startsWith('examples/') && dir.split('/').length === 3 && !original)
+      throw new Error(`${id}: original gallery URL missing in TODO.md`);
+    const originalLink = original ? ` ・ <a href="${esc(original)}">元例 ↗</a>` : '';
+    return `<li data-gallery="${galleryOf(dir)}"><div class="card-head"><span class="id">${esc(id)}</span>${tag}${runtimeTag}</div>
   <p class="req">${esc(d.request)}</p>
   <p class="how">${esc([chosen.api, chosen.language].filter(Boolean).join(' / '))}</p>${numbers || '<p class="num">性能は未計測</p>'}
-  <p class="links"><a href="${REPO_URL}/tree/main/${esc(dir)}">ソース</a> ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/spec.yaml">spec.yaml</a>${requestLink}</p>
+  <p class="links"><a href="${REPO_URL}/tree/main/${esc(dir)}">ソース</a> ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/spec.yaml">spec.yaml</a>${requestLink}${originalLink}</p>
   <a class="open" href="${href}">${action}</a></li>`;
   }).join('\n');
   return `<!doctype html>
@@ -126,7 +154,14 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
   body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
   h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
   .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  .filters button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
+  .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters button:disabled { opacity: 0.45; cursor: default; }
+  .filters button span { font-size: 0.85em; opacity: 0.75; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
   ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
   li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
   li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
   .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -140,10 +175,29 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
   a { color: var(--accent); }
 </style>
 <h1>map-from-scratch</h1>
-<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="${REPO_URL}">GitHub</a></p>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="${REPO_URL}/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="${REPO_URL}">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリーで絞り込み">
+<button type="button" data-filter="all" aria-pressed="true">すべて <span>${rows.length}</span></button>
+${filterButtons}
+</nav>
+<p class="visible-count" id="visible-count">${rows.length} 件を表示</p>
 <ul>
 ${items}
 </ul>
+<script>
+  const buttons = [...document.querySelectorAll('[data-filter]')];
+  const cards = [...document.querySelectorAll('li[data-gallery]')];
+  buttons.forEach((button) => button.addEventListener('click', () => {
+    const selected = button.dataset.filter;
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+    let visible = 0;
+    cards.forEach((card) => {
+      card.hidden = selected !== 'all' && card.dataset.gallery !== selected;
+      if (!card.hidden) visible++;
+    });
+    document.getElementById('visible-count').textContent = visible + ' 件を表示';
+  }));
+</script>
 `;
 }
 

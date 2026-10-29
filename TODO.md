@@ -12,9 +12,9 @@
 ## 先行 TODO: ディレクトリ構成と計測
 
 - [x] `harness/cli.ts` の1階層のみの `spec.yaml` 探索を、`examples/<source>/<number>-<slug>/` に対応させる。IDは `<source>-<number>-<slug>` とし、既存の `01-*` は維持する。
-- [ ] `tools/build-site.ts`、`tools/deploy-pages.sh`、結果保存先とサイトのカードを2階層の例に対応させる。元ギャラリー別の絞り込みと元例へのリンクは未実装。
+- [x] `tools/build-site.ts`、`tools/deploy-pages.sh`、結果保存先とサイトのカードを2階層の例に対応させる。元ギャラリー別の絞り込みと元例へのリンクを表示する。
 - [x] `spec.yaml`・`REQUEST.md`・`bake.ts`・`main.ts`・`bench.ts` の新しい配置例を1件作り、データのライセンス・帰属・配信可能性を記録する。
-- [ ] 比較計測の固定条件（データ、ビューポート、DPR、カメラ経路、端末、キャッシュ状態、反復数）と、元例側の比較が不可能な場合の記載方法を決める。
+- [x] 比較計測の固定条件（データ、ビューポート、DPR、カメラ経路、端末、キャッシュ状態、反復数）と、元例側の比較が不可能な場合の記載方法を [docs/gallery-comparison.md](docs/gallery-comparison.md) に定める。
 
 ## MapLibre GL JS: 141 件
 
