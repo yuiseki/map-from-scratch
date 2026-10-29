@@ -17,12 +17,16 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$ROOT:$ROOT" -w "$ROOT" 
   node --disable-warning=ExperimentalWarning tools/build-site.ts
 if [[ "${1:-}" != --no-check ]]; then
   for id in $(bin/mfs list | grep -E '^[0-9a-z]' ); do
-    [[ -d ".cache/site/examples/$id" || -d ".cache/site/baselines/$id" ]] || continue
+    site_dir=".cache/site/examples/$id"
+    for source in maplibre leaflet deckgl d3; do
+      [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
+    done
+    [[ -d "$site_dir" || -d ".cache/site/baselines/$id" ]] || continue
     bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 || { cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1; }
   done
 fi
 
-TMP=$(mktemp -d)
+TMP=$(mktemp -d "$ROOT/.cache/mfs-deploy-XXXXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 cp -a .cache/site/. "$TMP/"
 git -C "$TMP" init -q -b gh-pages

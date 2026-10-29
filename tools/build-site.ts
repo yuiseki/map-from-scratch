@@ -151,17 +151,21 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 const rows: { id: string; dir: string; spec: Spec }[] = [];
 for (const base of ['examples', 'baselines']) {
-  for (const id of readdirSync(join(root, base)).sort()) {
-    const dir = join(root, base, id);
-    if (!existsSync(join(dir, 'spec.yaml'))) continue;
-    const spec = loadSpec(dir);
-    if (!publishOnPages(spec.definition!)) continue;
-    if (spec.runtime === 'browser') {
-      copyPage(join(dir, 'index.html'));
-      for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
-      for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
+  for (const name of readdirSync(join(root, base)).sort()) {
+    const parent = join(root, base, name);
+    const dirs = existsSync(join(parent, 'spec.yaml')) ? [parent]
+      : base === 'examples' ? readdirSync(parent).map((child) => join(parent, child)).filter((dir) => existsSync(join(dir, 'spec.yaml')))
+      : [];
+    for (const dir of dirs) {
+      const spec = loadSpec(dir);
+      if (!publishOnPages(spec.definition!)) continue;
+      if (spec.runtime === 'browser') {
+        copyPage(join(dir, 'index.html'));
+        for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
+        for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
+      }
+      rows.push({ id: spec.id, dir: relative(root, dir), spec });
     }
-    rows.push({ id, dir: `${base}/${id}`, spec });
   }
 }
 writeFileSync(join(out, 'index.html'), indexPage(rows));

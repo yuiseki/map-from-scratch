@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, dirname } from 'node:path';
 import { parseYaml } from './yaml.ts';
 import type { Definition, Spec } from './types.ts';
 
@@ -11,9 +11,12 @@ const STATS = ['min', 'p50', 'p95', 'p99', 'max', 'mean'];
 // verification. The harness takes its run settings from it.
 export function loadSpec(dir: string): Spec {
   const yaml = join(dir, 'spec.yaml');
-  if (!existsSync(yaml)) throw new Error(`${basename(dir)}: spec.yaml not found`);
-  const def = validateDefinition(parseYaml(readFileSync(yaml, 'utf8')), basename(dir));
-  return { ...validateSpec(fromDefinition(def), basename(dir)), definition: def };
+  const name = basename(dirname(dirname(dir))) === 'examples'
+    ? `${basename(dirname(dir))}-${basename(dir)}`
+    : basename(dir);
+  if (!existsSync(yaml)) throw new Error(`${name}: spec.yaml not found`);
+  const def = validateDefinition(parseYaml(readFileSync(yaml, 'utf8')), name);
+  return { ...validateSpec(fromDefinition(def), name), definition: def };
 }
 
 export const SECTIONS = ['requirements', 'evaluation', 'benchmarks', 'datasets', 'performance_knowledge', 'architecture_selection', 'verification'];

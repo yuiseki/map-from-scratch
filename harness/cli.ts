@@ -42,8 +42,16 @@ function allIds(): string[] {
   for (const d of SPEC_DIRS) {
     const base = join(root, d);
     if (!existsSync(base)) continue;
-    for (const id of readdirSync(base)) {
-      if (existsSync(join(base, id, 'spec.yaml'))) dirOf.set(id, join(base, id));
+    for (const entry of readdirSync(base)) {
+      const direct = join(base, entry);
+      if (existsSync(join(direct, 'spec.yaml'))) { dirOf.set(entry, direct); continue; }
+      if (d !== 'examples') continue;
+      for (const child of readdirSync(direct, { withFileTypes: true })) {
+        if (!child.isDirectory() || !existsSync(join(direct, child.name, 'spec.yaml'))) continue;
+        const id = `${entry}-${child.name}`;
+        if (dirOf.has(id)) throw new Error(`duplicate example id ${id}`);
+        dirOf.set(id, join(direct, child.name));
+      }
     }
   }
   return [...dirOf.keys()].sort();
