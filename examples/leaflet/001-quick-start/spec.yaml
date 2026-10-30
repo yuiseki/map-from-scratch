@@ -1,0 +1,102 @@
+id: leaflet-001-quick-start
+request: >-
+  ロンドン中心部（51.505, -0.09）の地図に、マーカー（ピン）、半径500mの円、三角形のポリゴンを描き、
+  それぞれクリックでポップアップを表示したい。地図上をクリックしたときその地点の緯度経度を出したい。外部ライブラリは使わず軽量に。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリなしで配布サイズを最小限にする
+    rationale: Leaflet 本体（約 40 KB gzip）と CSS をゼロにし、数 KB に収める
+  - id: quick-start
+    need: ページを開いて即座に地図と各種アノテーションが現れる
+    rationale: 300 ms 以内に初回描画
+  - id: shapes-and-popups
+    need: マーカー、円、ポリゴンが正しく描かれ、クリックで各ポップアップが表示される
+    unmeasured: verification checks で画面ピクセル色とポップアップ内容を検証
+  - id: smooth-interaction
+    need: パンやズーム操作が滑らかに動作する
+    rationale: 60 fps 追従（frame_interval_ms <= 20 ms）
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/leaflet/001-quick-start/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から全アノテーションの初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/leaflet/001-quick-start/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/leaflet-001-quick-start/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に丸めてベイク
+
+performance_knowledge:
+  - id: zero-dom-popups
+    finding: ポップアップを DOM 要素ではなく Canvas 2D 内で直接描画することで、地図のパンやズームと1フレームの狂いもなく完全同期し、DOM 再配置によるレイアウトスラッシングを回避できる
+    evidence: リドロー時間 p95 は 0.3 ms 未満、パン中のカクつきなし
+  - id: analytic-hit-testing
+    finding: 数個の固定アノテーション（点、円、凸ポリゴン）であれば、空間インデックスを作らず幾何的距離計算とクロス積（点・ポリゴン包含判定）だけで 0.01 ms 未満で即座に判定できる
+    evidence: クリック判定時間は計測限界以下
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/leaflet/001-quick-start/index.html
+      - examples/leaflet/001-quick-start/main.ts
+      - examples/leaflet/001-quick-start/map.ts
+    dependencies: []
+    why: 基本的な図形描画とポップアップ表示のみのチュートリアルであり、Canvas 2D の即時モードで完結させるのが最も小さく速い
+  alternatives:
+    - option: Leaflet 1.9
+      rejected_because: 元例側の比較対象。外部ライブラリなしの要件を満たせない
+  not_doing: [3D, 回転・ピッチ, ラスタタイルキャッシュ, 複雑なレイヤーコントロール]
+
+verification:
+  checks:
+    - id: marker-visible
+      what: 'ロンドン [51.5, -0.09] に青色マーカーが描画されている'
+      how: getImageData でピクセル色を検証
+      expected: '青色ピクセル（r < 80, g > 90, b > 160）が検出される'
+    - id: circle-visible
+      what: '[51.508, -0.11] に赤色半透明の 500m 円が描画されている'
+      how: 円の中心のピクセル色を検証
+      expected: '赤色ピクセル（r > 180, g < 150, b < 150）が検出される'
+    - id: click-circle-shows-popup
+      what: '円をクリックすると "I am a circle." のポップアップが表示される'
+      how: clickAtScreen で円内をクリックし、activePopup の文字列を照合
+      expected: 'I am a circle.'
+    - id: click-polygon-shows-popup
+      what: 'ポリゴンをクリックすると "I am a polygon." のポップアップが表示される'
+      how: clickAtScreen でポリゴン内をクリックし、activePopup の文字列を照合
+      expected: 'I am a polygon.'
+    - id: click-marker-shows-popup
+      what: 'マーカーをクリックすると "Hello world! I am a popup." のポップアップが表示される'
+      how: clickAtScreen でマーカーをクリックし、activePopup の文字列を照合
+      expected: 'Hello world! I am a popup.'
+  harness:
+    - contextlost が起きたらエラーにする

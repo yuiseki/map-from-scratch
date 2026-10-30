@@ -166,7 +166,7 @@
 
 出典: [Leaflet Tutorials](https://leafletjs.com/examples.html)。拡張APIの3章も、各章で示す目的を持つ個別の描画器として扱う。
 
-- [ ] `leaflet-001-quick-start` → `examples/leaflet/001-quick-start/` — [Leaflet Quick Start Guide](https://leafletjs.com/examples/quick-start/)
+- [x] `leaflet-001-quick-start` → `examples/leaflet/001-quick-start/` — [Leaflet Quick Start Guide](https://leafletjs.com/examples/quick-start/)
 - [ ] `leaflet-002-mobile` → `examples/leaflet/002-mobile/` — [Leaflet on Mobile](https://leafletjs.com/examples/mobile/)
 - [ ] `leaflet-003-custom-icons` → `examples/leaflet/003-custom-icons/` — [Markers with Custom Icons](https://leafletjs.com/examples/custom-icons/)
 - [ ] `leaflet-004-accessibility` → `examples/leaflet/004-accessibility/` — [Accessible maps](https://leafletjs.com/examples/accessibility/)
@@ -861,5 +861,5 @@
 
 ## 進捗
 
-- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **11 件**（maplibre-010、056、deckgl-006、007、008、010、011、012、018、025、d3-016）。
+- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **12 件**（maplibre-010、056、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
