@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>htmlcanvas-001-rich-map-popup: HTML-in-Canvas Rich Map Popup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+    #hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #f8fafc;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+    #hud h1 { font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #38bdf8; }
+    #hud .val { font-weight: bold; color: #4ade80; }
+    #hud .sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+    /* HTML-in-Canvas Popup styling (Rendered directly into canvas pixels) */
+    .popup-card {
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      padding: 14px 16px;
+      width: 260px;
+      color: #1e293b;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .popup-title { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .popup-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #e0f2fe; color: #0369a1; }
+    .popup-address { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+    .popup-desc { font-size: 12px; line-height: 1.5; color: #334155; margin-bottom: 12px; }
+    .popup-actions { display: flex; gap: 8px; align-items: center; }
+    .popup-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .popup-btn.active { background: #16a34a; }
+    .popup-link {
+      font-size: 11px;
+      color: #2563eb;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Native Canvas with HTML-in-Canvas attribute layoutsubtree content="drawable" -->
+  <canvas id="canvas" layoutsubtree content="drawable">
+    <!-- Real HTML Popup element rendered inside canvas -->
+    <div id="map-popup" class="popup-card">
+      <div class="popup-header">
+        <div id="popup-title" class="popup-title">東京タワー</div>
+        <div id="popup-badge" class="popup-badge">総合電波塔</div>
+      </div>
+      <div id="popup-address" class="popup-address">東京都港区芝公園4丁目2-8</div>
+      <div id="popup-desc" class="popup-desc">
+        高さ332.9mの総合電波塔。展望デッキからは東京のパノラマビューを一望可能。
+      </div>
+      <div class="popup-actions">
+        <button id="popup-btn" class="popup-btn">保存する</button>
+        <a id="popup-link" class="popup-link" href="#" target="_blank">詳細情報</a>
+      </div>
+    </div>
+  </canvas>
+
+  <div id="hud">
+    <h1>HTML-in-Canvas Rich Map Popup</h1>
+    <div>Status: <span class="val" id="hud-status">Loading...</span></div>
+    <div>Anchor: <span class="val" id="hud-anchor">東京タワー</span></div>
+    <div>Bookmarked: <span class="val" id="hud-bookmark">No</span></div>
+    <div class="sub">Click points to open • Drag to pan • Scroll to zoom • Click button in canvas</div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+id: htmlcanvas-001-rich-map-popup
+request: >-
+  地図上の地点をクリックしたときに表示する rich popup を DOM overlay や Canvas 自前描画ではなく、
+  HTML-in-Canvas（WICG drawElementImage）で実 HTML として Canvas 内に描画・操作できることを検証したい。
+
+requirements:
+  - id: native-html-popup
+    need: DOM overlay や fillText() による自前再実装を排除し、Canvas 内に実 HTML ポップアップを描画する
+    unmeasured: verification checks の html-in-canvas-supported と popup-rendered-on-canvas で確認
+  - id: multiline-japanese-layout
+    need: 日本語を含む複数行レイアウト・バッジ・CSS 背景・境界線・シャドウをブラウザ HTML エンジンで描画する
+    unmeasured: verification checks の popup-rendered-on-canvas で確認
+  - id: interactive-button
+    need: Canvas 内に描画されたポップアップのボタンがクリック可能で、状態変化が Canvas ピクセルに反映される
+    unmeasured: verification checks の button-interactive で確認
+  - id: geographic-tracking
+    need: 地図のパン・ズーム操作時にもポップアップのアンカーが地理座標に追従する
+    unmeasured: verification checks の anchor-follows-pan で確認
+  - id: light-footprint
+    need: 外部ライブラリ依存ゼロで配布コードサイズとデータサイズを最小限に抑える
+    rationale: 生 Canvas 2D + WICG HTML-in-Canvas API のみで実装し、コード gzip 7 KB 以下、データ gzip 5 KB 以下
+  - id: smooth-interaction
+    need: パン・ズーム操作時およびポップアップ更新時に 60 fps で滑らかに再描画される
+    rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 5.0 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: light-footprint}
+    - {metric: redraw_ms, stat: p95, max: 5.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/htmlcanvas/001-rich-map-popup/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  chrome_flags:
+    - --enable-blink-features=CanvasDrawElement
+  scenarios:
+    - id: first-frame
+      what: 初期化から初回 HTML-in-Canvas ポップアップ描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 地図パン中のポップアップ追従と再描画
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/htmlcanvas/001-rich-map-popup/bake.ts]
+  sources:
+    - id: tokyo-landmarks
+      origin: 東京都心主要ランドマーク 5 地点
+      license: Public Domain / Open Data
+  outputs:
+    - data/baked/htmlcanvas-001-rich-map-popup/landmarks.json
+
+performance_knowledge:
+  - what: HTML-in-Canvas (CanvasDrawElement) vs Canvas 自前描画 vs DOM Overlay
+    why: >-
+      従来の地図ポップアップ実装には2つの極端な手法しかなかった:
+      1. DOM Overlay: HTML/CSS でリッチな UI を構築できるが、Canvas の外側に独立した DOM ツリーが浮くため、
+         パン・ズーム時に Canvas カメラ描画と DOM transform 更新の間で 1 フレームのズレ（jitter/desync）が発生し、
+         さらに Canvas を画像として保存・エクスポートする際にポップアップが含まれない。
+      2. Canvas 自前描画: fillText() や自前矩形描画でポップアップを再実装する。しかし日本語の禁則処理・折り返し・
+         フォントメトリクス・角丸クリッピング・シャドウ・ボタンの hover/active 状態をすべて自前で計算する必要があり、
+         コード量が肥大化しレイアウトが破綻しやすい。
+      WICG HTML-in-Canvas（layoutsubtree + ctx.drawElementImage）は、ブラウザネイティブの HTML/CSS レイアウト・
+      タイポグラフィエンジンをそのまま使って Canvas 内部のピクセルバッファに直接描画できる。
+      これにより、コード量を劇的に削減しながら、完全同期・エクスポート可能・ピクセル読み戻し検証可能なリッチ UI が実現する。
+  - what: requestPaint と paint イベントによる非同期同期化
+    why: >-
+      HTML 要素の内容やスタイルが更新された直後は、ブラウザのスタイル計算とレイアウト記録が未完了であるため、
+      即座に drawElementImage() を呼ぶと `InvalidStateError: No cached paint record for element` が発生する。
+      canvas.requestPaint() を発行し、paint イベントの完了を待機してから drawElementImage() を呼ぶことで、
+      常に最新のスタイルが適用された paint record を安全に Canvas にブリットできる。
+
+architecture_selection:
+  chosen:
+    language: TypeScript (erasableSyntaxOnly)
+    runtime: browser
+    api: Canvas 2D + HTML-in-Canvas (CanvasDrawElement)
+    gpu: none
+    code:
+      - examples/htmlcanvas/001-rich-map-popup/index.html
+      - examples/htmlcanvas/001-rich-map-popup/main.ts
+      - examples/htmlcanvas/001-rich-map-popup/map.ts
+  not_doing:
+    - DOM overlay (DOM 追従レイヤの作成を禁止し、ジッターと合成ズレを排除)
+    - Canvas fillText / roundRect による UI の自前再実装 (自前レイアウトエンジンの肥大化を排除)
+    - 外部地図エンジンや UI フレームワーク（MapLibre, React, Vue, D3 等）の使用
+
+verification:
+  checks:
+    - id: html-in-canvas-supported
+      what: ブラウザで CanvasRenderingContext2D.prototype.drawElementImage が有効であること
+      how: typeof ctx.drawElementImage === 'function' の確認
+      expected: true
+    - id: landmarks-loaded
+      what: 5 件の東京都心ランドマークが正しく読み込まれていること
+      how: landmarks.length === 5 の確認
+      expected: 5
+    - id: popup-rendered-on-canvas
+      what: Canvas ピクセル読み戻しによりポップアップ背景（白）およびボタン（青）が Canvas 内に描画されていること
+      how: readPixel によるポップアップカードおよびボタン座標の RGB 値確認
+      expected: isCardWhite && isBtnBlue
+    - id: button-interactive
+      what: ポップアップ内のボタンがクリック可能で、状態変化（緑色）が Canvas ピクセルに反映されること
+      how: clickButton() 実行後の bookmarked フラグおよびボタンピクセル値確認
+      expected: map.bookmarked && isBtnGreen
+    - id: anchor-follows-pan
+      what: 地図パン後にアンカー座標およびポップアップ描画位置がデルタ分シフトし Canvas に正しく追従すること
+      how: panBy(120, 80) 前後のアンカー・矩形座標差分および移動先ピクセル値確認
+      expected: dx == 120 && dy == 80 && isNewCardWhite

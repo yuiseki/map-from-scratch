@@ -22,6 +22,7 @@ const GPU_FLAGS = [
   '--use-angle=vulkan',
   '--enable-features=Vulkan',
   '--enable-unsafe-webgpu',
+  '--enable-blink-features=CanvasDrawElement',
   '--disable-gpu-vsync',
   '--disable-frame-rate-limit',
 ];

@@ -20,6 +20,7 @@ export const galleries = [
   { id: 'webgpu', label: 'WebGPU', group: 'experiment' },
   { id: 'opfs', label: 'OPFS', group: 'experiment' },
   { id: 'wasm', label: 'WebAssembly', group: 'experiment' },
+  { id: 'htmlcanvas', label: 'HTML-in-Canvas', group: 'experiment' },
   { id: 'legacy', label: '既存の例', group: 'other' },
 ] as const;
 export type GalleryId = typeof galleries[number]['id'];
@@ -43,6 +44,7 @@ export const techniques = [
   { id: 'webgpu', label: 'WebGPU', match: /webgpu/i },
   { id: 'wasm', label: 'WebAssembly', match: /webassembly|\bwasm\b/i },
   { id: 'opfs', label: 'OPFS', match: /\bopfs\b/i },
+  { id: 'html-in-canvas', label: 'HTML-in-Canvas', match: /html-in-canvas|drawElementImage|layoutsubtree/i },
   { id: 'web-worker', label: 'Web Worker', match: /\bworker\b/i },
   { id: 'opengl-es', label: 'OpenGL ES', match: /opengl\s*es/i },
 ] as const;

@@ -1,0 +1,67 @@
+// Bake landmarks for HTML-in-Canvas Rich Popup Example
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '../../..');
+const outDir = join(root, 'data/baked/htmlcanvas-001-rich-map-popup');
+const outPath = join(outDir, 'landmarks.json');
+
+mkdirSync(outDir, { recursive: true });
+
+const landmarks = [
+  {
+    id: 'tokyo-tower',
+    name: '東京タワー',
+    category: '総合電波塔',
+    lon: 139.7454,
+    lat: 35.6586,
+    address: '東京都港区芝公園4丁目2-8',
+    description: '高さ332.9mの総合電波塔。展望デッキからは東京のパノラマビューを一望可能。',
+    url: 'https://www.tokyotower.co.jp/'
+  },
+  {
+    id: 'tokyo-station',
+    name: '東京駅',
+    category: '重要文化財',
+    lon: 139.7671,
+    lat: 35.6812,
+    address: '東京都千代田区丸の内一丁目',
+    description: '赤レンガの丸の内駅舎が象徴的な日本の鉄道ネットワークの中心ターミナル。',
+    url: 'https://www.jreast.co.jp/'
+  },
+  {
+    id: 'skytree',
+    name: '東京スカイツリー',
+    category: '自立式電波塔',
+    lon: 139.8107,
+    lat: 35.7100,
+    address: '東京都墨田区押上一丁目1-2',
+    description: '高さ634mを誇る自立式電波塔。商業施設ソラマチや展望回廊が併設。',
+    url: 'https://www.tokyo-skytree.jp/'
+  },
+  {
+    id: 'sensoji',
+    name: '浅草寺',
+    category: '都内最古寺院',
+    lon: 139.7967,
+    lat: 35.7148,
+    address: '東京都台東区浅草二丁目3-1',
+    description: '雷門の大提灯で世界的に有名な都内最古の寺院。仲見世通りには江戸情緒が残る。',
+    url: 'https://www.senso-ji.jp/'
+  },
+  {
+    id: 'shibuya-crossing',
+    name: '渋谷スクランブル交差点',
+    category: 'ランドマーク',
+    lon: 139.7006,
+    lat: 35.6595,
+    address: '東京都渋谷区道玄坂二丁目2-1',
+    description: '世界で最も多くの人が往来する象徴的交差点。ハチ公像前は世界的な名所。',
+    url: 'https://shibuya-scramble-square.com/'
+  }
+];
+
+writeFileSync(outPath, JSON.stringify(landmarks, null, 2));
+console.log(`Bake complete: ${outPath} (${landmarks.length} landmarks)`);

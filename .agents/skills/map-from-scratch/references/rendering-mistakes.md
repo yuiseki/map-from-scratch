@@ -554,3 +554,19 @@ pass.
 - Why: When running Chromium with `--enable-unsafe-webgpu --use-angle=swiftshader` in Docker/headless CI without a hardware GPU, `canvas.getContext('webgpu').configure()` attempts to bind a swapchain backing (`WebGPUSwapBufferProvider`). Because SwiftShader ANGLE lacks a Vulkan/GLES SharedImageBackingFactory for swapchain presentation, the GPU process encounters an unhandled IPC error and crashes, instantly destroying the `GPUDevice`.
 - Fix: Detect SwiftShader via `const isSwiftShader = gpuDesc.toLowerCase().includes('swiftshader');`. When true, skip `canvas.getContext('webgpu')` and render directly into an offscreen `GPUTexture` (`createTexture({ format, usage: RENDER_ATTACHMENT | COPY_SRC })`). In production browsers with hardware adapters, use `webgpuCtx.getCurrentTexture()`. This keeps headless CI benchmarks 100% reliable without crashing.
 - `mapAsync` staging buffers: Never call `mapAsync` concurrently on the same buffer, and avoid re-using a static staging buffer across frame submissions in SwiftShader. Create a small transient `readBuffer` (256 B aligned), map it, read it, and immediately call `readBuffer.destroy()`.
+
+### HTML-in-Canvas (WICG): InvalidStateError and paint lifecycle (htmlcanvas-001)
+
+- Screen: `InvalidStateError: Failed to execute 'drawElementImage' on 'CanvasRenderingContext2D': No cached paint record for element`.
+- Why: When an HTML element inside `<canvas layoutsubtree content="drawable">` has its DOM contents, classes, or styles updated, Chromium marks the subtree dirty. Calling `ctx.drawElementImage(element, dx, dy)` before the browser compositor performs a paint pass results in an immediate `InvalidStateError` because no valid display item list exists yet.
+- Fix: Request a canvas paint update and await the paint event before drawing:
+  ```ts
+  if (typeof canvas.requestPaint === 'function') {
+    await new Promise<void>((resolve) => {
+      canvas.addEventListener('paint', () => resolve(), { once: true });
+      canvas.requestPaint();
+    });
+  }
+  ctx.drawElementImage(popup, pRect.x, pRect.y);
+  ```
+- Hit Testing & Clicks: In current Chromium builds, `document.elementFromPoint` over the canvas surface resolves to the canvas element itself rather than nested HTML-in-Canvas elements. Track element bounding boxes in canvas space and route clicks directly to `childElement.click()`. Await the re-render so that updated CSS styles are recorded before pixel readback.
