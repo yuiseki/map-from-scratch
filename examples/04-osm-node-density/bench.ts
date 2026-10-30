@@ -47,6 +47,32 @@ export async function run(map: DensityMap, mounted: number): Promise<void> {
   emit({ info: { counted: sum, max_per_pixel: max } });
   emit({ check: 'count-conservation', pass: sum === map.points, detail: `${sum} of ${map.points}` });
 
+  // A point dropped and a point invented elsewhere keep the sum, so each
+  // pixel is also compared with a CPU recount of the same view. WebGL snaps
+  // a point to a subpixel grid (1/256 px with 8 bits), so a point within EPS
+  // of a pixel edge may land on either side: it counts as "maybe" for every
+  // pixel it could land in, and each pixel must hold its sure points plus at
+  // most its maybe points. Rows of the count target run bottom up.
+  {
+    const W = t.w, H = t.h, EPS = 1 / 128;
+    const bin = await fetch('../../data/baked/04-osm-node-density/nodes.bin').then((r) => r.arrayBuffer());
+    const dx = new Uint16Array(bin, 40, map.points), dy = new Uint16Array(bin, 40 + map.points * 2, map.points);
+    const sc = Math.min(W, H) * cam.zoom;
+    const sure = new Uint32Array(W * H), maybe = new Uint32Array(W * H);
+    const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
+    for (let i = 0, x = 0, y = 0; i < map.points; i++) {
+      x = (x + dx[i]) & 0xffff;
+      y = (y + dy[i]) & 0xffff;
+      const sx = (x / 65535 - cam.x) * sc + W / 2, sy = H / 2 - (y / 65535 - cam.y) * sc;
+      const xs = new Set([Math.floor(sx - EPS), Math.floor(sx + EPS)]), ys = new Set([Math.floor(sy - EPS), Math.floor(sy + EPS)]);
+      if (xs.size === 1 && ys.size === 1) { if (inside(sx, sy)) sure[Math.floor(sy) * W + Math.floor(sx)]++; continue; }
+      for (const ex of xs) for (const ey of ys) if (inside(ex, ey)) maybe[ey * W + ex]++;
+    }
+    let outside = 0;
+    for (let i = 0; i < sure.length; i++) if (px[i * 4] < sure[i] || px[i * 4] > sure[i] + maybe[i]) outside++;
+    emit({ check: 'counts-match-cpu', pass: outside === 0, detail: `${outside} of ${W * H} pixels outside the CPU bounds` });
+  }
+
   // What reaches the screen: around Shibuya station the colour must not be
   // the empty background, and somewhere it must reach the bright end.
   cam.x = cx; cam.y = cy; cam.zoom = 6;

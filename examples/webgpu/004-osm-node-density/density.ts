@@ -92,14 +92,18 @@ export async function mount(canvas: HTMLCanvasElement, url: string) {
   const dx = new Uint16Array(bin, 40, n), dy = new Uint16Array(bin, 40 + n * 2, n);
   // Undo the delta coding and deal the Morton-ordered points out across S
   // strides, as 04 does for its blending. The same order keeps the two
-  // renderers' inputs identical.
+  // renderers' inputs identical. For atomicAdd the order matters less: with
+  // all points in view, gpu_ms is 0.96 ms for S = 1, 0.51 for 16 and 128,
+  // 0.63 for 1024 (RTX 3060; 04's blending: 11.7 ms for S = 1, 2.6 for 128).
+  // The first rem strides hold per points, the others one fewer.
   const S = 128;
-  const per = Math.ceil(n / S);
+  const per = Math.ceil(n / S), rem = n % S || S;
   const pos = new Uint32Array(n);
   for (let i = 0, x = 0, y = 0; i < n; i++) {
     x = (x + dx[i]) & 0xffff;
     y = (y + dy[i]) & 0xffff;
-    pos[(i % S) * per + Math.floor(i / S)] = x | (y << 16);
+    const r = i % S;
+    pos[r * per - Math.max(0, r - rem) + Math.floor(i / S)] = x | (y << 16);
   }
   const pts = device.createBuffer({ size: pos.byteLength, usage: STORAGE, mappedAtCreation: true });
   new Uint32Array(pts.getMappedRange()).set(pos);

@@ -88,7 +88,7 @@ architecture_selection:
     why: 966 万点を毎フレーム数え直すには、GPU の加算ブレンドで数えるのが最も短い。浮動小数点の加算ブレンドは WebGL2 の拡張で使える
   alternatives:
     - option: WebGPU (compute でビンに atomicAdd)
-      rejected_because: このハーネスでは headless Chromium の WebGPU が SwiftShader になり、GPU で測れない
+      rejected_because: 作った当時 (2026-10-26)、ハーネスの headless Chromium では WebGPU が SwiftShader になり GPU で測れなかった。Xvfb で測れるようになったので、同じ依頼を webgpu-004-osm-node-density で作って比べている
     - option: 事前集計のピラミッド (タイル)
       rejected_because: 依頼が「タイルの粗い集計ではなく、その画面の解像度で」と明言している
   not_doing: [タイル, 事前集計, タグや種類での絞り込み, 地名, 背景地図, 点のクリック]
@@ -99,6 +99,10 @@ verification:
       what: 全体が見えているとき、ピクセルごとの数の合計が点の数に一致する
       how: 0.9 倍の表示で数え、カウント用の R32F フレームバッファを全部 FLOAT で読み戻して合計する
       expected: 9,658,062
+    - id: counts-match-cpu
+      what: 全体が見えているとき、ピクセルごとの数が CPU で数え直した値と一致する (点を落として別の場所に作っても合計は変わらない)
+      how: 同じ 0.9 倍の数を、同じ点を CPU で数えた値と比べる。WebGL は点の位置をサブピクセルの格子に丸めるので、ピクセルの境目から 1/128 px 以内の点はどちらに入ってもよい
+      expected: 範囲外のピクセルが 0
     - id: shibuya-not-empty
       what: 画面に出た色で、渋谷駅の位置が「点なし」の色でない
       how: 渋谷駅を中心に 6 倍で描き、画面中央のピクセルを読み戻す

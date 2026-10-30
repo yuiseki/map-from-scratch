@@ -57,11 +57,14 @@ export async function mount(canvas: HTMLCanvasElement, url: string) {
   // GPU is not blending into the same pixel over and over at once. With all
   // points in view, S = 1 costs 11.7 ms of GPU time and S = 128 costs 2.6 ms
   // (RTX 3060; 16: 5.4, 64: 2.7, 256: 3.3, 4096: 7.6).
+  // The first rem strides hold per points, the others one fewer. Spacing
+  // every stride per apart wrote 49 points past the end, where the typed
+  // array dropped them, and left 49 slots at (0, 0).
   const S = 128;
-  const per = Math.ceil(n / S);
+  const per = Math.ceil(n / S), rem = n % S || S;
   const pos = new Uint16Array(n * 2);
   for (let i = 0, x = 0, y = 0; i < n; i++) {
-    const j = (i % S) * per + Math.floor(i / S);
+    const r = i % S, j = r * per - Math.max(0, r - rem) + Math.floor(i / S);
     x = (x + dx[i]) & 0xffff;
     y = (y + dy[i]) & 0xffff;
     pos[2 * j] = x;

@@ -35,51 +35,58 @@ export async function run(map: DensityMap, mounted: number): Promise<void> {
     await benchFramesGpu(device, 60, (_, ts) => map.draw(ts, true), { prefix });
   }
 
-  // Conservation: with everything in view, the counts add up to the points.
+  // Every pixel's count agrees with a CPU recount by the shader's f32
+  // formula. WGSL allows an inexact division and fused multiply-adds, so a
+  // point within EPS of a pixel edge may land on either side: such a point
+  // counts as "maybe" for every pixel it could land in, and each pixel must
+  // hold its sure points plus at most its maybe points.
+  const [W, H] = map.size();
+  const bin = await fetch('../../../data/baked/04-osm-node-density/nodes.bin').then((r) => r.arrayBuffer());
+  const dx = new Uint16Array(bin, 40, map.points), dy = new Uint16Array(bin, 40 + map.points * 2, map.points);
+  const EPS = 1e-3;
+  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
+  async function compare(x0: number, y0: number, zoom: number): Promise<string | null> {
+    cam.x = x0; cam.y = y0; cam.zoom = zoom;
+    map.draw();
+    const counts = await map.readCounts();
+    const f = Math.fround, ccx = f(cam.x), ccy = f(cam.y), sc = f(map.scale()), hw = f(W * 0.5), hh = f(H * 0.5);
+    const sure = new Uint32Array(W * H), maybe = new Uint32Array(W * H);
+    let edge = 0;
+    for (let i = 0, x = 0, y = 0; i < map.points; i++) {
+      x = (x + dx[i]) & 0xffff;
+      y = (y + dy[i]) & 0xffff;
+      const px = f(f(f(f(x) / 65535) - ccx) * sc + hw), py = f(f(f(f(y) / 65535) - ccy) * sc + hh);
+      const xs = new Set([Math.floor(px - EPS), Math.floor(px + EPS)]), ys = new Set([Math.floor(py - EPS), Math.floor(py + EPS)]);
+      if (xs.size === 1 && ys.size === 1) {
+        if (inside(px, py)) sure[Math.floor(py) * W + Math.floor(px)]++;
+        continue;
+      }
+      edge++;
+      for (const ex of xs) for (const ey of ys) if (inside(ex, ey)) maybe[ey * W + ex]++;
+    }
+    let differ = 0, outside = 0;
+    for (let i = 0; i < sure.length; i++) {
+      if (counts[i] !== sure[i]) differ++;
+      if (counts[i] < sure[i] || counts[i] > sure[i] + maybe[i]) outside++;
+    }
+    const detail = `${zoom}x: ${outside} of ${W * H} pixels outside the CPU bounds; ${differ} differ from the sure count; ${edge} points within ${EPS} px of an edge`;
+    return outside === 0 ? null : detail;
+  }
+
+  // Conservation: with everything in view, the counts add up to the points,
+  // and each pixel holds the points that fall in it (a point dropped and a
+  // point invented elsewhere keep the sum).
   cam.x = 0.5; cam.y = 0.5; cam.zoom = 0.9;
   map.draw();
-  let counts = await map.readCounts();
+  const counts = await map.readCounts();
   let sum = 0, max = 0;
   for (const c of counts) { sum += c; if (c > max) max = c; }
   emit({ info: { counted: sum, max_per_pixel: max } });
   emit({ check: 'count-conservation', pass: sum === map.points, detail: `${sum} of ${map.points}` });
-
-  // Every pixel's count agrees with a CPU recount by the shader's f32
-  // formula, around Shibuya station at 6x (crowded and empty pixels in
-  // view). WGSL allows an inexact division and fused multiply-adds, so a
-  // point within EPS of a pixel edge may land on either side: such a point
-  // counts as "maybe" for every pixel it could land in, and each pixel must
-  // hold its sure points plus at most its maybe points.
-  cam.x = cx; cam.y = cy; cam.zoom = 6;
-  map.draw();
-  counts = await map.readCounts();
-  const [W, H] = map.size();
-  const bin = await fetch('../../../data/baked/04-osm-node-density/nodes.bin').then((r) => r.arrayBuffer());
-  const dx = new Uint16Array(bin, 40, map.points), dy = new Uint16Array(bin, 40 + map.points * 2, map.points);
-  const f = Math.fround, ccx = f(cam.x), ccy = f(cam.y), sc = f(map.scale()), hw = f(W * 0.5), hh = f(H * 0.5);
-  const EPS = 1e-3;
-  const sure = new Uint32Array(W * H), maybe = new Uint32Array(W * H);
-  const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
-  let edge = 0;
-  for (let i = 0, x = 0, y = 0; i < map.points; i++) {
-    x = (x + dx[i]) & 0xffff;
-    y = (y + dy[i]) & 0xffff;
-    const px = f(f(f(f(x) / 65535) - ccx) * sc + hw), py = f(f(f(f(y) / 65535) - ccy) * sc + hh);
-    const xs = new Set([Math.floor(px - EPS), Math.floor(px + EPS)]), ys = new Set([Math.floor(py - EPS), Math.floor(py + EPS)]);
-    if (xs.size === 1 && ys.size === 1) {
-      if (inside(px, py)) sure[Math.floor(py) * W + Math.floor(px)]++;
-      continue;
-    }
-    edge++;
-    for (const cx of xs) for (const cy of ys) if (inside(cx, cy)) maybe[cy * W + cx]++;
-  }
-  let differ = 0, outside = 0;
-  for (let i = 0; i < sure.length; i++) {
-    if (counts[i] !== sure[i]) differ++;
-    if (counts[i] < sure[i] || counts[i] > sure[i] + maybe[i]) outside++;
-  }
-  emit({ info: { pixels_differing_from_cpu: differ, points_near_an_edge: edge } });
-  emit({ check: 'counts-match-cpu', pass: outside === 0, detail: `${outside} of ${W * H} pixels outside the CPU bounds; ${differ} differ from the sure count; ${edge} points within ${EPS} px of an edge` });
+  // The whole view at 0.9x, then around Shibuya station at 6x (crowded and
+  // empty pixels in view).
+  const bad = [await compare(0.5, 0.5, 0.9), await compare(cx, cy, 6)].filter((d) => d !== null);
+  emit({ check: 'counts-match-cpu', pass: bad.length === 0, detail: bad.join(' / ') || 'every pixel within the CPU bounds at 0.9x and 6x' });
 
   // What reaches the screen: around Shibuya station the colour must not be
   // the empty background, and somewhere it must reach the bright end.
