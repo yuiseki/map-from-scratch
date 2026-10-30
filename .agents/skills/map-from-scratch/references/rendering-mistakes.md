@@ -295,6 +295,24 @@ calling a shape wrong.
 y-down screen and were right; compare conventions before copying a formula
 between examples.
 
+### A field read under the wrong name (webgpu 001)
+
+- Screen: the tallest towers around Tokyo Station stood in the wrong
+  places, and every building had a square footprint sized from its height.
+- Why: the bake took the third value of 16's `truth.points` as the roof
+  height in cm. It is the footprint area in m2. The widest buildings became
+  the tallest (16,237 m2 drawn as 162 m), and the real tallest (241.5 m)
+  was drawn 104 m.
+- Test: put a known extreme from the source next to the rendered one: the
+  tallest instance must be the building truth.json names as tallest
+  (`heights-from-plateau`).
+- Fix: measure heights in 16's archive (cast down through the L0 meshes at
+  each footprint point, top hit minus bottom hit) and size each box from
+  the real area.
+- Lesson: before using another example's baked file, read the code that
+  writes each field. A comment on the reading side (`maxz_cm`) is not
+  evidence.
+
 ## Globe occlusion
 
 ### Flat triangles folding over the horizon (repeated: cesium 180, 213)

@@ -50,7 +50,9 @@ datasets:
   outputs:
     - data/baked/webgpu-001-gpu-driven-culling/buildings.bin
   preparation:
-    - 東京駅周辺 3,992 棟の重心座標 [x, y]、高さ、推定外接球半径、階層分類を 32 bytes 構造体に格納
+    - 16-plateau-buildings-3d の truth.json から各建物の lod0 footprint 上の点 [x, y] と footprint 面積を読む
+    - 高さは 16 の配信アーカイブ（tokyo-station-2km.v1.plb）の建物メッシュをその点で鉛直に貫き、最上の交点から最下の交点を引いて測る（3,992 棟中 3,991 棟で交点あり、残り 1 棟は 4 m）
+    - 1 棟 8 bytes（x, y, 高さ, 面積の平方根を一辺とする正方形の辺長、いずれも 0.1 m 単位の 16 bit 整数）。外接球半径と階層分類はページで計算する
     - 単位直方体プロトタイプメッシュ（法線付き 24 頂点・36 索引）を同梱
 
 performance_knowledge:
@@ -78,6 +80,10 @@ architecture_selection:
 
 verification:
   checks:
+    - id: heights-from-plateau
+      what: 高さと footprint がデータ由来である（最も高い建物が 16 の最高層ビルで、面積の合計が 16 の footprint 面積の合計に一致する）
+      how: buildings.bin と 16 の truth.json を読み、最も高いインスタンスの位置と高さ、辺長の二乗の合計を照合
+      expected: '最高層ビルから 60 m 以内、高さ maxz−15 m 以上 maxz 以下、面積合計の差 1% 未満'
     - id: buildings-loaded
       what: 東京駅周辺の建物 3,992 棟がすべてロードされる
       how: map.buildingCount を検証

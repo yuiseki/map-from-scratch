@@ -196,16 +196,23 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   const dv = new DataView(ab);
 
   const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
-  if (magic !== 'WGCL') throw new Error(`Invalid magic: ${magic}`);
+  if (magic !== 'WGCL' || dv.getUint16(4, true) !== 2) throw new Error(`Invalid magic: ${magic}`);
 
   const buildingCount = dv.getUint16(6, true);
   const vertexCount = dv.getUint16(8, true);
   const indexCount = dv.getUint16(10, true);
 
   let offset = 32;
-  const instanceBytes = buildingCount * 8 * 4;
-  const instanceBufferData = new Float32Array(ab, offset, buildingCount * 8);
-  offset += instanceBytes;
+  // The file has [x, y, height, size] in decimetres; the GPU struct is
+  // [x, y, z, height, size, radius, colorType, pad] in metres.
+  const packed = new Int16Array(ab, offset, buildingCount * 4);
+  const instanceBufferData = new Float32Array(buildingCount * 8);
+  for (let i = 0; i < buildingCount; i++) {
+    const h = packed[i * 4 + 2] / 10, s = packed[i * 4 + 3] / 10;
+    instanceBufferData.set([packed[i * 4] / 10, packed[i * 4 + 1] / 10, 0, h, s,
+      Math.sqrt(s * s * 0.5 + h * h * 0.25), h > 100 ? 2 : h > 40 ? 1 : 0, 0], i * 8);
+  }
+  offset += buildingCount * 8;
 
   const vertexBytes = vertexCount * 6 * 4;
   const vertexBufferData = new Float32Array(ab, offset, vertexCount * 6);

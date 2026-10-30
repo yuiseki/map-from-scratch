@@ -16,6 +16,29 @@ export async function runBench(map: CullingMap, firstFrameMs: number): Promise<v
     detail: `total building count = ${map.buildingCount}`,
   });
 
+  // Verification 1b: heights and footprints come from the data. The bake
+  // once read the footprint area (m2) as the height in cm, so the widest
+  // buildings stood tallest. The tallest instance must be 16's tallest
+  // building (DuckDB on the GML), and its footprints must add up to 16's.
+  const base = '../../../data/baked';
+  const ab = await (await fetch(`${base}/webgpu-001-gpu-driven-culling/buildings.bin`)).arrayBuffer();
+  const q = new Int16Array(ab, 32, map.buildingCount * 4);
+  const inst = Float32Array.from(q, (v) => v / 10); // [x, y, height, size] per building
+  const truth = await (await fetch(`${base}/16-plateau-buildings-3d/truth.json`)).json();
+  let top = 0, areaSum = 0;
+  for (let i = 0; i < map.buildingCount; i++) {
+    if (inst[i * 4 + 2] > inst[top * 4 + 2]) top = i;
+    areaSum += inst[i * 4 + 3] ** 2;
+  }
+  const truthArea = (truth.points as number[][]).reduce((s, p) => s + p[2], 0);
+  const dist = Math.hypot(inst[top * 4] - truth.tallest.x, inst[top * 4 + 1] - truth.tallest.y);
+  const h = inst[top * 4 + 2];
+  emit({
+    check: 'heights-from-plateau',
+    pass: dist < 60 && h > truth.tallest.maxz - 15 && h <= truth.tallest.maxz && Math.abs(areaSum / truthArea - 1) < 0.01,
+    detail: `tallest instance ${h.toFixed(1)} m, ${dist.toFixed(0)} m from 16's tallest (maxz ${truth.tallest.maxz} m); footprints ${Math.round(areaSum)} / ${truthArea} m2`,
+  });
+
   // Verification 2: GPU Compute Culling
   const visibleCount = await map.getVisibleCount();
   const cullingPass = visibleCount > 0 && visibleCount < map.buildingCount;
