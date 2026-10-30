@@ -1,8 +1,8 @@
 # deck.gl ScatterplotLayer に対応する専用描画器
 
-[deck.gl ScatterplotLayer](https://deck.gl/docs/api-reference/layers/scatterplot-layer) のドキュメント例は、マンハッタンの 13,987 点を `ScatterplotLayer` のインスタンスとして GPU に送り、重みに応じた半径と色で描きます。
+[deck.gl ScatterplotLayer](https://deck.gl/docs/api-reference/layers/scatterplot-layer) のドキュメント例は、マンハッタンの 13,987 点を `ScatterplotLayer` のインスタンスとして GPU に送り、すべて半径 30 m（最小 0.25 px）で、重み（1 と 2 の分類）ごとの色で描きます。
 
-この実装は同じ deck.gl-data の Manhattan 点データ（`[lng, lat, weight]`、重みは 1 か 2）を使い、WebGL も deck.gl も使わずに Canvas 2D で描きます。ベイク時に Web Mercator 座標と重みを Float32 の 16 bytes/点に詰め、実行時は画面内の点だけを重みごとのパスにまとめて埋めます。重み 1 は青、重み 2 は橙で、重い点が上に来るよう 2 パスで描きます。点は円ではなく、ピクセルにスナップした小さな正方形です（円弧のテッセレーションが 60 Hz に収まらなかったため）。
+この実装は同じ deck.gl-data の Manhattan 点データ（`[lng, lat, weight]`、重みは 1 か 2）を使い、WebGL も deck.gl も使わずに Canvas 2D で描きます。ベイク時に Web Mercator 座標と重みを Float32 の 16 bytes/点に詰め、実行時は画面内の点だけを重みごとのパスにまとめて埋めます。重み 1 は青、重み 2 は橙で、点の大きさは元例と同じ半径 30 m（1 px 未満は 1 px 角）です。色ごとに 1 本のパスにまとめますが、データ順に 256 点ずつ区切って区切りごとに 2 色を描くので、重なりの勝ち負けは元例と同じくデータ順で決まります（全部の青のあとに全部の橙を描くと、46% ある青がほぼ隠れた）。点は円ではなく、ピクセルにスナップした小さな正方形です（円弧のテッセレーションが 60 Hz に収まらなかったため）。
 
 パンとホイールズームを持ちます。クリックやホバーのピッキング、背景地図は実装していません。
 
