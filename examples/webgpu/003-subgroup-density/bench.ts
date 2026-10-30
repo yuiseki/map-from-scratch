@@ -1,13 +1,17 @@
 // examples/webgpu/003-subgroup-density/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, benchFramesGpu, zoomPath } from '../../../harness/page/bench.ts';
 import type { DensityMap } from './map.ts';
 
 export async function runBench(map: DensityMap, firstFrameMs: number): Promise<void> {
   const { canvas } = map;
 
-  await new Promise(requestAnimationFrame);
-  emit({ info: { gpu: map.gpu } });
-  emit({ metric: 'first_frame_ms', value: firstFrameMs });
+  // firstFrameMs ends when mount() has submitted the first frame; like the
+  // WebGL2 examples, the first frame counts until the GPU has finished it.
+  const t0 = performance.now();
+  map.render();
+  await map.device.queue.onSubmittedWorkDone();
+  emit({ metric: 'first_frame_ms', value: firstFrameMs + performance.now() - t0 });
+  emit({ info: { gpu: map.gpu, timestamps: map.device.features.has('timestamp-query') } });
 
   // Verification 1: Points loaded
   emit({
@@ -82,25 +86,26 @@ export async function runBench(map: DensityMap, firstFrameMs: number): Promise<v
     detail: `peakDensity zoomed = ${zoomedPeak}, after pan GPU ${pannedPeak}, CPU ${cpu1}`,
   });
 
-  // Pan benchmark scenario: 60 frames
-  const frameTimes: number[] = [];
-  const redrawTimes: number[] = [];
-  let lastTimestamp = performance.now();
-
-  for (let i = 0; i < 60; i++) {
-    const t0 = performance.now();
-    map.panBy(Math.sin(i * 0.1) * 5, Math.cos(i * 0.1) * 5);
-    const redrawMs = performance.now() - t0;
-    redrawTimes.push(redrawMs);
-
-    await new Promise(requestAnimationFrame);
-    const now = performance.now();
-    frameTimes.push(now - lastTimestamp);
-    lastTimestamp = now;
+  // The camera path of 04-osm-node-density, the WebGL2 renderer of the same
+  // points: from all 23 wards towards Shibuya station and back, then the two
+  // ends held still. The zoom stops at 32, this renderer's limit.
+  // The frames go to an offscreen texture the size of the canvas. Waiting for
+  // each frame yields the task, and a canvas texture drawn in one task is
+  // presented before the next: on Xvfb that took 81 ms a frame (offscreen
+  // 2.3 ms). 04's loop never yields, so it never presents either.
+  const bbox = new Float64Array(ab, 8, 4);
+  const [w, s, e, n] = bbox;
+  const k = Math.cos(((s + n) / 2) * Math.PI / 180), span = Math.max((e - w) * k, n - s);
+  const cx = ((139.7016 - w) * k) / span, cy = (n - 35.658) / span;
+  const path = zoomPath(300, { cx, cy, z0: 1, z1: 32, pan: 0.0005 });
+  await benchFramesGpu(map.device, path.length, (i, ts) => {
+    map.setCamera(path[i].cx, path[i].cy, path[i].zoom);
+    map.render(ts, true);
+  });
+  for (const [prefix, zoom] of [['whole_', 1], ['street_', 32]] as const) {
+    map.setCamera(cx, cy, zoom);
+    await benchFramesGpu(map.device, 60, (_, ts) => map.render(ts, true), { prefix });
   }
-
-  for (const r of redrawTimes) emit({ metric: 'redraw_ms', value: r });
-  for (const f of frameTimes) emit({ metric: 'frame_interval_ms', value: f });
 
   emit({ done: true });
 }

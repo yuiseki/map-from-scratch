@@ -44,8 +44,14 @@ export interface DensityMap {
   pointCount: number;
   gpu: string;
   hasSubgroups: boolean;
+  device: GPUDevice;
   view: () => [number, number, number, number, number, number];
-  render: () => void;
+  // ts: where the bench wants the frame's first and last GPU timestamps.
+  // offscreen: draw into a texture the size of the canvas instead, so that
+  // a frame can be timed without presenting it (see bench.ts).
+  render: (ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => void;
+  // Places the camera (data units 0..1, zoom 1 = the whole extent tall) without drawing.
+  setCamera: (x: number, y: number, z: number) => void;
   panBy: (dx: number, dy: number) => void;
   zoomBy: (delta: number, x?: number, y?: number) => void;
   getMaxDensity: () => Promise<number>;
@@ -54,12 +60,14 @@ export interface DensityMap {
 
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<DensityMap> {
   if (!navigator.gpu) throw new Error('WebGPU not supported on this browser/platform');
-  const adapter = await navigator.gpu.requestAdapter();
+  const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
   if (!adapter) throw new Error('No WebGPU adapter found');
 
   const hasSubgroups = adapter.features.has('subgroups');
   const requiredFeatures: GPUFeatureName[] = [];
   if (hasSubgroups) requiredFeatures.push('subgroups');
+  // Only the bench reads timestamps, but the feature costs nothing unused.
+  if (adapter.features.has('timestamp-query')) requiredFeatures.push('timestamp-query');
 
   const gpuDesc = (adapter as any).info?.description || (adapter as any).info?.architecture || 'WebGPU SwiftShader';
   const device = await adapter.requestDevice({ requiredFeatures });
@@ -387,7 +395,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     device.queue.writeBuffer(renderUniformBuffer, 0, rData);
   }
 
-  function render(): void {
+  function render(ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false): void {
     const w = canvas.width || 1024;
     const h = canvas.height || 768;
     if (!colorTexture || colorTexture.width !== w || colorTexture.height !== h) {
@@ -403,14 +411,14 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     commandEncoder.clearBuffer(maxDensityBuffer);
 
     // 2. Compute pass: bin points into grid
-    const computePass = commandEncoder.beginComputePass();
+    const computePass = commandEncoder.beginComputePass(ts && { timestampWrites: ts.begin });
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, computeBindGroup);
     computePass.dispatchWorkgroups(Math.ceil(pointCount / 64));
     computePass.end();
 
     // 3. Render pass: fullscreen colormapped heatmap
-    const view = webgpuCtx ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
+    const view = webgpuCtx && !offscreen ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [{
         view,
@@ -418,6 +426,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
         loadOp: 'clear',
         storeOp: 'store',
       }],
+      timestampWrites: ts?.end,
     });
     renderPass.setPipeline(renderPipeline);
     renderPass.setBindGroup(0, renderBindGroup);
@@ -445,6 +454,10 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     cx += ((k - 1 / zoom) * ox) / canvas.clientHeight;
     cy += ((k - 1 / zoom) * oy) / canvas.clientHeight;
     render();
+  }
+
+  function setCamera(x: number, y: number, z: number): void {
+    cx = x; cy = y; zoom = z;
   }
 
   async function getMaxDensity(): Promise<number> {
@@ -494,7 +507,9 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     pointCount,
     gpu: gpuDesc,
     hasSubgroups,
+    device,
     view,
+    setCamera,
     render,
     panBy,
     zoomBy,

@@ -63,9 +63,9 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    | microcontroller, no FPU, little RAM | freestanding C, integers, strip rendering, data in flash (06) |
    | thousands of points, hover for a name, whole page size-capped | WebGL2 stencil fill, CPU brute-force hover (07) |
 
-   WebGPU is a valid choice for a renderer, but in this harness headless
-   Chromium only gets SwiftShader for WebGPU, so a WebGPU example cannot be
-   measured on the GPU here yet. Say so if you choose it.
+   WebGPU is a valid choice for a renderer. Headless Chromium only gets
+   SwiftShader for WebGPU, so give a WebGPU example `display: xvfb` under
+   `benchmarks` and time it with `benchFramesGpu` (references/pitfalls.md).
 3. **Design the data structure for the request, too.** The format the data
    arrives in is often the real bottleneck. Decide what the renderer reads
    first and most often (a view, a time step, a zoom level), and lay the

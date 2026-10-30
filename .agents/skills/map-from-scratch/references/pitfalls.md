@@ -16,10 +16,22 @@ plausible numbers. Suspect the measurement before the renderer.
   experiments all ran with the defaults and "no flag made a difference".
   When an experiment varies a setting, confirm the setting arrived (the
   results now record `page_query`).
-- **WebGPU on SwiftShader.** Google's Chromium build offers a WebGPU adapter
-  in the container, but it is SwiftShader. Any WebGPU number from it is a CPU
+- **WebGPU on SwiftShader.** Headless Chromium offers a WebGPU adapter in
+  the container, but it is SwiftShader. Any WebGPU number from it is a CPU
   number. The harness fails a `gpu: hardware` example whose `info.gpu` names
-  a software rasteriser.
+  a software rasteriser. Headed on a private Xvfb (`benchmarks.display: xvfb`
+  or `MFS_DISPLAY=xvfb`) the same container gets the NVIDIA adapter, with
+  timestamp-query and subgroups; WebGL2 stays on ANGLE Vulkan with the same
+  numbers as headless (04: gpu_ms p50 0.77 ms either way).
+- **Timing a WebGPU frame.** Time the frame with timestamp queries
+  (`benchFramesGpu`), not around `queue.submit`: submit returns before the
+  GPU starts (webgpu-003 reported 0.21 ms that way, on SwiftShader). Draw the
+  timed frames into an offscreen texture: awaiting `onSubmittedWorkDone`
+  yields the task, so a canvas texture is presented between frames, and on
+  Xvfb that cost 81 ms a frame against 2.3 ms offscreen. WebGL2's
+  `benchFrames` never yields, so it never presents either. Even offscreen
+  the await has a floor of about 2.3 ms with 0.05 ms of GPU work: compare
+  WebGPU with WebGL2 by gpu_ms, and read frame_ms as including that wait.
 - **Timer resolution.** Without cross-origin isolation `performance.now()`
   is coarsened to 100 us. The static server sends COOP/COEP so it is 5 us.
 

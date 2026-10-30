@@ -80,6 +80,7 @@ How the renderer is run and what each measured scenario is.
 | `page` | browser: page path from the repository root; the harness adds `?bench=1` |
 | `viewport` | browser: `{width, height, device_scale_factor, mobile}` |
 | `cpu_throttle` | browser: CPU slowdown factor (4 for a phone) |
+| `display` | browser: `headless` (default) or `xvfb`, a headed Chromium on a private X server. WebGPU needs `xvfb` to get the GPU |
 | `network` | browser: `{name, latency_ms, download_mbps, upload_mbps}` emulated with CDP; e.g. 4G `{latency_ms: 60, download_mbps: 9}`. Use it whenever data is fetched while the map is used |
 | `cmd` | native: argv from the repository root |
 | `iterations` | runs; first frame and checks repeat per run |
