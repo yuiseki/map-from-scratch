@@ -71,8 +71,12 @@ Evidence for pushing width into the shader:
   storage buffer and emits `6 * N` vertices with no vertex attributes bound.
   The vertex shader uses `vertex_index` to pull $P_{i-1}, P_i, P_{i+1}$,
   generating screen-space miters, bevels, round caps and round joins in WGSL
-  [118]. This completely eliminates CPU attribute expansion and buffer
-  reallocations during continuous camera motion.
+  [118]. In `webgpu-002-vertex-pulled-roads`, 11,509 Tokyo road ways (88,354 raw
+  nodes, 76,845 segments) are held in an 8-byte packed storage buffer
+  (`uploadCount = 1`, zero CPU vertex allocation). Single draw call
+  `draw((nodeCount - 1) * 6)` with zero-area culling for road boundaries
+  delivers 0.075 ms p50 / 0.170 ms p95 redraws during interactive pan and zoom,
+  completely eliminating CPU attribute expansion and buffer reallocations.
 
 ## Decisions, with trade-offs and evidence
 

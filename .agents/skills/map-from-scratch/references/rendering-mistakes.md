@@ -494,3 +494,22 @@ copy-pasted code compresses well: replacing three repeated vertex blocks with
 a loop and a helper still added about 300 B. 213's budget moved from 3,500 to
 3,700 B with the reason in `spec.yaml`. A wrong map within budget is not a
 pass.
+
+### WebGPU Vertex Pulling: node count vs segment count and WGSL reserved keywords (webgpu-002)
+
+- Screen: all road lines disappeared completely; screen stayed on background color.
+- Why, first part: In WGSL, `meta` is a reserved keyword. Declaring `let meta = p.metaRoad & 0xffffu;`
+  caused `createShaderModule` to fail parsing silently without throwing an unhandled rejection,
+  leading to an invalid render pipeline that drew nothing.
+- Why, second part: A polyline sequence with $M$ roads and $N$ total raw nodes has
+  $S = N - M$ segments. If vertex pulling uses `segIdx = vertex_index / 6` and `nodeAIdx = segIdx`,
+  every road terminal node consumes an index. Emitting only `segmentCount * 6` vertices means the
+  draw call stops early (leaving the last $M$ nodes unreached) and every road boundary skips an index,
+  desynchronizing segments from their true node positions.
+- Fix: Use `let nodeMeta = ...` instead of reserved keywords; emit `draw((nodeCount - 1) * 6)` so that
+  every sequential node pair is visited; and when `nodeA.endpoint == 2 || nodeA.roadId != nodeB.roadId`,
+  output `vec4f(0.0)` so hardware triangle culling discards the degenerate quad at zero cost without
+  requiring an extra index buffer.
+- Guard against zero-length segments: In OSM, consecutive duplicate nodes produce $P_B - P_A = (0, 0)$.
+  Normalizing a zero vector in WGSL yields `NaN`, which poisons miter vectors and drops entire quads.
+  Always guard with `let safeLen = max(0.0001, length(delta))` before division.

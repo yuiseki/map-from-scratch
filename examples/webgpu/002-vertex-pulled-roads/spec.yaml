@@ -1,0 +1,100 @@
+id: webgpu-002-vertex-pulled-roads
+request: >-
+  東京23区の道路線形を WebGPU で描画し、CPU 側で line tessellation / vertex expansion を行わず、
+  道路ノード列を storage buffer に保持して、Vertex Shader が vertex_index から前後ノードを参照して
+  画面空間の太線・join・cap を生成したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: pygfx や Three.js などの外部ライブラリを使わず、生 WebGPU API と自前 WGSL のみで実装
+  - id: quick-start
+    need: ページを開いて即座に道路網が表示される
+    rationale: 初期化ラグなしで 300 ms 以内に描画
+  - id: smooth-interaction
+    need: パン・ズーム操作時に 60 fps で滑らかに再描画される
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 2.0 ms 以下に
+  - id: zero-cpu-tessellation
+    need: CPU 側での線幅展開・頂点再生成・バッファ再割り当てが完全にゼロであること
+    unmeasured: verification checks で頂点バッファ静的性と画面描画を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 450000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/002-vertex-pulled-roads/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 道路バイナリ読み込みから初回 WebGPU 道路描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームの地図パン中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/webgpu/002-vertex-pulled-roads/bake.ts]
+  sources:
+    - id: osm-tokyo23-highways
+      origin: OpenStreetMap 東京都心・23区主要幹線道路（高速道路・国道・都道）
+      license: ODbL (© OpenStreetMap contributors)
+  outputs:
+    - data/baked/webgpu-002-vertex-pulled-roads/roads.bin
+  preparation:
+    - 東京23区の主要幹線道路 11,509 路線、88,354 ノードを 1 ノード 8 バイトの Storage Buffer 構造体に格納
+    - 描画順を細街路（都道）先行、高速道路最前面にソート
+
+performance_knowledge:
+  - id: gpu-vertex-pulling-roads
+    finding: WebGPU Storage Buffer からの vertex pulling により、CPU 側での毎フレームの頂点展開（CPU line tessellation）と頂点バッファ再転送を完全に排除し、単一の draw call (6 * (N - 1) 頂点) で 7 万区間以上の道路網を 0.17 ms 未満で描画できる
+    evidence: pygfx の line.wgsl アーキテクチャを地図描画器として実証
+    applies_when: 道路網、鉄道路線、航跡、等高線などの可変幅線形描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/webgpu/002-vertex-pulled-roads/index.html
+      - examples/webgpu/002-vertex-pulled-roads/main.ts
+      - examples/webgpu/002-vertex-pulled-roads/map.ts
+    dependencies: []
+    why: WGSL の vertex_index プログラマブル参照による完全な GPU-side 線幅展開・ジョイン生成
+  alternatives:
+    - option: CPU Line Tessellation (Quad expansion per zoom)
+      rejected_because: ズーム操作ごとに CPU で数万頂点の法線計算・三角形化が発生し、CPU-GPU 転送帯域がボトルネックになる
+    - option: Instanced line strips (05-tokyo-roads-native 方式)
+      rejected_because: インスタンス属性バッファのバインドが必要であり、WebGL2 互換の制限を受ける。WebGPU では Storage Buffer vertex pulling がより柔軟で attributes バインド数を節約できる
+  not_doing: [破線パターン, 地名ラベル, 3D 建物]
+
+verification:
+  checks:
+    - id: roads-loaded
+      what: 東京23区の道路 11,509 路線、88,354 ノードがすべて GPU ストレージに配置される
+      how: map.nodeCount および map.roadCount を検証
+      expected: nodeCount === 88354, roadCount === 11509
+    - id: static-gpu-buffers
+      what: ズームやパンの操作を行っても CPU からの頂点バッファ再生成や書き込みが発生しない
+      how: map.uploadCount が初回アップロード（1回）のまま変化しないことを検証
+      expected: uploadCount === 1
+    - id: roads-rendered
+      what: 画面中央（皇居・東京駅周辺の都道・高速道路網）に道路ピクセルが描画されている
+      how: 画面中央付近のピクセル色を検証
+      expected: 背景色（#0a0f1d）と異なる道路色（高速道路の橙 #f97316 または都道の白 #e2e8f0）
+    - id: pan-updates-road-positions
+      what: 地図をパンしたとき、道路の画面上ピクセル位置が正しく追従して更新される
+      how: パン前後の固定画面座標ピクセル色を検証
+      expected: パン前後でピクセル色が変化する
+  harness:
+    - contextlost が起きたらエラーにする
