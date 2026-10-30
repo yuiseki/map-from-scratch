@@ -1,0 +1,94 @@
+id: mapbox-009-add-a-marker
+request: >-
+  Copenhagen を中心に、標準のシアン色のピンと、45度回転した黒色のピンの2つのマーカーを配置した地図を表示したい。
+  ドラッグでパン、ホイールでズームしてもマーカーが地理座標に固定されて追従すること。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: マーカー2点とベースマップ表示に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とマーカーが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: marker-accuracy
+    need: マーカーが指定した地理座標に正確にアンカーされ、ズームやパンでもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/009-add-a-marker/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データとマーカーの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/009-add-a-marker/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-009-add-a-marker/land.json
+    - data/baked/mapbox-009-add-a-marker/markers.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - コペンハーゲンの2箇所のピン情報（シアン標準ピン、45度回転黒ピン）を JSON に整形
+
+performance_knowledge:
+  - id: canvas2d-procedural-markers
+    finding: DOM マーカーの代わりに Canvas 2D パスでベクターピン（円形ヘッド＋尖った先端＋ドロップシャドウ）をプロシージャル描画することで、DOM 要素同期のレイアウトスラッシングを回避し、高速かつ回転も自由に行える
+    evidence: Canvas 2D 単一パス描画により再描画時間が 0.5 ms 未満で安定
+    applies_when: 地図上に回転や動的スタイリングを伴うマーカーを配置する場合
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/009-add-a-marker/index.html
+      - examples/mapbox/009-add-a-marker/main.ts
+      - examples/mapbox/009-add-a-marker/map.ts
+    dependencies: []
+    why: マーカー2点とベースマップの描画には Canvas 2D が最も軽量で確実
+  alternatives:
+    - option: DOM マーカー + WebGL2
+      rejected_because: DOM ノードと地図の同期コストおよび WebGL のボイラープレートが過大
+  not_doing: [3D地形, 地名ラベル, 複雑なクラスタリング, ピッチ傾斜]
+
+verification:
+  checks:
+    - id: markers-rendered
+      what: コペンハーゲンの2箇所にシアンピンと回転黒ピンが描画されている
+      how: getImageData でマーカー位置周辺のピクセル色を検証
+      expected: marker 1: r < 100 && g > 150 && b > 180, marker 2: r < 50 && g < 50 && b < 50
+    - id: markers-move-with-pan
+      what: 地図をパンしたとき、マーカーのスクリーン座標が正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先の座標でマーカー色が検出される
+    - id: markers-anchor-on-zoom
+      what: ズームを変更してもマーカーの先端が地理座標に固定されている
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後の計算位置にマーカーが描画されている
+  harness:
+    - contextlost が起きたらエラーにする

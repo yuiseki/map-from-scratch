@@ -383,7 +383,7 @@
 - [ ] `mapbox-006-add-3d-model-with-interactions-source-driven` → `examples/mapbox/006-add-3d-model-with-interactions-source-driven/` — [Add 3D Model With Interactions Source Driven](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-model-with-interactions-source-driven/)
 - [ ] `mapbox-007-add-3d-model-with-interactions-style-driven` → `examples/mapbox/007-add-3d-model-with-interactions-style-driven/` — [Add 3D Model With Interactions Style Driven](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-model-with-interactions-style-driven/)
 - [ ] `mapbox-008-add-3d-models-using-geojson-source` → `examples/mapbox/008-add-3d-models-using-geojson-source/` — [Add 3D Models Using Geojson Source](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-models-using-geojson-source/)
-- [ ] `mapbox-009-add-a-marker` → `examples/mapbox/009-add-a-marker/` — [Add A Marker](https://docs.mapbox.com/mapbox-gl-js/example/add-a-marker/)
+- [x] `mapbox-009-add-a-marker` → `examples/mapbox/009-add-a-marker/` — [Add A Marker](https://docs.mapbox.com/mapbox-gl-js/example/add-a-marker/)
 - [ ] `mapbox-010-add-fog` → `examples/mapbox/010-add-fog/` — [Add Fog](https://docs.mapbox.com/mapbox-gl-js/example/add-fog/)
 - [ ] `mapbox-011-add-image` → `examples/mapbox/011-add-image/` — [Add Image](https://docs.mapbox.com/mapbox-gl-js/example/add-image/)
 - [ ] `mapbox-012-add-image-animated` → `examples/mapbox/012-add-image-animated/` — [Add Image Animated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-animated/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **18 件**（maplibre-010、012、013、056、061、069、070、073、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **19 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
