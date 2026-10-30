@@ -1,0 +1,139 @@
+id: mapbox-017-adjust-layer-opacity
+request: >-
+  シカゴ中心部（[-87.6321, 41.8362]、ズーム 9.5）の地図に、市域を覆うラスタレイヤーを重ね、
+  スライダーをドラッグしてレイヤーの不透明度を 0〜100% で調整したい。
+  スライダーは地図上に描画し、操作は外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ラスタ1枚とスライダーに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とレイヤーが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: スライダー操作とパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: adjustable-opacity
+    need: 不透明度の変更が即座にラスタの描画へ反映される
+    unmeasured: verification の overlay-rendered-at-full-opacity / overlay-blends-at-half-opacity で、下地とのブレンド結果をピクセルで検証
+  - id: slider-control
+    need: スライダーのドラッグで 0〜100% を設定でき、範囲外はクランプされる
+    unmeasured: verification の slider-sets-and-clamps-opacity で、値・ノブ位置・描画画素を検証
+  - id: overlay-accuracy
+    need: ラスタが指定した地理範囲に正確に貼られ、範囲外へはみ出さない
+    unmeasured: verification の overlay-rendered-at-full-opacity / overlay-clipped-to-bounds / overlay-anchors-on-zoom で、チェッカー色・範囲外の下地色・ズーム時の矩形倍率を検証
+  - id: background-map
+    need: ズーム 9.5 で道路・市街地が読める背景地図がある
+    unmeasured: verification の basemap-drawn でタイル枚数と画面の色数を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 34000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/017-adjust-layer-opacity/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ラスタ・陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔（下地＋50% のラスタ）
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/017-adjust-layer-opacity/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
+    - id: generated-checker
+      origin: examples/mapbox/017-adjust-layer-opacity/bake.ts が生成する 256x256 PNG
+      license: パブリックドメイン（本リポジトリの生成物）
+  outputs:
+    - data/baked/mapbox-017-adjust-layer-opacity/overlay.png
+    - data/baked/mapbox-017-adjust-layer-opacity/land.json
+  preparation:
+    - 32 px セルの2色チェッカー（rgb(37,99,235) / rgb(14,165,233)）と白枠を Node の zlib で PNG 化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化（下地タイル到着までの代替）
+    - 実行時は OSM Carto の 512 px タイルを z=round(zoom) で表示範囲だけ取得し、256 CSS px に描く
+
+performance_knowledge:
+  - id: globalalpha-one-draw-for-layer-opacity
+    finding: ラスタレイヤーの不透明度は、レイヤー側のピクセルを毎回焼き直すのではなく、drawImage 直前に globalAlpha を設定する1回の呼び出しで実現できる。Canvas 2D の合成はハードウェアで行われ、画素のブレンドも仕様どおり（src*a + dst*(1-a)）になる
+    evidence: 50% 指定時のチェッカー画素が下地とセル色の中間値に ±3 以内で一致。100 フレーム相当の再描画は p95 1 ms 未満（1024x768、下地タイル9枚＋ラスタ1枚）
+    applies_when: 1枚または少数のラスタ・ベクターレイヤーの不透明度を UI から変えるとき
+  - id: nearest-neighbour-for-checkable-overlays
+    finding: 検証用のラスタは imageSmoothingEnabled=false で最近傍描画すると、拡大後もセル色が正確に残り、ブレンド式をピクセルで検証できる。バイリニアだとセル境界が数十 px のにじみ、色の期待値が立たない
+    evidence: 256 px 画像を 798x483 に拡大しても、セル中央の画素は rgb(37,99,235) / rgb(14,165,233) に ±2 で一致
+    applies_when: ラスタの色や不透明度を画面読み戻しで検証するとき
+  - id: slider-hit-area-before-map-pan
+    finding: キャンバス上のスライダーは、当たり判定を地図のパン開始より先に処理しないと、つまみを動かすつもりが地図をパンしてしまう。当たり矩形をトラックより上下左右に広げ、パネル内の pointerdown をスライダー専用にする
+    evidence: トラック 24..238 px に対し当たり矩形を 14..248 px・高さ 28 px に拡張し、パネル外のドラッグだけがパンになる
+    applies_when: 地図キャンバス内に操作 UI を描くとき
+  - id: base-pixels-are-the-blend-reference
+    finding: 半透明合成の期待値は、実際に描かれた下地の画素を 0% 状態で先に読み、そこから計算するのが最も頑健。タイル画像を自前でデコードして期待色を作ると、タイル側の配色変更で壊れる
+    evidence: 0% で読み取った下地画素と 50% の合成結果の差が、計算式（base*0.5 + cell*0.5）の ±3 以内
+    applies_when: 背景の上に半透明レイヤーを重ねた結果を検証するとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/017-adjust-layer-opacity/index.html
+      - examples/mapbox/017-adjust-layer-opacity/main.ts
+      - examples/mapbox/017-adjust-layer-opacity/overlay.ts
+    dependencies: []
+    why: ラスタ1枚の合成とスライダーは Canvas 2D の globalAlpha と数十行のヒットテストで済む。背景は OSM Carto のラスタタイルを表示範囲だけ取得し、到着まではベイクした陸ポリゴンで埋める
+  alternatives:
+    - option: CSS の input[type=range] と DOM オーバーレイ
+      rejected_because: 見た目は簡単だが、ラスタの不透明度は結局キャンバス描画に反映する必要があり、スライダー位置と描画画素の検証が DOM 依存になる。キャンバス内に描けば1枚のスクリーンショットで状態が確認できる
+    - option: WebGL2 のテクスチャ合成
+      rejected_because: 1枚のラスタと1枚のスライダーにシェーダ・テクスチャ管理は過剰で、コードサイズが数倍になる
+    - option: 不透明度ごとにピクセルを焼き直す
+      rejected_because: スライダーを動かすたびに 256x256 の合成が必要になり、globalAlpha 1回の描画に比べて無駄。ブレンドも自前実装になり誤差要因が増える
+  not_doing: [3D地形, 地名ラベルの自前描画, 回転・ピッチ, ベクタータイルデコード, 複数ラスタの重ね合わせ]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: ラスタの背景地図（道路・市街地）が描かれている
+      how: 不透明度 0% にして下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: 表示範囲のタイルがすべて ready（2 枚以上）、異なる色 > 150
+    - id: overlay-rendered-at-full-opacity
+      what: 100% でチェッカーラスタが指定範囲に正確に描かれる
+      how: チェッカーの偶数セル・奇数セル中央の緯度経度を画面座標に変換し、画素色を検証
+      expected: 偶数セル rgb(37,99,235)、奇数セル rgb(14,165,233) に各チャンネル ±2
+    - id: overlay-clipped-to-bounds
+      what: ラスタは自分の地理範囲の外へはみ出さない
+      how: 100% で範囲外の左・右・下の点の画素を、0% で記録した下地画素と比較
+      expected: 3点すべてで下地と ±1 以内
+    - id: overlay-blends-at-half-opacity
+      what: 50% で下地とラスタが仕様どおりにブレンドされる
+      how: 0% の下地画素 b とセル色 c から期待値 round(c*0.5 + b*0.5) を計算し、実画素と比較。さらに下地・セル色のどちらとも十分異なることを確認
+      expected: 各チャンネル ±3、かつ下地・セル色との差が 15 を超えるチャンネルがある
+    - id: slider-sets-and-clamps-opacity
+      what: スライダーのドラッグで 25% を設定でき、左右の範囲外ドラッグは 0% / 100% にクランプされる
+      how: トラック上の 25% 位置と範囲外へポインタイベントを送り、map.opacity・ノブ位置・25%/0%/100% の描画画素を検証
+      expected: opacity が 25・0・100、ノブが各値の位置に ±0.01 px、画素が 25% のブレンド・下地・セル色に一致
+    - id: overlay-anchors-on-zoom
+      what: ズームしてもラスタが地理範囲に固定され、矩形が拡大する
+      how: 範囲中心を基準に +1 ズームし、投影矩形の幅・高さとセル中央の画素を検証
+      expected: 幅・高さが 2 倍に ±1 px、セル色は ±2 で不変
+  harness:
+    - contextlost が起きたらエラーにする

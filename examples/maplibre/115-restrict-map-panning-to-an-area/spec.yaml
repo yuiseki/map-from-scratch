@@ -1,0 +1,141 @@
+id: maplibre-115-restrict-map-panning-to-an-area
+request: >-
+  ニューヨーク市域の maxBounds（南西 [-74.04729, 40.68393] / 北東 [-73.91059, 40.87765]）を設定し、
+  ドラッグやホイール操作でその範囲の外が見えないように制限した地図を表示したい。
+  maxBounds がビューポートより狭いときは範囲が画面を満たすズームまで引き上げる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: maxBounds の制約とラスタ背景地図だけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: camera-cannot-leave-bounds
+    need: パン・ズームのどの操作でも、表示範囲が maxBounds の外へ出ない
+    unmeasured: verification の bounds-clamped-at-min-zoom / drag-east-stops-at-east-bound / drag-south-stops-at-south-bound / zoom-out-capped-at-bounds で画面座標とカメラ状態を検証
+  - id: bounds-fill-viewport
+    need: maxBounds がビューポートより狭いとき、範囲が画面を満たすズームまで引き上げる（MapLibre と同じ挙動）
+    unmeasured: verification の bounds-clamped-at-min-zoom で独立計算した bounds-fill ズームと比較
+  - id: background-map
+    need: ズーム 13 で道路・公園・水域が読める背景地図がある
+    unmeasured: verification の basemap-drawn / basemap-shows-geography でタイル枚数・色数・地理的な色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/115-restrict-map-panning-to-an-area/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔（境界クランプに当たらない ±2 px の往復）
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/115-restrict-map-panning-to-an-area/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
+  outputs:
+    - data/baked/maplibre-115-restrict-map-panning-to-an-area/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化（下地タイル到着までの代替）
+    - maxBounds の4定数と初期中心・ズームは MapLibre 公式サンプルの値
+    - 実行時は OSM Carto の 512 px タイルを z=round(zoom) で表示範囲だけ取得し、256 CSS px に描く
+
+performance_knowledge:
+  - id: maxbounds-centres-or-clamps-per-axis
+    finding: maxBounds の制約は軸ごとに独立で、ビューポートが範囲より広い軸では中心を範囲の中心に固定し、狭い軸では中心を [境界 + 半ビューポート] にクランプすればよい。MapLibre と同じく、範囲がビューポートに収まらない場合は「範囲が画面を満たすズーム」まで引き上げる
+    evidence: 1024x768 では範囲の経度幅（0.1367°）が z13 の画面幅（0.1758°）より狭いため、初期ズームは 13 ではなく 13.36 に上がり、東西パンは固定・南北パンのみ可
+    applies_when: 大きな地図の中の限られた区域だけを見せたいとき（営業区域、敷地、自治体境界）
+  - id: clamp-at-the-camera-not-the-draw
+    finding: クランプは描画時ではなくカメラ更新（pan/zoom/zoomAt/resize）の直後に適用する。描画時に補正すると、ポインタ移動量とカメラ移動量が一致せず、境界で図形が滑る
+    evidence: 境界内の 120 px ドラッグがカメラを正確に 120 px 分（120/scale）動かし、境界ではぴたりと止まる
+    applies_when: パン制限付きのカメラを実装するとき
+  - id: independent-clamp-math-in-bench
+    finding: クランプの検証は renderer のヘルパを呼ばず、bench 内で mercator 投影とビューポート半幅を再計算して端点を比較する。実装が壊れても自分の出力と一致してしまう事故を防ぐ
+    evidence: bounds-fill ズームを 1024/(256*Δmx) と 768/(256*Δmy) の大きい方として独立計算し、カメラの zoom と 1e-6 以内で一致
+    applies_when: カメラ制約や座標変換を検証するとき
+  - id: land-placeholder-until-tiles
+    finding: 都市ズームでは Natural Earth 110m の陸だけでは画面が一色になり背景地図として読めないため、ラスタタイルを非同期で重ね、到着までは陸ポリゴンを下地にする。初回フレームはタイルを待たない
+    evidence: 初回描画は下地タイル到着前に完了し、到着後の再描画は p95 2 ms 未満（z13 で 9 枚程度の drawImage 込み）
+    applies_when: 常時接続前提で、都市ズームの背景地図を固定データなしで出したいとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/115-restrict-map-panning-to-an-area/index.html
+      - examples/maplibre/115-restrict-map-panning-to-an-area/main.ts
+      - examples/maplibre/115-restrict-map-panning-to-an-area/bounds.ts
+    dependencies: []
+    why: カメラ制約は数十行のクランプ演算で済み、背景は OSM Carto のラスタタイルを表示範囲だけ取得するのが最小。到着まではベイクした陸ポリゴンで埋める
+  alternatives:
+    - option: WebGL2 とタイルパイプライン
+      rejected_because: 静止画1枚の描画に GPU パイプライン・シェーダ・テクスチャ管理は過剰で、コードサイズも数倍になる
+    - option: 範囲外を描画後にマスクで隠す
+      rejected_because: カメラ自体が範囲外を指すと、範囲内の地物が画面外に出て空白の縁が残る。パン中に地図が滑る原因にもなる
+    - option: ズームを 13 に固定してクランプしない
+      rejected_because: 1024 px 幅では maxBounds より広い範囲が見えてしまい、公式サンプルの「範囲外を見せない」要件を満たさない
+  not_doing: [3D地形, 地名ラベルの自前描画, 回転・ピッチ, ベクタータイルデコード, 慣性パン]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: ラスタの背景地図（道路・公園・地名）が描かれている
+      how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: 表示範囲のタイルがすべて ready（2 枚以上）、異なる色 > 150
+    - id: basemap-shows-geography
+      what: 背景地図がニューヨークの正しい位置を写している（セントラルパークは緑、ハドソン川は青）
+      how: 各地物の緯度経度を getScreenPos で画面座標に変換し、3x3 ピクセル平均の色を調べる
+      expected: 公園 g > r + 15、河川 b > r + 20（OSM Carto の配色）
+    - id: bounds-clamped-at-min-zoom
+      what: 初期カメラが maxBounds に制約され、範囲より広い東西方向は中心固定、ズームは範囲が画面を満たす値に上がる
+      how: 独立計算した bounds-fill ズームとカメラの zoom を比較し、東西へ大きくドラッグしても中心が動かないこと、範囲の東西端が画面端 x=0/1024 に一致することを確認
+      expected: |zoom - max(log2(w/(256Δmx)), log2(h/(256Δmy)))| < 1e-6、中心 mx = 範囲中心、西端 x=0、東端 x=1024
+    - id: drag-east-stops-at-east-bound
+      what: z14.5 で東へ大きくドラッグすると、東端が画面右端で止まる
+      how: ポインタイベントで 2800 px 東へドラッグし、中心 mx が eastMx - 半画面幅 に一致し、東境界の画面 x が 1024 になることを確認
+      expected: 中心 mx の誤差 < 1e-9、東境界 x と 1024 の差 < 0.5 px
+    - id: drag-south-stops-at-south-bound
+      what: 南へ大きくドラッグすると、南端が画面下端で止まる
+      how: 3100 px 南へドラッグし、中心 my が southMy - 半画面高 に一致し、南境界の画面 y が 768 になることを確認
+      expected: 中心 my の誤差 < 1e-9、南境界 y と 768 の差 < 0.5 px
+    - id: pan-inside-bounds-works
+      what: 範囲内ではパンが正確に追従する（境界で滑らない）
+      how: 南端で止めた状態から 120 px 下へドラッグし、カメラの移動量がちょうど 120/scale、南境界の画面 y が 648 になることを確認
+      expected: 移動量の誤差 < 0.01 px、南境界 y と 648 の差 < 0.5 px
+    - id: zoom-out-capped-at-bounds
+      what: ホイールでズームアウトしても、maxBounds が画面を満たすズームより遠ざかれない
+      how: deltaY>0 の wheel を10回送り、ズーム・画面四隅が範囲内に収まること・東西端が画面端に一致することを確認
+      expected: zoom = bounds-fill ズーム（誤差 < 1e-9）、四隅が maxBounds 内、西端 x=0、東端 x=1024
+    - id: reset-view-restores-constrained-camera
+      what: リセットで初期の制約済みカメラに戻る
+      how: 操作後に resetView を呼び、中心・ズーム・画面中央の座標を確認
+      expected: 中心 mx = 範囲中心、中心 my = 初期中心の my、zoom = max(13, bounds-fill)、範囲中心の座標が画面中央
+  harness:
+    - contextlost が起きたらエラーにする
