@@ -295,7 +295,7 @@ between examples.
   cost 67 KB gzip already at 12°.
 - 180 was copied from the same code.
 
-### Rings clipped by dropping hidden vertices (cesium 244)
+### Rings clipped by dropping hidden vertices (repeated: cesium 244, openglobus 062)
 
 - Screen: a dark band with straight edges cut across western Eurasia and
   Africa whenever a continent crossed the rim.
@@ -310,6 +310,13 @@ between examples.
 - Lesson: three globe examples, three ways to get the horizon wrong. Any
   Canvas 2D globe must clip land at the horizon by geometry, not by skipping
   points; copy the cesium 213 code.
+- openglobus 062, added after 244 was fixed, filled its rings the same way
+  (wedges over the Arctic and west of South America). It now fills the baked
+  triangles like 244 and keeps the rings only for its outlines: skipping
+  hidden vertices is fine for a stroke, wrong for a fill. To fit both files
+  in 55 KB the rings went to 2 decimals (about 1 km, finer than 110m).
+  Its legend also said "Administrative Country Boundaries" over coastline
+  data; it now says what is drawn.
 
 ## Cartographic layout
 

@@ -59,6 +59,10 @@ facts the renderer does not compute:
   antimeridian, or the edge of a detail box;
 - the content moving with a synthetic drag in both axes.
 
+Read a few pixels, not one: a check of the single pixel under a projected
+vertex of a 1.2 px line read the glow beside it at 1920x1021 (openglobus 062,
+before and after its fix). Search a 5x5 neighbourhood for the colour.
+
 When a fix moves things on the screen, a check that fails afterwards may have
 been testing the bug. Recompute its coordinates from geography, say so in
 the commit, and do not loosen its tolerance.
