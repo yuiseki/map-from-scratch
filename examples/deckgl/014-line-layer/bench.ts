@@ -124,5 +124,19 @@ export async function run(map: LineLayerMap, firstFrameMs: number): Promise<void
   emit({ metric: 'redraw_ms', values: redrawTimes });
   emit({ metric: 'frame_interval_ms', values: frameIntervals });
 
+  // The direction is a fact about the data, not about the drawing: Los
+  // Angeles loses 18,204 people net to San Bernardino, east of it, so that
+  // pair must be eastward. (Every check above passed with all directions
+  // reversed.)
+  const mx = (lon: number): number => (lon + 180) / 360;
+  const my = (lat: number): number => (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
+  const near = (x: number, y: number, lon: number, lat: number): boolean => Math.abs(x - mx(lon)) < 1e-3 && Math.abs(y - my(lat)) < 1e-3;
+  const laSb = map.lines.find((l) => near(l.sx, l.sy, -118.349, 33.830) && near(l.tx, l.ty, -116.043, 34.559));
+  emit({
+    check: 'la-to-san-bernardino-eastward',
+    pass: !!laSb && laSb.v > 0,
+    detail: laSb ? `v=${laSb.v} (positive = eastward)` : 'Los Angeles - San Bernardino pair not found',
+  });
+
   emit({ done: true });
 }

@@ -39,8 +39,11 @@ for (let s = 0; s < features.length; s++) {
   for (const [tStr, val] of Object.entries(features[s].properties.flows || {})) {
     const t = Number(tStr);
     if (t <= s || t >= features.length) continue;
+    // flows[s][t] > 0 is a net in-flow to s, i.e. people moving t -> s
+    // (deck.gl colours it as in-flow; Los Angeles has -12,111 for Riverside).
+    // With a the western end, eastward is a -> b: -flows[a][b].
     const east = features[t].properties.centroid[0] >= features[s].properties.centroid[0];
-    pairs.push(east ? { a: s, b: t, v: val } : { a: t, b: s, v: -val });
+    pairs.push(east ? { a: s, b: t, v: -val } : { a: t, b: s, v: val });
   }
 }
 pairs.sort((p, q) => Math.abs(q.v) - Math.abs(p.v));
