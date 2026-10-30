@@ -127,7 +127,7 @@ map.canvas.addEventListener('pointermove',event=>{
   else{
     const meters=25000*2**(11.5-map.zoom)*2*Math.tan(25*Math.PI/180)/map.canvas.clientHeight;
     const rad=map.bearing*Math.PI/180,scale=Math.cos(map.lat*Math.PI/180);
-    const east=-dx*Math.cos(rad)-dy*Math.sin(rad),north=dx*Math.sin(rad)-dy*Math.cos(rad);
+    const east=-dx*Math.cos(rad)+dy*Math.sin(rad),north=dx*Math.sin(rad)+dy*Math.cos(rad);
     map.lon+=east*meters/(111319.49*scale);map.lat+=north*meters/111319.49;
     map.lat=Math.max(-80,Math.min(80,map.lat));select();
   }

@@ -130,7 +130,9 @@ export class TerrainRenderer {
     gl.useProgram(this.program);
     const rad=Math.PI/180,phi=this.pitch*rad,b=this.bearing*rad;
     const distance=25000*2**(11.5-this.zoom);
-    const eye=[Math.sin(b)*Math.sin(phi)*distance,Math.cos(b)*Math.sin(phi)*distance,Math.cos(phi)*distance];
+    // The eye stands opposite the bearing (deck.gl: bearing 0 looks north), so
+    // right x forward is up and the sky is at the top of the screen.
+    const eye=[-Math.sin(b)*Math.sin(phi)*distance,-Math.cos(b)*Math.sin(phi)*distance,Math.cos(phi)*distance];
     const forward=[-eye[0]/distance,-eye[1]/distance,-eye[2]/distance];
     const right=[Math.cos(b),-Math.sin(b),0];
     const up=[right[1]*forward[2],-right[0]*forward[2],right[0]*forward[1]-right[1]*forward[0]];
