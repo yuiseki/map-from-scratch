@@ -756,7 +756,7 @@
 - [ ] `cesium-206-labels` → `examples/cesium/206-labels/` — [Labels](https://sandcastle.cesium.com/?src=labels)
 - [ ] `cesium-207-labels-dev` → `examples/cesium/207-labels-dev/` — [Labels Dev](https://sandcastle.cesium.com/?src=labels-dev)
 - [ ] `cesium-208-lensflare` → `examples/cesium/208-lensflare/` — [Lensflare](https://sandcastle.cesium.com/?src=lensflare)
-- [ ] `cesium-209-lighting` → `examples/cesium/209-lighting/` — [Lighting](https://sandcastle.cesium.com/?src=lighting)
+- [x] `cesium-209-lighting` → `examples/cesium/209-lighting/` — [Lighting](https://sandcastle.cesium.com/?src=lighting)
 - [ ] `cesium-210-localtofixedframe` → `examples/cesium/210-localtofixedframe/` — [Localtofixedframe](https://sandcastle.cesium.com/?src=localtofixedframe)
 - [ ] `cesium-211-manually-controlled-animation` → `examples/cesium/211-manually-controlled-animation/` — [Manually Controlled Animation](https://sandcastle.cesium.com/?src=manually-controlled-animation)
 - [ ] `cesium-212-many-clipping-planes-dev` → `examples/cesium/212-many-clipping-planes-dev/` — [Many Clipping Planes Dev](https://sandcastle.cesium.com/?src=many-clipping-planes-dev)
@@ -882,5 +882,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **52 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **53 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

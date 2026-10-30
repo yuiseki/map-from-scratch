@@ -1,0 +1,116 @@
+id: cesium-209-lighting
+request: >-
+  CesiumJS Sandcastle の「Lighting」のように、太陽に照らされた 3D 地球儀を表示したい。
+  太陽はワールド座標に固定し、スライダーで太陽直下点の経度（分点なので緯度 0）を動かすと
+  昼夜の境界（terminator）が地図の上を移動する。ドラッグで地球を回転、ホイールでズーム。
+  外部ライブラリなし、Canvas 2D で最速・最小に実装する。
+
+requirements:
+  - id: day-night-shading
+    need: 太陽方向に対し昼側が明るく、夜側が暗く、境界が滑らかな曲線になる
+    rationale: 半球ごとの塗り分けでは terminator が直線になり、三角形ごとの明暗では段が出る
+    unmeasured: verification の day-night-contrast / terminator-moves-with-sun で画面ピクセルを検証
+  - id: sun-in-world-space
+    need: 地球を回転しても太陽はワールド座標に固定され、昼側が画面上を移動する
+    rationale: 画面座標のマスクだと回転に追従してしまい「太陽が一緒に回る」ことになる
+    unmeasured: verification の light-stays-on-the-world で検証
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 大気散乱シェーダーや CesiumJS フルバンドルは不要
+  - id: quick-start
+    need: ページを開いて即座に地球儀が現れる
+    rationale: 陸地データ 57 KB を取得して初回描画まで 300 ms 以内
+  - id: smooth-interaction
+    need: ドラッグ回転が 60 fps で動く
+    rationale: 60 Hz の 1 フレームは 16.7 ms。夜側マスクの再計算を含めて 20 ms 未満に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 4.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/209-lighting/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの回転中の再描画時間とフレーム間隔（夜側マスクの再計算を含む）
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/cesium/209-lighting/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/cesium-209-lighting/land.bin
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを earcut で三角形分割し、経緯度 x 100 の Int16 で格納
+    - 辺 20 度超の三角形は読み込み時に分割して単位球の xyz にする（cesium-180 と同じ理由）
+
+performance_knowledge:
+  - id: night-mask-instead-of-per-triangle-shading
+    finding: Canvas 2D で球面の陰影を付けるとき、三角形ごとに色を変えると facet が出て、半円のグラデーションでは terminator が直線になる。円盤を覆う 256×256 のピクセルマスク（各画素の法線と太陽方向の内積）を毎フレーム作って拡大合成すると、滑らかな曲線の terminator が 65,536 画素の計算で済む
+    evidence: 65,536 画素のマスクを毎フレーム作り直して、回転60フレームで redraw_ms p95 1.385 ms（max 2.195）、frame_interval_ms p95 1.605 ms
+    applies_when: Canvas 2D の地球儀・球体・任意形状にワールド固定の光源で陰影を付けるとき
+  - id: mask-in-world-space
+    finding: 太陽方向をカメラ座標ではなくワールド座標の法線と内積すると、回転しても昼側が画面に貼り付かない。マスクの画素 (nx, ny) からカメラ法線を作り、yaw/pitch の逆回転でワールド法線へ戻してから内積を取る
+    evidence: light-stays-on-the-world が 3 回の反復とも PASS（太陽直下点が画面で 40 px 以上動き、回転の前後とも輝度 > 25）
+    applies_when: 回転する球体に固定光源を当てるとき
+  - id: sample-ocean-symmetric-points
+    finding: 昼夜の検証は、海の上で太陽から ±135 度の 2 点（lon 45 / -45、緯度 0）を比べると、下地の色が同じでマスクの差だけを読める。陸をまたぐと昼夜以外の色差が混ざる
+    evidence: day-night-contrast と terminator-moves-with-sun が 3 回とも PASS（lon 45 と lon -45 の輝度差 > 25、太陽を 180 度動かすと明暗が入れ替わる）
+    applies_when: 陰影付きの球体をピクセル読み戻しで検証するとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/cesium/209-lighting/index.html
+      - examples/cesium/209-lighting/main.ts
+      - examples/cesium/209-lighting/globe.ts
+    dependencies: []
+    why: 正射投影した地球儀に、ワールド固定の太陽方向から作る低解像度マスクを重ねるだけで、シェーダーなしに滑らかな昼夜境界が出せる
+  alternatives:
+    - option: CesiumJS フルスタック（Globe の enableLighting）
+      rejected_because: 数 MB の WebGL エンジンとアセット初期化はこの用途には過大
+    - option: 三角形ごとに明暗を付ける
+      rejected_because: 陸地の三角形は粗く、facet がそのまま見える
+    - option: 円盤に半円グラデーションを重ねる
+      rejected_because: 太陽が視点の真横にあるとき以外 terminator が直線になり、経度をずらすと破綻する
+  not_doing: [大気散乱, 雲, 地形メッシュ, 月・惑星, 実時刻（分点固定）, 影]
+
+verification:
+  checks:
+    - id: globe-disc-drawn
+      what: 地球儀が描かれ、円盤の外は宇宙色のまま
+      how: 昼側の海の点と左上の隅のピクセルを読む
+      expected: '昼側 > 25、隅 < 12（宇宙 #05070d の輝度 約 7）'
+    - id: day-night-contrast
+      what: 昼側が夜側より明るい
+      how: 太陽経度 90 度で lon 45 / lon -45（緯度 0、どちらも海）の輝度を比べる
+      expected: '差 > 25'
+    - id: terminator-moves-with-sun
+      what: 太陽を 180 度動かすと昼夜が入れ替わる
+      how: 同じ 2 点を太陽経度 -90 度で読み直す
+      expected: 'lon 45 は 25 以上暗くなり、lon -45 は 25 以上明るくなる'
+    - id: light-stays-on-the-world
+      what: 地球を回転しても昼側はワールド座標に固定されている
+      how: 太陽直下に近い点 (lon 40, lat 0) の画面位置と輝度を、yaw を 0.8 rad 回す前後で比べる
+      expected: '40 px 以上動き、前後とも輝度 > 25'
+  harness:
+    - contextlost が起きたらエラーにする
