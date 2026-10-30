@@ -1,0 +1,124 @@
+id: maplibre-096-fit-a-map-to-a-bounding-box
+request: >-
+  MapLibre の "Fit a map to a bounding box" 例と同じく、ニューヨーク [-74.5, 40]・
+  ズーム 9 で開き、ボタンのクリックで [[32.958984, -5.353521], [43.50585, 5.615985]]
+  の範囲がビューポートに収まるよう中心とズームを合わせたい。範囲の四隅と中心には
+  目印を置き、ドラッグのパンとホイールのズームにも追従させる。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: fitBounds と背景地図だけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: fit-bounds
+    need: ボタン1回でバウンディングボックスがビューポートに収まり、はみ出しも余りも最小になる
+    unmeasured: verification の fit-sets-camera / fit-bounds-flush で中心・ズーム・四隅の投影座標を検証
+  - id: background-map
+    need: ズーム 9 とフィット後のズームでも道路・地名・海岸線が読める背景地図がある
+    unmeasured: verification の basemap-drawn で表示範囲のタイル枚数と画面の色数を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/096-fit-a-map-to-a-bounding-box/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/096-fit-a-map-to-a-bounding-box/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
+  outputs:
+    - data/baked/maplibre-096-fit-a-map-to-a-bounding-box/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - フィット対象のバウンディングボックスは元例の定数をそのまま使う
+
+performance_knowledge:
+  - id: fit-bounds-is-two-midpoints-and-a-min
+    finding: padding 0 の fitBounds は、中心をバウンディングボックスのメルカトル中点、ズームを min(幅/経度スパン, 高さ/緯度スパン) から log2 で求めるだけで再現できる。カメラ行列や反復計算は不要
+    evidence: fit-sets-camera が独立計算の中心とズームに 0.005 / 1e-9 以内で一致し、fit-bounds-flush が四隅の投影座標を 1.5 px 以内で検証
+  - id: choose-the-tighter-axis
+    finding: 1024×768 ではこの範囲は高さ方向が制約になる（左右に 344 px ずつ余る）。片方の軸だけがビューポート端に接することを検証しないと、両軸を個別に合わせる誤実装と区別できない
+    evidence: fit-bounds-flush が上下マージン 0 px・左右マージン 344 px・左右対称を確認
+  - id: zoom-reference-is-256-not-512
+    finding: 本実装のズームは 256 px タイル基準（MapLibre GL JS の 512 px 基準より値が 1 大きい）。フィット結果の画面は同じで、ズーム値の基準だけが違うため、元例と数値を直接比較しない
+    evidence: 1024×768 でこの範囲は zoom 6.52（MapLibre 表記なら 5.52）にフィットする
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/096-fit-a-map-to-a-bounding-box/index.html
+      - examples/maplibre/096-fit-a-map-to-a-bounding-box/main.ts
+      - examples/maplibre/096-fit-a-map-to-a-bounding-box/fit.ts
+    dependencies: []
+    why: ラスタ下地と4つの目印だけなら Canvas 2D の即時描画が最小・最速
+  alternatives:
+    - option: WebGL2
+      rejected_because: 背景タイルの描画と目印4つに GPU パイプラインを組むのは過剰
+    - option: CSS の transform で地図を拡大
+      rejected_because: タイルの解像度を切り替えながらのフィットには結局自前の投影計算が必要
+  not_doing: [3D地形, 地名ラベル, fitBounds のアニメーション, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: 開いたときのニューヨーク周辺にラスタタイルの背景地図が描かれている
+      how: ready タイル数 = 表示タイル数、キャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: 'ready === visible かつ 150 色超'
+    - id: initial-view-is-new-york
+      what: ボタンを押す前は元例どおり [-74.5, 40]・ズーム 9
+      how: 公開したメルカトル中心とズームを独立計算と比較
+      expected: 'zoom === 9、中心が mercX(-74.5)/mercY(40) に一致'
+    - id: fit-sets-camera
+      what: ボタンで fitBounds が呼ばれ、中心がメルカトル中点・ズームが制約軸から決まる
+      how: '#fit をクリックし、独立計算した中心・ズームと比較'
+      expected: 'ズーム差 < 0.005、中心差 < 1e-9'
+    - id: fit-bounds-flush
+      what: 四隅の投影座標がビューポートに接し、余白が左右・上下で対称
+      how: 独立投影した四隅から上下左右のマージンを計算
+      expected: 'いずれかの軸のマージン < 1.5 px、左右差 < 1.5 px、上下差 < 1.5 px'
+    - id: fit-corner-markers-drawn
+      what: 四隅と中心の目印が投影位置に描かれている
+      how: 目印の内側のピクセルを厳密な RGB で検証
+      expected: '四隅が (230,57,70)、中心が (30,111,217)'
+    - id: pan-moves-bounds
+      what: 80×50 px のパンでバウンディングボックスも同じ量だけ移動する
+      how: パン前後の四隅投影座標と目印ピクセルを検証
+      expected: 'dx=80, dy=50、新しい位置に目印、古い位置に目印なし'
+    - id: zoom-keeps-bounds
+      what: 中心を固定してズームを1段上げると四隅のオフセットが2倍になる
+      how: zoomAtPoint(中心, フィット+1) の後の四隅投影座標と中心目印を検証
+      expected: '四隅の予測位置との差 < 1.5 px、中心に目印'
+  harness:
+    - contextlost が起きたらエラーにする

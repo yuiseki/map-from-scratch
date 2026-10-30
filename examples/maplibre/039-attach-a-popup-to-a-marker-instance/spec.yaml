@@ -1,0 +1,125 @@
+id: maplibre-039-attach-a-popup-to-a-marker-instance
+request: >-
+  MapLibre の "Attach a popup to a marker instance" 例と同じく、ワシントン記念塔
+  [-77.0353, 38.8895] を中心・ズーム 5 で表示し、記念塔の位置に 50 px の丸い
+  マーカーを置いて、クリックで「Construction on the Washington Monument began in 1848.」
+  のポップアップ（offset 25 px）を開閉したい。ドラッグでパン、ホイールでズームでき、
+  ポップアップはマーカーに固定される。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: マーカー1個とポップアップ1個に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: marker-popup-attachment
+    need: マーカーのクリックでポップアップが開閉し、先端がマーカーから 25 px 上に固定される
+    unmeasured: verification の checks でマーカー・ポップアップの画面ピクセルと座標を検証
+  - id: background-map
+    need: ズーム 5 でも海岸線・道路・地名が読める背景地図が下にある
+    unmeasured: verification の basemap-drawn で表示範囲のタイル枚数と画面の色数を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/039-attach-a-popup-to-a-marker-instance/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔（ポップアップ表示中）
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/039-attach-a-popup-to-a-marker-instance/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
+  outputs:
+    - data/baked/maplibre-039-attach-a-popup-to-a-marker-instance/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - マーカー位置 [-77.0353, 38.8895] とポップアップ文言は元例の定数をそのまま使う
+
+performance_knowledge:
+  - id: popup-offset-as-one-constant
+    finding: MapLibre の Popup offset 25 px は、マーカー中心から吹き出しの先端までの距離として1つの定数で表せる。吹き出しの外接矩形は先端から高さと幅を引くだけで求まり、DOM の offset 計算も transform 同期も要らない
+    evidence: marker-click-opens-popup が先端とマーカー中心-25 px の差を 0.5 px 未満で PASS
+  - id: marker-click-hit-test-in-screen-space
+    finding: マーカーのクリック判定は、マーカー中心とポインタの距離が半径以内かどうかで足りる。GeoJSON のシンボルレイヤーやヒットバッファを持ち込む必要はない
+    evidence: マーカー中心のクリックで開閉し、36 px 離れた地点では開かない
+  - id: two-draw-passes-keep-checks-honest
+    finding: 背景タイルの道路・地名が検証点に重なると色の判定が揺れるため、マーカーとポップアップの色検証中だけ下地を隠し、下地自体は別チェック（色数）に分けると両方を厳密に検証できる
+    evidence: basemap-drawn が 150 色超、marker-on-monument が下地なしで厳密な RGB 判定に PASS
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/039-attach-a-popup-to-a-marker-instance/index.html
+      - examples/maplibre/039-attach-a-popup-to-a-marker-instance/main.ts
+      - examples/maplibre/039-attach-a-popup-to-a-marker-instance/marker-popup.ts
+    dependencies: []
+    why: ラスタ下地1枚とマーカー・吹き出しの描画は Canvas 2D のパスで最小・最速
+  alternatives:
+    - option: DOM Marker + Popup（MapLibre と同じ HTML オーバーレイ）
+      rejected_because: パン中に translate3d を地図と同期させるレイアウト処理と 1 フレーム遅れのジッターを避けるため
+    - option: WebGL2
+      rejected_because: 丸マーカーと角丸吹き出しのためにテクスチャ/SDF アトラスを用意するのは過剰
+  not_doing: [3D地形, 地名ラベル, マーカーのドラッグ, 複数マーカー, ポップアップの衝突回避, 回転・ピッチ]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: 表示範囲のラスタタイルがすべて到着し、画面に道路・地名のある背景地図が描かれている
+      how: ready タイル数 = 表示タイル数、キャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: 'ready === visible かつ 150 色超'
+    - id: marker-on-monument
+      what: 記念塔の座標に丸いマーカーが描かれ、中心は石、右上は空、外側は陸地
+      how: 独立に投影した座標の中心・(+12,-14)・(+36,0) のピクセル色を検証（下地は非表示）
+      expected: '中心が石色、右上が空色、36 px 外が陸地色'
+    - id: popup-hidden-initially
+      what: クリック前はポップアップが描かれていない
+      how: popupVisible とマーカー上方のピクセルを検証
+      expected: 'popupVisible === false かつ白でない'
+    - id: marker-click-opens-popup
+      what: マーカーのクリックでポップアップが開き、先端がマーカー中心の 25 px 上に来る
+      how: マーカー中心へ pointerdown/up を送り、吹き出し内の白と先端座標を検証
+      expected: '先端と (マーカーx, マーカーy-25) の差 < 0.5 px、吹き出し内が白'
+    - id: close-button-closes-popup
+      what: × のクリックでポップアップが閉じ、元の吹き出し位置に白が残らない
+      how: 閉じるボタン中心へ pointerdown/up を送る
+      expected: 'popupVisible === false かつ元の位置が白でない'
+    - id: popup-follows-pan
+      what: 60×40 px のパンでマーカーとポップアップが同じ量だけ移動し、先端は 25 px 上に留まる
+      how: パン前後のマーカー投影座標と吹き出しバウンズを検証
+      expected: 'dx=60, dy=40、先端とマーカーの差 < 0.5 px、吹き出し内が白'
+    - id: popup-anchors-on-zoom
+      what: マーカーを中心に zoom 6 へ拡大してもマーカーの画面位置と先端オフセットが変わらない
+      how: zoomAtPoint(マーカー, 6) の後の投影座標と吹き出しバウンズを検証
+      expected: 'マーカー移動 < 1.5 px、先端とマーカーの差 < 0.5 px、吹き出し内が白'
+  harness:
+    - contextlost が起きたらエラーにする

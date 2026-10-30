@@ -1,0 +1,125 @@
+id: maplibre-102-get-coordinates-of-the-mouse-pointer
+request: >-
+  MapLibre の "Get coordinates of the mouse pointer" 例と同じく、ニューヨーク
+  [-74.5, 40]・ズーム 3 の地図で、マウスポインタの画面座標と緯度経度を
+  リアルタイムに表示したい。ポインタ位置には十字線を描き、パンやズームで
+  地図が動いてもカーソル下の座標を正しく読み続ける。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 座標読み取りと十字線に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: pointer-readout
+    need: ポインタの画面座標と緯度経度が、画面→地理の逆投影と一致し続ける
+    unmeasured: verification の readout-matches-projection / readout-follows-pan / readout-anchors-on-zoom で独立計算と比較
+  - id: continental-background
+    need: 大陸スケール（ズーム 3）で陸海の区別が付く背景がある
+    unmeasured: verification の map-rendered-at-target が陸地・海洋のピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/102-get-coordinates-of-the-mouse-pointer/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔（十字線表示中）
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/102-get-coordinates-of-the-mouse-pointer/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-102-get-coordinates-of-the-mouse-pointer/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - 初期中心 [-74.5, 40]・ズーム 3 は元例の定数をそのまま使う
+
+performance_knowledge:
+  - id: inverse-projection-is-four-operations
+    finding: 画面座標から緯度経度は、画面中心からの差分を 256·2^zoom で割り、中心のメルカトル座標に足してから経度へ戻し、緯度は atan(exp(...)) で戻すだけで求まる。ポインタ下の地理座標を保持する状態は不要
+    evidence: readout-matches-projection が独立計算と 1e-6 以内で一致
+  - id: recompute-readout-on-draw
+    finding: 地理座標を pointermove のときだけ計算すると、パンやズームでカーソル下の地点が変わったときに表示が古くなる。画面座標だけを保持し、描画のたびに逆投影し直すと常に正しい
+    evidence: readout-follows-pan が 100×50 px のパン後に新しい中心から計算した値と一致し、readout-anchors-on-zoom がポインタ軸のズームで値が不変
+  - id: fillrect-crosshair-avoids-half-pixels
+    finding: 整数座標に 1 px の stroke を引くと半ピクセルに落ちて 2 行にアンチエイリアスされる。fillRect(x, y, 1, 1) で描けば検証点の色が厳密に一致する
+    evidence: crosshair-drawn-at-pointer が (230,57,70) の厳密一致で PASS
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/102-get-coordinates-of-the-mouse-pointer/index.html
+      - examples/maplibre/102-get-coordinates-of-the-mouse-pointer/main.ts
+      - examples/maplibre/102-get-coordinates-of-the-mouse-pointer/map.ts
+    dependencies: []
+    why: 大陸スケールの陸地と十字線だけなら Canvas 2D の即時描画が最小・最速
+  alternatives:
+    - option: DOM だけの座標表示（十字線なし）
+      rejected_because: カーソル位置と読み取り値の対応を画面ピクセルで検証できない
+    - option: WebGL2
+      rejected_because: 陸地ポリゴンと十字線に GPU パイプラインは過剰
+  not_doing: [3D地形, 地名ラベル, ホバー対象のハイライト, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: no-readout-before-move
+      what: ポインタが地図に入る前は座標がなく、十字線も描かれていない
+      how: pointer が null、画面中心が陸地色で十字線色でないことを検証
+      expected: 'pointer === null かつ中心が陸地色'
+    - id: map-rendered-at-target
+      what: 中心のニューヨークは陸地、[-40, 30] は大西洋
+      how: 独立投影した画面座標のピクセル色を検証
+      expected: '中心が陸地色、[-40,30] が海洋色'
+    - id: readout-matches-projection
+      what: ポインタ (700,300) の緯度経度が逆投影と一致する
+      how: 公開した中心・ズームから独立計算した値と比較
+      expected: '緯度・経度の差 < 1e-6、画面座標が (700,300)'
+    - id: crosshair-drawn-at-pointer
+      what: ポインタ位置に 1 px の十字線と点が描かれる
+      how: 交点・縦線・横線のピクセルを厳密な RGB で検証
+      expected: '3点すべて (230,57,70)'
+    - id: readout-matches-geography
+      what: 逆投影した座標の地点が実際の陸海と一致する
+      how: 大西洋の投影位置では十字線の脇が海洋色、米国内陸では陸地色
+      expected: '海洋点が海洋色、陸地点が陸地色'
+    - id: crosshair-clears-when-moved
+      what: ポインタを動かすと古い十字線が消える
+      how: 移動前の交点ピクセルが十字線色でなく、新しい位置が十字線色
+      expected: '旧位置は非十字線色、新位置は十字線色'
+    - id: readout-follows-pan
+      what: カーソルを固定したまま 100×50 px パンすると、カーソル下の緯度経度が更新される
+      how: パン後の中心から独立計算した値と比較し、十字線が同じ画面位置に残ることを検証
+      expected: '緯度・経度の差 < 1e-6、経度が変化、十字線は (500,400)'
+    - id: readout-anchors-on-zoom
+      what: カーソル位置を軸に zoom 4 へ拡大してもカーソル下の緯度経度と十字線が動かない
+      how: zoomAtPoint(500,400,4) 後の値をパン後と比較
+      expected: '緯度・経度の差 < 1e-9、十字線は (500,400)'
+  harness:
+    - contextlost が起きたらエラーにする
