@@ -1,0 +1,104 @@
+id: tangram-008-road-filters-demo
+request: >-
+  Mapzen Tangram の road-filters-demo と同じ意図で、高速道路・幹線道路・州道の道路網を
+  種別チェックボックスや名称検索でリアルタイムにフィルタリング・動的再描画したい。外部ライブラリなしで。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: Tangram JS は数十 MB。道路フィルタとスタイリングは Canvas 2D で十分
+  - id: quick-start
+    need: ページを開いて即座に道路網が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: 道路フィルタ切り替えやパン・ズーム操作で 60 fps を保つ
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画を 2.0 ms 以下に
+  - id: real-time-road-filtering
+    need: 道路種別や名称検索によるリアルタイムフィルタリングで表示道路が即座に切り替わる
+    unmeasured: verification checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 65000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/tangram/008-road-filters-demo/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 道路データおよび背景陸地の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/tangram/008-road-filters-demo/bake.ts]
+  sources:
+    - id: deckgl-highway-roads
+      origin: https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/highway/roads.json
+      license: OpenStreetMap / FARS パブリックデータ
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/tangram-008-road-filters-demo/roads.json
+  preparation:
+    - 全米 3,060 件の主要高速道路（Interstate）、幹線道路（US Highway）、カリフォルニア州道を Mercator [0, 1] に投影
+    - 北米大陸の陸地境界ポリゴンを背景用に抽出
+
+performance_knowledge:
+  - id: class-batched-line-filtering
+    finding: 3,000 本超の道路ラインを種別（I, US, SR）ごとの 3 つの beginPath() パスにまとめて描画することで、フィルタ切り替え時も 0.5 ms 未満で即座に再描画できる
+    evidence: redraw_ms p95 0.41 ms、frame_interval_ms p95 10.94 ms、first_frame 14.17 ms (results/tangram-008-road-filters-demo/latest.json)
+    applies_when: ベクター道路網のリアルタイムフィルタリング・階層描画
+  - id: pointer-centered-wheel-zoom
+    finding: ホイールズーム時にカーソルの中心からのオフセット o に対し panBy(-o); setZoom(z); panBy(o) でズームすることで、カーソル下の地物が滑らず自然な操作感を実現できる
+    evidence: rendering-mistakes.md の wheel zoom 修正に準拠
+    applies_when: すべての 2D 地図パン・ズーム操作系
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/tangram/008-road-filters-demo/index.html
+      - examples/tangram/008-road-filters-demo/main.ts
+      - examples/tangram/008-road-filters-demo/map.ts
+    dependencies: []
+    why: 道路クラス別バッチ描画により、重い WebGL エンジンなしで超高速・軽量な道路フィルタリングを実現
+  alternatives:
+    - option: Tangram JS (WebGL)
+      rejected_because: 数 MB のバイナリおよびシェーダー初期化オーバーヘッドが不要
+  not_doing: [3D 建物押出, 複雑な道路ラベル衝突判定, タイル動的ストリーミング]
+
+verification:
+  checks:
+    - id: roads-loaded
+      what: 全米道路データが 3,000 件以上正しくロードされる
+      how: map.roadCount を検証
+      expected: roads >= 3000
+    - id: interstate-roads-rendered
+      what: 初期表示（カリフォルニア・ベイエリア）で Interstate 高速道路（I-80, I-5等）がシアン系カラーで描画されている
+      how: I-80 付近のピクセル色を検証
+      expected: r < 50 && g > 180 && b > 200
+    - id: filter-toggles-visibility
+      what: Interstate の表示をトグルオフにすると、該当道路ピクセルが背景色に消滅する
+      how: フィルタ切り替え前後のピクセル色変化を検証
+      expected: トグルオフ後に道路色が消える
+    - id: pan-updates-road-positions
+      what: 地図をパンしたとき、道路のスクリーン座標が正しく追従する
+      how: パン前後のピクセル位置変化を検証
+      expected: ピクセル移動先で道路色が検出される
+  harness:
+    - contextlost が起きたらエラーにする

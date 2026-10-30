@@ -272,7 +272,7 @@
 - [ ] `tangram-005-lights-cameras-demo` → `examples/tangram/005-lights-cameras-demo/` — [Light and camera types and manipulations](https://github.com/tangrams/lights-cameras-demo)
 - [ ] `tangram-006-osm-webgl-demos` → `examples/tangram/006-osm-webgl-demos/` — [OSM vector data WebGL manipulation](https://github.com/tangrams/osm-webgl-demos)
 - [ ] `tangram-007-raster-baselayer-demo` → `examples/tangram/007-raster-baselayer-demo/` — [WebGL content over raster baselayer](https://github.com/tangrams/raster-baselayer-demo)
-- [ ] `tangram-008-road-filters-demo` → `examples/tangram/008-road-filters-demo/` — [Real-time road name filters](https://github.com/tangrams/road-filters-demo)
+- [x] `tangram-008-road-filters-demo` → `examples/tangram/008-road-filters-demo/` — [Real-time road name filters](https://github.com/tangrams/road-filters-demo)
 - [ ] `tangram-009-shaders-demo` → `examples/tangram/009-shaders-demo/` — [Custom GLSL shaders for map styling](https://github.com/tangrams/shaders-demo)
 - [x] `tangram-010-simple-demo` → `examples/tangram/010-simple-demo/` — [Simplest stand-alone Tangram setup](https://github.com/tangrams/simple-demo)
 - [ ] `tangram-011-spheremap-demos` → `examples/tangram/011-spheremap-demos/` — [Sphere map reflection and lighting demos](https://github.com/tangrams/spheremap-demos)
