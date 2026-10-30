@@ -95,29 +95,35 @@ interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
 Seen once so far.
 
-### Wheel zoom about the screen centre (repeated: 26 flat 2D examples)
+### Wheel zoom about the screen centre (repeated: 23 flat 2D examples)
 
 - Screen: the place under the pointer slides away while zooming; MapLibre,
   Leaflet and Mapbox keep it under the pointer.
-- Why: the Canvas 2D templates call `setZoom(zoom ± d)` without the pointer
-  position. Counted from the wheel handlers that never read the pointer
-  (2026-10-30): 04, 26, deckgl 016, forge3d 004, 008 and 010, leaflet 001
-  and 005, mapbox 009, 018 and 127, all nine maplibre examples, openglobus
-  002, 004 and 009, tangram 001, 004 and 010. 07, 10, 19, 20, 24 and the
-  other deckgl examples keep the point under the pointer.
-- Fix: convert the pointer to world coordinates before the zoom change and
-  move the centre so it maps back to the same pixel afterwards.
-- Orbit cameras on a globe or a 3D scene may zoom to the target instead; say
-  which in `REQUEST.md`.
+- Why: the Canvas 2D templates called `setZoom(zoom ± d)` without the
+  pointer position: forge3d 004, 008 and 010, mapbox 009, 018 and 127, all
+  nine maplibre examples (053 included), openglobus 002, 004 and 009, tangram
+  001, 004 and 010, deckgl 016, leaflet 001 and 005. 04, 07, 10, 19, 20, 24,
+  26 and the other deckgl examples did it right.
+- Fix (2026-10-30, all 23; openglobus 009, d3 019 and mapbox 045 in 19dc81b
+  with a wheel-zoom-keeps-point bench check): move the point under the pointer to the centre,
+  zoom, and move it back at the new scale. With a `panBy(dx, dy)` that moves
+  the content by pixels, that is `panBy(−o); setZoom(z); panBy(o)` for the
+  pointer's offset o from the centre; forge3d 010, which scales a plate
+  about its centre, sets `pan = o − (o − pan) · z′ / z`.
+- Test without knowing the page's API: grab the canvas, wheel at a point p
+  off centre, grab again, and compare the two hypotheses "scaled about p"
+  and "scaled about the centre" by the mean difference of sampled pixels.
+  Put p on detail: on a uniform area both hypotheses score zero.
 
-### No click tolerance (leaflet 005, 19)
+### Click tolerance (leaflet 001 and 005, 19, 20, 056)
 
 A move of one pixel between `pointerdown` and `pointerup` turned a click into
-a drag, so popups and selections need a perfectly still hand (and fail on
-touch). Leaflet uses 3 px. Measure the distance from the `pointerdown`
-position, not the last move: 056, 20 and leaflet 001 compare each move event
-alone, so a slow drag of 1 px per event still counts as a click. 02 does it
-right (8 px times the device pixel ratio from the down position).
+a drag in leaflet 005 and 19, so popups and selections needed a perfectly
+still hand (and failed on touch). leaflet 001, 20 and 056 had a tolerance but
+compared each move event alone, so a slow drag of 1 px per event still
+counted as a click. All five now measure the distance from the press and
+allow 3 px, as Leaflet does (056 in device pixels, so 3 · devicePixelRatio).
+02 already did this (8 px times the device pixel ratio).
 
 ## Picking
 
