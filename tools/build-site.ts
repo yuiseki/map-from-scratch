@@ -97,9 +97,13 @@ for (const match of inventory.matchAll(/^- \[[ x]\] `([a-z0-9]+-\d{3}-[^`]+)`/gm
 
 const galleries = [
   { id: 'maplibre', label: 'MapLibre GL JS' },
-  { id: 'leaflet', label: 'Leaflet' },
+  { id: 'mapbox', label: 'Mapbox GL JS' },
+  { id: 'cesium', label: 'CesiumJS' },
+  { id: 'openglobus', label: 'OpenGlobus' },
   { id: 'deckgl', label: 'deck.gl' },
   { id: 'd3', label: 'D3' },
+  { id: 'leaflet', label: 'Leaflet' },
+  { id: 'tangram', label: 'Tangram' },
   { id: 'legacy', label: '既存の例' },
 ] as const;
 const galleryOf = (dir: string) => galleries.find(({ id }) => dir.startsWith(`examples/${id}/`))?.id ?? 'legacy';
