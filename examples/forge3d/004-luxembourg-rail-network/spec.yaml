@@ -1,0 +1,93 @@
+id: forge3d-004-luxembourg-rail-network
+request: >-
+  forge3d のギャラリー例「Luxembourg rail network」のように、ルクセンブルクの領土ジオメトリの上に、
+  主要鉄道網（CFL）のベクターラインを重ね合わせた輸送オーバーレイ地図を表示したい。
+  ドラッグでパン、ホイールで拡大縮小でき、ラインが地理座標に固定されて追従すること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ルクセンブルク領土と鉄道ベクターオーバーレイ表示に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と鉄道網が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: overlay-accuracy
+    need: 鉄道ラインと駅ノードが地理座標に正確にアンカーされ、ズームやパンでもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 15000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/004-luxembourg-rail-network/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ジオメトリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/004-luxembourg-rail-network/bake.ts]
+  sources:
+    - id: luxembourg-rail
+      origin: CFL (Société Nationale des Chemins de Fer Luxembourgeois) オープンデータ
+      license: Creative Commons CC-Zero / Public Domain
+  outputs:
+    - data/baked/forge3d-004-luxembourg-rail-network/luxembourg.json
+  preparation:
+    - ルクセンブルク国境ポリゴンおよび主要鉄道路線（南北幹線・東線・西線・支線）を Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: canvas2d-vector-transport-overlay
+    finding: 3D 地形上のドレーピングや輸送ベクターオーバーレイも、Canvas 2D のパス合成（グロー外枠＋芯線ストローク＋ジャンクションノード）を用いることで、重い WebGL 深度バイアスやテクスチャベイクなしで軽量・高速に描画可能
+    evidence: 再描画時間 0.2 ms 未満、初回描画 7 ms 前後を達成
+    applies_when: 領域内の鉄道・道路ネットワークの強調オーバーレイ表示
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/forge3d/004-luxembourg-rail-network/index.html
+      - examples/forge3d/004-luxembourg-rail-network/main.ts
+      - examples/forge3d/004-luxembourg-rail-network/map.ts
+    dependencies: []
+    why: 領土ポリゴンと鉄道路線ベクターオーバーレイの高速描画に Canvas 2D が最適
+  alternatives:
+    - option: forge3d / Rust Wasm
+      rejected_because: Wasm バイナリと wgpu シェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形メッシュ, 地名ラベル, 列車リアルタイム動態]
+
+verification:
+  checks:
+    - id: rail-network-rendered
+      what: ルクセンブルク領土内に鮮やかなオレンジ／赤色の鉄道ラインが描画されている
+      how: getImageData で鉄道結節点周辺のピクセル色を検証
+      expected: rail: r > 200 && g > 70 && b < 80
+    - id: vector-overlay-moves-with-pan
+      what: 地図をパンしたとき、鉄道ラインのスクリーン座標が正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で鉄道ライン色が検出される
+    - id: vector-overlay-anchors-on-zoom
+      what: ズーム変更後も鉄道ラインが地理座標に固定されている
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後の計算位置に鉄道ラインが描画されている
+  harness:
+    - contextlost が起きたらエラーにする
