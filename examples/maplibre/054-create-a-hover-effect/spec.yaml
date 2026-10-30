@@ -1,0 +1,110 @@
+id: maplibre-054-create-a-hover-effect
+request: >-
+  エチオピア周辺を覆うポリゴンを置き、ポインタがその上に来たときだけ塗り色を
+  ティールからオレンジへ変えるホバー効果を表示したい。ポインタが外れると元の色に戻り、
+  ドラッグでパン、ホイールで拡大縮小できる。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ポリゴン1個のホバー判定に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とポリゴンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: hover-highlight
+    need: ポリゴンの上にポインタが入った瞬間に塗り色が変わり、外れると戻る
+    unmeasured: verification の checks で pointermove / pointerleave 後のピクセルと状態を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/054-create-a-hover-effect/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ポリゴンと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: hover
+      what: ホバー状態の更新と 60 フレームのパン操作中の再描画時間
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/054-create-a-hover-effect/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-054-create-a-hover-effect/box.json
+    - data/baked/maplibre-054-create-a-hover-effect/land.json
+  preparation:
+    - エチオピア周辺の矩形（経度30–45、緯度0–15、5点）を Web Mercator 座標に投影
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: hover-is-a-boolean
+    finding: ホバーは「ポリゴンのメルカトル矩形の内側か」を pointermove ごとに判定する真偽値1個で足りる。フィーチャーステートやレイヤーツリーは不要で、変化したときだけ再描画する
+    evidence: hover-highlights-polygon が pointermove 直後にオレンジ、leave-restores-fill がティールへ復帰
+  - id: geo-hit-test-not-pixels
+    finding: 当たり判定はピクセル読み戻しではなく、ポインタをメルカトル座標へ逆変換して矩形と比較する。毎 pointermove のコストは数回の浮動小数演算だけで、getImageData の同期的な読み戻しを避けられる
+    evidence: 60 フレームのパン中 redraw_ms p95 が 1 ms 未満
+  - id: repaint-only-on-change
+    finding: 内外が変わらない pointermove では描画もしない。ホバー中の連続移動でも再描画は最初の 1 回だけ
+    evidence: updateHover が inside === hovering のとき早期 return
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/054-create-a-hover-effect/index.html
+      - examples/maplibre/054-create-a-hover-effect/main.ts
+      - examples/maplibre/054-create-a-hover-effect/polygon.ts
+    dependencies: []
+    why: 単一ポリゴンの塗り替えは Canvas 2D の fill が最小。当たり判定も矩形比較で足りる
+  alternatives:
+    - option: WebGL2 で uniform の色を差し替える
+      rejected_because: シェーダー初期化とバッファ転送が加わり、1ポリゴンには過剰
+    - option: ピクセル読み戻しで当たり判定する
+      rejected_because: pointermove ごとの getImageData は同期ストールを招く。矩形判定で十分
+  not_doing: [3D地形, 複数レイヤー, マウスカーソルのカスタム画像, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: default-fill-teal
+      what: 初期状態でポリゴンがティール #008888
+      how: ポリゴン中心（37.5, 7.5）のピクセルを読み戻す
+      expected: 'RGB (0,136,136) と差 2 以内、hovering=false'
+    - id: hover-highlights-polygon
+      what: ポインタがポリゴン上に入るとオレンジ #ff8800 になる
+      how: 中心へ pointermove を dispatch し、状態とピクセルを検証
+      expected: 'hovering=true、RGB (255,136,0) と差 2 以内'
+    - id: leave-restores-fill
+      what: ポインタが外れるとティールに戻る
+      how: pointerleave を dispatch し、状態とピクセルを検証
+      expected: 'hovering=false、RGB (0,136,136) と差 2 以内'
+    - id: hover-follows-pan
+      what: パン後も新しい画面位置でホバーが効く
+      how: 60×40 px パン後に移動先の中心へ pointermove を送る
+      expected: 'hovering=true、オレンジ'
+    - id: hover-anchors-on-zoom
+      what: ズーム後も地理座標どおりにホバーが効く
+      how: setZoom(5) 後に中心へ pointermove を送る
+      expected: 'zoom 5、hovering=true、オレンジ'
+  harness:
+    - contextlost が起きたらエラーにする

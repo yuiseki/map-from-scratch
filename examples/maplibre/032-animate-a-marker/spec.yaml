@@ -1,0 +1,112 @@
+id: maplibre-032-animate-a-marker
+request: >-
+  [-96.0, 37.8] にピンを1本置き、そのピンが一定周期で跳ねるアニメーションを表示したい。
+  ピンの先端は常に同じ地理座標を基準に上下し、ドラッグでパン、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ピン1本の周期的な移動に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とピンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: アニメーションとパンが 60 fps で滑らかに動く
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: anchor-accuracy
+    need: 跳ねるピンの基準点が常に同じ地理座標で、パン・ズームにも追従する
+    unmeasured: verification の checks で跳ね幅とアンカー座標を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4800, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/032-animate-a-marker/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: animation
+      what: 60フレームのアニメーション更新とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/032-animate-a-marker/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-032-animate-a-marker/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: bounce-as-a-screen-offset
+    finding: ピンの跳ねは地理座標を動かさず、スクリーン座標の y に |sin| の振幅を足すだけでよい。投影計算はアンカー1点のままで、毎フレームの地理計算が増えない
+    evidence: marker-bounces-up が 350 ms 後にちょうど 26 px 上、700 ms で 0 px に戻る
+  - id: deterministic-advance-again
+    finding: rAF を止めて advance(ms) で時間を進めると、跳ねの位相に依存する検証を何度でも再現できる
+    evidence: setAnimating(false) 後の 3 つのチェックが毎回同じ px 値
+  - id: rAF-budget
+    finding: 1本のピンと陸地127ポリゴンの再描画は 1 ms 未満で、60 fps の予算に余裕がある
+    evidence: redraw_ms p95 が 1 ms 未満
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/032-animate-a-marker/index.html
+      - examples/maplibre/032-animate-a-marker/main.ts
+      - examples/maplibre/032-animate-a-marker/marker.ts
+    dependencies: []
+    why: ピン1本の上下動は Canvas 2D のパス描画が最小。毎フレームのGeo計算もアンカー1点で済む
+  alternatives:
+    - option: DOM の Marker 要素を translate3d で動かす
+      rejected_because: レイアウトスレッドとの同期が必要になり、パン中に 1 フレーム遅れることがある
+    - option: WebGL2 のインスタンス描画
+      rejected_because: 1本のピンには初期化コストが見合わない
+  not_doing: [3D地形, 地名ラベル, 複数マーカー, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: marker-starts-at-anchor
+      what: 静止時はピンの先端がアンカー座標に一致し、ピンが描かれている
+      how: resetAnimation 後にバウンズとピクセルを検証
+      expected: 'bounce = 0、先端 = アンカー、頭部がオレンジ'
+    - id: marker-bounces-up
+      what: 半周期後にピンが 26 px 上がる
+      how: advance(350) 後のアンカーとピン先端の差を検証
+      expected: 'アンカー - 先端 = 26 px、頭部がオレンジ'
+    - id: marker-returns-to-anchor
+      what: 1周期後にピンがアンカーへ戻る
+      how: さらに advance(350) 後の跳ね幅を検証
+      expected: 'bounce < 0.01 px'
+    - id: marker-follows-pan
+      what: パンでアンカーとピンが同じ量だけ動く
+      how: panBy(50,30) 前後のアンカー座標を比較
+      expected: 'dx=50, dy=30'
+    - id: marker-anchors-on-zoom
+      what: ズーム後もアンカーが投影座標に一致する
+      how: setZoom(4.5) 後のアンカーを独立計算と比較
+      expected: '差 < 1.5 px'
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでカーソル下のアンカーが動かない
+      how: zoomAtPoint(アンカー, 4.75) 前後の画面位置を比較
+      expected: '移動 < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

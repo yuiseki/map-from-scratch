@@ -51,7 +51,7 @@
 - [ ] `maplibre-029-add-live-realtime-data` → `examples/maplibre/029-add-live-realtime-data/` — [Add live realtime data](https://maplibre.org/maplibre-gl-js/docs/examples/add-live-realtime-data/)
 - [ ] `maplibre-030-add-multiple-geometries-from-one-geojson-source` → `examples/maplibre/030-add-multiple-geometries-from-one-geojson-source/` — [Add multiple geometries from one GeoJSON source](https://maplibre.org/maplibre-gl-js/docs/examples/add-multiple-geometries-from-one-geojson-source/)
 - [ ] `maplibre-031-animate-a-line` → `examples/maplibre/031-animate-a-line/` — [Animate a line](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-line/)
-- [ ] `maplibre-032-animate-a-marker` → `examples/maplibre/032-animate-a-marker/` — [Animate a marker](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-marker/)
+- [x] `maplibre-032-animate-a-marker` → `examples/maplibre/032-animate-a-marker/` — [Animate a marker](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-marker/)
 - [ ] `maplibre-033-animate-a-point-along-a-route` → `examples/maplibre/033-animate-a-point-along-a-route/` — [Animate a point along a route](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point-along-a-route/)
 - [x] `maplibre-034-animate-a-point` → `examples/maplibre/034-animate-a-point/` — [Animate a point](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point/)
 - [ ] `maplibre-035-animate-a-series-of-images` → `examples/maplibre/035-animate-a-series-of-images/` — [Animate a series of images](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-series-of-images/)
@@ -73,7 +73,7 @@
 - [ ] `maplibre-051-create-a-gradient-line-using-an-expression` → `examples/maplibre/051-create-a-gradient-line-using-an-expression/` — [Create a gradient line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-line-using-an-expression/)
 - [ ] `maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation` → `examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/` — [Create a Heatmap layer on a globe with terrain elevation](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer-on-a-globe-with-terrain-elevation/)
 - [x] `maplibre-053-create-a-heatmap-layer` → `examples/maplibre/053-create-a-heatmap-layer/` — [Create a heatmap layer](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
-- [ ] `maplibre-054-create-a-hover-effect` → `examples/maplibre/054-create-a-hover-effect/` — [Create a hover effect](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-hover-effect/)
+- [x] `maplibre-054-create-a-hover-effect` → `examples/maplibre/054-create-a-hover-effect/` — [Create a hover effect](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-hover-effect/)
 - [ ] `maplibre-055-create-a-time-slider` → `examples/maplibre/055-create-a-time-slider/` — [Create a time slider](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-time-slider/)
 - [x] `maplibre-056-create-and-style-clusters` → `examples/maplibre/056-create-and-style-clusters/` — [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
 - [ ] `maplibre-057-create-deckgl-layer-using-rest-api` → `examples/maplibre/057-create-deckgl-layer-using-rest-api/` — [Create deck.gl layer using REST API](https://maplibre.org/maplibre-gl-js/docs/examples/create-deckgl-layer-using-rest-api/)
@@ -425,7 +425,7 @@
 - [ ] `mapbox-048-disable-rotation` → `examples/mapbox/048-disable-rotation/` — [Disable Rotation](https://docs.mapbox.com/mapbox-gl-js/example/disable-rotation/)
 - [x] `mapbox-049-disable-scroll-zoom` → `examples/mapbox/049-disable-scroll-zoom/` — [Disable Scroll Zoom](https://docs.mapbox.com/mapbox-gl-js/example/disable-scroll-zoom/)
 - [ ] `mapbox-050-display-and-style-rich-text-labels` → `examples/mapbox/050-display-and-style-rich-text-labels/` — [Display And Style Rich Text Labels](https://docs.mapbox.com/mapbox-gl-js/example/display-and-style-rich-text-labels/)
-- [ ] `mapbox-051-drag-a-marker` → `examples/mapbox/051-drag-a-marker/` — [Drag A Marker](https://docs.mapbox.com/mapbox-gl-js/example/drag-a-marker/)
+- [x] `mapbox-051-drag-a-marker` → `examples/mapbox/051-drag-a-marker/` — [Drag A Marker](https://docs.mapbox.com/mapbox-gl-js/example/drag-a-marker/)
 - [ ] `mapbox-052-drag-a-point` → `examples/mapbox/052-drag-a-point/` — [Drag A Point](https://docs.mapbox.com/mapbox-gl-js/example/drag-a-point/)
 - [ ] `mapbox-053-elevated-line` → `examples/mapbox/053-elevated-line/` — [Elevated Line](https://docs.mapbox.com/mapbox-gl-js/example/elevated-line/)
 - [ ] `mapbox-054-elevation-along-line` → `examples/mapbox/054-elevation-along-line/` — [Elevation Along Line](https://docs.mapbox.com/mapbox-gl-js/example/elevation-along-line/)
@@ -908,5 +908,5 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **69 件**（maplibre-010、011、012、013、017、018、025、027、034、040、041、048、049、053、056、061、069、070、071、072、073、084、mapbox-009、018、019、022、027、038、045、049、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **72 件**（maplibre-010、011、012、013、017、018、025、027、032、034、040、041、048、049、053、054、056、061、069、070、071、072、073、084、mapbox-009、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
