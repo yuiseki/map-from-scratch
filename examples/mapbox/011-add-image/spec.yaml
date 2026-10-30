@@ -1,0 +1,118 @@
+id: mapbox-011-add-image
+request: >-
+  Mapbox の "Add an image" 例と同じく、ニューイングランド上空 [-80.425, 37.936]〜[-71.516, 46.437]
+  の矩形に、あらかじめ用意した 1 枚の画像を地図に貼りたい。パン・ズームすると画像は地図に
+  固定されて一緒に動く。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ラスタ背景と 1 枚の画像だけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と画像が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従し、画像も地図に固定される
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: image-georeferenced
+    need: 画像が 4 隅の地理座標に正確に貼られ、向きが正しい
+    unmeasured: verification の checks で 4 象限の色と矩形の端をピクセルで検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 45000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/011-add-image/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データと画像の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/011-add-image/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-tiles
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json
+      license: OpenStreetMap データ © OpenStreetMap contributors（ODbL）、タイル © OpenMapTiles
+  outputs:
+    - data/baked/mapbox-011-add-image/land.json
+    - data/baked/mapbox-011-add-image/overlay.png
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - 貼る画像はベイク時に Node の zlib で 256×256 RGBA PNG として生成（4 象限に色分けした円）
+    - 全ピクセル不透明（alpha 255）にして、画面上の色を厳密比較できるようにする
+
+performance_knowledge:
+  - id: opaque-overlay-for-exact-readback
+    finding: 半透明の画像を貼ると下の地図と合成され、検証の期待色が背景に依存してしまう。全画素 alpha 255 の画像にすると画面上の色が厳密に一致し、向きや位置の誤りを 1 ピクセル単位で検出できる
+    evidence: image-cells-in-place が 4 象限すべてで期待 RGB と完全一致、反転・転置なら別の色が来て失敗する
+  - id: axis-aligned-quad
+    finding: 4 隅が経度・緯度の軸平行矩形なら、投影後も軸平行矩形なので drawImage 1 回で貼れる。回転した四隅は Canvas の transform か三角形分割が要る
+    evidence: image-follows-pan / image-anchors-on-zoom が 150×60 px パン後に 4 隅がちょうど +150/+60 px、zoom 6 で幅が 2 倍
+  - id: clip-proof
+    finding: 「画像が範囲外に漏れない」ことは、画像の縁の内側 4 px が画像の背景色、外側 12 px が地図の陸地色であることを同時に見て初めて言える
+    evidence: image-clipped-to-bounds が内側 rgba(22,38,60,255)、外側は陸地色
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/011-add-image/index.html
+      - examples/mapbox/011-add-image/main.ts
+      - examples/mapbox/011-add-image/image-overlay.ts
+    dependencies: []
+    why: ラスタタイル背景と 1 枚の画像の drawImage だけなら Canvas 2D が最小
+  alternatives:
+    - option: CSS の img を地図コンテナに重ねる
+      rejected_because: 毎フレームのパン・ズームで位置と大きさを合わせる必要があり、Canvas に描くのと同じ手間になる
+    - option: WebGL2 のテクスチャクアッド
+      rejected_because: 1 枚の画像に初期化コストが見合わない
+  not_doing: [3D地形, 画像の回転・4隅の任意指定, アニメーション, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: 画像の下に実際のラスタ地図が描かれている
+      how: 画像を隠さない状態で全画面の色数を数え、タイルが揃うのを待つ
+      expected: '必要タイルがすべて ready、色数 > 150'
+    - id: image-loaded
+      what: 貼る画像の読み込みが完了している
+      how: imageLoaded() を確認
+      expected: 'imageLoaded = true'
+    - id: image-cells-in-place
+      what: 4 象限の色が正しい位置にあり、画像が反転・転置していない
+      how: 独立投影した画像内 25%/75% の点でピクセル色を読む（背景タイルは隠す）
+      expected: 'NW=(46,204,113) NE=(241,196,15) SW=(230,126,34) SE=(231,76,60)'
+    - id: image-clipped-to-bounds
+      what: 画像が指定した 4 隅の外へはみ出さない
+      how: 西端の内側 4 px が画像背景色、外側 12 px が地図の陸地色であることを検証
+      expected: '内側 rgba(22,38,60,255)、外側は陸地色（>225,>225,>210）'
+    - id: image-follows-pan
+      what: 150×60 px パンすると画像も同じだけ動く
+      how: panBy 前後で独立投影した 4 隅の差がちょうど (150, 60) で、緑の円が新しい位置に出て旧位置は陸地になることを検証
+      expected: '4 隅とも +150, +60 px、緑が移動先で一致、旧位置は陸地'
+    - id: image-anchors-on-zoom
+      what: 画像の中心を軸に zoom 6 へ拡大すると画像は 2 倍になり、中心は動かない
+      how: zoomAtPoint(画像中心, 6) の後、画像の幅が 2 倍で 4 象限の色が一致することを検証
+      expected: 'zoom 6、幅が 2 倍（±1.5 px）、4 象限の色が一致'
+  harness:
+    - contextlost が起きたらエラーにする
