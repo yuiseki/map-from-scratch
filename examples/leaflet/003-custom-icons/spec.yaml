@@ -1,0 +1,125 @@
+id: leaflet-003-custom-icons
+request: >-
+  ロンドン周辺の3地点に、画像ファイルを使わず Canvas で描いたカスタムアイコン（ピン・四角・丸）を置き、
+  それぞれクリックで固有のポップアップを表示したい。外部ライブラリは使わず軽量に。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリなしで配布サイズを最小限にする
+    rationale: Leaflet 本体とアイコン画像をゼロにし、数 KB に収める
+  - id: quick-start
+    need: ページを開いて即座に地図とアイコンが現れる
+    rationale: 300 ms 以内に初回描画
+  - id: custom-icons-and-popups
+    need: 3種類のアイコンが正しく描かれ、クリックで各ポップアップが表示される
+    unmeasured: verification checks で画面ピクセル色とポップアップ内容を検証
+  - id: smooth-interaction
+    need: パンやズーム操作が滑らかに動作する
+    rationale: 60 fps 追従（frame_interval_ms <= 20 ms）
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/leaflet/003-custom-icons/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得からアイコンと地図の初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/leaflet/003-custom-icons/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/leaflet-003-custom-icons/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に丸めてベイク
+
+performance_knowledge:
+  - id: icons-are-path-calls
+    finding: アイコン画像（PNG/SVG）を配らず Canvas のパス（ベジェ・角丸矩形・円弧）で描くと、画像リクエストとデコードがゼロになり、DPR が変わっても輪郭が滲まない
+    evidence: コード全体が gzip 約 4 KB、初回描画はデータ取得込みで 30 ms 未満
+  - id: zero-dom-popups
+    finding: ポップアップを DOM ではなく Canvas 内に描くと、パン・ズームと完全同期し、DOM 再配置によるレイアウトスラッシングを避けられる
+    evidence: リドロー時間 p95 は 0.5 ms 未満
+  - id: press-anchored-click-tolerance
+    finding: ドラッグ判定は移動イベントごとではなく pointerdown からの総移動距離で行うため、2 px の手ブレはクリックとして扱われ、パンにはならない
+    evidence: click-tolerance-2px の check が通る
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/leaflet/003-custom-icons/index.html
+      - examples/leaflet/003-custom-icons/main.ts
+      - examples/leaflet/003-custom-icons/map.ts
+    dependencies: []
+    why: 3個の固定アイコンとポップアップだけなら即時モードの Canvas 2D が最も小さく速く、アイコン画像も不要
+  alternatives:
+    - option: Leaflet 1.9 + L.Icon + 画像アセット
+      rejected_because: 元例の比較対象。外部ライブラリと画像リクエストの要件を満たせない
+  not_doing: [3D, アイコンの回転・アニメーション, ラスタタイルキャッシュ, レイヤーコントロール]
+
+verification:
+  checks:
+    - id: pin-icon-visible
+      what: 'ピンアイコン [51.5, -0.09] のヘッド部が青色で描画されている'
+      how: getImageData でアイコンヘッドのピクセル色を検証
+      expected: '青色ピクセル（r < 80, 90 < g < 160, b > 160）が検出される'
+    - id: square-icon-visible
+      what: '四角アイコン [51.5145, -0.115] のバッジが橙色で描画されている'
+      how: getImageData で白い内側を避けたバッジのピクセル色を検証
+      expected: '橙色ピクセル（r > 180, g < 130, b < 80）が検出される'
+    - id: circle-icon-visible
+      what: '丸アイコン [51.494, -0.055] のバッジが緑色で描画されている'
+      how: getImageData で白い内側を避けたバッジのピクセル色を検証
+      expected: '緑色ピクセル（r < 100, g > 120, b < 110）が検出される'
+    - id: click-pin-shows-popup
+      what: 'ピンをクリックすると "I am the pin icon." のポップアップが表示される'
+      how: clickAtScreen でピンをクリックし、activePopup の文字列を照合
+      expected: 'I am the pin icon.'
+    - id: click-square-shows-popup
+      what: '四角をクリックすると "I am the square icon." のポップアップが表示される'
+      how: clickAtScreen で四角をクリックし、activePopup の文字列を照合
+      expected: 'I am the square icon.'
+    - id: click-circle-shows-popup
+      what: '丸をクリックすると "I am the circle icon." のポップアップが表示される'
+      how: clickAtScreen で丸をクリックし、activePopup の文字列を照合
+      expected: 'I am the circle icon.'
+    - id: popup-painted-in-canvas
+      what: 'ポップアップの吹き出しが Canvas 上に白で描かれている（DOM ではない）'
+      how: ピンをクリックした後の吹き出し本体のピクセル色を検証
+      expected: '白色ピクセル（r,g,b > 240）が検出される'
+    - id: click-empty-shows-coordinates
+      what: 'アイコンのない地図上をクリックすると緯度経度のポップアップが出る'
+      how: 画面左下をクリックし、activePopup が "You clicked at (" で始まることを照合
+      expected: 'You clicked at ('
+    - id: click-tolerance-2px
+      what: 'pointerdown から 2 px の手ブレではドラッグにならず、ピンのクリックとして扱われる'
+      how: PointerEvent を合成して down→move(2px)→up を送り、activePopup を照合
+      expected: 'I am the pin icon.'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint でピンの位置をアンカーに zoom 13→14 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする
