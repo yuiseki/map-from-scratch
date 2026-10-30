@@ -396,6 +396,20 @@ land at their opening zooms too; 009 (Copenhagen at zoom 8) and maplibre 084
 - Fix: use only the selected county's own record, as deck.gl reads
   `selected.properties.flows`.
 
+### A sign read the wrong way round (deckgl 014)
+
+- Screen: 1,500 county pairs coloured eastward and westward, every one the
+  wrong way round: Los Angeles's net loss of 18,204 people to San
+  Bernardino, east of it, was drawn westward.
+- Why: 014 had learnt from 001 and kept one record per pair, but assumed
+  `flows[s][t] > 0` meant a move from s to t. It means a net in-flow to s
+  (deck.gl colours it as in-flow; `LA.flows[Riverside]` is −12,111). All its
+  checks counted colours and lines, so they passed either way.
+- Fix: eastward is `−flows[a][b]` with a the western end. Check the sign
+  against one fact that is known independently (a large, well-known flow),
+  and make that a bench check: 014 now has `la-to-san-bernardino-eastward`.
+- Also: the page never said which colour was which; the title now does.
+
 ### Range retries that defeat the CDN (10, 18, 24)
 
 The Cloudflare front of z.yuiseki.net answers the first request for a URL
