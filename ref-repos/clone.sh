@@ -150,6 +150,11 @@ mapbox/tiny-sdf                           text-rendering    BSD-2-Clause
 linebender/vello                          vector-renderer   Apache-2.0/MIT
 georust/geo                               rust-geometry     Apache-2.0/MIT
 reearth/ezu                               cpu-map-renderer  Apache-2.0/MIT
+webgpu/webgpu-samples                     webgpu-samples    BSD-3-Clause
+toji/webgpu-bundle-culling                webgpu-culling    MIT
+diffusionstudio/slug-webgpu               text-rendering    MIT
+websplatter/WebSplatter                   gaussian-splat    MIT
+immersive-web/webxr-samples               webxr-samples     MIT
 EOF
 )
 
