@@ -195,10 +195,13 @@ export async function mount(
     textureUploadCount++;
   }
 
-  // GSI Seamlessphoto Tile Atlas (2048x2048, 4x4 grid of 512x512 tiles = 16 tiles)
-  const tileAtlasWidth = 2048;
-  const tileAtlasHeight = 2048;
-  const maxTiles = 16;
+  // GSI Seamlessphoto Tile Atlas (4096x4096, 8x8 grid of 512x512 tiles = 64
+  // tiles). With 16 slots a 1920x843 view needed 45 tiles at z = round(zoom):
+  // the draw stopped after the first 16, so the lower half stayed empty.
+  const tileAtlasWidth = 4096;
+  const tileAtlasHeight = 4096;
+  const atlasCols = 8;
+  const maxTiles = atlasCols * atlasCols;
 
   const tileTexture = device.createTexture({
     size: [tileAtlasWidth, tileAtlasHeight, 1],
@@ -216,6 +219,7 @@ export async function mount(
 
   const tileSlots = new Map<string, number>();
   const tilePending = new Set<string>();
+  const tileLastUsed = new Map<string, number>(); // key -> renderCount of its last draw
   let archive: Awaited<ReturnType<typeof openArchive>> | null = null;
 
   async function uploadTile(key: string, image: ImageBitmap): Promise<void> {
@@ -226,15 +230,23 @@ export async function mount(
       if (tileSlots.size < maxTiles) {
         slot = tileSlots.size;
       } else {
-        const oldestKey = tileSlots.keys().next().value!;
-        slot = tileSlots.get(oldestKey)!;
-        tileSlots.delete(oldestKey);
+        // Evict the tile drawn longest ago, never one drawn in this frame.
+        let victim = '';
+        let oldest = Infinity;
+        for (const k of tileSlots.keys()) {
+          const used = tileLastUsed.get(k) ?? -1;
+          if (used < oldest && used < renderCount) { oldest = used; victim = k; }
+        }
+        if (!victim) { image.close(); return; }
+        slot = tileSlots.get(victim)!;
+        tileSlots.delete(victim);
+        tileLastUsed.delete(victim);
       }
       tileSlots.set(key, slot);
     }
 
-    const col = slot % 4;
-    const row = Math.floor(slot / 4);
+    const col = slot % atlasCols;
+    const row = Math.floor(slot / atlasCols);
     device.queue.copyExternalImageToTexture(
       { source: image },
       { texture: tileTexture, origin: [col * 512, row * 512, 0] },
@@ -613,7 +625,9 @@ export async function mount(
     const tileData = new Float32Array(maxTiles * 8);
 
     if (archive) {
-      const tileZ = Math.min(17, Math.max(10, Math.round(zoom)));
+      // A 512 px tile drawn into 256*2^(zoom - z) px: one level below
+      // round(zoom) puts it near its own size (the archive has z 1 to 17).
+      const tileZ = Math.min(17, Math.max(1, Math.round(zoom) - 1));
       const n = 2 ** tileZ;
       const tileSize = 1 / n;
       const scale = getScale();
@@ -633,12 +647,13 @@ export async function mount(
           const key = `${tileZ}/${tx}/${ty}`;
           if (tileSlots.has(key)) {
             const slot = tileSlots.get(key)!;
-            const col = slot % 4;
-            const row = Math.floor(slot / 4);
-            const u0 = col * 0.25;
-            const v0 = row * 0.25;
-            const u1 = u0 + 0.25;
-            const v1 = v0 + 0.25;
+            tileLastUsed.set(key, renderCount);
+            const col = slot % atlasCols;
+            const row = Math.floor(slot / atlasCols);
+            const u0 = col / atlasCols;
+            const v0 = row / atlasCols;
+            const u1 = u0 + 1 / atlasCols;
+            const v1 = v0 + 1 / atlasCols;
 
             const offset = visibleTileCount * 8;
             tileData[offset + 0] = tx * tileSize;
@@ -787,13 +802,18 @@ export async function mount(
       return new Uint8Array(data);
     }
 
+    // Draw the canvas again and copy from it in the same task, before it is
+    // presented. (The offscreen texture is only drawn in SwiftShader mode;
+    // read on a real GPU it was all zeros.)
+    await render();
+    const texture: GPUTexture = webgpuCtx ? webgpuCtx.getCurrentTexture() : ensureOffscreenTexture();
     const readBuffer = device.createBuffer({
       size: 256,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
     const commandEncoder = device.createCommandEncoder();
     commandEncoder.copyTextureToBuffer(
-      { texture: ensureOffscreenTexture(), origin: [rx, ry, 0] },
+      { texture, origin: [rx, ry, 0] },
       { buffer: readBuffer, bytesPerRow: 256 },
       [1, 1, 1],
     );
@@ -804,7 +824,7 @@ export async function mount(
     readBuffer.unmap();
     readBuffer.destroy();
     // The preferred canvas format is bgra8unorm on macOS: return RGBA.
-    if (presentationFormat === 'bgra8unorm') [pixel[0], pixel[2]] = [pixel[2], pixel[0]];
+    if (texture.format === 'bgra8unorm') [pixel[0], pixel[2]] = [pixel[2], pixel[0]];
     return pixel;
   }
 
@@ -849,8 +869,16 @@ export async function mount(
 
   canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.2 : -0.2;
-    zoom = Math.max(9, Math.min(18, zoom + delta));
+    // Zoom about the pointer: the ground under it stays put.
+    const rect = canvas.getBoundingClientRect();
+    // In canvas pixels: the backing store need not match the CSS box.
+    const ox = (e.clientX - rect.left) * canvas.width / rect.width - canvas.width / 2;
+    const oy = (e.clientY - rect.top) * canvas.height / rect.height - canvas.height / 2;
+    const before = getScale();
+    zoom = Math.max(9, Math.min(18, zoom + (e.deltaY < 0 ? 0.2 : -0.2)));
+    const after = getScale();
+    centerMx += ox / before - ox / after;
+    centerMy += oy / before - oy / after;
     render();
   }, { passive: false });
 

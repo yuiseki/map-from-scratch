@@ -80,6 +80,26 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
     detail: `GSI Seamlessphoto PMTiles loaded on WebGPU: ${hasTiles}`,
   });
 
+  // Check 8: the photo covers the lower half too. The atlas held 16 tiles
+  // and the draw stopped there, so the lower rows of a wide view stayed the
+  // background colour. Read the lower left and right until tiles arrive.
+  {
+    const w = map.canvas.width, h = map.canvas.height;
+    const probes = [[w * 0.2, h * 0.88], [w * 0.8, h * 0.88]];
+    const isBg = (p: Uint8Array) => Math.abs(p[0] - 11) < 4 && Math.abs(p[1] - 17) < 4 && Math.abs(p[2] - 32) < 4;
+    let px: Uint8Array[] = [];
+    for (let t = 0; t < 80; t++) {
+      px = await Promise.all(probes.map(([x, y]) => map.readPixel(x, y)));
+      if (!px.some(isBg)) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    emit({
+      check: 'aerial-covers-the-view',
+      pass: px.length === 2 && !px.some(isBg),
+      detail: `lower left rgba(${Array.from(px[0] ?? []).join(',')}), lower right rgba(${Array.from(px[1] ?? []).join(',')}) at ${w}x${h}`,
+    });
+  }
+
   // Measure frame interval
   let lastTime = performance.now();
   for (let i = 0; i < 15; i++) {

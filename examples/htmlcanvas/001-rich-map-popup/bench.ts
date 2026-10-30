@@ -94,6 +94,24 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
     detail: `GSI Seamlessphoto PMTiles loaded: ${hasTiles}`,
   });
 
+  // Zooming keeps the map: two steps out put Tokyo Tower at a quarter of
+  // its distance from the centre, two steps in bring it back. (The centre
+  // was not rescaled on zoom, so the view left Tokyo and went blank.)
+  {
+    const cx = map.canvas.width / 2, cy = map.canvas.height / 2;
+    const a0 = map.getAnchorPos();
+    await map.zoomBy(-2);
+    const a1 = map.getAnchorPos();
+    await map.zoomBy(2);
+    const a2 = map.getAnchorPos();
+    const ex = cx + (a0.x - cx) / 4, ey = cy + (a0.y - cy) / 4;
+    emit({
+      check: 'zoom-keeps-the-place',
+      pass: Math.hypot(a1.x - ex, a1.y - ey) < 1.5 && Math.hypot(a2.x - a0.x, a2.y - a0.y) < 1.5,
+      detail: `Tokyo Tower (${a0.x.toFixed(1)}, ${a0.y.toFixed(1)}) -> zoom -2 (${a1.x.toFixed(1)}, ${a1.y.toFixed(1)}), expected (${ex.toFixed(1)}, ${ey.toFixed(1)}) -> zoom +2 (${a2.x.toFixed(1)}, ${a2.y.toFixed(1)})`,
+    });
+  }
+
   // Measure frame interval during animation
   let lastTime = performance.now();
   for (let i = 0; i < 15; i++) {

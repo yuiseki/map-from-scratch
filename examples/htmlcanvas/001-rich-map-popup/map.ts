@@ -346,10 +346,23 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   canvas.addEventListener('pointerup', stopDrag);
   canvas.addEventListener('pointercancel', stopDrag);
 
+  // center is in pixels of the current zoom's world, so a new zoom must
+  // rescale it: without that, each step out moved the view to twice the
+  // ground coordinate, and a few steps left Japan and then the world.
+  // The ground under (px, py) stays put.
+  function zoomAt(z: number, px: number, py: number): void {
+    const next = Math.max(10, Math.min(17, z));
+    const k = 2 ** (next - zoom);
+    const ox = px - canvas.width / 2, oy = py - canvas.height / 2;
+    center = { x: (center.x + ox) * k - ox, y: (center.y + oy) * k - oy };
+    zoom = next;
+  }
+
   canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY < 0 ? 1 : -1;
-    zoom = Math.max(10, Math.min(17, zoom + delta));
+    // In canvas pixels: the backing store need not match the CSS box.
+    const rect = canvas.getBoundingClientRect();
+    zoomAt(zoom + (e.deltaY < 0 ? 1 : -1), (e.clientX - rect.left) * canvas.width / rect.width, (e.clientY - rect.top) * canvas.height / rect.height);
     render();
   }, { passive: false });
 
@@ -360,7 +373,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   }
 
   async function zoomBy(delta: number): Promise<void> {
-    zoom = Math.max(10, Math.min(17, zoom + delta));
+    zoomAt(zoom + delta, canvas.width / 2, canvas.height / 2);
     await render();
   }
 

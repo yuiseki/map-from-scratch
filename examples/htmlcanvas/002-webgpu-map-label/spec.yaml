@@ -127,3 +127,7 @@ verification:
       what: 国土地理院「全国最新写真（シームレス）」の空中写真タイルが取得され WebGPU 上に描画されていること
       how: PMTiles からのタイル読み込み完了確認
       expected: true
+    - id: aerial-covers-the-view
+      what: 空中写真が画面の下半分まで敷き詰められている（タイルの枠が足りず上の行で描画が止まっていた）
+      how: 画面下 12% の左右 2 点を、タイルの到着を待って readPixel で読む
+      expected: どちらも背景色 (11,17,32) でない

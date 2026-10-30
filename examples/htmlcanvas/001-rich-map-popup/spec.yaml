@@ -127,3 +127,7 @@ verification:
       what: 国土地理院「全国最新写真（シームレス）」の空中写真タイルが取得され Canvas 背景に描画されていること
       how: PMTiles からのタイル読み込み完了確認
       expected: true
+    - id: zoom-keeps-the-place
+      what: 拡大・縮小しても地図の場所が保たれる（中心を基準に 2 段縮小すると東京タワーは中心からの距離が 1/4 になり、2 段拡大で元に戻る）
+      how: getAnchorPos() を zoomBy(-2) と zoomBy(+2) の前後で読む
+      expected: 予想位置との差 1.5 px 未満
