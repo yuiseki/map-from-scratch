@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateSpec } from '../lib/spec.ts';
+import { validateSpec, missingToolchain } from '../lib/spec.ts';
 
 // Loose on purpose: the tests break specs to see them refused.
 const browser: Record<string, any> = {
@@ -60,4 +60,17 @@ test('a microcontroller spec may give footprint.elf instead of code', () => {
   const s = structuredClone(browser);
   s.footprint = { elf: ['build/x.o'] };
   assert.deepEqual(validateSpec(s, '01-x').footprint.code, []);
+});
+
+test('a toolchain must name a docker/Dockerfile.<name> image', () => {
+  assert.equal(validateSpec({ ...structuredClone(browser), toolchain: 'emscripten' }, '01-x').toolchain, 'emscripten');
+  assert.throws(() => validateSpec({ ...structuredClone(browser), toolchain: '../base' }, '01-x'), /toolchain/);
+});
+
+test('a build that needs a toolchain says how to get it, unless the image has it', () => {
+  const s = validateSpec({ ...structuredClone(browser), toolchain: 'emscripten' }, '01-x');
+  assert.match(missingToolchain(s, undefined)!, /MFS_TOOLCHAIN=emscripten bin\/mfs build 01-x/);
+  assert.match(missingToolchain(s, 'other')!, /emscripten/);
+  assert.equal(missingToolchain(s, 'emscripten'), null);
+  assert.equal(missingToolchain(validateSpec(structuredClone(browser), '01-x'), undefined), null);
 });

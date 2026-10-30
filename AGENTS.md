@@ -51,6 +51,7 @@
 
 ```sh
 bin/mfs image                   # ベース Docker イメージ (mfs-base:latest) のビルド
+bin/mfs image emscripten        # ツールチェーン用イメージ (mfs-emscripten:latest) のビルド (docker/README.md)
 bin/mfs list                    # 全 example / baseline と依頼内容の一覧
 bin/mfs test                    # ハーネス・tools・kits の単体テストと tsc 型検査 (node / web)
 bin/mfs bake <id|all>           # spec.yaml の datasets.bake に従いデータを生成
@@ -64,6 +65,7 @@ tools/deploy-pages.sh           # サイト構築・全ページ検証・gh-page
 ```
 
 ### 主な環境変数（`bin/mfs`）
+- `MFS_TOOLCHAIN` : ツールチェーン用イメージ `mfs-<toolchain>:latest` (`docker/Dockerfile.<toolchain>`) で実行する。例: `MFS_TOOLCHAIN=emscripten bin/mfs build <id>`。spec.yaml の `architecture_selection.chosen.toolchain` を持つ例のビルドに必要
 - `MFS_SOURCES` : 原データのホスト側マウントディレクトリ（デフォルト: `/sata_hdd_24tb`）
 - `MFS_PAGE_QUERY` : ベンチマーク時にページ URL に追加するクエリ文字列（パラメータスイープ用）
 - `MFS_CHROME_FLAGS` : Headless Chromium に渡す追加フラグ

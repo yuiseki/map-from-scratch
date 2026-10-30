@@ -12,7 +12,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cpus, loadavg } from 'node:os';
-import { loadSpec } from './lib/spec.ts';
+import { loadSpec, missingToolchain } from './lib/spec.ts';
 import { summarize } from './lib/stats.ts';
 import { checkBudgets, checkVerification } from './lib/budget.ts';
 import { serve } from './lib/serve.ts';
@@ -71,9 +71,15 @@ function select(arg: string | undefined): string[] {
   return hit;
 }
 
-function runStep(id: string, key: 'bake' | 'build'): void {
-  const argv = loadSpec(specDir(id))[key];
+// all: an example whose build needs another toolchain image is skipped
+// (and named) instead of failing the rest.
+function runStep(id: string, key: 'bake' | 'build', all = false): void {
+  const spec = loadSpec(specDir(id));
+  const argv = spec[key];
   if (!argv) return;
+  const missing = key === 'build' ? missingToolchain(spec, process.env.MFS_TOOLCHAIN) : null;
+  if (missing && all) { console.log(`skipped: ${missing}`); return; }
+  if (missing) throw new Error(missing);
   console.log(`[${id}] ${key}: ${argv.join(' ')}`);
   const r = spawnSync(argv[0], argv.slice(1), { cwd: root, stdio: 'inherit' });
   if (r.status !== 0) throw new Error(`[${id}] ${key} failed (exit ${r.status})`);
@@ -160,7 +166,7 @@ async function main(argv: string[]): Promise<number> {
       return 0;
     case 'bake':
     case 'build':
-      for (const id of select(arg)) runStep(id, cmd);
+      for (const id of select(arg)) runStep(id, cmd, arg === 'all');
       return 0;
     case 'bench': {
       let ok = true;

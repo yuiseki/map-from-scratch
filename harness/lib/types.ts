@@ -39,6 +39,7 @@ export interface Spec {
   gpu: 'hardware' | 'none';
   bake?: string[];
   build?: string[];
+  toolchain?: string;
   run: { page?: string; viewport?: Viewport; cpuThrottle?: number; network?: Network; cmd?: string[] };
   iterations: number;
   timeoutMs: number;
@@ -85,6 +86,7 @@ export interface Definition {
       language?: string;
       gpu: 'hardware' | 'none';
       build?: string[];
+      toolchain?: string;
       code?: string[];
       elf?: string[];
       dependencies?: string[];

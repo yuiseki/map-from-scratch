@@ -1,6 +1,7 @@
 # Shared image for the harness, the bake steps and every renderer that
-# does not need its own toolchain. An example that needs something else
-# (zig, a newer rustc, ...) declares its own image in spec.json.
+# does not need its own toolchain. A compiler only some examples need goes in
+# its own image built on this one, docker/Dockerfile.<toolchain> (see
+# docker/README.md), and the example names it in spec.yaml.
 FROM node:24-trixie-slim
 
 RUN apt-get update \

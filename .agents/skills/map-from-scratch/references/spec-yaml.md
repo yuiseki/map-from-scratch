@@ -128,6 +128,7 @@ What was built and why, and what was not.
 | `chosen.platform` / `api` / `language` | the runtime choice |
 | `chosen.gpu` | `hardware` (a software rasteriser is an error) or `none` |
 | `chosen.build` | argv run by `bin/mfs build <id>` |
+| `chosen.toolchain` | the image the build needs, `docker/Dockerfile.<toolchain>` (e.g. `emscripten`); build with `MFS_TOOLCHAIN=<toolchain> bin/mfs build <id>` (docker/README.md) |
 | `chosen.code` | files that ship (browser: the page and modules it needs, not the bench code; native: the executable) |
 | `chosen.elf` | microcontroller object files, sized with `llvm-size` |
 | `chosen.dependencies` | external dependencies; only `earcut` is allowed outside baselines |

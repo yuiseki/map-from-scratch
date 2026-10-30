@@ -1,0 +1,29 @@
+# Emscripten toolchain for C/C++ -> wasm32 examples, JSPI included.
+# Built on top of mfs-base, so the harness, Chromium and the bake tools are
+# the same as in every other example; only emcc and its sysroot are added.
+#
+#   bin/mfs image emscripten                   build mfs-emscripten:latest
+#   MFS_TOOLCHAIN=emscripten bin/mfs <command> run the harness in it
+#
+# The SDK is copied from the official image, pinned by version and digest.
+# Its sysroot cache comes prebuilt and is frozen (EM_FROZEN_CACHE), so emcc
+# never downloads ports or writes to the image at run time: a build that
+# needs a library the cache lacks fails instead of reaching the network.
+ARG BASE=mfs-base:latest
+FROM emscripten/emsdk:6.0.13@sha256:fb7864e398acfda863dfcea78b8bc8adad359fa60c6a0bbeb845931de64aa68a AS emsdk
+
+FROM ${BASE}
+# emcc, clang/wasm-ld, binaryen and the sysroot. The SDK's own Node is left
+# out: Node 24 from mfs-base runs emcc's output and supports JSPI.
+COPY --from=emsdk /emsdk/upstream /emsdk/upstream
+RUN printf '%s\n' \
+      "NODE_JS = '/usr/local/bin/node'" \
+      "LLVM_ROOT = '/emsdk/upstream/bin'" \
+      "BINARYEN_ROOT = '/emsdk/upstream'" \
+      "EMSCRIPTEN_ROOT = '/emsdk/upstream/emscripten'" \
+      > /emsdk/.emscripten
+ENV EMSDK=/emsdk \
+    EM_CONFIG=/emsdk/.emscripten \
+    EM_FROZEN_CACHE=1 \
+    PATH=/emsdk/upstream/emscripten:$PATH \
+    MFS_TOOLCHAIN=emscripten

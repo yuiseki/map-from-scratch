@@ -111,3 +111,10 @@ test('benchmarks.network becomes the emulated network of the run', () => {
   assert.deepEqual(fromDefinition(d).run.network, { name: '4G', latencyMs: 60, downloadKbps: 9000, uploadKbps: 9000 });
   assert.equal(fromDefinition(def()).run.network, undefined);
 });
+
+test('chosen.toolchain names the image the build needs', () => {
+  const d = def();
+  d.architecture_selection.chosen.toolchain = 'emscripten';
+  assert.equal(fromDefinition(d).toolchain, 'emscripten');
+  assert.equal(fromDefinition(def()).toolchain, undefined);
+});

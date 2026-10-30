@@ -86,6 +86,7 @@ export function fromDefinition(def: Definition): Loose {
     gpu: chosen.gpu,
     bake: def.datasets.bake,
     build: chosen.build ?? undefined,
+    toolchain: chosen.toolchain ?? undefined,
     run,
     iterations: b.iterations,
     timeoutMs: b.timeout_ms,
@@ -118,6 +119,7 @@ export function validateSpec(spec: Loose, dirName: string): Spec {
   spec.footprint.data ??= [];
   spec.dependencies ??= [];
   spec.checks ??= [];
+  if (spec.toolchain !== undefined && !/^[a-z0-9-]+$/.test(spec.toolchain)) fail('toolchain must be the <name> of docker/Dockerfile.<name>');
   spec.gpu ??= 'hardware';
   if (!['hardware', 'none'].includes(spec.gpu)) fail('gpu must be "hardware" or "none"');
   spec.iterations ??= 5;
@@ -128,4 +130,13 @@ export function validateSpec(spec: Loose, dirName: string): Spec {
     if (b.stat !== undefined && !STATS.includes(b.stat)) fail(`budget ${name}: stat must be one of ${STATS.join(', ')}`);
   }
   return spec as Spec;
+}
+
+// A build that needs a toolchain image (docker/Dockerfile.<name>) runs only
+// in that image, which announces itself in MFS_TOOLCHAIN. Returns what to do
+// when the running image is not it, null when it is.
+export function missingToolchain(spec: Spec, current: string | undefined): string | null {
+  if (!spec.toolchain || spec.toolchain === current) return null;
+  return `[${spec.id}] needs the ${spec.toolchain} toolchain (docker/Dockerfile.${spec.toolchain}); `
+    + `run MFS_TOOLCHAIN=${spec.toolchain} bin/mfs build ${spec.id}`;
 }

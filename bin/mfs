@@ -3,9 +3,12 @@
 # nvidia container runtime for GPU examples).
 #
 #   bin/mfs image              (re)build the base image
+#   bin/mfs image <toolchain>  (re)build mfs-<toolchain> from docker/Dockerfile.<toolchain>
 #   bin/mfs <harness command>  see harness/cli.ts
 #
 # Environment:
+#   MFS_TOOLCHAIN  run in mfs-<toolchain>:latest, built on top of the base
+#                  image for the examples that need it (docker/README.md)
 #   MFS_IMAGE    image to run          (default mfs-base:latest)
 #   MFS_MEMORY   container memory cap  (default 8g)
 #   MFS_CPUS     container CPU quota   (default 8)
@@ -14,12 +17,27 @@
 #                (default /sata_hdd_24tb when it exists)
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-IMAGE=${MFS_IMAGE:-mfs-base:latest}
+BASE=mfs-base:latest
+
+# A toolchain image extends the base one, so the base is built first.
+build_toolchain() {
+  local file="$ROOT/docker/Dockerfile.$1"
+  [[ -f "$file" ]] || { echo "no toolchain $1 (docker/Dockerfile.$1)" >&2; exit 2; }
+  docker image inspect "$BASE" >/dev/null 2>&1 || docker build -t "$BASE" "$ROOT/docker/base"
+  docker build -t "mfs-$1:latest" --build-arg BASE="$BASE" -f "$file" "$ROOT/docker"
+}
 
 if [[ "${1:-}" == image ]]; then
-  exec docker build -t "$IMAGE" "$ROOT/docker/base"
+  if [[ -n "${2:-}" ]]; then build_toolchain "$2"; exit; fi
+  exec docker build -t "${MFS_IMAGE:-$BASE}" "$ROOT/docker/base"
 fi
-docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" "$ROOT/docker/base"
+if [[ -n "${MFS_TOOLCHAIN:-}" ]]; then
+  IMAGE=${MFS_IMAGE:-mfs-$MFS_TOOLCHAIN:latest}
+  docker image inspect "$IMAGE" >/dev/null 2>&1 || build_toolchain "$MFS_TOOLCHAIN" >&2
+else
+  IMAGE=${MFS_IMAGE:-$BASE}
+  docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" "$ROOT/docker/base"
+fi
 
 args=(--rm --init -i
   --memory "${MFS_MEMORY:-8g}" --cpus "${MFS_CPUS:-8}" --shm-size 2g
