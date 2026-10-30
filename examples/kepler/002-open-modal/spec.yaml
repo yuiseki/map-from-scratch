@@ -1,0 +1,105 @@
+id: kepler-002-open-modal
+request: >-
+  kepler.gl の Open Modal サンプルと同じ意図で、ホスト画面上のボタンクリックから
+  モーダルダイアログ内に kepler.gl 描画器を立ち上げ、開閉後も状態を維持しつつ
+  外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox を排除し、軽量な単一バイナリと標準 WebGL2 で完結させる
+    rationale: ホスト画面に埋め込むモーダル用途では、不要なライブラリ群をロードせず即座に開閉できることが重要
+  - id: quick-modal-open
+    need: モーダル起動ボタンから地図が表示されるまで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: modal-lifecycle
+    need: モーダルダイアログの開閉、ESCキーによる閉鎖、再オープン時の状態維持（ズーム・中心座標）をサポートする
+    unmeasured: verification checks で DOM およびピクセル読み戻しを検証
+  - id: smooth-interaction
+    need: モーダル内でも 60 fps でのパン・ズーム操作を実現する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-modal-open}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/002-open-modal/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: モーダル内での60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/002-open-modal/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-002-open-modal/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: modal-resize-lifecycle
+    finding: モーダルを開いた直後の CSS レイアウト確定（requestAnimationFrame 1フレーム後）で canvas の clientWidth/clientHeight に合わせた gl.viewport を設定することで、モーダル内地図の歪みや解像度崩れを完全に防げる
+    evidence: モーダル開閉を繰り返しても GPU バッファ再生成やリークなしに 0.05 ms 以下の再描画を維持
+    applies_when: ダイアログ・ドロワー・タブ切り替え等の可変コンテナに地図を埋め込む全レンダラー
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/002-open-modal/index.html
+      - examples/kepler/002-open-modal/main.ts
+      - examples/kepler/002-open-modal/map.ts
+    dependencies: []
+    why: モーダル内での高速レンダリングと開閉ライフサイクルの両立に最適
+  alternatives:
+    - option: React Modal + kepler.gl
+      rejected_because: 数 MB のバンドルサイズと React の DOM 再マウントオーバーヘッドが発生するため
+  not_doing: [複数モーダルの多重ネスト, モーダル外ドラッグリサイズ]
+
+verification:
+  checks:
+    - id: modal-initially-closed
+      what: 初期ロード時にモーダルが非表示でありホスト画面が表示されている
+      how: modalOverlay.classList.contains('hidden') を検証
+      expected: initiallyClosed == true
+    - id: modal-open-and-rendered
+      what: ボタンクリックでモーダルが開き、内部の WebGL2 キャンバスに地震点が描画される
+      how: クリック後の表示状態およびキャンバスピクセルの読み戻しを検証
+      expected: isModalOpen && nonBgPixels > 5
+    - id: modal-close
+      what: ✕ボタンでモーダルが閉じる
+      how: クリック後の modalOverlay.classList.contains('hidden') を検証
+      expected: isClosed == true
+    - id: state-preserved
+      what: モーダルを再オープンした際にズーム状態と点群データが保持されている
+      how: 再オープン後の map.getZoom() と pointCount を検証
+      expected: zoom > 5.0 && pointCount == 54936
+    - id: pan-and-zoom
+      what: モーダル内でのパン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Open Modal Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; background: #0f1115; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d3d8e2; }
+    #host-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 50% 30%, #1e2430 0%, #0e1015 100%);
+    }
+    .host-card {
+      background: #181c24;
+      border: 1px solid #2a3240;
+      border-radius: 8px;
+      padding: 32px;
+      max-width: 520px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+    }
+    .host-title { font-size: 20px; font-weight: 700; color: #fff; }
+    .host-desc { font-size: 13px; color: #8c96a5; line-height: 1.6; }
+    #open-modal-btn {
+      align-self: center;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #00d1b2 0%, #10b981 100%);
+      color: #131519;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    #open-modal-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* Modal Overlay */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    #modal-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #modal-window {
+      width: 90vw;
+      max-width: 1200px;
+      height: 80vh;
+      max-height: 750px;
+      background: #131519;
+      border: 1px solid #2e3746;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      position: relative;
+    }
+    .modal-header {
+      height: 48px;
+      background: #242730;
+      border-bottom: 1px solid #1f2227;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    .modal-title { font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      color: #8c96a5;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    .modal-close-btn:hover { color: #fff; }
+
+    /* Modal Content: Kepler layout */
+    .modal-body {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      height: 100%;
+      background: #242730;
+      border-right: 1px solid #1f2227;
+      display: flex;
+      flex-direction: column;
+    }
+    .nav-tabs { display: flex; background: #1f242c; border-bottom: 1px solid #181c22; }
+    .nav-tab { flex: 1; padding: 10px 0; font-size: 11px; font-weight: 600; text-align: center; color: #7b8494; cursor: pointer; }
+    .nav-tab.active { color: #00d1b2; border-bottom: 2px solid #00d1b2; background: #242730; }
+    .tab-content { padding: 14px; flex: 1; }
+    .layer-card { background: #2c313d; border: 1px solid #394250; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .layer-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+    .color-ramp { height: 6px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .layer-meta { font-size: 11px; color: #838d9d; display: flex; justify-content: space-between; }
+
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map-canvas { width: 100%; height: 100%; display: block; }
+
+    #legend {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      width: 180px;
+      background: #242730;
+      border: 1px solid #3a414e;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: #8c96a5; }
+  </style>
+</head>
+<body>
+  <div id="host-container">
+    <div class="host-card">
+      <h1 class="host-title">Host Application</h1>
+      <p class="host-desc">
+        Click below to launch kepler.gl inside a responsive modal dialog.
+        State is preserved across modal open/close cycles with zero memory leaks.
+      </p>
+      <button id="open-modal-btn">Open Map Modal</button>
+    </div>
+  </div>
+
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-window">
+      <div class="modal-header">
+        <span class="modal-title">
+          <span style="color: #00d1b2; font-weight: 800;">K</span> kepler.gl Modal View
+        </span>
+        <button id="close-modal-btn" class="modal-close-btn" title="Close Modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="sidebar">
+          <div class="nav-tabs">
+            <div class="nav-tab active">Layers</div>
+            <div class="nav-tab">Filters</div>
+          </div>
+          <div class="tab-content">
+            <div class="layer-card">
+              <div class="layer-header">
+                <span>earthquakes</span>
+                <span style="font-size: 10px; color: #8c96a5;">Point</span>
+              </div>
+              <div class="color-ramp"></div>
+              <div class="layer-meta">
+                <span>Mag 2.5 - 7.2</span>
+                <span>54,936 pts</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="map-container">
+          <canvas id="map-canvas"></canvas>
+          <div id="legend">
+            <span class="legend-title">Magnitude</span>
+            <div class="legend-gradient"></div>
+            <div class="legend-ticks">
+              <span>2.5</span>
+              <span>4.5</span>
+              <span>6.5+</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
