@@ -880,7 +880,7 @@
 
 - [x] `kepler-001-demo-app` → `examples/kepler/001-demo-app/` — [Demo App](https://docs.kepler.gl/examples/demo-app)
 - [x] `kepler-002-open-modal` → `examples/kepler/002-open-modal/` — [Open Modal](https://docs.kepler.gl/examples/open-modal)
-- [ ] `kepler-003-custom-reducer` → `examples/kepler/003-custom-reducer/` — [Custom Reducer](https://docs.kepler.gl/examples/custom-reducer)
+- [x] `kepler-003-custom-reducer` → `examples/kepler/003-custom-reducer/` — [Custom Reducer](https://docs.kepler.gl/examples/custom-reducer)
 - [ ] `kepler-004-umd-client` → `examples/kepler/004-umd-client/` — [umd client](https://docs.kepler.gl/examples/umd-client)
 - [ ] `kepler-005-replace-component` → `examples/kepler/005-replace-component/` — [Replace UI Component](https://docs.kepler.gl/examples/replace-component)
 - [ ] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)

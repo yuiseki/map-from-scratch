@@ -1,0 +1,105 @@
+id: kepler-003-custom-reducer
+request: >-
+  kepler.gl の Custom Reducer サンプルと同じ意図で、外部のアクションディスパッチャーと
+  純粋な状態レデューサーを通じて地図のフィルター値・プリセット視点・サイドバー開閉を決定論的に制御し、
+  外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox を排除し、軽量な単一バイナリと標準 WebGL2 で完結させる
+    rationale: 複雑な状態管理フレームワークを入れずに純粋関数レデューサーで高速動作させる
+  - id: quick-start
+    need: ページ読み込みから初回描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: deterministic-state-reducer
+    need: アクションのディスパッチに応じて純粋レデューサーが状態を更新し、地図とUIが同期する
+    unmeasured: verification checks でディスパッチ後の状態遷移を検証
+  - id: smooth-interaction
+    need: 状態更新およびパン操作を 60 fps でスムーズに維持する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/003-custom-reducer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/003-custom-reducer/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-003-custom-reducer/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: pure-reducer-zero-overhead
+    finding: Redux ライブラリを導入せず単純な純粋関数 (state, action) => nextState とイベント購読で実装することで、ライブラリロード時間とメモリアロケーションを完全にゼロにできる
+    evidence: JS ヒープ 1.3 MB 未満、コード gzip 6 KB 未満で Redux パターンと同等の状態管理を実現
+    applies_when: 外部カスタムアクション連携やプラグイン拡張が必要な地図フロントエンド
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/003-custom-reducer/index.html
+      - examples/kepler/003-custom-reducer/main.ts
+      - examples/kepler/003-custom-reducer/map.ts
+    dependencies: []
+    why: 状態遷移と WebGL2 パイプラインを直接結びつけ、Redux の抽象化コストなしに最高速で動作
+  alternatives:
+    - option: Redux + kepler.gl
+      rejected_because: 数 MB のライブラリ群とアクションディスパッチ時のオブジェクト生成オーバーヘッドが発生するため
+  not_doing: [Redux DevTools 拡張機能連携, 非同期 thunk/saga ミドルウェア]
+
+verification:
+  checks:
+    - id: initial-reducer-state
+      what: 初期状態で minMagnitude 2.5, sidebarOpen true, viewPreset Full CA がセットされている
+      how: getState() の初期値を検証
+      expected: minMag==2.5 && sidebarOpen==true && viewPreset=='Full CA'
+    - id: dispatch-filter-action
+      what: SET_FILTER アクションのディスパッチで状態と描画器の最小マグニチュードが同期更新される
+      how: map.getMinMagnitude() と state.minMagnitude を検証
+      expected: mapMinMag==5.5 && stateMinMag==5.5
+    - id: dispatch-view-action
+      what: SET_VIEW アクションのディスパッチで状態と地図カメラズームが同期更新される
+      how: map.getZoom() と state.viewPreset を検証
+      expected: mapZoom==8.5 && stateView=='Bay Area'
+    - id: dispatch-toggle-sidebar
+      what: TOGGLE_SIDEBAR アクションのディスパッチでサイドバー開閉状態が反転する
+      how: state.sidebarOpen を検証
+      expected: sidebarOpen == false
+    - id: pan-and-zoom
+      what: パン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする
