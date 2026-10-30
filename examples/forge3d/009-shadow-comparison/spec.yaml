@@ -51,7 +51,7 @@ datasets:
   outputs:
     - data/baked/forge3d-009-shadow-comparison/relief.bin
   preparation:
-    - z10/165/360 の terrarium PNG を解読し、200x200 に再標本化した標高から陰影起伏図を作る
+    - z10/165/360 の terrarium PNG（256x256）を解読し、双一次補間で 200x200 に再標本化した標高から陰影起伏図を作る（最近傍で間引くと 4〜5 行・列ごとに 1 つ飛び、斜面に格子模様が出る）
     - 太陽を西北 315°・高度 45°に固定し、Lambert 拡散光と 60 セル先までのレイマーチによる投影影の両方をベイク
     - 出力は 38 バイトのヘッダ（SHAD, 寸法, 経緯度範囲, 標高, 山頂 uv）+ RGB 面 + 影マスク 1 バイト/テクセル
 
@@ -86,13 +86,17 @@ architecture_selection:
 
 verification:
   checks:
+    - id: summit-on-screen
+      what: 初期表示で山頂（タイル内 v≈0.78）が画面内にある。タイルが画面を覆う範囲で山頂に寄せて中央に置く
+      how: screenOf(peakU, peakV) が画面の 20 px 内側に入るかを見る
+      expected: 1024x768 でも 1920x1021 でも画面内
     - id: relief-drawn
       what: DEM の陰影が描かれ、山頂は雪色（無彩色）・低地は森林色（緑）になっている
       how: getImageData で山頂テクセルと南西低地テクセルのピクセル色を検証
       expected: 山頂 lum > 60 かつ RGB の最大差 < 30、低地 g > r + 10 かつ g > b
     - id: cast-shadows-darken
       what: 影あり側ではベイクが影と判定したテクセルだけが暗くなり、日向のテクセルは変わらない
-      how: 影テクセル 3 点を split 0 と split 1 で同一画面座標から読み、輝度差を比較。日向 1 点は差 < 6
+      how: 画面内の影テクセル 3 点を split 0 と split 1 で同一画面座標から読み、輝度差を比較。画面内の日向 1 点は輝度 > 20（背景でない）かつ差 < 6
       expected: 影 3 点すべてで輝度差 > 15
     - id: pan-moves-terrain
       what: パンで地形がポインタと 1 対 1 に移動する

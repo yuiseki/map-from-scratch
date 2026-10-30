@@ -326,6 +326,16 @@ between examples.
   writes each field. A comment on the reading side (`maxz_cm`) is not
   evidence.
 
+### A DEM resampled by rounding (forge3d 009)
+
+- Screen: a fine grid over every slope, and cast shadows in short dashes.
+- Why: 256 source samples were put on 200 by `Math.round`, so every fourth
+  or fifth row and column was skipped. The gradient then spans uneven
+  distances; the steps read as slope and as horizon in the shadow march
+  (2.3% of texels shadowed, 1.2% after the fix).
+- Fix: interpolate (bilinear) when the target grid is not a divisor of the
+  source, or keep the source grid.
+
 ## Globe occlusion
 
 ### Flat triangles folding over the horizon (repeated: cesium 180, 213)
@@ -428,6 +438,14 @@ mistake; it now carries the same 10m detail box (its land loop also lacked
 world copies, under the name `this.land`). The template examples draw 110m
 land at their opening zooms too; 009 (Copenhagen at zoom 8) and maplibre 084
 (New Jersey at zoom 8) show the same mismatch on their coasts, not fixed.
+
+### The subject off screen (forge3d 009)
+
+The page is about Mt. Rainier and opened on the centre of the tile; the
+summit sits at v 0.78, below the bottom edge of a 1920x1021 window (the
+1024x768 bench viewport showed it). Open on the subject, as far as the
+data still covers the screen, and check it at the size people use
+(`summit-on-screen`).
 
 ## Outside the twelve
 

@@ -80,13 +80,21 @@ const latOf = (y: number): number => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y)
 async function heights(): Promise<Int16Array> {
   const png = parsePng(await getPngBuffer());
   const out = new Int16Array(W * H);
+  const at = (x: number, y: number): number => {
+    const i = (y * png.width + x) * 3;
+    return png.pixels[i] * 256 + png.pixels[i + 1] + png.pixels[i + 2] / 256 - 32768;
+  };
+  // Bilinear, not nearest: rounding 256 samples onto 200 skips every fourth
+  // or fifth source row and column, and the uneven spacing showed in the
+  // slopes as a grid.
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const sx = Math.round((x / (W - 1)) * (png.width - 1));
-      const sy = Math.round((y / (H - 1)) * (png.height - 1));
-      const i = (sy * png.width + sx) * 3;
-      const r = png.pixels[i], g = png.pixels[i + 1], b = png.pixels[i + 2];
-      out[y * W + x] = Math.round(r * 256 + g + b / 256 - 32768);
+      const fx = (x / (W - 1)) * (png.width - 1), fy = (y / (H - 1)) * (png.height - 1);
+      const x0 = Math.min(png.width - 2, Math.floor(fx)), y0 = Math.min(png.height - 2, Math.floor(fy));
+      const tx = fx - x0, ty = fy - y0;
+      const top = at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx;
+      const bot = at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx;
+      out[y * W + x] = Math.round(top * (1 - ty) + bot * ty);
     }
   }
   return out;

@@ -15,6 +15,18 @@ export async function run(relief: ShadowRelief, firstFrameMs: number): Promise<v
   const px = (x: number, y: number): Uint8ClampedArray =>
     ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
+  // Verification 0: the opening view shows the summit, whatever the window.
+  {
+    const m = relief.meta!;
+    const [sx, sy] = relief.screenOf(m.peakU, m.peakV);
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    emit({
+      check: 'summit-on-screen',
+      pass: sx > 20 && sx < w - 20 && sy > 20 && sy < h - 20,
+      detail: `summit u=${m.peakU} v=${m.peakV} at (${Math.round(sx)}, ${Math.round(sy)}) in ${w}x${h}`,
+    });
+  }
+
   // Verification 1: the DEM is drawn, and it is shaded relief rather than a
   // flat fill: the summit texel is snow-white (near-neutral) while low forest
   // is green, so the two cannot be confused.
@@ -56,10 +68,15 @@ export async function run(relief: ShadowRelief, firstFrameMs: number): Promise<v
     drops.push(`(${u.toFixed(2)},${v.toFixed(2)}) ${Math.round(diff)}`);
   }
 
+  // A lit texel on screen (a probe off screen compares background with
+  // background and passes whatever the panes do).
+  const [vu0, vv0] = relief.uvAtScreen(0, 0);
+  const [vu1, vv1] = relief.uvAtScreen(canvas.width / dpr, canvas.height / dpr);
   let litU = 0.5, litV = 0.5;
   outer: for (let gy = 1; gy <= 5; gy++) {
     for (let gx = 1; gx <= 5; gx++) {
-      const u = gx / 6, v = gy / 6;
+      const u = Math.max(0, vu0) + (gx / 6) * (Math.min(1, vu1) - Math.max(0, vu0));
+      const v = Math.max(0, vv0) + (gy / 6) * (Math.min(1, vv1) - Math.max(0, vv0));
       if (relief.shadowAt(u, v) === 1 && relief.shadowAt(u + 0.02, v) === 1) { litU = u; litV = v; break outer; }
     }
   }
@@ -71,7 +88,7 @@ export async function run(relief: ShadowRelief, firstFrameMs: number): Promise<v
 
   emit({
     check: 'cast-shadows-darken',
-    pass: samples.length === 3 && dropped === 3 && Math.abs(litAfter - litBefore) < 6,
+    pass: samples.length === 3 && dropped === 3 && litBefore > 20 && Math.abs(litAfter - litBefore) < 6,
     detail: `shadow drops [${drops.join(' ')}] lit (${litU.toFixed(2)},${litV.toFixed(2)}) ${litBefore.toFixed(1)}->${litAfter.toFixed(1)}`,
   });
 
@@ -129,8 +146,7 @@ export async function run(relief: ShadowRelief, firstFrameMs: number): Promise<v
   emit({ metric: 'frame_interval_ms', values: frameIntervals });
 
   // Leave the view framed for the screenshot.
-  relief.center = { u: 0.5, v: 0.5 };
-  relief.setZoom(1);
+  relief.frame();
   relief.setSplit(0.5);
   emit({ done: true });
 }

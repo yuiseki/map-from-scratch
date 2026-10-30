@@ -88,6 +88,18 @@ export class ShadowRelief {
       shaded[i * 3 + 2] *= SHADOW_TINT;
     }
     this.shadowCanvas = imageCanvas(shaded, w, h);
+    this.frame();
+  }
+
+  // Centre on the summit, as far as the tile still covers the screen: the
+  // tile's centre leaves Rainier's summit (v 0.78) below a wide window.
+  frame(): void {
+    const m = this.meta;
+    if (!m) return;
+    this.zoom = 1;
+    const s = this.scale();
+    const hu = this.canvas.width / (2 * m.width * s), hv = this.canvas.height / (2 * m.height * s);
+    this.center = { u: Math.max(hu, Math.min(1 - hu, m.peakU)), v: Math.max(hv, Math.min(1 - hv, m.peakV)) };
     this.draw();
   }
 
@@ -167,13 +179,15 @@ export class ShadowRelief {
 
   // Spread-out texels in cast shadow, for checks that sample the screen. The
   // shadows are thin strips at this sun angle, so single texels qualify; they
-  // are kept inside the area that is on screen at zoom 1.
+  // are kept 4 texels inside the area on screen.
   shadowSamples(count: number): [number, number][] {
     const m = this.meta;
     if (!m) return [];
+    const [u0, v0] = this.uvAtScreen(0, 0);
+    const [u1, v1] = this.uvAtScreen(this.canvas.width / this.dpr, this.canvas.height / this.dpr);
     const cand: [number, number][] = [];
-    for (let y = Math.round(0.16 * m.height); y < Math.round(0.84 * m.height); y += 2) {
-      for (let x = Math.round(0.06 * m.width); x < Math.round(0.94 * m.width); x += 2) {
+    for (let y = Math.max(0, Math.ceil(v0 * m.height)) + 4; y < Math.min(1, v1) * m.height - 4; y += 2) {
+      for (let x = Math.max(0, Math.ceil(u0 * m.width)) + 4; x < Math.min(1, u1) * m.width - 4; x += 2) {
         if (this.mask[y * m.width + x] === 0) cand.push([(x + 0.5) / m.width, (y + 0.5) / m.height]);
       }
     }
