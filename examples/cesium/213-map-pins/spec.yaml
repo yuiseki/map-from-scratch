@@ -1,0 +1,96 @@
+id: cesium-213-map-pins
+request: >-
+  CesiumJS の「Map Pins」例のように、宇宙空間の 3D 地球儀上の指定地理座標（ワシントン、東京、ロンドン）に
+  色分けされたピン（マップピン）を配置し、地球の回転に応じて前面（可視）と背面（地平線遮蔽・非表示）が
+  正しく切り替わる地図を表示したい。ドラッグで回転、ホイールでズームできること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: CesiumJS フルバンドルを読み込まず、3D 正射方位地球儀とピン描画に必要な最小限のコードで構成
+  - id: quick-start
+    need: ページを開いて即座に 3D 地球儀とピンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによる回転やホイールズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: pin-occlusion-accuracy
+    need: ピンが球面座標に固定され、球体背面に回った際は地球によって遮蔽され非表示になる
+    unmeasured: verification の checks で前面表示と背面オクルージョンをピクセル検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/213-map-pins/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地球儀およびピンデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの地球儀回転中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/cesium/213-map-pins/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/cesium-213-map-pins/land.bin
+    - data/baked/cesium-213-map-pins/pins.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを earcut で三角形分割
+    - 頂点座標を経緯度 x 100 の 16bit 整数に量子化
+    - 主要3都市（ワシントン、東京、ロンドン）のピン情報を JSON に格納
+
+performance_knowledge:
+  - id: spherical-pin-occlusion
+    finding: 3D 球面上のピン描画において、カメラ視線方向との内積（Z > 0）を判定するだけで、高価な深度バッファ読み戻しやレイトレーシングを行わずに完全な地平線オクルージョン（裏回り遮蔽）を実現できる
+    evidence: ピンのオクルージョン判定コストは 1 点あたり 0.001 ms 未満
+    applies_when: 3D 地球儀上に配置するビルボード・マーカーの前面・背面判定
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/cesium/213-map-pins/index.html
+      - examples/cesium/213-map-pins/main.ts
+      - examples/cesium/213-map-pins/globe.ts
+    dependencies: []
+    why: 3D 球体正射方位投影とピンの Z オクルージョン判定を Canvas 2D で軽量に直接描画
+  alternatives:
+    - option: CesiumJS フルスタック
+      rejected_because: バンドルサイズが数 MB に達し、ピン配置と地球儀表示には過大
+  not_doing: [3D地形, 地名ラベル, 複雑なクラスタリング, 大気散乱シェーダー]
+
+verification:
+  checks:
+    - id: pins-rendered-on-front-hemisphere
+      what: 初期視線（大西洋中心）において、前面にあるロンドンピンが描画され、背面にある東京ピンが遮蔽されている
+      how: getImageData で各ピンの計算スクリーン座標周辺のピクセル色を検証
+      expected: ロンドン位置で緑色ピン検出、東京は遮蔽
+    - id: pins-occlude-when-rotated
+      what: 地球儀を日本方向へ回転させたとき、東京ピンが出現（前面）し、ロンドンピンが遮蔽（背面）される
+      how: 回転後の各ピン計算位置のピクセル色を検証
+      expected: 東京位置で赤色ピン検出、ロンドンは遮蔽
+    - id: pins-scale-with-zoom
+      what: ズームインにより地球儀と前面ピンの表示位置が拡大追従する
+      how: ズーム変更後の計算位置でピン色を検証
+      expected: ズーム後もピンが球面上の地理位置に正確に固定されている
+  harness:
+    - contextlost が起きたらエラーにする

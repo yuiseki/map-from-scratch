@@ -760,7 +760,7 @@
 - [ ] `cesium-210-localtofixedframe` → `examples/cesium/210-localtofixedframe/` — [Localtofixedframe](https://sandcastle.cesium.com/?src=localtofixedframe)
 - [ ] `cesium-211-manually-controlled-animation` → `examples/cesium/211-manually-controlled-animation/` — [Manually Controlled Animation](https://sandcastle.cesium.com/?src=manually-controlled-animation)
 - [ ] `cesium-212-many-clipping-planes-dev` → `examples/cesium/212-many-clipping-planes-dev/` — [Many Clipping Planes Dev](https://sandcastle.cesium.com/?src=many-clipping-planes-dev)
-- [ ] `cesium-213-map-pins` → `examples/cesium/213-map-pins/` — [Map Pins](https://sandcastle.cesium.com/?src=map-pins)
+- [x] `cesium-213-map-pins` → `examples/cesium/213-map-pins/` — [Map Pins](https://sandcastle.cesium.com/?src=map-pins)
 - [ ] `cesium-214-mars` → `examples/cesium/214-mars/` — [Mars](https://sandcastle.cesium.com/?src=mars)
 - [ ] `cesium-215-material-dev` → `examples/cesium/215-material-dev/` — [Material Dev](https://sandcastle.cesium.com/?src=material-dev)
 - [ ] `cesium-216-material-with-custom-glsl` → `examples/cesium/216-material-with-custom-glsl/` — [Material With Custom Glsl](https://sandcastle.cesium.com/?src=material-with-custom-glsl)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **24 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、openglobus-002、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **25 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
