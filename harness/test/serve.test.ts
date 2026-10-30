@@ -20,6 +20,7 @@ test('the server answers Range requests with 206 and the right bytes', async () 
   const dir = mkdtempSync(join(tmpdir(), 'serve-'));
   writeFileSync(join(dir, 'a.bin'), Buffer.from(Array.from({ length: 100 }, (_, i) => i)));
   writeFileSync(join(dir, 'm.ts'), 'const x: number = 1;\nexport default x;\n');
+  writeFileSync(join(dir, 'd.wasm'), Buffer.from([0, 97, 115, 109]));
   const server = await serve(dir);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {
@@ -40,6 +41,11 @@ test('the server answers Range requests with 206 and the right bytes', async () 
     const ts = await fetch(`${base}/m.ts`);
     assert.match(ts.headers.get('content-type') ?? '', /javascript/);
     assert.doesNotMatch(await ts.text(), /: number/, 'types are stripped');
+
+    // WebAssembly.compileStreaming refuses any other type.
+    const wasm = await fetch(`${base}/d.wasm`);
+    assert.equal(wasm.headers.get('content-type'), 'application/wasm');
+    await wasm.arrayBuffer();
   } finally {
     server.close();
   }

@@ -13,6 +13,7 @@ const TYPES: Record<string, string> = {
   '.css': 'text/css',
   '.png': 'image/png',
   '.bin': 'application/octet-stream',
+  '.wasm': 'application/wasm',
 };
 
 // One byte range of a Range header, as [first, last] inclusive and clamped to
