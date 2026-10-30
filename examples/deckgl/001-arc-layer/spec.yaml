@@ -1,0 +1,105 @@
+id: deckgl-001-arc-layer
+request: >-
+  deck.gl の ArcLayer と同じ意図で、米国郡間の人口移動フローを 3D 放物線アークとして
+  始点・終点カラーグラデーションと標高カーブで描き、パン・ズームや郡選択に追従させたい。外部ライブラリなしで。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリなしで配布サイズを最小限にする
+    rationale: deck.gl + luma.gl は数百 KB。アークと背景の描画には Canvas 2D で足りる
+  - id: quick-start
+    need: ページを開いて即座にアーク網が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: arcs-rendered
+    need: 郡セントロイド間を結ぶアークが転出（橙〜赤）・転入（シアン〜青）のグラデーションと放物線で描かれる
+    unmeasured: verification checks で画面ピクセルを検証
+  - id: smooth-interaction
+    need: 数千本のアーク描画でも 60 fps を保つ
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画を 3 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 240000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/001-arc-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: アークバイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/deckgl/001-arc-layer/bake.ts]
+  sources:
+    - id: deckgl-arc-counties
+      origin: https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/arc/counties.json
+      license: MIT (deck.gl-data)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/deckgl-001-arc-layer/arcs.bin
+  preparation:
+    - 全米 3,220 郡のセントロイドを Mercator [0, 1] に事前投影
+    - 主要郡全フローおよび全国規模の主要移動フロー（2.6万件）をコンパクトな 8 bytes 構造体に格納
+    - Natural Earth 110m 陸地境界ポリゴンを背景用に同梱
+
+performance_knowledge:
+  - id: quadratic-bezier-parabola-match
+    finding: 3D 空間における高さ h の放物線 z(t) = 4 h t(1 - t) の鳥瞰・正射影は、制御点 (x_mid, y_mid - 2h) の 2次ベジェ曲線 quadraticCurveTo と厳密に一致する
+    evidence: 数式展開 B_y(t) = (1-t)^2 y0 + 2(1-t)t(y_mid - 2h) + t^2 y1 = y0(1-t) + y1 t - 4 h t(1-t)。頂点分割不要で GPU ラスタライズが1命令で走る
+    applies_when: 2.5D や鳥瞰図でアーク・弾道・飛行経路を描くすべてのレンダラー
+  - id: batch-land-and-arcs
+    finding: 流入・流出の2バッチ（quadraticCurveTo サブパス）にまとめ、終点ドットをピクセルスナップした rect で描画することで、Skia CPU ラスタライズでも 60 fps を大幅に上回る描画速度を維持できる。DOM HUD に backdrop-filter: blur を置くと CPU コンポジターで毎フレーム 40 ms 以上消費するため使用を避ける
+    evidence: redraw p95 0.59 ms、frame_interval p95 4.76 ms、first_frame 15.08 ms (results/deckgl-001-arc-layer/latest.json)
+    applies_when: フロー可視化・大圏航路可視化・Canvas 2D HUD デザイン
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/deckgl/001-arc-layer/index.html
+      - examples/deckgl/001-arc-layer/main.ts
+      - examples/deckgl/001-arc-layer/map.ts
+    dependencies: []
+    why: 2次ベジェ曲線と線形グラデーションがブラウザ標準の Canvas 2D に完全一致し、重い 3D エンジンなしで超軽量・高速に描画可能
+  alternatives:
+    - option: WebGL / WebGPU
+      rejected_because: 数百〜数千本のアーク描画には 2D ベジェ曲線で十分 60fps を維持でき、シェーダー開発や頂点バッファ動的更新のコード肥大化が不要
+  not_doing: [全米 42 万件全件の同時描画, 完全な 3D カメラチルト回転, 郡ポリゴンのフルレンダリング]
+
+verification:
+  checks:
+    - id: arcs-loaded
+      what: アークデータおよび郡セントロイドが正しくロードされる
+      how: map.countyCount と map.flowCount を検証
+      expected: counties >= 3000, flows >= 1000
+    - id: land-background-drawn
+      what: 暗い地図背景と陸地が正しくレンダリングされている
+      how: 北米大陸内ピクセルの明度を検証
+      expected: 背景（海）より明るい陸地色
+    - id: arcs-visible
+      what: ロサンゼルス郡からの移動アークが橙・シアン系カラーで描画されている
+      how: アーク通過領域のピクセル色を検証
+      expected: r > 100 または b > 100
+    - id: pan-updates-arcs
+      what: パン操作で画面内のアーク座標が平行移動する
+      how: パン前後のピクセル変化を検証
+      expected: ピクセル差分分が移動
+  harness:
+    - contextlost が起きたらエラーにする

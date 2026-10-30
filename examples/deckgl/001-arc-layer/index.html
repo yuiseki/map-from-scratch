@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>deckgl-001-arc-layer: US County Migration ArcLayer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0f1422; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: #111625;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      max-width: 420px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .hud h1 { font-size: 15px; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.02em; }
+    .hud p { color: #a0aec0; margin-bottom: 10px; font-size: 12px; }
+    .controls { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    select {
+      background: #1c2438;
+      color: #fff;
+      border: 1px solid #3a4a68;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+    .legend { display: flex; gap: 14px; font-size: 11px; color: #cbd5e1; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .swatch { width: 16px; height: 3px; border-radius: 1px; }
+    .swatch-out { background: linear-gradient(to right, #fed976, #e31a1c); }
+    .swatch-in { background: linear-gradient(to right, #7fcddb, #1d91c0); }
+    #status { font-family: monospace; font-size: 11px; color: #94a3b8; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="hud">
+    <h1>deck.gl ArcLayer: 米国郡間人口移動フロー</h1>
+    <p>3D 放物線アーク（2次ベジェ曲線）で全米人口移動の流入・流出を高精度に可視化（外部依存ゼロ・Canvas 2D）</p>
+    <div class="controls">
+      <label for="county-select">対象郡:</label>
+      <select id="county-select">
+        <option value="2082">Los Angeles, CA</option>
+        <option value="610">Cook, IL (Chicago)</option>
+        <option value="2613">Harris, TX (Houston)</option>
+        <option value="106">Maricopa, AZ (Phoenix)</option>
+        <option value="2151">San Diego, CA</option>
+        <option value="-1">全国主要フロー (Top 1,500)</option>
+      </select>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="swatch swatch-out"></div> 転出 (Out-flow)</div>
+      <div class="legend-item"><div class="swatch swatch-in"></div> 転入 (In-flow)</div>
+    </div>
+    <div id="status">Loading...</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -109,6 +109,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/screen-grid/uber-pickup-locations.json',
     copy: true,
   },
+  // deck.gl ArcLayer demo: US county migration flows and boundaries.
+  'deckgl-arc-counties': {
+    out: 'deckgl_arc_counties.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-arc/counties.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/arc/counties.json',
+    copy: true,
+  },
   // Kontur Population 2023-11-01, H3 resolution 4, CC BY.
   'kontur-population-r4': {
     out: 'kontur_population_20231101_r4.parquet',

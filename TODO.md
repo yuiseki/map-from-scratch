@@ -186,7 +186,7 @@
 
 出典: [deck.gl Examples](https://deck.gl/examples)。Layers 23件、Integrations 6件、Views 3件、Extensions 6件。月面の非地理座標タイルは「地図系」に含める。数式曲面だけの [OrbitView](https://deck.gl/examples/plot) は含めない。Integrations は他エンジンへの接続自体を再実装するのではなく、元例が示す地図上の目的と操作を独立描画器で再現する。
 
-- [ ] `deckgl-001-arc-layer` → `examples/deckgl/001-arc-layer/` — [ArcLayer](https://deck.gl/examples/arc-layer)
+- [x] `deckgl-001-arc-layer` → `examples/deckgl/001-arc-layer/` — [ArcLayer](https://deck.gl/examples/arc-layer)
 - [ ] `deckgl-002-arcgis` → `examples/deckgl/002-arcgis/` — [ArcGIS](https://deck.gl/examples/arcgis)
 - [ ] `deckgl-003-multi-view` → `examples/deckgl/003-multi-view/` — [Minimap](https://deck.gl/examples/multi-view)
 - [ ] `deckgl-004-brushing-extension` → `examples/deckgl/004-brushing-extension/` — [BrushingExtension](https://deck.gl/examples/brushing-extension)
