@@ -154,13 +154,10 @@ export async function mount(
   function zoomAt(e: WheelEvent, z: number): void {
     const r = canvas.getBoundingClientRect();
     const ox = e.clientX - r.left - r.width / 2, oy = e.clientY - r.top - r.height / 2;
-    const before = 256 * Math.pow(2, zoom);
-    centerMx += ox / before;
-    centerMy += oy / before;
-    setZoom(z);
-    const after = 256 * Math.pow(2, zoom);
-    centerMx -= ox / after;
-    centerMy -= oy / after;
+    const k = 2 ** -zoom;
+    zoom = Math.max(0.5, Math.min(10, z));
+    centerMx += (ox * (k - 2 ** -zoom)) / 256;
+    centerMy += (oy * (k - 2 ** -zoom)) / 256;
     draw();
   }
 
