@@ -330,6 +330,15 @@ between examples.
   Its legend also said "Administrative Country Boundaries" over coastline
   data; it now says what is drawn.
 
+### A template highlight that contradicts the sun (cesium 209)
+
+209 lights the globe from a sun the slider moves, but kept the template's
+ocean gradient brightest at a fixed upper left: with the sun at 40° E the
+ocean was brightest far to the west, on the side the terminator darkens.
+Put the highlight under the sub-solar point (centre when the sun is behind
+the globe). When a renderer adds a real light, remove every baked-in light
+the template had.
+
 ## Cartographic layout
 
 ### A fixed opening zoom that does not fit (forge3d 004)

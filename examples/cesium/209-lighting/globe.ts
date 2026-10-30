@@ -131,7 +131,12 @@ export class SunGlobe {
   }
 
   private oceanGradient(cx: number, cy: number, R: number): CanvasGradient {
-    const grad = this.ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.25, R * 0.1, cx, cy, R);
+    // The highlight sits under the sun, not at a fixed upper left (that read
+    // as a second light opposite the terminator); with the sun behind the
+    // globe it falls back to the centre.
+    const sun = this.project(this.sunLon, 0);
+    const hx = sun.visible ? sun.sx : cx, hy = sun.visible ? sun.sy : cy;
+    const grad = this.ctx.createRadialGradient(hx, hy, R * 0.1, cx, cy, R);
     grad.addColorStop(0, '#3a78b4');
     grad.addColorStop(0.75, '#1c4d80');
     grad.addColorStop(1, '#0e2f55');
