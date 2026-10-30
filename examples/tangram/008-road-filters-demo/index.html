@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tangram-008-road-filters-demo: Real-time Road Filters</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #101524; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: #182033;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      max-width: 380px;
+      font-size: 13px;
+      line-height: 1.5;
+      z-index: 10;
+    }
+    .hud h1 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .hud p { color: #94a3b8; font-size: 12px; margin-bottom: 12px; }
+    .filter-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; font-size: 12px; }
+    .filter-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .swatch { width: 16px; height: 3px; border-radius: 1px; display: inline-block; }
+    .swatch-i { background: #00f0ff; }
+    .swatch-us { background: #ffb703; }
+    .swatch-sr { background: #48cae4; }
+    input[type="text"] {
+      background: #0f1422;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: #fff;
+      font-size: 12px;
+      width: 100%;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: #38bdf8; }
+    #status { font-family: monospace; font-size: 11px; color: #94a3b8; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="hud">
+    <h1>Tangram: Real-time Road Filters</h1>
+    <p>道路種別トグル・名称インクリメンタル検索による即時フィルタリング（外部依存ゼロ・Canvas 2D）</p>
+    <div class="filter-group">
+      <label class="filter-item">
+        <input type="checkbox" id="chk-interstate" checked>
+        <span class="swatch swatch-i"></span> 高速道路 (Interstate)
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" id="chk-us" checked>
+        <span class="swatch swatch-us"></span> 連邦幹線道 (US Highway)
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" id="chk-sr" checked>
+        <span class="swatch swatch-sr"></span> 州道 (State Route)
+      </label>
+    </div>
+    <div>
+      <input type="text" id="search-input" placeholder="道路名フィルタ (例: 101, 80, 5)...">
+    </div>
+    <div id="status">Loading...</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

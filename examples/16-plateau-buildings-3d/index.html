@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東京駅のまわりの建物 (PLATEAU)</title>
+<link rel="modulepreload" href="./plb.js">
+<link rel="modulepreload" href="./camera.js">
+<link rel="modulepreload" href="./render.js">
+<style>
+  html, body { margin: 0; height: 100%; background: #ccdbeb; font: 13px/1.5 system-ui, sans-serif; color: #333; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #help, #credit { position: fixed; padding: 6px 10px; background: #fffd; border-radius: 6px; }
+  #help { left: 12px; top: 12px; }
+  #credit { right: 8px; bottom: 8px; max-width: 46em; font-size: 11px; }
+  a { color: #246; }
+</style>
+<canvas id="map"></canvas>
+<div id="help">ドラッグで回転、右ドラッグか Shift+ドラッグで移動、ホイールで寄る・引く</div>
+<div id="credit">出典: 国土交通省 Project PLATEAU、
+  <a href="https://www.geospatial.jp/ckan/dataset/plateau-13101-chiyoda-ku-2025">3D都市モデル（Project PLATEAU）千代田区（2025年度）</a>、
+  <a href="https://www.geospatial.jp/ckan/dataset/plateau-13102-chuo-ku-2025">3D都市モデル（Project PLATEAU）中央区（2025年度）</a>
+  (G空間情報センター)。著作権は千代田区・中央区。<a href="https://www.mlit.go.jp/plateau/site-policy/">PDL1.0</a> (CC BY 4.0 互換) に基づき、建物 (LOD2、ない建物は LOD1) と地形を加工して表示</div>
+<script type="module" src="./main.js"></script>

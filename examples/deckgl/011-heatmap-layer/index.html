@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Uber 乗車地点・ヒートマップ</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; background: #0b131c; color: #e6eff5; font: 14px/1.5 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .panel { position: fixed; top: 14px; left: 14px; width: min(340px, calc(100% - 28px)); padding: 15px; border: 1px solid #385467; border-radius: 12px; background: #102330e8; box-shadow: 0 8px 24px #0006; }
+  h1 { font-size: 17px; margin: 0 0 5px; }
+  p { margin: 5px 0; }
+  label { display: block; margin-top: 10px; }
+  input { width: 100%; accent-color: #ef7d42; }
+  small { color: #bfd0da; }
+  footer { position: fixed; bottom: 10px; right: 10px; max-width: min(440px, calc(100% - 20px)); padding: 5px 8px; border-radius: 5px; background: #102330e8; font-size: 11px; }
+  a { color: #addcff; }
+</style>
+<canvas id="map" aria-label="ニューヨークの Uber 乗車地点のヒートマップ"></canvas>
+<div class="panel">
+  <h1>NYC Uber 乗車地点</h1>
+  <p id="status">読み込み中…</p>
+  <label for="radius">半径 <strong id="radius-value">30 px</strong></label>
+  <input id="radius" type="range" min="5" max="60" value="30">
+  <label for="intensity">強度 <strong id="intensity-value">1.0</strong></label>
+  <input id="intensity" type="range" min="2" max="30" value="10">
+  <label for="threshold">しきい値 <strong id="threshold-value">0.03</strong></label>
+  <input id="threshold" type="range" min="0" max="20" value="3">
+  <small>ドラッグで移動、ホイールで拡大・縮小</small>
+</div>
+<footer>データ: <a href="https://github.com/visgl/deck.gl-data/tree/master/examples/screen-grid">deck.gl-data</a> / <a href="https://github.com/fivethirtyeight/uber-tlc-foil-response">FiveThirtyEight・NYC TLC</a></footer>
+<script type="module" src="./main.js"></script>

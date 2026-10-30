@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>パリの街路樹 · ズーム別集計格子</title>
+<style>
+  html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#0e1821; color:#e5eee9; font:14px/1.5 system-ui,sans-serif }
+  canvas { display:block; width:100vw; height:100vh; touch-action:none; cursor:grab }
+  canvas:active { cursor:grabbing }
+  .panel { position:fixed; top:14px; left:14px; width:min(310px,calc(100% - 28px)); padding:14px; border:1px solid #426354; border-radius:12px; background:#11241eea; box-shadow:0 8px 25px #0007 }
+  h1 { margin:0 0 5px; font-size:17px }
+  p { margin:5px 0 }
+  label { display:block; margin-top:10px }
+  input { display:block; width:100%; accent-color:#93d17e }
+  .legend { height:14px; margin:10px 0 4px; border-radius:4px; background:linear-gradient(90deg,#006837,#31a354,#78c679,#addd8e,#d9f0a3,#ffffcc) }
+  .key { display:flex; justify-content:space-between; color:#bdd2c4; font-size:11px }
+  small { display:block; margin-top:9px; color:#bdd2c4 }
+  #tooltip { position:fixed; display:none; pointer-events:none; padding:5px 8px; background:#11241ef0; border:1px solid #63826e; border-radius:5px }
+  footer { position:fixed; right:8px; bottom:8px; max-width:min(520px,calc(100% - 16px)); padding:5px 8px; background:#11241ee8; border-radius:5px; font-size:11px }
+  a { color:#b5e5c6 }
+</style>
+<canvas id="map" aria-label="パリの街路樹をズーム別の格子と点で示す地図"></canvas>
+<div class="panel">
+  <h1>パリの街路樹</h1>
+  <p id="status">読み込み中…</p>
+  <p>縮小時は本数を集計し、拡大すると一本ずつ表示します。</p>
+  <label for="cell-pixels">格子の画面幅 <strong id="cell-pixels-value">24 px</strong></label>
+  <input id="cell-pixels" type="range" min="16" max="48" step="2" value="24">
+  <label for="fade">切替の幅 <strong id="fade-value">0.5 zoom</strong></label>
+  <input id="fade" type="range" min="0.2" max="1" step="0.1" value="0.5">
+  <div class="legend"></div><div class="key"><span>少</span><span>多</span></div>
+  <small>ドラッグで移動、ホイールで拡大・縮小。点や格子にマウスを重ねると詳細を表示します。</small>
+</div>
+<div id="tooltip"></div>
+<footer>データ: <a href="https://opendata.paris.fr/explore/dataset/les-arbres/">Ville de Paris / Paris Data「Arbres」</a>、<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>。deck.gl 公開例の固定版を加工。</footer>
+<script type="module" src="./main.js"></script>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Demo App - California Earthquakes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #131519; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #a0a7b4; user-select: none; }
+    #app { display: flex; width: 100vw; height: 100vh; position: relative; }
+
+    /* Left Sidebar */
+    #sidebar {
+      width: 320px;
+      min-width: 320px;
+      height: 100%;
+      background: #242730;
+      border-right: 1px solid #1f2227;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 10;
+      transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #sidebar.collapsed {
+      margin-left: -320px;
+    }
+
+    /* Collapse button attached to sidebar edge */
+    #sidebar-collapse-btn {
+      position: absolute;
+      top: 14px;
+      right: -28px;
+      width: 28px;
+      height: 28px;
+      background: #242730;
+      border: 1px solid #3a414e;
+      border-left: none;
+      border-radius: 0 4px 4px 0;
+      color: #d3d8e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      z-index: 20;
+    }
+    #sidebar-collapse-btn:hover { background: #2c323f; color: #fff; }
+
+    /* Sidebar Header */
+    .sidebar-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #1f2227;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-badge {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #00d1b2 0%, #10b981 100%);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      color: #131519;
+    }
+    .title-box { display: flex; flex-direction: column; }
+    .title-box .app-name { font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px; }
+    .title-box .app-sub { font-size: 11px; color: #838d9d; }
+
+    /* Tab Bar */
+    .nav-tabs {
+      display: flex;
+      background: #1f242c;
+      border-bottom: 1px solid #181c22;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 10px 0;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: #7b8494;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-tab:hover { color: #d3d8e2; }
+    .nav-tab.active {
+      color: #00d1b2;
+      border-bottom-color: #00d1b2;
+      background: #242730;
+    }
+
+    /* Tab Panels */
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel { display: none; flex-direction: column; gap: 14px; }
+    .panel.active { display: flex; }
+
+    /* Layer Card */
+    .layer-card {
+      background: #2c313d;
+      border: 1px solid #394250;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .layer-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .layer-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .layer-visibility-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      color: #00d1b2;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+    }
+    .layer-visibility-toggle.hidden {
+      color: #555f6e;
+    }
+    .layer-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .layer-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: #1f242c;
+      border-radius: 3px;
+      color: #8c96a5;
+    }
+    .color-ramp-bar {
+      height: 8px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81);
+    }
+    .layer-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #838d9d;
+    }
+
+    /* Filters Tab */
+    .filter-card {
+      background: #2c313d;
+      border: 1px solid #394250;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .filter-title { font-size: 12px; font-weight: 600; color: #fff; }
+    .filter-slider {
+      width: 100%;
+      accent-color: #00d1b2;
+      cursor: pointer;
+    }
+    .filter-value { font-size: 11px; color: #00d1b2; font-weight: 600; }
+
+    /* Map Area */
+    #map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    #map-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Map Controls */
+    .floating-controls {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+    .control-btn {
+      width: 32px;
+      height: 32px;
+      background: #242730;
+      border: 1px solid #3a414e;
+      border-radius: 4px;
+      color: #d3d8e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+    .control-btn:hover { background: #2c323f; color: #fff; }
+    .control-btn.active { color: #00d1b2; border-color: #00d1b2; }
+
+    /* Floating Legend */
+    #legend {
+      position: absolute;
+      bottom: 24px;
+      right: 14px;
+      width: 220px;
+      background: #242730;
+      border: 1px solid #3a414e;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 11px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+    .legend-gradient {
+      height: 10px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81);
+    }
+    .legend-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #8c96a5;
+    }
+
+    /* Attribution */
+    .attribution {
+      position: absolute;
+      bottom: 4px;
+      left: 10px;
+      font-size: 10px;
+      color: #647082;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Left Sidebar -->
+    <div id="sidebar">
+      <button id="sidebar-collapse-btn" title="Toggle Sidebar">◀</button>
+      <div class="sidebar-header">
+        <div class="logo-badge">K</div>
+        <div class="title-box">
+          <span class="app-name">kepler.gl</span>
+          <span class="app-sub">California Earthquakes (USGS)</span>
+        </div>
+      </div>
+
+      <div class="nav-tabs">
+        <div class="nav-tab active" data-tab="layers">Layers</div>
+        <div class="nav-tab" data-tab="filters">Filters</div>
+        <div class="nav-tab" data-tab="interactions">Interaction</div>
+        <div class="nav-tab" data-tab="basemap">Base map</div>
+      </div>
+
+      <div class="tab-content">
+        <!-- Layers Tab Panel -->
+        <div id="panel-layers" class="panel active">
+          <div class="layer-card">
+            <div class="layer-card-header">
+              <div class="layer-title-row">
+                <button id="layer-toggle-earthquakes" class="layer-visibility-toggle" title="Toggle Visibility">👁</button>
+                <span class="layer-name">earthquakes</span>
+              </div>
+              <span class="layer-badge">Point</span>
+            </div>
+            <div class="color-ramp-bar"></div>
+            <div class="layer-meta">
+              <span>Magnitude: 2.5 - 7.2</span>
+              <span>54,936 pts</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters Tab Panel -->
+        <div id="panel-filters" class="panel">
+          <div class="filter-card">
+            <span class="filter-title">Filter by Magnitude</span>
+            <input type="range" id="mag-filter-slider" class="filter-slider" min="2.5" max="7.0" step="0.1" value="2.5">
+            <span id="mag-filter-val" class="filter-value">Min Magnitude: ≥ 2.5</span>
+          </div>
+        </div>
+
+        <!-- Interactions Tab Panel -->
+        <div id="panel-interactions" class="panel">
+          <div class="filter-card">
+            <span class="filter-title">Tooltip & Hover</span>
+            <span style="font-size: 11px;">Point identification and spatial queries active</span>
+          </div>
+        </div>
+
+        <!-- Basemap Tab Panel -->
+        <div id="panel-basemap" class="panel">
+          <div class="filter-card">
+            <span class="filter-title">Map Style</span>
+            <span style="font-size: 11px; color: #00d1b2;">● Dark (Kepler Basemap)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Canvas Container -->
+    <div id="map-container">
+      <canvas id="map-canvas"></canvas>
+
+      <!-- Floating Controls -->
+      <div class="floating-controls">
+        <button id="pitch-toggle" class="control-btn" title="Toggle 3D View">3D</button>
+        <button id="legend-toggle" class="control-btn active" title="Toggle Legend">☰</button>
+      </div>
+
+      <!-- Floating Legend -->
+      <div id="legend">
+        <span class="legend-title">Magnitude (Richter)</span>
+        <div class="legend-gradient"></div>
+        <div class="legend-ticks">
+          <span>2.5</span>
+          <span>3.5</span>
+          <span>4.5</span>
+          <span>5.5</span>
+          <span>6.5+</span>
+        </div>
+      </div>
+
+      <div class="attribution">USGS Earthquakes | Natural Earth | kepler.gl from scratch</div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

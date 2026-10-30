@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapbox GL JS | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / Mapbox GL JS</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>125</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>32</span></a>
+<a href="../../examples/mapbox/" aria-current="page">Mapbox GL JS <span>14</span></a>
+<a href="../../examples/cesium/">CesiumJS <span>4</span></a>
+<a href="../../examples/openglobus/">OpenGlobus <span>5</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>13</span></a>
+<a href="../../examples/d3/">D3 <span>4</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>4</span></a>
+<a href="../../examples/forge3d/">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>7</span></a>
+<span class="empty">luma.gl <span>0</span></span></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>87</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>37</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>4</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>2</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>1</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../examples/legacy/">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">14 件</p>
+<ul>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-009-add-a-marker</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Copenhagen を中心に、標準のシアン色のピンと、45度回転した黒色のピンの2つのマーカーを配置した地図を表示したい。 ドラッグでパン、ホイールでズームしてもマーカーが地理座標に固定されて追従すること。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 2.7 KB gzip ・ データ 30 KB gzip ・ 初回描画 6 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/009-add-a-marker">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/009-add-a-marker/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/009-add-a-marker/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/add-a-marker/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/009-add-a-marker/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-011-add-image</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Mapbox の &quot;Add an image&quot; 例と同じく、ニューイングランド上空 [-80.425, 37.936]〜[-71.516, 46.437] の矩形に、あらかじめ用意した 1 枚の画像を地図に貼りたい。パン・ズームすると画像は地図に 固定されて一緒に動く。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/011-add-image">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/011-add-image/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/011-add-image/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/add-image/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/011-add-image/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-012-add-image-animated</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Mapbox の &quot;Add an image (animated)&quot; 例と同じく、[0, 0] に脈打つドット（pulsing dot）を 置きたい。外側の輪が 1 秒かけて広がりながら薄くなり、内側の赤い円は常に同じ大きさで 描かれる。中心 [0, 0]・ズーム 2、ドットはズームしても 100 px の画面サイズを保つ。 外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/012-add-image-animated">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/012-add-image-animated/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/012-add-image-animated/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/add-image-animated/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/012-add-image-animated/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-013-add-image-generated</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Mapbox の &quot;Add an image (generated)&quot; 例と同じく、コードでピクセルごとに生成した 64×64 の グラデーション画像をアイコンとして地図に置きたい。中心 [0, 0]・ズーム 2 で、アイコンは どのズームでも 64 px の画面サイズを保つ。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/013-add-image-generated">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/013-add-image-generated/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/013-add-image-generated/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/add-image-generated/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/013-add-image-generated/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-017-adjust-layer-opacity</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">シカゴ中心部（[-87.6321, 41.8362]、ズーム 9.5）の地図に、市域を覆うラスタレイヤーを重ね、 スライダーをドラッグしてレイヤーの不透明度を 0〜100% で調整したい。 スライダーは地図上に描画し、操作は外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/017-adjust-layer-opacity">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/017-adjust-layer-opacity/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/017-adjust-layer-opacity/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/adjust-layer-opacity/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/017-adjust-layer-opacity/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-018-animate-a-line</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Mapbox GL JS の公式ギャラリー例「Animate a line」のように、サンフランシスコからワシントンD.C.を結ぶ 大圏航路ルートラインを、毎フレームの頂点ストリーミングにより時間経過とともに滑らかに伸長アニメーション描画したい。 先頭のパルス発光マーカー、軌跡グローを備え、ドラッグでパン、ホイールで拡大縮小中も 60 fps で滑らかに再描画すること。 外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 3.1 KB gzip ・ データ 38 KB gzip ・ 初回描画 44 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/018-animate-a-line">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/018-animate-a-line/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/018-animate-a-line/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/animate-a-line/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/018-animate-a-line/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-019-animate-ant-path</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">サンフランシスコからワシントンD.C.へのルートを、破線のダッシュ（アリの行進）が流れ続ける 「ant path」としてアニメーション表示したい。ドラッグでパン、ホイールで拡大縮小でき、 外部ライブラリなし・Canvas 2D で最速・最小に実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/019-animate-ant-path">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/019-animate-ant-path/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/019-animate-ant-path/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/animate-ant-path/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/019-animate-ant-path/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-022-animate-marker</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">[-96.0, 37.8] にピンを1本置き、そのピンが一定周期で跳ねるアニメーションを表示したい。 ピンの先端は常に同じ地理座標を基準に上下し、ドラッグでパン、ホイールで拡大縮小できる。 外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/022-animate-marker">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/022-animate-marker/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/022-animate-marker/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/animate-marker/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/022-animate-marker/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-027-attribution-position</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">地図右下に出典表示（attribution）を置き、ボタンで四隅のどこへでも移動できるようにしたい。 地図をパン・ズームしても出典表示は画面の同じ位置に留まる。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/027-attribution-position">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/027-attribution-position/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/027-attribution-position/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/attribution-position/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/027-attribution-position/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-038-color-switcher</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">海・陸・強調ポリゴンをまとめて配色し直すカラースイッチャー付きの地図を表示したい。 Blue / Dark / Sunset の 3 つのスウォッチで即座に塗り色が切り替わり、パン・ズームしても 色と地理的な位置関係が保たれる。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/038-color-switcher">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/038-color-switcher/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/038-color-switcher/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/color-switcher/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/038-color-switcher/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-045-data-driven-circle-colors</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">Mapbox GL JS の &quot;Data driven circle colors&quot; 例と同じく、世界の地震を点として描き、 マグニチュードに応じて円の色と大きさを連続的に変えたい。ドラッグとホイールで パン・ズームでき、6,000 点超でも 60 fps で動くこと。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">WebGL2 + Canvas 2D（陸地レイヤ） / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/045-data-driven-circle-colors">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/045-data-driven-circle-colors/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/045-data-driven-circle-colors/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/045-data-driven-circle-colors/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-049-disable-scroll-zoom</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">ホイールでの拡大縮小を無効にした地図を表示したい。ドラッグによるパンは有効、 ダブルクリックによるズームは有効のまま。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/049-disable-scroll-zoom">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/049-disable-scroll-zoom/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/049-disable-scroll-zoom/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/disable-scroll-zoom/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/049-disable-scroll-zoom/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-051-drag-a-marker</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">[-66.324, -16.498]（ボリビア）に置いたピンをマウスでつかんで地図上の任意の位置へ動かせる地図を表示したい。 ピン以外の場所をドラッグしたときは地図がパンし、ホイールで拡大縮小できる。 外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/051-drag-a-marker">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/051-drag-a-marker/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/051-drag-a-marker/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/drag-a-marker/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/051-drag-a-marker/">操作する ↗</a></li>
+<li data-gallery="mapbox"><div class="card-head"><span class="id">mapbox-127-popup</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/mapbox/">Mapbox GL JS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">中心座標 [-96.0, 37.8]、ズーム 3 で地図を表示し、 指定座標に「Hello World!」のポップアップを吹き出し型で表示・開閉可能にし、 ドラッグでパン、ホイールで拡大縮小できる地図を作りたい。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 3.1 KB gzip ・ データ 30 KB gzip ・ 初回描画 7 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/mapbox/127-popup">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/127-popup/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/mapbox/127-popup/REQUEST.md">設計と計測</a> ・ <a href="https://docs.mapbox.com/mapbox-gl-js/example/popup/">元例 ↗</a></p>
+  <a class="open" href="../../examples/mapbox/127-popup/">操作する ↗</a></li>
+</ul>

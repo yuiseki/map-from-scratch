@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>既存の例 | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / 既存の例</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>125</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>32</span></a>
+<a href="../../examples/mapbox/">Mapbox GL JS <span>14</span></a>
+<a href="../../examples/cesium/">CesiumJS <span>4</span></a>
+<a href="../../examples/openglobus/">OpenGlobus <span>5</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>13</span></a>
+<a href="../../examples/d3/">D3 <span>4</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>4</span></a>
+<a href="../../examples/forge3d/">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>7</span></a>
+<span class="empty">luma.gl <span>0</span></span></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>87</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>37</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>4</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>2</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>1</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../examples/legacy/" aria-current="page">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">22 件</p>
+<ul>
+<li data-gallery="legacy"><div class="card-head"><span class="id">01-prefecture-picker</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">自治体の観光サイトの記事に、都道府県を選ぶ日本地図を埋め込みたい。クリックやタップで選んだ都道府県で記事を絞り込む。 外部ライブラリは入れられないし、ページが重くなるのは困る。</p>
+  <p class="how">Canvas 2D (Path2D と isPointInPath) / TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)</p><p class="num">コード 1.0 KB gzip ・ データ 4 KB gzip ・ 初回描画 150 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/01-prefecture-picker">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/01-prefecture-picker/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/01-prefecture-picker/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/01-prefecture-picker/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">02-world-population-mobile</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">スマホで、世界の国を人口で塗り分けた地図をピンチで拡大して、タップした国の名前と人口を出したい。</p>
+  <p class="how">WebGL2 / TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)</p><p class="num">コード 3.2 KB gzip ・ データ 463 KB gzip</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/02-world-population-mobile">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/02-world-population-mobile/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/02-world-population-mobile/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/02-world-population-mobile/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">03-quake-timeline</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">2025年に世界で起きた M4.5 以上の地震を、地図の上で時間を追って再生したい。再生・一時停止と、スライダーで好きな日時に飛べるように。PC のブラウザで見る。</p>
+  <p class="how">WebGL2 / TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/03-quake-timeline">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/03-quake-timeline/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/03-quake-timeline/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/03-quake-timeline/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">04-osm-node-density</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">東京23区の OSM の全ノード（約 966 万点）の密度をヒートマップで見たい。拡大・移動したら、タイルの粗い集計ではなく、 その画面の解像度で数え直してほしい。PC のブラウザで。</p>
+  <p class="how">WebGL2 (EXT_color_buffer_float と EXT_float_blend) / TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/04-osm-node-density">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/04-osm-node-density/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/04-osm-node-density/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/04-osm-node-density/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">05-tokyo-roads-native</span> <span class="tag">ソース・計測結果</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/opengl-es/">OpenGL ES</a></p>
+  <p class="req">ノート PC のデスクトップアプリとして、東京23区の道路を1本も間引かずに表示して、144Hz のモニタでカクつかずにパン・ズームしたい。 ブラウザは使いたくない。起動は一瞬で。</p>
+  <p class="how">EGL + OpenGL ES 3.0。ウィンドウは Xlib、ベンチは EGL device platform のピクセルバッファ / C11</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/05-tokyo-roads-native">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/05-tokyo-roads-native/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/05-tokyo-roads-native/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/05-tokyo-roads-native">実装を見る ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">06-mcu-roadmap</span> <span class="tag">ソース・計測結果</span></div>
+  <p class="labels"></p>
+  <p class="req">ESP32-C6（RISC-V 160MHz、RAM 512KB、FPU なし、PSRAM なし）と 240x240 の液晶のハンディ端末で、 渋谷駅のまわりの道路地図をボタンでスクロール・拡大縮小したい。</p>
+  <p class="how">なし (呼ぶ側が 240×16 の RGB565 ストリップを LCD へ DMA する) / C11 (freestanding、libc なし、ヒープなし、浮動小数点なし)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/06-mcu-roadmap">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/06-mcu-roadmap/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/06-mcu-roadmap/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/06-mcu-roadmap">実装を見る ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">07-world-cities-hover</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">世界の都市（Natural Earth の populated places、約 7,300 都市）を人口に応じた大きさの点で表示して、 マウスを乗せた都市の名前と人口を出したい。ノート PC のブラウザで使う。ページ全体（コードとデータ）で gzip 150 KB 以内にしたい。</p>
+  <p class="how">WebGL2 (ステンシル、GL_LINES) / TypeScript (ES modules、ビルドなし。配るときは型を外すだけ)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/07-world-cities-hover">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/07-world-cities-hover/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/07-world-cities-hover/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/07-world-cities-hover/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">08-prefecture-quiz</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">日本地図を使って、示された都道府県の場所を順に当てるクイズを遊びたい。</p>
+  <p class="how">Canvas 2D と Path2D / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/08-prefecture-quiz">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/08-prefecture-quiz/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/08-prefecture-quiz/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/08-prefecture-quiz/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">09-prefecture-search</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">日本の都道府県名を入力すると、その位置を地図上で見つけたい。</p>
+  <p class="how">Canvas 2D と Path2D / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/09-prefecture-search">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/09-prefecture-search/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/09-prefecture-search/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/09-prefecture-search/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">10-gsi-seamlessphoto</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">z.yuiseki.net に置いた国土地理院の全国最新写真（シームレス）を、ブラウザで移動・拡大しながら見たい。 約715 GiB（約768 GB）の PMTiles 全体はダウンロードせず、画面に必要な写真だけを読む。</p>
+  <p class="how">Canvas 2D、Fetch Range、DecompressionStream / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/10-gsi-seamlessphoto">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/10-gsi-seamlessphoto/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/10-gsi-seamlessphoto/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/10-gsi-seamlessphoto/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">16-plateau-buildings-3d</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">東京駅のまわりの建物を、PLATEAU の 3D モデルで、PC のブラウザでぐるぐる回して見たい。</p>
+  <p class="how">WebGL2 (深度 24 bit、MSAA) / TypeScript (ES modules、ビルドなし。配るときは型を外すだけ)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/16-plateau-buildings-3d">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/16-plateau-buildings-3d/spec.yaml">spec.yaml</a></p>
+  <a class="open" href="../../examples/16-plateau-buildings-3d/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">17-fuji-terrain-3d</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">富士山のまわりの地形を、3D で斜めから眺めたい。PC のブラウザで、なめらかに回したい。</p>
+  <p class="how">WebGL2 (R16UI のテクスチャ配列、インスタンス描画 1 回、gl_VertexID) / TypeScript (ES modules、ビルドなし。配るときは型を外すだけ)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/17-fuji-terrain-3d">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/17-fuji-terrain-3d/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/17-fuji-terrain-3d/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/17-fuji-terrain-3d/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">18-fuji-aerial-terrain</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">富士山の 3D 地形に、地理院のシームレス空中写真をテクスチャとして重ねて眺めたい。</p>
+  <p class="how">WebGL2、Fetch Range、DecompressionStream / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/18-fuji-aerial-terrain">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/18-fuji-aerial-terrain/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/18-fuji-aerial-terrain/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/18-fuji-aerial-terrain/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">19-kontur-h3-population</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">Hugging Face の Kontur Population 2023-11-01 22km データセットを H3 で可視化したい。</p>
+  <p class="how">Canvas 2D と Path2D / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/19-kontur-h3-population">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/19-kontur-h3-population/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/19-kontur-h3-population/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/19-kontur-h3-population/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">20-ucdp-ged-timeline</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">UCDP GED の公開データを地図で見たい。出来事が起きた場所を年ごとに追い、暴力の分類と死者数を確認したい。</p>
+  <p class="how">Canvas 2D と Path2D / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/20-ucdp-ged-timeline">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/20-ucdp-ged-timeline/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/20-ucdp-ged-timeline/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/20-ucdp-ged-timeline/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">21-mapterhorn-planet-terrain</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">全球の標高を軽く読み、地域別の高解像度 PMTiles は Range で読み、地球全体から地域の標高まで専用レンダラーで 3D 表示したい。</p>
+  <p class="how">WebGL2、Fetch Range、DecompressionStream / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/21-mapterhorn-planet-terrain">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/21-mapterhorn-planet-terrain/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/21-mapterhorn-planet-terrain/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/21-mapterhorn-planet-terrain/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">22-plateau-tokyo-tiles</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">PLATEAU 配信 API を使い、東京駅周辺だけでなく広域の建物を新しい例として表示したい。</p>
+  <p class="how">WebGL2、Fetch / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/22-plateau-tokyo-tiles">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/22-plateau-tokyo-tiles/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/22-plateau-tokyo-tiles/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/22-plateau-tokyo-tiles/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">23-taito-point-cloud</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">台東区の点群 PNG を表示したい。</p>
+  <p class="how">WebGL2、Fetch、createImageBitmap / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/23-taito-point-cloud">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/23-taito-point-cloud/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/23-taito-point-cloud/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/23-taito-point-cloud/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">24-osm-planet</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">z.yuiseki.net の OpenStreetMap 全球 PMTiles を、特定レイヤーだけに特化した簡易スタイルで高速に表示したい。</p>
+  <p class="how">Canvas 2D、Fetch、DecompressionStream / TypeScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/24-osm-planet">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/24-osm-planet/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/24-osm-planet/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/24-osm-planet/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">25-akita-bear-sighting</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">秋田県内で報告されたツキノワグマ・イノシシ・シカの出没情報（クマダス、約2.5万件）を、2022年から2026年までの時系列スライダーで月・季節ごとに再生し、出没種別（クマ、痕跡、シカ、イノシシ）の切り替えや、カーソルを合わせた地点の詳細（日時・場所・状況）を確認したい。外部ライブラリなしでPCブラウザで軽快に動かしたい。</p>
+  <p class="how">WebGL2 / TypeScript (ビルドなし・型ストリップ ES modules)</p><p class="num">コード 6.4 KB gzip ・ データ 192 KB gzip ・ 初回描画 127 ms ・ フレーム p95 14.04 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/25-akita-bear-sighting">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/25-akita-bear-sighting/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/25-akita-bear-sighting/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/25-akita-bear-sighting/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">26-ml-add-a-canvas-source</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">MapLibre の例「Add a canvas source」と同じものを作りたい。自分のページで描いているアニメーションの canvas (400x400、円が5つ跳ね回る) を、ミャンマーの上の4隅の座標に合わせて地図に貼り、地図は動かせるようにする。 地図は MapLibre のデモの地図 (demotiles) と同じ見た目でよい。</p>
+  <p class="how">Canvas 2D (Path2D) と CSS transform / TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/26-ml-add-a-canvas-source">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/26-ml-add-a-canvas-source/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/26-ml-add-a-canvas-source/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/26-ml-add-a-canvas-source/">操作する ↗</a></li>
+<li data-gallery="legacy"><div class="card-head"><span class="id">b02-maplibre</span> <span class="tag">比較用</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">（比較用）02 と同じ依頼「スマホで、世界の国を人口で塗り分けた地図をピンチで拡大して、タップした国の名前と人口を出したい」を、 汎用地図エンジン MapLibre GL JS 5.24.0 で作ったもの。</p>
+  <p class="how">MapLibre GL JS 5.24.0 (WebGL2) / JavaScript</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/baselines/b02-maplibre">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/baselines/b02-maplibre/spec.yaml">spec.yaml</a></p>
+  <a class="open" href="../../baselines/b02-maplibre/">操作する ↗</a></li>
+</ul>

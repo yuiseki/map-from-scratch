@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>都道府県ピッカー</title>
+<style>
+  body { margin: 0; padding: 16px; font: 15px/1.6 system-ui, sans-serif; background: #fff; color: #222; }
+  #map { max-width: 480px; }
+</style>
+<p id="out">都道府県をクリックしてください</p>
+<div id="map"></div>
+<!-- Fetch picker.ts alongside main.ts rather than after it. -->
+<link rel="modulepreload" href="./picker.js">
+<script type="module" src="./main.js"></script>

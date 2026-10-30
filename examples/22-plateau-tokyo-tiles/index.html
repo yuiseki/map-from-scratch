@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東京23区の建物 3D | map from scratch</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.4 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b1722; color: #eef4f6; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #panel { position: fixed; top: 14px; left: 14px; max-width: min(410px, calc(100vw - 28px)); padding: 15px; border-radius: 13px; border: 1px solid #ffffff30; background: #10212ddf; backdrop-filter: blur(10px); box-shadow: 0 12px 32px #0006; }
+  h1 { margin: 0 0 3px; font-size: 18px; }
+  p { margin: 0 0 10px; color: #bbccd4; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  button { padding: 6px 10px; border: 1px solid #87abb461; border-radius: 7px; background: #294756; color: inherit; font: inherit; cursor: pointer; }
+  button:hover, button:focus-visible { background: #416674; }
+  #status, #scale { color: #bfd2dc; font-variant-numeric: tabular-nums; }
+  #status { font-size: 12px; min-height: 2.5em; overflow-wrap: anywhere; }
+  #credit { position: fixed; right: 12px; bottom: 10px; max-width: min(620px, calc(100vw - 24px)); padding: 6px 9px; border-radius: 6px; background: #0b1722df; font-size: 11px; }
+  a { color: #a9e0da; }
+  @media(max-width:600px) { #panel { top: 8px; left: 8px; padding: 11px; max-width: calc(100vw - 16px); } }
+</style>
+<canvas id="map" aria-label="東京23区のPLATEAU建物の3D表示"></canvas>
+<section id="panel">
+  <h1>東京23区の建物 3D</h1>
+  <p>PLATEAU の建物タイルを、画面に必要な分だけ読み込みます。</p>
+  <div class="row" aria-label="視点">
+    <button data-place="tokyo">東京駅・広域</button><button data-place="shinjuku">新宿</button><button data-place="shibuya">渋谷</button><button data-place="ueno">上野</button><button data-place="odaiba">お台場</button><button data-place="ikebukuro">池袋</button>
+  </div>
+  <p>ドラッグで回転、右ドラッグか Shift＋ドラッグで移動、ホイールで拡大縮小</p>
+  <div id="scale"></div>
+  <div id="status" role="status">建物データの一覧を読み込み中…</div>
+</section>
+<div id="credit">建物データ: <a href="https://www.mlit.go.jp/plateau/">Project PLATEAU</a> / 東京都内の各自治体。LOD1 モデルを加工して表示。<a href="https://docs.plateauview.mlit.go.jp/datasets/3d-tiles/">配信サービス</a></div>
+<script src="./draco_decoder.js"></script>
+<script type="module" src="./main.js"></script>

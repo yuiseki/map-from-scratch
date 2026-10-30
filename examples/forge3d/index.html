@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>forge3d | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / forge3d</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>125</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>32</span></a>
+<a href="../../examples/mapbox/">Mapbox GL JS <span>14</span></a>
+<a href="../../examples/cesium/">CesiumJS <span>4</span></a>
+<a href="../../examples/openglobus/">OpenGlobus <span>5</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>13</span></a>
+<a href="../../examples/d3/">D3 <span>4</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>4</span></a>
+<a href="../../examples/forge3d/" aria-current="page">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>7</span></a>
+<span class="empty">luma.gl <span>0</span></span></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>87</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>37</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>4</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>2</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>1</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../examples/legacy/">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">10 件</p>
+<ul>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-001-mount-rainier</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">forge3d の代表例「Mount Rainier」のように、Mt. Rainier の DEM を 3D 地形として表示し、 オービットカメラで回転・ズームして山体を眺めたい。太陽は西北 302°・高度 24°に固定。 外部ライブラリなし、WebGL2 の 1 ドローコールで最速・最小に実装する。</p>
+  <p class="how">WebGL2 / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/001-mount-rainier">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/001-mount-rainier/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/001-mount-rainier/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/01-mount-rainier.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/001-mount-rainier/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-002-mount-fuji-labels</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">forge3d の例「Mount Fuji Labels」のように、富士山の地形を 3D で表示し、山頂と登山道の五合目・各合目・ 麓の地名をラベルで載せたい。ドラッグで回り、ホイールで寄れるようにし、山の向こう側に隠れた地名や、 重なってしまう地名は出さない。外部ライブラリなしで、最速・最小に。</p>
+  <p class="how">WebGL2 (地形) と Canvas 2D (ラベル) / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/002-mount-fuji-labels">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/002-mount-fuji-labels/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/002-mount-fuji-labels/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/02-mount-fuji-labels.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/002-mount-fuji-labels/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-003-swiss-landcover</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">forge3d の例「Swiss Land-Cover」のように、スイスの地形に 2024 年の土地被覆 (森林、農地、市街地、草地、 雪氷など) を色で重ね、北西からの陰影で起伏が読めるようにしたい。国境の外は描かず、ほぼ真上から国全体を見せ、 題、出典、凡例を付ける。ドラッグで回り、ホイールで寄れるようにする。外部ライブラリなしで、最速・最小に。</p>
+  <p class="how">WebGL2 / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/003-swiss-landcover">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/003-swiss-landcover/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/003-swiss-landcover/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/03-swiss-landcover.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/003-swiss-landcover/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-004-luxembourg-rail-network</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">forge3d のギャラリー例「Luxembourg rail network」のように、ルクセンブルクの領土ジオメトリの上に、 主要鉄道網（CFL）のベクターラインを重ね合わせた輸送オーバーレイ地図を表示したい。 ドラッグでパン、ホイールで拡大縮小でき、ラインが地理座標に固定されて追従すること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 2.7 KB gzip ・ データ 0 KB gzip ・ 初回描画 5 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/004-luxembourg-rail-network">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/004-luxembourg-rail-network/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/004-luxembourg-rail-network/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/04-luxembourg-rail-network.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/004-luxembourg-rail-network/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-005-3d-buildings</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">forge3d の例「3D Buildings」のように、オランダの 3D 建物データ (3DBAG の CityJSON タイル 1 枚、デン・ハーグ中心部の 277 棟) を三角形のメッシュにして立体で見たい。地面に 100 m の格子を引き、ドラッグで回り、ホイールで寄れて、 建物をクリックするとその建物の BAG の番号、建築年、高さ、屋根の形を出す。外部ライブラリなしで、最速・最小に。</p>
+  <p class="how">WebGL2 / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/005-3d-buildings">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/005-3d-buildings/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/005-3d-buildings/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/05-3d-buildings.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/005-3d-buildings/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-006-point-cloud</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">forge3d のギャラリー例「Point Cloud」のように、セントヘレンズ火山火口（Mt. St. Helens）の 3D LiDAR 点群（10,000点）を、標高・深度カラーマッピングと 3D オービットカメラにより 60 fps で高速に回転・ズーム描画したい。 ドラッグで回転、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 2.8 KB gzip ・ データ 45 KB gzip ・ 初回描画 52 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/006-point-cloud">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/006-point-cloud/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/006-point-cloud/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/06-point-cloud.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/006-point-cloud/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-007-camera-flyover</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">forge3d の例「Camera Flyover」のように、レーニア山の地形の上をカメラが飛ぶアニメーションを作りたい。 山頂を回るオービット、登山道を登る人を後ろから追うフォロー、北側を横切るレールの 3 つのカメラワークを切り替えられ、 再生と一時停止、時刻のスライダーで好きな瞬間に飛べる。カメラは地面に潜らない。0°、120°、240° のコマも並べる。 外部ライブラリなしで、最速・最小に。</p>
+  <p class="how">WebGL2 と Canvas 2D (コマの縮小) / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/007-camera-flyover">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/007-camera-flyover/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/007-camera-flyover/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/007-camera-flyover/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-008-vector-export</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">forge3d のギャラリー例「Vector export」のように、表示中の地図（ルクセンブルクの 鉄道網）をベクター形式（SVG）として書き出せる地図がほしい。画面の地図は Canvas 2D で 最速・最小に描き、書き出しは表示と同じジオメトリ・色・画面座標で行う。外部ライブラリなし。</p>
+  <p class="how">Canvas 2D + SVG 文字列出力 / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/008-vector-export">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/008-vector-export/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/008-vector-export/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/08-vector-export.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/008-vector-export/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-009-shadow-comparison</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">forge3d のギャラリー例「Shadow Comparison」のように、Mt. Rainier の DEM から作った 同じ陰影起伏図を、影（キャストシャドウ）なしと影ありで左右に分割表示し、スライダーで 境界を動かして比較したい。パンとホイールズームで地形を動かせること。 外部ライブラリなし、Canvas 2D で最速・最小に実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">性能は未計測</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/009-shadow-comparison">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/009-shadow-comparison/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/009-shadow-comparison/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/009-shadow-comparison/">操作する ↗</a></li>
+<li data-gallery="forge3d"><div class="card-head"><span class="id">forge3d-010-map-plate</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/forge3d/">forge3d</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">forge3d のギャラリー例「Map plate」のように、マウント・レーニア周辺の Mini DEM 標高データに基づく 高精細な陰影段彩レリーフを、二重ニートライン（外枠）、タイトルバナー、方位記号、スケールバー、標高凡例と 統合した完成地図版（Map Plate）として表示したい。ドラッグでパン、ホイールで拡大縮小でき、 枠と家具が正確に配置されること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">コード 3.8 KB gzip ・ データ 19 KB gzip ・ 初回描画 44 ms</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/forge3d/010-map-plate">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/010-map-plate/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/forge3d/010-map-plate/REQUEST.md">設計と計測</a> ・ <a href="https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/forge3d/010-map-plate/">操作する ↗</a></li>
+</ul>

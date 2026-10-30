@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenGlobus: Billboards</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f1f5f9;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+    .panel b { color: #38bdf8; font-size: 14px; }
+    .legend { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div><b>OpenGlobus 004</b>: Billboards</div>
+    <div class="legend"><span class="dot" style="background:#e91e63"></span> Cairo [31.24, 30.04]</div>
+    <div class="legend"><span class="dot" style="background:#3f51b5"></span> Paris [2.35, 48.86]</div>
+    <div class="legend"><span class="dot" style="background:#ff9800"></span> Tokyo [139.69, 35.69]</div>
+    <div class="legend"><span class="dot" style="background:#009688"></span> New York [-74.01, 40.71]</div>
+    <div class="legend"><span class="dot" style="background:#9c27b0"></span> Sydney [151.21, -33.87]</div>
+    <div style="font-size:11px; color:#94a3b8; margin-top:2px;">Drag to pan • Wheel to zoom</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Node App Exported Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #131519; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d3d8e2; }
+    #app { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    /* Node Report Banner */
+    #report-banner {
+      height: 50px;
+      background: #1b1f27;
+      border-bottom: 1px solid #2a3240;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      z-index: 10;
+    }
+    .report-title-box { display: flex; align-items: center; gap: 10px; }
+    .report-badge { background: #00d1b2; color: #131519; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 4px; }
+    .report-title { font-size: 14px; font-weight: 700; color: #fff; }
+    .report-meta { font-size: 11px; color: #838d9d; }
+
+    /* Main Container */
+    #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+
+    #sidebar {
+      width: 300px;
+      min-width: 300px;
+      height: 100%;
+      background: #242730;
+      border-right: 1px solid #1f2227;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .summary-card {
+      background: #1c202a;
+      border: 1px solid #2f3747;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .summary-title { font-size: 11px; font-weight: 700; color: #00d1b2; text-transform: uppercase; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 12px; }
+    .stat-val { color: #fff; font-weight: 600; font-family: monospace; }
+
+    /* Histogram */
+    .histogram-box { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .hist-bar-row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+    .hist-label { width: 50px; color: #8c96a5; }
+    .hist-bar-wrap { flex: 1; height: 6px; background: #13161c; border-radius: 2px; overflow: hidden; }
+    .hist-bar { height: 100%; border-radius: 2px; }
+
+    /* Actions */
+    .action-row { display: flex; gap: 8px; }
+    .report-btn {
+      flex: 1;
+      padding: 8px 0;
+      background: #2c3240;
+      border: 1px solid #3c4556;
+      border-radius: 4px;
+      color: #d3d8e2;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+    .report-btn:hover { background: #373f50; color: #fff; }
+
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map-canvas { width: 100%; height: 100%; display: block; }
+    #legend {
+      position: absolute; bottom: 16px; right: 16px; width: 180px; background: #242730; border: 1px solid #3a414e; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: #8c96a5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="report-banner">
+      <div class="report-title-box">
+        <span class="report-badge">NODE.JS EXPORT</span>
+        <span class="report-title">California Seismic Hazard Report</span>
+      </div>
+      <span class="report-meta">Automated Server Export · USGS Earthquake Catalog</span>
+    </div>
+
+    <div id="main-container">
+      <div id="sidebar">
+        <div class="summary-card">
+          <div class="summary-title">Dataset Summary</div>
+          <div class="stat-row"><span>Total Records:</span><span class="stat-val">54,936</span></div>
+          <div class="stat-row"><span>Max Magnitude:</span><span class="stat-val">M7.2</span></div>
+          <div class="stat-row"><span>Time Range:</span><span class="stat-val">1967 - 2017</span></div>
+          <div class="stat-row"><span>Primary Fault:</span><span class="stat-val">San Andreas</span></div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-title">Magnitude Distribution</div>
+          <div class="histogram-box">
+            <div class="hist-bar-row">
+              <span class="hist-label">M2.5 - 3.5</span>
+              <div class="hist-bar-wrap"><div class="hist-bar" style="width: 82%; background: #fde725;"></div></div>
+              <span>82%</span>
+            </div>
+            <div class="hist-bar-row">
+              <span class="hist-label">M3.5 - 4.5</span>
+              <div class="hist-bar-wrap"><div class="hist-bar" style="width: 14%; background: #fca35d;"></div></div>
+              <span>14%</span>
+            </div>
+            <div class="hist-bar-row">
+              <span class="hist-label">M4.5 - 5.5</span>
+              <div class="hist-bar-wrap"><div class="hist-bar" style="width: 3.5%; background: #e35933;"></div></div>
+              <span>3.5%</span>
+            </div>
+            <div class="hist-bar-row">
+              <span class="hist-label">M5.5+</span>
+              <div class="hist-bar-wrap"><div class="hist-bar" style="width: 0.5%; background: #721f81;"></div></div>
+              <span>0.5%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="btn-export-csv" class="report-btn">Download CSV</button>
+          <button id="btn-export-json" class="report-btn">Export GeoJSON</button>
+        </div>
+      </div>
+
+      <div id="map-container">
+        <canvas id="map-canvas"></canvas>
+        <div id="legend">
+          <span class="legend-title">Magnitude</span>
+          <div class="legend-gradient"></div>
+          <div class="legend-ticks">
+            <span>2.5</span>
+            <span>4.5</span>
+            <span>6.5+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
