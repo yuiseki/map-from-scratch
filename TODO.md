@@ -501,7 +501,7 @@
 - [ ] `mapbox-124-pmtiles-vector-source` → `examples/mapbox/124-pmtiles-vector-source/` — [Pmtiles Vector Source](https://docs.mapbox.com/mapbox-gl-js/example/pmtiles-vector-source/)
 - [ ] `mapbox-125-point-from-geocoder-result` → `examples/mapbox/125-point-from-geocoder-result/` — [Point From Geocoder Result](https://docs.mapbox.com/mapbox-gl-js/example/point-from-geocoder-result/)
 - [ ] `mapbox-126-polygon-popup-on-click` → `examples/mapbox/126-polygon-popup-on-click/` — [Polygon Popup On Click](https://docs.mapbox.com/mapbox-gl-js/example/polygon-popup-on-click/)
-- [ ] `mapbox-127-popup` → `examples/mapbox/127-popup/` — [Popup](https://docs.mapbox.com/mapbox-gl-js/example/popup/)
+- [x] `mapbox-127-popup` → `examples/mapbox/127-popup/` — [Popup](https://docs.mapbox.com/mapbox-gl-js/example/popup/)
 - [ ] `mapbox-128-popup-on-click` → `examples/mapbox/128-popup-on-click/` — [Popup On Click](https://docs.mapbox.com/mapbox-gl-js/example/popup-on-click/)
 - [ ] `mapbox-129-popup-on-hover` → `examples/mapbox/129-popup-on-hover/` — [Popup On Hover](https://docs.mapbox.com/mapbox-gl-js/example/popup-on-hover/)
 - [ ] `mapbox-130-projections` → `examples/mapbox/130-projections/` — [Projections](https://docs.mapbox.com/mapbox-gl-js/example/projections/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **23 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、cesium-180、openglobus-002、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **24 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、openglobus-002、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
