@@ -274,7 +274,7 @@
 - [ ] `tangram-007-raster-baselayer-demo` → `examples/tangram/007-raster-baselayer-demo/` — [WebGL content over raster baselayer](https://github.com/tangrams/raster-baselayer-demo)
 - [ ] `tangram-008-road-filters-demo` → `examples/tangram/008-road-filters-demo/` — [Real-time road name filters](https://github.com/tangrams/road-filters-demo)
 - [ ] `tangram-009-shaders-demo` → `examples/tangram/009-shaders-demo/` — [Custom GLSL shaders for map styling](https://github.com/tangrams/shaders-demo)
-- [ ] `tangram-010-simple-demo` → `examples/tangram/010-simple-demo/` — [Simplest stand-alone Tangram setup](https://github.com/tangrams/simple-demo)
+- [x] `tangram-010-simple-demo` → `examples/tangram/010-simple-demo/` — [Simplest stand-alone Tangram setup](https://github.com/tangrams/simple-demo)
 - [ ] `tangram-011-spheremap-demos` → `examples/tangram/011-spheremap-demos/` — [Sphere map reflection and lighting demos](https://github.com/tangrams/spheremap-demos)
 - [ ] `tangram-012-tangram-android-demos` → `examples/tangram/012-tangram-android-demos/` — [Tangram Android SDK demos](https://github.com/tangrams/tangram-android-demos)
 - [ ] `tangram-013-terrain-demos` → `examples/tangram/013-terrain-demos/` — [Terrain data and heightmap manipulation](https://github.com/tangrams/terrain-demos)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **21 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、cesium-180、openglobus-002、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **22 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、cesium-180、openglobus-002、tangram-010、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

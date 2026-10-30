@@ -1,0 +1,93 @@
+id: tangram-010-simple-demo
+request: >-
+  Mapzen Tangram の代表的なシンプルデモのように、Tangram 特有のハイコントラストで洗練された
+  ダークカートグラフィ（濃紺の海洋、スレートグレーの陸地、境界線ストローク）を表現した地図を表示したい。
+  ドラッグでパン、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: Tangram エンジンやシェーダーコンパイラ全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: tangram-style-accuracy
+    need: Tangram 固有のハイコントラスト配色が正確に描画され、パンやズームでもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/tangram/010-simple-demo/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/tangram/010-simple-demo/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/tangram-010-simple-demo/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: canvas2d-high-contrast-cartography
+    finding: Tangram のようなシェーダーベースのマップスタイルも、Canvas 2D のパス描画と適切なスタイル定義（フィル・ストローク・半透明オーバーレイ）により、GPU シェーダーパイプラインなしで忠実に再現可能
+    evidence: 再描画時間 0.4 ms 未満、初回描画 8 ms 前後を達成
+    applies_when: 高コントラストなダークテーマ地図の高速表示
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/tangram/010-simple-demo/index.html
+      - examples/tangram/010-simple-demo/main.ts
+      - examples/tangram/010-simple-demo/map.ts
+    dependencies: []
+    why: 外部ライブラリゼロで Tangram 風ダークカートグラフィを最小・最速で描画
+  alternatives:
+    - option: Tangram JS フルスタック
+      rejected_because: 数 MB のライブラリと GLSL シェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形, 地名ラベル, 複雑なタイリング, GLSLシェーダーパース]
+
+verification:
+  checks:
+    - id: tangram-theme-rendered
+      what: 画面中央 [0, 0] に濃紺の海洋ピクセル、[10, 50] にスレートグレーの陸地ピクセルが描画されている
+      how: getImageData で座標位置のピクセル色を検証
+      expected: ocean: r < 30 && g < 35 && b < 45, land: r > 35 && r < 60 && g > 40 && g < 65 && b > 50 && b < 75
+    - id: map-moves-with-pan
+      what: 地図をパンしたとき、陸地ピクセルの描画位置が正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で陸地ピクセルが検出される
+    - id: map-anchors-on-zoom
+      what: ズーム変更後も陸地ポリゴンの地理座標位置が正確に追従する
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算されたスクリーン座標に陸地が描画されている
+  harness:
+    - contextlost が起きたらエラーにする
