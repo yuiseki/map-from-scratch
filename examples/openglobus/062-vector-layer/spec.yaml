@@ -50,6 +50,7 @@ datasets:
       license: Natural Earth パブリックドメイン
   outputs:
     - data/baked/openglobus-062-vector-layer/countries.json
+    - data/baked/openglobus-062-vector-layer/land.bin
   preparation:
     - Natural Earth 110m 領土・国境ポリゴンを球面緯経度座標で格納
 

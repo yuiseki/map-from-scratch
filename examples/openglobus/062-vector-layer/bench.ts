@@ -10,10 +10,18 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
   emit({ metric: 'first_frame_ms', value: firstFrameMs });
 
   const dpr = window.devicePixelRatio || 1;
+  // The 1.2 px core line rarely covers the one pixel under a projected
+  // vertex exactly (it read the glow at 1920x1021 even before any change):
+  // look for the core colour within 2 px of it.
+  const near = (sx: number, sy: number, ok: (p: Uint8ClampedArray) => boolean): Uint8ClampedArray => {
+    const d = ctx.getImageData(Math.round(sx * dpr) - 2, Math.round(sy * dpr) - 2, 5, 5).data;
+    for (let i = 0; i < d.length; i += 4) if (ok(d.subarray(i, i + 4))) return d.slice(i, i + 4);
+    return d.slice(48, 52);
+  };
 
   // Verification 1: Vector borders rendered at Morocco / Mediterranean border [-2.1699, 35.1685]
   const pFront = globe.project(-2.1699, 35.1685);
-  const pxFront = ctx.getImageData(Math.round(pFront.sx * dpr), Math.round(pFront.sy * dpr), 1, 1).data;
+  const pxFront = near(pFront.sx, pFront.sy, (p) => p[1] > 140 && p[2] > 170);
   const isCyan = pxFront[1] > 140 && pxFront[2] > 170;
 
   emit({
@@ -56,7 +64,7 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
   globe.draw();
 
   const pRotated = globe.project(-2.1699, 35.1685);
-  const pxRotated = ctx.getImageData(Math.round(pRotated.sx * dpr), Math.round(pRotated.sy * dpr), 1, 1).data;
+  const pxRotated = near(pRotated.sx, pRotated.sy, (p) => p[1] > 130 && p[2] > 160);
   const isRotatedCyan = pxRotated[1] > 130 && pxRotated[2] > 160;
 
   emit({

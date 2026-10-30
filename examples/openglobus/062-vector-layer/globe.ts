@@ -4,6 +4,7 @@ export class OpenGlobusVectorGlobe {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   polygons: Polygon[] = [];
+  sphere: Float32Array = new Float32Array(0);
 
   yaw = 0;       // Center at lon 0
   pitch = 0.3;   // ~17 deg North
@@ -31,8 +32,12 @@ export class OpenGlobusVectorGlobe {
   }
 
   async load(baseDir = '../../..'): Promise<void> {
-    const res = await fetch(`${baseDir}/data/baked/openglobus-062-vector-layer/countries.json`);
+    const [res, tri] = await Promise.all([
+      fetch(`${baseDir}/data/baked/openglobus-062-vector-layer/countries.json`),
+      fetch(`${baseDir}/data/baked/openglobus-062-vector-layer/land.bin`),
+    ]);
     this.polygons = (await res.json()) as Polygon[];
+    this.sphere = toSphere(new Int16Array(await tri.arrayBuffer()));
     this.draw();
   }
 
@@ -164,31 +169,39 @@ export class OpenGlobusVectorGlobe {
     ctx.arc(cx, cy, R - 0.5, 0, Math.PI * 2);
     ctx.clip();
 
-    // Pass 1: Land Fills
+    // Pass 1: Land Fills. Rings clipped by skipping hidden vertices closed
+    // with chords that cut the land at the rim; fill the baked triangles
+    // instead (as cesium 244). The outlines below still use the rings.
+    const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
+    const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
+    const s = this.sphere;
+    const px = [0, 0, 0], py = [0, 0, 0], pz = [0, 0, 0];
     ctx.fillStyle = '#162032';
-    for (const poly of this.polygons) {
-      for (const ring of poly) {
-        ctx.beginPath();
-        let anyVisible = false;
-        let started = false;
-
-        for (let i = 0; i < ring.length; i++) {
-          const pt = this.project(ring[i][0], ring[i][1]);
-          if (pt.visible) {
-            anyVisible = true;
-            if (!started) {
-              ctx.moveTo(pt.sx, pt.sy);
-              started = true;
-            } else {
-              ctx.lineTo(pt.sx, pt.sy);
-            }
-          } else {
-            started = false;
-          }
-        }
-        if (anyVisible) ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i < s.length; i += 9) {
+      let front = 0;
+      for (let k = 0; k < 3; k++) {
+        const gx = s[i + k * 3], gy = s[i + k * 3 + 1], gz = s[i + k * 3 + 2];
+        const x1 = gx * cosY + gy * sinY;
+        px[k] = -gx * sinY + gy * cosY;
+        py[k] = -x1 * sinP + gz * cosP;
+        pz[k] = x1 * cosP + gz * sinP;
+        if (pz[k] > 0) front++;
       }
+      if (front === 0) continue;
+      // Across the horizon: put the far corners on the rim.
+      if (front < 3) {
+        for (let k = 0; k < 3; k++) {
+          if (pz[k] > 0) continue;
+          const n = Math.hypot(px[k], py[k]) || 1;
+          px[k] /= n; py[k] /= n;
+        }
+      }
+      ctx.moveTo(cx + px[0] * R, cy - py[0] * R);
+      ctx.lineTo(cx + px[1] * R, cy - py[1] * R);
+      ctx.lineTo(cx + px[2] * R, cy - py[2] * R);
     }
+    ctx.fill();
 
     // Pass 2: Glow Border Pass
     ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
@@ -249,4 +262,29 @@ export class OpenGlobusVectorGlobe {
 
     if (this.onRender) this.onRender();
   }
+}
+
+// Split earcut triangles (lon, lat x 100) to edges <= MAX_EDGE deg as unit xyz:
+// big flat ones crossing the horizon folded over the ocean (as in 180, 213).
+const MAX_EDGE = 20;
+type LL = [number, number];
+function toSphere(v: Int16Array): Float32Array {
+  const out: number[] = [];
+  const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  const split = (a: LL, b: LL, c: LL): void => {
+    if (d(b, c) > d(a, b) && d(b, c) >= d(c, a)) return split(b, c, a);
+    if (d(c, a) > d(a, b)) return split(c, a, b);
+    if (d(a, b) > MAX_EDGE) {
+      const h: LL = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      split(a, h, c);
+      return split(h, b, c);
+    }
+    for (const [l, p] of [a, b, c]) {
+      const L = l * Math.PI / 180, P = p * Math.PI / 180;
+      out.push(Math.cos(P) * Math.cos(L), Math.cos(P) * Math.sin(L), Math.sin(P));
+    }
+  };
+  const at = (i: number): LL => [v[i] / 100, v[i + 1] / 100];
+  for (let i = 0; i + 5 < v.length; i += 6) split(at(i), at(i + 2), at(i + 4));
+  return new Float32Array(out);
 }
