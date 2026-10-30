@@ -15,7 +15,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
-import { galleries, galleryGroups, galleryOf, indexPages, toRoot } from './site-pages.ts';
+import { galleries, galleryGroups, galleryOf, indexPages, techniques, techniquesOf, toRoot } from './site-pages.ts';
 import type { GalleryId, IndexPage } from './site-pages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -97,7 +97,7 @@ for (const match of inventory.matchAll(/^- \[[ x]\] `([a-z0-9]+-\d{3}-[^`]+)`/gm
   if (!originalUrls.has(match[1])) throw new Error(`${match[1]}: original gallery URL missing in TODO.md`);
 }
 
-type Row = { id: string; dir: string; spec: Spec };
+type Row = { id: string; dir: string; api?: string; spec: Spec };
 
 // The examples, from spec.yaml, with their latest measurements when present.
 // all: every card, for the counts in the gallery links.
@@ -109,12 +109,23 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
   const chip = (id: GalleryId, label: string) => counts.get(id)
     ? link(`examples/${id}/`, label, counts.get(id)!, page.gallery === id)
     : `<span class="empty">${label} <span>0</span></span>`;
-  const groupRows = galleryGroups.map((g) =>
-    `<div class="group"><span class="group-label">${g.label}</span><div class="chips">${g.galleries.map(({ id, label }) => chip(id, label)).join('\n')}</div></div>`
-  ).join('\n');
-  const label = galleries.find(({ id }) => id === page.gallery)?.label;
+  const techCounts = new Map(techniques.map(({ id }) => [id, all.filter((r) => techniquesOf(r).includes(id)).length]));
+  const techChips = techniques.filter(({ id }) => techCounts.get(id))
+    .map(({ id, label }) => link(`tech/${id}/`, label, techCounts.get(id)!, page.technique === id)).join('\n');
+  const row = (label: string, chips: string) => `<div class="group"><span class="group-label">${label}</span><div class="chips">${chips}</div></div>`;
+  const [libraries, others] = galleryGroups.map((g) => row(g.label, g.galleries.map(({ id, label }) => chip(id, label)).join('\n')));
+  const groupRows = [libraries, row('技術', techChips), others].join('\n');
+  const label = galleries.find(({ id }) => id === page.gallery)?.label ?? techniques.find(({ id }) => id === page.technique)?.label;
+  // The labels on a card link to the pages it is listed on.
+  const cardLabels = (r: Row) => {
+    const g = galleries.find(({ id }) => id === galleryOf(r.dir))!;
+    const lib = g.group === 'library' ? [`<a class="label lib" href="${up}examples/${g.id}/">${g.label}</a>`] : [];
+    const tech = techniquesOf(r).map((t) => `<a class="label tech" href="${up}tech/${t}/">${techniques.find(({ id }) => id === t)!.label}</a>`);
+    return [...lib, ...tech].join('');
+  };
   const rows = page.rows;
-  const items = rows.map(({ id, dir, spec }) => {
+  const items = rows.map((r) => {
+    const { id, dir, spec } = r;
     const d = spec.definition!;
     const chosen = d.architecture_selection.chosen;
     const latest = join(root, 'results', id, 'latest.json');
@@ -141,6 +152,7 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
       throw new Error(`${id}: original gallery URL missing in TODO.md`);
     const originalLink = original ? ` ・ <a href="${esc(original)}">元例 ↗</a>` : '';
     return `<li data-gallery="${galleryOf(dir)}"><div class="card-head"><span class="id">${esc(id)}</span>${tag}${runtimeTag}</div>
+  <p class="labels">${cardLabels(r)}</p>
   <p class="req">${esc(d.request)}</p>
   <p class="how">${esc([chosen.api, chosen.language].filter(Boolean).join(' / '))}</p>${numbers || '<p class="num">性能は未計測</p>'}
   <p class="links"><a href="${REPO_URL}/tree/main/${esc(dir)}">ソース</a> ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/spec.yaml">spec.yaml</a>${requestLink}${originalLink}</p>
@@ -176,18 +188,23 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
   li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
   .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
-  .req { margin: 15px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
   .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
   .links { margin-top: auto; padding-top: 14px; }
   .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
   .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
   .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
   a { color: var(--accent); }
 </style>
 <h1>${label ? `<a href="${up || './'}">map-from-scratch</a> / ${esc(label)}` : 'map-from-scratch'}</h1>
 <p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="${REPO_URL}/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="${REPO_URL}">GitHub</a></p>
 <nav class="filters" aria-label="元ギャラリー">
-<div class="group"><span class="group-label"></span><div class="chips">${link('', 'すべて', all.length, page.gallery === null)}</div></div>
+<div class="group"><span class="group-label"></span><div class="chips">${link('', 'すべて', all.length, page.gallery === null && !page.technique)}</div></div>
 ${groupRows}
 </nav>
 <p class="visible-count">${rows.length} 件</p>
@@ -214,7 +231,7 @@ for (const base of ['examples', 'baselines']) {
         for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
         for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
       }
-      rows.push({ id: spec.id, dir: relative(root, dir), spec });
+      rows.push({ id: spec.id, dir: relative(root, dir), api: spec.definition!.architecture_selection.chosen.api, spec });
     }
   }
 }
