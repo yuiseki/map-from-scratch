@@ -1,0 +1,101 @@
+id: kepler-007-node-app
+request: >-
+  kepler.gl の Node App サンプルと同じ意図で、Node.js サーバーからエクスポートされた
+  自己完結型レポート画面（上部レポートバナー、統計サマリー、ヒストグラム、ダウンロード導線）と
+  WebGL2 地図描画器を、外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox を排除し、軽量な単一バイナリと標準 WebGL2 で完結させる
+    rationale: サーバーサイドで HTML をエクスポート・配布する用途において、メガバイト級の外部バンドルを抱え込まないことが肝要
+  - id: quick-start
+    need: レポート画面を開いてから地震点群の初回描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: export-report-layout
+    need: 上部レポートヘッダー、地震統計カード、マグニチュード分布ヒストグラム、エクスポート操作部を備える
+    unmeasured: verification checks で DOM およびピクセル読み戻しを検証
+  - id: smooth-interaction
+    need: レポート画面内でも 60 fps でのパン・ズーム操作を維持する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/007-node-app/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/007-node-app/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-007-node-app/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: standalone-report-embed
+    finding: サーバー生成レポート向けに静的 HTML とバイナリデータのみで完結させることで、CDN キャッシュ効率が極大化し、オフライン環境や保存版アーカイブとしてもそのまま動作可能
+    evidence: コード gzip 6.2 KB、初回描画 120 ms 前後でレポート画面全体が完全に立ち上がる
+    applies_when: バッチ処理による定期レポート出力・画像/HTML エクスポート
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/007-node-app/index.html
+      - examples/kepler/007-node-app/main.ts
+      - examples/kepler/007-node-app/map.ts
+    dependencies: []
+    why: 外部サーバーや node ランタイムに依存せず静的配信可能なスタンドアローン構成を実現
+  alternatives:
+    - option: Express + kepler.gl SSR
+      rejected_because: Node サーバー側のメモリ消費と SSR/Hydration の複雑さ・実行コストが不要に高いため
+  not_doing: [サーバー側 PDF ラスタライズ出力]
+
+verification:
+  checks:
+    - id: report-banner-rendered
+      what: Node エクスポートレポートのバナーが表示されている
+      how: report-banner の DOM とタイトル文字列を検証
+      expected: hasBanner == true
+    - id: analytics-summary-mounted
+      what: 54,936件および最大マグニチュードM7.2を含む集計サマリーが表示されている
+      how: サイドバー内のサマリーテキストを検証
+      expected: has54k && hasM72
+    - id: earthquakes-rendered
+      what: 地震点群が WebGL2 キャンバス上に正常に描画されている
+      how: キャンバスピクセル読み戻しで発光ピクセル数を検証
+      expected: nonBgPixels > 5 && pointCount == 54936
+    - id: pan-and-zoom
+      what: パン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする

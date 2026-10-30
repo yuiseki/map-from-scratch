@@ -884,7 +884,7 @@
 - [x] `kepler-004-umd-client` → `examples/kepler/004-umd-client/` — [umd client](https://docs.kepler.gl/examples/umd-client)
 - [x] `kepler-005-replace-component` → `examples/kepler/005-replace-component/` — [Replace UI Component](https://docs.kepler.gl/examples/replace-component)
 - [x] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)
-- [ ] `kepler-007-node-app` → `examples/kepler/007-node-app/` — [Node App](https://docs.kepler.gl/examples/node-app)
+- [x] `kepler-007-node-app` → `examples/kepler/007-node-app/` — [Node App](https://docs.kepler.gl/examples/node-app)
 - [ ] `kepler-008-custom-map-style` → `examples/kepler/008-custom-map-style/` — [Custom map style](https://github.com/keplergl/kepler.gl/tree/14c35fc048a745faab0c6770cab7a4625ccedda3/examples/custom-map-style/README.md)
 
 009〜017 は kepler.gl のデモアプリ ([examples/demo-app](https://github.com/keplergl/kepler.gl/blob/master/examples/demo-app/README.md)) が `/demo/<id>` で開くサンプル地図から 9 件。一覧は [kepler.gl-data](https://github.com/keplergl/kepler.gl-data) の `samples.json` で、各地図の設定 (`config.json`) とデータは同じリポジトリのフォルダにある (commit 49c3101 に固定)。リポジトリは Apache-2.0 だが、データの出典 (USGS、NYC TLC、Foursquare、Uber Movement、国勢調査など) はそれぞれ違うので、実装するときに 1 件ずつ利用条件を確かめる。
