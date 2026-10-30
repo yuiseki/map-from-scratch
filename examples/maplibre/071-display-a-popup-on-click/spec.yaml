@@ -1,0 +1,113 @@
+id: maplibre-071-display-a-popup-on-click
+request: >-
+  中心座標 [-96.0, 37.8]、ズーム 3 の地図を表示し、クリックした位置に「You clicked here!」の
+  吹き出し型ポップアップを開き、× ボタンで閉じられるようにしたい。ドラッグでパン、
+  ホイールで拡大縮小でき、ポップアップの先端はクリックした地理座標に固定される。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: クリック位置に出す吹き出し1個に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: click-anchoring
+    need: クリック位置・パン・ズームのすべてでポップアップの先端が同じ地理座標に固定され、× で閉じられる
+    unmeasured: verification の checks でクリック後のアンカー座標と画面ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/071-display-a-popup-on-click/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/071-display-a-popup-on-click/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-071-display-a-popup-on-click/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: click-to-lnglat-without-a-camera-object
+    finding: クリック位置の地理座標は、画面中心からの差分を 256·2^zoom で割って中心のメルカトル座標に足すだけで求まる。カメラ行列やレイキャストを持たなくても、先端を 0.5 px 以内でクリック位置に一致させられる
+    evidence: click-opens-popup-at-pointer / click-elsewhere-reanchors がアンカー座標とクリック点の差 < 0.5 px で PASS
+  - id: drag-versus-click-disambiguation
+    finding: pointerdown からの移動量が 3 px を超えたらクリックではなくパンとみなす。これがないと、地図をドラッグするたびにポップアップが開いてしまう
+    evidence: popup-follows-pan は 40×25 px のパンで吹き出しだけが移動し、クリック扱いにならない
+  - id: popup-hit-test-in-screen-space
+    finding: 閉じるボタンの判定は吹き出しの矩形（スクリーン座標）に対して行えば十分で、DOM 要素やイベント階層を持ち込む必要がない
+    evidence: close-button-closes-popup が × の中心クリックで閉じ、再表示されない
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/071-display-a-popup-on-click/index.html
+      - examples/maplibre/071-display-a-popup-on-click/main.ts
+      - examples/maplibre/071-display-a-popup-on-click/popup.ts
+    dependencies: []
+    why: クリック位置に出す吹き出し1個と背景陸地なら、Canvas 2D のパス描画が最小・最速
+  alternatives:
+    - option: DOM Popup (MapLibre の Popup クラスと同じ HTML オーバーレイ)
+      rejected_because: パン中に translate3d を同期させるレイアウト処理と 1 フレーム遅れのジッターを避けるため
+    - option: WebGL2
+      rejected_because: 角丸吹き出しとテキストのために SDF アトラスやメッシュ生成が必要になり、コードサイズが増えるため
+  not_doing: [3D地形, 地名ラベル, 複数ポップアップの衝突回避, ポップアップ内のスクロール, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: popup-hidden-initially
+      what: クリック前はポップアップが描画されておらず、画面中心は白ではない
+      how: popupVisible フラグと画面中心ピクセルを検証
+      expected: 'popupVisible === false かつ中心が白でない'
+    - id: click-opens-popup-at-pointer
+      what: クリックした点に吹き出しの先端が一致し、白い吹き出しが描かれる
+      how: (680,280) へ pointerdown/up を送り、アンカー座標のスクリーン位置と吹き出し内ピクセルを検証
+      expected: '先端とクリック点の差 < 0.5 px、吹き出し内が白'
+    - id: close-button-closes-popup
+      what: × のクリックでポップアップが閉じ、元の吹き出し位置に白が残らない
+      how: 閉じるボタン中心へ pointerdown/up を送る
+      expected: 'popupVisible === false かつ元の位置が白でない'
+    - id: click-elsewhere-reanchors
+      what: 別の場所をクリックするとポップアップ全体がその位置へ移る
+      how: (400,520) をクリックし、新しいアンカーと旧位置を検証
+      expected: '新アンカーとクリック点の差 < 0.5 px、旧位置は白でない'
+    - id: popup-follows-pan
+      what: 40×25 px のパンで吹き出しも同じ量だけ移動し、先端はアンカーに留まる
+      how: パン前後のバウンズ差分と先端座標を検証
+      expected: 'dx=40, dy=25、先端とアンカーの差 < 0.5 px、吹き出し内が白'
+    - id: popup-anchors-on-zoom
+      what: 先端を中心に zoom 5 へ拡大しても先端が同じ画面位置・同じ地理座標に留まる
+      how: zoomAtPoint(先端, 5) の後のアンカー画面位置と吹き出し内ピクセルを検証
+      expected: '先端の移動 < 1.5 px、先端とアンカーの差 < 0.5 px、吹き出し内が白'
+  harness:
+    - contextlost が起きたらエラーにする

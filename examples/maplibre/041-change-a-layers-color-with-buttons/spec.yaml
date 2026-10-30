@@ -1,0 +1,110 @@
+id: maplibre-041-change-a-layers-color-with-buttons
+request: >-
+  エチオピア周辺を覆うポリゴンを色付きで塗った地図を表示し、画面の Teal / Orange / Purple /
+  Random ボタンを押すたびに塗り色が切り替わりたい。ドラッグでパン、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1個のポリゴンとボタン、背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とポリゴンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: button-repaint
+    need: ボタン操作が即座にレイヤーの塗り色へ反映される
+    unmeasured: verification の checks で DOM クリック後の画面ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/041-change-a-layers-color-with-buttons/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ポリゴンと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/041-change-a-layers-color-with-buttons/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-041-change-a-layers-color-with-buttons/box.json
+    - data/baked/maplibre-041-change-a-layers-color-with-buttons/land.json
+  preparation:
+    - エチオピア周辺の矩形（経度30–45、緯度0–15、5点）を Web Mercator 座標に投影
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: one-paint-property
+    finding: レイヤーの色変更は状態変数1個と再描画だけで済む。スタイル式やレイヤーツリーを持つ必要はなく、ボタンから setFillColor を呼ぶだけで次のフレームに反映される
+    evidence: DOM の click 直後の getImageData が指定色（差 2 以内）になる
+  - id: opaque-fill-for-pixel-checks
+    finding: 塗りを不透明にすると、背景の陸海に関係なく指定色そのものを読み戻せるため、スタイル変更の検証が単純になる
+    evidence: #008888 → #ff8800 → #880088 がすべて 1 px の読み戻しで一致
+  - id: canvas2d-native-path-fill
+    finding: 単一ポリゴンの再塗りは Canvas 2D のネイティブ fill が最小。三角形分割も再アップロードも不要
+    evidence: 再描画 p95 は 0.3 ms 前後
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/041-change-a-layers-color-with-buttons/index.html
+      - examples/maplibre/041-change-a-layers-color-with-buttons/main.ts
+      - examples/maplibre/041-change-a-layers-color-with-buttons/polygon.ts
+    dependencies: []
+    why: 1個のポリゴンと色ボタンだけなら Canvas 2D の fill が最小・最速
+  alternatives:
+    - option: WebGL2 で uniform の色を差し替える
+      rejected_because: シェーダー初期化とバッファ転送が加わり、1ポリゴンには過剰
+    - option: スタイル式（data-driven）で色を決める
+      rejected_because: ボタンは単一レイヤーの塗り色を変えるだけなので、式の評価器を持つ必要がない
+  not_doing: [3D地形, 複数レイヤー, 凡例, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: default-fill-teal
+      what: '初期状態でポリゴンがティール #008888 で塗られている'
+      how: ポリゴン内部（38.75, 9.0）のピクセル色を検証
+      expected: 'RGB が (0, 136, 136) と差 2 以内'
+    - id: button-sets-orange
+      what: 'Orange ボタンのクリックで塗りが #ff8800 になる'
+      how: ボタンの click 後に同じピクセルを読み戻す
+      expected: 'RGB が (255, 136, 0) と差 2 以内'
+    - id: button-sets-purple
+      what: 'Purple ボタンのクリックで塗りが #880088 になる'
+      how: ボタンの click 後に同じピクセルを読み戻す
+      expected: 'RGB が (136, 0, 136) と差 2 以内'
+    - id: random-button-recolours
+      what: 'Random ボタンで前の色と異なる色に変わり、画面に反映される'
+      how: Random をクリックし、fillColor とピクセル色を比較
+      expected: '前の色（紫）と異なり、fillColor とピクセル色が一致'
+    - id: recoloured-layer-anchors
+      what: '色を変えた後もポリゴンが地理座標に固定されている'
+      how: 50×30 px パンと z4→z5 の後に同じ座標のピクセルを検証
+      expected: 'パン量どおりに移動し、ズーム後も同じ色'
+  harness:
+    - contextlost が起きたらエラーにする

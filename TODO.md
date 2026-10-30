@@ -60,7 +60,7 @@
 - [ ] `maplibre-038-animate-symbol-to-follow-the-mouse` → `examples/maplibre/038-animate-symbol-to-follow-the-mouse/` — [Animate symbol to follow the mouse](https://maplibre.org/maplibre-gl-js/docs/examples/animate-symbol-to-follow-the-mouse/)
 - [ ] `maplibre-039-attach-a-popup-to-a-marker-instance` → `examples/maplibre/039-attach-a-popup-to-a-marker-instance/` — [Attach a popup to a marker instance](https://maplibre.org/maplibre-gl-js/docs/examples/attach-a-popup-to-a-marker-instance/)
 - [ ] `maplibre-040-center-the-map-on-a-clicked-symbol` → `examples/maplibre/040-center-the-map-on-a-clicked-symbol/` — [Center the map on a clicked symbol](https://maplibre.org/maplibre-gl-js/docs/examples/center-the-map-on-a-clicked-symbol/)
-- [ ] `maplibre-041-change-a-layers-color-with-buttons` → `examples/maplibre/041-change-a-layers-color-with-buttons/` — [Change a layer's color with buttons](https://maplibre.org/maplibre-gl-js/docs/examples/change-a-layers-color-with-buttons/)
+- [x] `maplibre-041-change-a-layers-color-with-buttons` → `examples/maplibre/041-change-a-layers-color-with-buttons/` — [Change a layer's color with buttons](https://maplibre.org/maplibre-gl-js/docs/examples/change-a-layers-color-with-buttons/)
 - [ ] `maplibre-042-change-a-maps-language` → `examples/maplibre/042-change-a-maps-language/` — [Change a map's language](https://maplibre.org/maplibre-gl-js/docs/examples/change-a-maps-language/)
 - [ ] `maplibre-043-change-building-color-based-on-zoom-level` → `examples/maplibre/043-change-building-color-based-on-zoom-level/` — [Change building color based on zoom level](https://maplibre.org/maplibre-gl-js/docs/examples/change-building-color-based-on-zoom-level/)
 - [ ] `maplibre-044-change-the-case-of-labels` → `examples/maplibre/044-change-the-case-of-labels/` — [Change the case of labels](https://maplibre.org/maplibre-gl-js/docs/examples/change-the-case-of-labels/)
@@ -90,7 +90,7 @@
 - [ ] `maplibre-068-display-a-map-with-mlt` → `examples/maplibre/068-display-a-map-with-mlt/` — [Display a map with MLT](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map-with-mlt/)
 - [x] `maplibre-069-display-a-map` → `examples/maplibre/069-display-a-map/` — [Display a map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map/)
 - [x] `maplibre-070-display-a-non-interactive-map` → `examples/maplibre/070-display-a-non-interactive-map/` — [Display a non-interactive map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-non-interactive-map/)
-- [ ] `maplibre-071-display-a-popup-on-click` → `examples/maplibre/071-display-a-popup-on-click/` — [Display a popup on click](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup-on-click/)
+- [x] `maplibre-071-display-a-popup-on-click` → `examples/maplibre/071-display-a-popup-on-click/` — [Display a popup on click](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup-on-click/)
 - [ ] `maplibre-072-display-a-popup-on-hover` → `examples/maplibre/072-display-a-popup-on-hover/` — [Display a popup on hover](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup-on-hover/)
 - [x] `maplibre-073-display-a-popup` → `examples/maplibre/073-display-a-popup/` — [Display a popup](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup/)
 - [ ] `maplibre-074-display-a-remote-svg-symbol` → `examples/maplibre/074-display-a-remote-svg-symbol/` — [Display a remote SVG symbol](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-remote-svg-symbol/)
@@ -908,5 +908,5 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **59 件**（maplibre-010、011、012、013、018、025、027、034、048、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **61 件**（maplibre-010、011、012、013、018、025、027、034、041、048、053、056、061、069、070、071、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
