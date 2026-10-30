@@ -36,5 +36,9 @@ export async function run(map:TerrainRenderer,firstFrameMs:number,completeViewMs
   const zoomed=pixels();changed=0;
   for(let i=0;i<before.length;i+=16)if(before[i]!==zoomed[i]||before[i+1]!==zoomed[i+1])changed++;
   emit({check:'zoom-changes-screen',pass:changed>3000,detail:`${changed} changed samples`});
+  map.zoom=11.8;
+  const fallback=pixels();let fallbackVisible=0;
+  for(let i=0;i<fallback.length;i+=4)if(fallback[i]>25&&fallback[i+1]>25&&fallback[i+2]>25)fallbackVisible++;
+  emit({check:'zoom-transition-fallback',pass:map.fallbackTiles>0&&fallbackVisible>50000,detail:`${map.fallbackTiles} fallback draws, ${fallbackVisible} visible pixels`});
   Object.assign(map,initial);map.draw();emit({done:true});
 }

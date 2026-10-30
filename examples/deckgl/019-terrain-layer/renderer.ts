@@ -3,6 +3,8 @@ precision highp float;
 layout(location=0) in vec3 vertex;
 uniform sampler2D dem;
 uniform vec2 origin;
+uniform vec2 uvBase;
+uniform float uvScale;
 uniform float span;
 uniform vec3 eye, right, up, forward;
 uniform float aspect, fov, nearZ, farZ;
@@ -10,14 +12,15 @@ out vec2 v_uv;
 out float v_height;
 void main() {
   vec2 uv=vertex.xy;
-  vec3 rgb = texture(dem, uv).rgb * 255.0;
+  vec2 sourceUv=uvBase+uv*uvScale;
+  vec3 rgb = texture(dem, sourceUv).rgb * 255.0;
   float h = rgb.r*256.0 + rgb.g + rgb.b/256.0 - 32768.0;
   vec3 pos = vec3(origin.x + uv.x*span, origin.y - uv.y*span, h-vertex.z);
   vec3 p = pos-eye;
   float depth = dot(p, forward);
   float tanHalf = tan(fov*0.5);
   gl_Position = vec4(dot(p,right)/(tanHalf*aspect), dot(p,up)/tanHalf, depth*(farZ+nearZ)/(farZ-nearZ)-2.0*farZ*nearZ/(farZ-nearZ), depth);
-  v_uv=uv; v_height=h;
+  v_uv=sourceUv; v_height=h;
 }`;
 const FS = `#version 300 es
 precision mediump float;
@@ -52,6 +55,7 @@ export class TerrainRenderer {
   private readonly lineCount:number;
   private readonly U:Record<string,WebGLUniformLocation|null>;
   readonly tiles=new Map<string,TerrainTile>();
+  fallbackTiles=0;
   lon=-122.18; lat=46.2; zoom=12.5; bearing=120; pitch=60;
   wireframe=false; surface=0;
   constructor(canvas:HTMLCanvasElement) {
@@ -63,7 +67,7 @@ export class TerrainRenderer {
     gl.linkProgram(program);
     if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program)??'program link failed');
     this.program=program;
-    this.U=Object.fromEntries(['dem','imagery','origin','span','eye','right','up','forward','aspect','fov','nearZ','farZ','surface','wireframe'].map(n=>[n,gl.getUniformLocation(program,n)]));
+    this.U=Object.fromEntries(['dem','imagery','origin','uvBase','uvScale','span','eye','right','up','forward','aspect','fov','nearZ','farZ','surface','wireframe'].map(n=>[n,gl.getUniformLocation(program,n)]));
     const N=64, verts:number[]=[], fills:number[]=[], lines:number[]=[];
     for(let row=0;row<=N;row++)for(let col=0;col<=N;col++){
       verts.push(col/N,row/N,0);
@@ -139,16 +143,46 @@ export class TerrainRenderer {
     const z=Math.max(9,Math.min(12,Math.floor(this.zoom))),n=2**z;
     const fx=(this.lon+180)/360;
     const fy=(1-Math.asinh(Math.tan(this.lat*rad))/Math.PI)/2;
-    const scale=Math.cos(this.lat*rad),span=C/n*scale;
-    for(const tile of this.tiles.values()) {
-      if(tile.z!==z)continue;
-      const ox=(tile.x/n-fx)*C*scale,oy=(fy-tile.y/n)*C*scale;
-      if(Math.abs(ox)>100000||Math.abs(oy)>100000)continue;
+    const scale=Math.cos(this.lat*rad);
+    const drawTile=(geometryZ:number,geometryX:number,geometryY:number,tile:TerrainTile,sourceX:number,sourceY:number,sourceScale:number):void=>{
+      const geometryN=2**geometryZ;
+      const ox=(geometryX/geometryN-fx)*C*scale,oy=(fy-geometryY/geometryN)*C*scale;
+      if(Math.abs(ox)>100000||Math.abs(oy)>100000)return;
       tile.lastUsed=performance.now();
-      gl.uniform2f(this.U.origin,ox,oy);gl.uniform1f(this.U.span,span);
+      gl.uniform2f(this.U.origin,ox,oy);
+      gl.uniform1f(this.U.span,C/geometryN*scale);
+      gl.uniform2f(this.U.uvBase,sourceX,sourceY);
+      gl.uniform1f(this.U.uvScale,sourceScale);
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tile.dem);
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,tile.imagery);
       gl.drawElements(this.wireframe?gl.LINES:gl.TRIANGLES,this.wireframe?this.lineCount:this.fillCount,gl.UNSIGNED_SHORT,0);
+    };
+    this.fallbackTiles=0;
+    const cx=Math.floor(fx*n),cy=Math.floor(fy*n);
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+      const x=cx+dx,y=cy+dy;
+      if(x<0||x>=n||y<0||y>=n)continue;
+      const exact=this.tiles.get(`${z}/${x}/${y}`);
+      if(exact){drawTile(z,x,y,exact,0,0,1);continue;}
+      let ancestor:TerrainTile|undefined;
+      for(let level=z-1;level>=9;level--){
+        const shift=z-level;
+        ancestor=this.tiles.get(`${level}/${x>>shift}/${y>>shift}`);
+        if(ancestor){
+          const factor=2**shift;
+          drawTile(z,x,y,ancestor,(x-ancestor.x*factor)/factor,(y-ancestor.y*factor)/factor,1/factor);
+          this.fallbackTiles++;
+          break;
+        }
+      }
+      if(ancestor)continue;
+      for(const child of this.tiles.values()){
+        if(child.z<=z)continue;
+        const shift=child.z-z;
+        if((child.x>>shift)!==x||(child.y>>shift)!==y)continue;
+        drawTile(child.z,child.x,child.y,child,0,0,1);
+        this.fallbackTiles++;
+      }
     }
   }
 }

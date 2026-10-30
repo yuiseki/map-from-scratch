@@ -18,22 +18,30 @@ function schedule():void {
   drawScheduled=true;
   requestAnimationFrame(()=>{drawScheduled=false;map.draw();status.textContent=`標高 z${Math.floor(map.zoom)} · 読込 ${map.tiles.size} 枚 · 通信 ${requests} 件 / ${(bytes/1048576).toFixed(1)} MiB`;});
 }
-async function image(url:string):Promise<{bitmap:ImageBitmap;bytes:number}> {
-  const response=await fetch(url);
+async function image(url:string,signal:AbortSignal):Promise<ImageBitmap> {
+  requests++;
+  const response=await fetch(url,{signal});
   if(!response.ok)throw new Error(`${url}: HTTP ${response.status}`);
   const blob=await response.blob();
+  bytes+=blob.size;
   const bitmap=await createImageBitmap(blob,{colorSpaceConversion:'none'});
   if(bitmap.width!==512||bitmap.height!==512){bitmap.close();throw new Error(`unexpected tile size: ${url}`);}
-  return {bitmap,bytes:blob.size};
+  return bitmap;
 }
 async function load(z:number,x:number,y:number,k:string):Promise<void> {
   const demUrl=`https://tiles.mapterhorn.com/${z}/${x}/${y}.webp`;
   const imageUrl=`https://tiles.versatiles.org/tiles/satellite/${z}/${x}/${y}.webp`;
-  const [dem,imagery]=await Promise.all([image(demUrl),image(imageUrl)]);
-  requests+=2;bytes+=dem.bytes+imagery.bytes;
-  if(!wanted.has(k)){dem.bitmap.close();imagery.bitmap.close();return;}
-  const demTexture=map.texture(dem.bitmap,true),imageTexture=map.texture(imagery.bitmap);
-  dem.bitmap.close();imagery.bitmap.close();
+  const signal=AbortSignal.timeout(6000);
+  const [demResult,imageryResult]=await Promise.allSettled([image(demUrl,signal),image(imageUrl,signal)]);
+  if(demResult.status==='rejected'||imageryResult.status==='rejected'){
+    if(demResult.status==='fulfilled')demResult.value.close();
+    if(imageryResult.status==='fulfilled')imageryResult.value.close();
+    throw new Error(`${k}: ${String(demResult.status==='rejected'?demResult.reason:(imageryResult as PromiseRejectedResult).reason)}`);
+  }
+  const dem=demResult.value,imagery=imageryResult.value;
+  if(!wanted.has(k)){dem.close();imagery.close();return;}
+  const demTexture=map.texture(dem,true),imageTexture=map.texture(imagery);
+  dem.close();imagery.close();
   const tile:TerrainTile={z,x,y,dem:demTexture,imagery:imageTexture,lastUsed:performance.now()};
   map.tiles.set(k,tile);
   if(map.tiles.size>96){
@@ -55,8 +63,14 @@ function pump():void {
     if(!wanted.has(tile.key)||map.tiles.has(tile.key)||pending.has(tile.key))continue;
     pending.add(tile.key);
     load(tile.z,tile.x,tile.y,tile.key).catch(error=>{
-      failures.set(tile.key,(failures.get(tile.key)??0)+1);
+      const attempts=(failures.get(tile.key)??0)+1;
+      failures.set(tile.key,attempts);
       status.textContent=String(error);
+      if(attempts<3&&wanted.has(tile.key))setTimeout(()=>{
+        if(wanted.has(tile.key)&&!map.tiles.has(tile.key)&&!pending.has(tile.key)){
+          queue.unshift(tile);pump();
+        }
+      },250*attempts);
     }).finally(()=>{pending.delete(tile.key);pump();schedule();});
   }
 }
@@ -71,7 +85,7 @@ function select():void {
     const x=cx+dx,y=cy+dy;
     if(x<0||x>=n||y<0||y>=n)continue;
     const k=key(z,x,y);wanted.add(k);
-    if(!map.tiles.has(k)&&!pending.has(k)&&(failures.get(k)??0)<2)candidates.push({z,x,y,key:k,priority:dx*dx+dy*dy});
+    if(!map.tiles.has(k)&&!pending.has(k)&&(failures.get(k)??0)<3)candidates.push({z,x,y,key:k,priority:dx*dx+dy*dy});
   }
   candidates.sort((a,b)=>a.priority-b.priority);
   queue.push(...candidates);pump();schedule();
@@ -87,7 +101,6 @@ const firstFrameMs=await Promise.race([initialReady.then(()=>{
   map.draw();map.gl.readPixels(0,0,1,1,map.gl.RGBA,map.gl.UNSIGNED_BYTE,new Uint8Array(4));
   return performance.now()-started;
 }),new Promise<number>((_,reject)=>setTimeout(()=>reject(new Error('Terrain tiles did not load within 30 seconds')),30000))]);
-const completeView=Promise.race([completeReadyPromise.then(()=>performance.now()-started),new Promise<number>((_,reject)=>setTimeout(()=>reject(new Error('Complete terrain view did not load within 30 seconds')),30000))]);
 document.getElementById('wireframe')!.addEventListener('change',(event)=>{map.wireframe=(event.target as HTMLInputElement).checked;schedule();});
 document.getElementById('surface')!.addEventListener('change',(event)=>{map.surface=Number((event.target as HTMLSelectElement).value);schedule();});
 const locations:Record<string,{lon:number;lat:number;zoom:number;bearing:number}>={
@@ -123,4 +136,7 @@ map.canvas.addEventListener('wheel',event=>{
   event.preventDefault();map.zoom=Math.max(9,Math.min(13,map.zoom-event.deltaY*0.002));select();
 },{passive:false});
 window.addEventListener('resize',()=>map.resize());
-if(new URLSearchParams(location.search).has('bench'))await(await import('./bench.ts')).run(map,firstFrameMs,await completeView,{requests,bytes});
+if(new URLSearchParams(location.search).has('bench')){
+  const completeView=Promise.race([completeReadyPromise.then(()=>performance.now()-started),new Promise<number>((_,reject)=>setTimeout(()=>reject(new Error('Complete terrain view did not load within 30 seconds')),30000))]);
+  await(await import('./bench.ts')).run(map,firstFrameMs,await completeView,{requests,bytes});
+}

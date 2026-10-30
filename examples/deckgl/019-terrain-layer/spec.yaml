@@ -13,6 +13,9 @@ requirements:
   - id: navigation
     need: 移動・回転・拡大縮小で地形を観察できる
     unmeasured: 操作でカメラ値と表示タイルが変わることを確認する
+  - id: fallback
+    need: ズーム帯を跨いだ直後も読み込み済みの地形を表示する
+    unmeasured: 切替直後に既存の子タイルで描いた画面ピクセルを確認する
   - id: smooth
     need: 傾斜した地形を60Hz以上で描画する
 evaluation:
@@ -55,12 +58,16 @@ datasets:
 performance_knowledge:
   - id: reusable-grid
     finding: 全タイルが一つの64×64メッシュを共有し、標高と画像テクスチャだけを切り替える
-    evidence: RTX 3060・公開用ビルド3反復で操作フレームp95 1.545 ms、GPU p95 0.998 ms
+    evidence: RTX 3060・公開用ビルド3反復で操作フレームp95 2.860 ms、GPU p95 2.252 ms
+    applies_when: 同じズーム帯の標高タイルを一括表示するとき
   - id: tile-concurrency
     finding: この通信条件では同時取得数を増やすと初期25枚の完成が速かった
     evidence: 同時8件で完成p50 4.04秒、16件で2.20秒、25件で1.34秒。ただし配信元の応答変動を含む
     applies_when: 2ホストから合計50枚のHTTP/2タイルを取得する場合
-    applies_when: 同じズーム帯の標高タイルを一括表示するとき
+  - id: fallback-and-timeout
+    finding: ズーム帯切替時はキャッシュ済み親・子タイルを使い、単一画像の通信停止は期限付きで再試行する
+    evidence: 公開用ビルド3反復で代替表示の画面チェック合格。30秒超過の反復後に画像6秒タイムアウトと最大3回の再試行を追加し、続く3反復が完了
+    applies_when: 標高と地表画像を異なる配信元から取得する場合
 architecture_selection:
   chosen:
     platform: browser
@@ -82,3 +89,4 @@ verification:
     - {id: surface-changes-screen, what: 地表色に切替, how: 切替前後のピクセル比較, expected: 変化3000サンプル以上}
     - {id: orbit-changes-screen, what: 回転で視点が変わる, how: 回転前後のピクセル比較, expected: 変化3000サンプル以上}
     - {id: zoom-changes-screen, what: 拡大で視点が変わる, how: 拡大前後のピクセル比較, expected: 変化3000サンプル以上}
+    - {id: zoom-transition-fallback, what: ズーム帯の切替中も地形が見える, how: 切替直後に子タイルを描いて画面読み戻し, expected: 代替描画ありかつ明るいピクセル50000以上}
