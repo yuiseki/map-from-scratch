@@ -883,7 +883,7 @@
 - [x] `kepler-003-custom-reducer` → `examples/kepler/003-custom-reducer/` — [Custom Reducer](https://docs.kepler.gl/examples/custom-reducer)
 - [x] `kepler-004-umd-client` → `examples/kepler/004-umd-client/` — [umd client](https://docs.kepler.gl/examples/umd-client)
 - [x] `kepler-005-replace-component` → `examples/kepler/005-replace-component/` — [Replace UI Component](https://docs.kepler.gl/examples/replace-component)
-- [ ] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)
+- [x] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)
 - [ ] `kepler-007-node-app` → `examples/kepler/007-node-app/` — [Node App](https://docs.kepler.gl/examples/node-app)
 - [ ] `kepler-008-custom-map-style` → `examples/kepler/008-custom-map-style/` — [Custom map style](https://github.com/keplergl/kepler.gl/tree/14c35fc048a745faab0c6770cab7a4625ccedda3/examples/custom-map-style/README.md)
 

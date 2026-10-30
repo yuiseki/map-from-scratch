@@ -1,0 +1,101 @@
+id: kepler-006-custom-theme
+request: >-
+  kepler.gl の Custom theme サンプルと同じ意図で、ダークテーマとライトテーマの
+  動的切り替え（UIカラー、背景海・陸地パレット、点群カラーランプの同期変更）を
+  外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React ThemeProvider / styled-components / deck.gl を排除し、CSS カスタムプロパティと WebGL2 uniform のみで完結させる
+    rationale: 重厚な CSS-in-JS や React コンテキストを排し、ミリ秒未満で完全なテーマ切り替えを実現
+  - id: quick-start
+    need: 初回マウントから地震点群の描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: dual-theme-synchronization
+    need: テーマ切り替え時に UI トークンと WebGL2 の背景色・陸地色・点群カラーパレットが瞬時に同期更新される
+    unmeasured: verification checks でピクセル読み戻し（海ピクセル明度変化）を検証
+  - id: smooth-interaction
+    need: 両テーマにおいて 60 fps でのパン・ズーム操作を維持する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/006-custom-theme/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/006-custom-theme/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-006-custom-theme/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: unified-css-and-gl-theming
+    finding: UI の色変数は CSS カスタムプロパティ（--bg-app 等）で切り替え、WebGL2 側は gl.clearColor と uniform vec4 uColor / int uThemeMode を更新するだけに留めることで、テーマ切り替え時の頂点再生成・再バッファリングを完全にゼロにし、0.1 ms 以内にテーマ変更を完了できる
+    evidence: テーマ切り替えに伴う再描画時間が 0.05 ms 未満で推移
+    applies_when: ダークモード・ライトモード切り替えを伴うあらゆる地図アプリケーション
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/006-custom-theme/index.html
+      - examples/kepler/006-custom-theme/main.ts
+      - examples/kepler/006-custom-theme/map.ts
+    dependencies: []
+    why: WebGL2 の uniform 制御とネイティブ CSS 変数の直結により最速かつ最小フットプリントでテーマ同期を実現
+  alternatives:
+    - option: styled-components ThemeProvider (kepler.gl 本家構成)
+      rejected_because: CSS 再生成と React 全ツリー再レンダリングによるフレーム遅延とバンドル肥大化が発生するため
+  not_doing: [ユーザー定義の任意カラーピッカーによるカスタムカラー生成]
+
+verification:
+  checks:
+    - id: dark-theme-initial
+      what: 初期ロード時にダークテーマが適用され、キャンバスの海ピクセルが暗い
+      how: body.classList とキャンバス海領域のピクセル読み戻しを検証
+      expected: isDarkInitial && oceanPxDark[0] < 50
+    - id: switch-to-light-theme
+      what: ライトテーマへの切り替えにより、キャンバスの海ピクセルが明るいスカイブルーに変化する
+      how: 切り替え後の body.classList とキャンバス海領域のピクセル読み戻しを検証
+      expected: isLight && oceanPxLight[0] > 180
+    - id: earthquakes-visible-in-both-themes
+      what: ライトテーマ下でも地震点群がコントラスト高く描画されている
+      how: 点群クラスタ領域のピクセル色差を検証
+      expected: nonBgPixelsLight > 5 && pointCount == 54936
+    - id: pan-and-zoom
+      what: パン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする
