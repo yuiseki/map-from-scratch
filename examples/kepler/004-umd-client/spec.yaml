@@ -1,0 +1,101 @@
+id: kepler-004-umd-client
+request: >-
+  kepler.gl の UMD Client サンプルと同じ意図で、ビルドツールやバンドラーなしに
+  単一スクリプトから任意の DOM 要素に kepler.gl 描画器を動的マウント・表示し、
+  外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: Webpack, Babel, npm, React, Redux, deck.gl を排除し、軽量な単一スクリプトとバイナリで完結させる
+    rationale: UMD クライアント用途では、バンドルなしで `<script>` 1行でロード・マウントできる手軽さが求められる
+  - id: quick-mount
+    need: マウント呼び出しから地図と点群の初回描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: dynamic-mounting
+    need: 空のコンテナ要素に対して KeplerGl.mount() を呼ぶだけで UI と WebGL2 キャンバスを自律生成・マウントする
+    unmeasured: verification checks で DOM 注入と描画ピクセルを検証
+  - id: smooth-interaction
+    need: 動的マウント後も 60 fps でのパン・ズーム操作を維持する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-mount}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/004-umd-client/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/004-umd-client/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-004-umd-client/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: umd-factory-pattern
+    finding: 静的な HTML マークアップに依存せず、ファクトリメソッド内で必要最小限の DOM 構造をテンプレート文字列で動的注入して WebGL2 を初期化することで、既存の任意のウェブサイトへ1行で埋め込み可能になる
+    evidence: コード gzip 6.3 KB で UMD 埋め込みインターフェースを完全実装
+    applies_when: サードパーティサイトへの地図ウィジェット提供・スクリプトタグ配布
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/004-umd-client/index.html
+      - examples/kepler/004-umd-client/main.ts
+      - examples/kepler/004-umd-client/map.ts
+    dependencies: []
+    why: バンドラー不要の UMD ファクトリ関数と WebGL2 の組み合わせにより最軽量な埋め込みを実現
+  alternatives:
+    - option: Webpack / Rollup UMD Bundle
+      rejected_because: ビルドステップと巨大なバンドルランタイムが不可避となるため
+  not_doing: [CommonJS require サポート, 外部 iframe サンドボックス分離]
+
+verification:
+  checks:
+    - id: umd-factory-exists
+      what: KeplerGl.mount ファクトリ関数が存在する
+      how: typeof KeplerGl.mount を検証
+      expected: hasMount == true
+    - id: dynamic-dom-injected
+      what: mount 実行により空のコンテナ内にサイドバー・キャンバス・凡例が動的注入されている
+      how: DOM 要素の存在を検証
+      expected: container && appEl && canvasEl
+    - id: earthquakes-rendered
+      what: 動的マウントされたキャンバス上に地震点群が描画されている
+      how: キャンバスピクセルの読み戻しを検証
+      expected: nonBgPixels > 5 && pointCount == 54936
+    - id: pan-and-zoom
+      what: パン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする
