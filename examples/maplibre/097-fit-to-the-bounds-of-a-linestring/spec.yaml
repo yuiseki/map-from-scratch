@@ -1,0 +1,141 @@
+id: maplibre-097-fit-to-the-bounds-of-a-linestring
+request: >-
+  ワシントンDC中心部の遊歩道（GeoJSON LineString、11点）を紫の5px線で描き、
+  ページのボタンを押すとそのラインのバウンズに 20 px の余白を付けて
+  ズーム・中央寄せする地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1本のラインと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とラインが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: fit-with-padding
+    need: ラインの全頂点が 20 px の余白の内側に収まり、制約となる軸が余白に接する
+    unmeasured: verification の fit-button-centres-line / fit-keeps-line-in-padding で、独立計算したズーム・中心と画面座標を検証
+  - id: line-accuracy
+    need: ラインが指定色・太さで描かれ、パン・ズーム時に地理座標へ正確に追従する
+    unmeasured: verification の line-rendered-before-fit / line-follows-pan / line-anchors-on-zoom で画面画素と座標変化を検証
+  - id: background-map
+    need: ズーム 12〜16 でも道路・公園・水域が読める背景地図がある
+    unmeasured: verification の basemap-drawn / basemap-shows-geography でタイル枚数・色数・地理的な色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/097-fit-to-the-bounds-of-a-linestring/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ライン・陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
+      metrics: [first_frame_ms]
+    - id: pan
+      what: フィット後の60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/097-fit-to-the-bounds-of-a-linestring/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
+  outputs:
+    - data/baked/maplibre-097-fit-to-the-bounds-of-a-linestring/route.json
+    - data/baked/maplibre-097-fit-to-the-bounds-of-a-linestring/land.json
+  preparation:
+    - MapLibre 公式サンプルの LineString 座標（11点）を Web Mercator 座標に投影して量子化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化（下地タイル到着までの代替）
+    - 実行時は OSM Carto の 512 px タイルを z=round(zoom) で表示範囲だけ取得し、256 CSS px に描く
+
+performance_knowledge:
+  - id: fit-bounds-is-a-two-line-camera-formula
+    finding: fitBounds(padding) は「全頂点の mercator bbox の中心」と「(w-2p)/Δmx と (h-2p)/Δmy の小さい方を 256 で割った log2」だけで再現できる。頂点ごとの投影はベイク済みなので、フィットは O(1) のカメラ更新になる
+    evidence: 20 px パディングのフィットで、制約軸（東西）の頂点が x=20 と x=1004 にちょうど接し、中心は bbox 中心に 1e-8 以内、ズームは独立計算値と 2e-4 以内（8桁量子化ぶん）
+    applies_when: LineString / 複数点 / ポリゴンのバウンズへカメラを合わせるとき
+  - id: fit-then-raster-tiles-change-level
+    finding: フィットでズームが 12 から 15.6 へ跳ぶと、必要な背景タイルの z も 11 から 15 へ変わる。初回フレームはタイルを待たず、ズーム後のタイルは非同期で差し替えるため、フィット直後に一瞬だけ陸ポリゴンの下地が見える
+    evidence: 初回描画 p50 は 12 ms 前後、フィット後の背景タイル到着後に再描画 p95 2 ms 未満
+    applies_when: カメラ移動が数ズーム段をまたぐとき
+  - id: independent-fit-math-in-bench
+    finding: フィット結果の検証は、renderer の fitLine を呼ばず、bench 内で生の緯度経度から mercator bbox・パディング込みスケール・ズームを再計算する。実装が同じ関数を使うと、式が間違っていても一致してしまう
+    evidence: 期待ズーム 15.5686 を独立計算し、カメラの zoom は 15.5685（差 8.5e-5 はルート座標の8桁量子化ぶん）
+    applies_when: カメラの fit / clamp を検証するとき
+  - id: raster-sample-points-need-open-water
+    finding: ラスタ下地の地理検証では、緯度経度で指定した点が橋・道路・ラベルに当たると水面の青が出ない。ズーム 12（タイル z11）では橋は数画素しかないが、それでもサンプルが外れる。タイルを直接取得して 3x3 平均が期待色になる点を選ぶと安定する
+    evidence: (-77.045, 38.875) は橋の上で rgb(180,133,166)、開けた水面 (-77.040, 38.882) は rgb(170,211,223)。同じ理由でナショナルモールの縁 (-77.026, 38.8895) は g-r=15 しかなく、記念塔周辺の芝生 (-77.0355, 38.8905) は g-r=50
+    applies_when: 背景地図の地理をピクセル色で検証するとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/097-fit-to-the-bounds-of-a-linestring/index.html
+      - examples/maplibre/097-fit-to-the-bounds-of-a-linestring/main.ts
+      - examples/maplibre/097-fit-to-the-bounds-of-a-linestring/line.ts
+    dependencies: []
+    why: 1本のラインの描画とバウンズフィットは Canvas 2D の stroke と数十行のカメラ演算で済む。背景は OSM Carto のラスタタイルを表示範囲だけ取得し、到着まではベイクした陸ポリゴンで埋める
+  alternatives:
+    - option: WebGL2 の押し出しポリライン
+      rejected_because: 幅付きラインの join/cap を自前でメッシュ化する必要があり、コードサイズが数倍になる
+    - option: 固定ズーム 16 で中央寄せだけする
+      rejected_because: fitBounds の本質は「異なるアスペクト比・異なるライン長でも余白を保って収める」ことで、固定ズームではビューポートサイズやラインの広がりに対して一般性がない
+    - option: 全頂点を毎フレーム LngLatBounds に extend する
+      rejected_because: ベイク時に bbox を確定できる。毎フレームの reduce は不要
+  not_doing: [3D地形, 地名ラベルの自前描画, 回転・ピッチ, ベクタータイルデコード, アニメーション付きフィット]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: ラスタの背景地図（道路・公園・水域）が描かれている
+      how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: 表示範囲のタイルがすべて ready（2 枚以上）、異なる色 > 150
+    - id: basemap-shows-geography
+      what: 背景がワシントンDCの正しい位置を写している（ポトマック川は青、ワシントン記念塔周辺の芝生は緑）
+      how: 各地物の緯度経度を画面座標に変換し、3x3 ピクセル平均の色を調べる（橋や紫のラインを避けた開けた水面と芝生を選ぶ）
+      expected: 水域 b > r + 20、公園 g > r + 15
+    - id: line-rendered-before-fit
+      what: フィット前、開始ビュー（zoom 12）に紫のラインが描かれている
+      how: 頂点と線分中点の画素色を検証
+      expected: rgb(191,147,228) に対し r±40 / g±35 / b±30、b > r + 15
+    - id: fit-button-centres-line
+      what: ページのボタンでラインのバウンズに 20 px 余白付きでフィットする
+      how: '#zoomto を click し、中心・ズームを bench 側の独立計算と比較'
+      expected: 中心 = bbox 中心（誤差 < 1e-8）、zoom = log2(min((w-40)/Δmx, (h-40)/Δmy)/256)（誤差 < 2e-4、ベイクの8桁量子化ぶん）
+    - id: fit-keeps-line-in-padding
+      what: 全頂点が 20 px の余白内に収まり、制約軸が余白に接する
+      how: 全11頂点の画面座標の min/max を余白と比較
+      expected: x が [19.5, 1004.5]、y が [19.5, 748.5] の内側、いずれかの端が 20 / 1004 / 748 に ±0.5
+    - id: line-follows-pan
+      what: 60 px, 40 px のパンでラインが 1:1 で移動する
+      how: ポインタイベントでドラッグし、線分中点の画面座標と画素色を検証
+      expected: 移動量が 60±0.6 / 40±0.6 px、移動先が紫
+    - id: line-anchors-on-zoom
+      what: 中点を基準に +1 ズームしても中点は動かず、頂点との距離が 2 倍になる
+      how: zoomAtPoint 後に中点・先頭頂点の画面座標と画素色を検証
+      expected: 中点の移動 < 0.6 px、頂点オフセットが 2 倍 ±1 px、中点が紫
+    - id: reset-view-restores-start
+      what: リセットで開始ビュー（zoom 12・中心 [-77.0214, 38.897]）に戻る
+      how: resetView 後のズーム・中心・線分中点の画素を検証
+      expected: zoom = 12、中心 mx = mercX(-77.0214)、中点が紫
+  harness:
+    - contextlost が起きたらエラーにする
