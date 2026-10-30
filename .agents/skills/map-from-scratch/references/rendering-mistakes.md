@@ -305,6 +305,26 @@ between examples.
 At zoom 10 Luxembourg is 827 px tall, so its northern and southern lines were
 cut in an 800 px window. Fit the opening view to the data's bounds at load.
 
+### Map furniture written by hand (forge3d 010)
+
+- Screen: a finished-looking plate whose collar said 122°00'W to 121°30'W
+  and 46°45' to 46°55'N, a 10 km scale bar at every zoom, a legend of 500 to
+  4,392 m and a "1:50,000" title; the latitudes were also cut off by the page
+  edge.
+- Why: every element was a fixed string or number, and the bake wrote a
+  hand-typed bounding box ([-122.0, 46.7, -121.6, 46.95]) next to a DEM
+  read from Terrarium tile z10/165/360, whose real extent is about
+  121.99° to 121.64° W, 46.80° to 47.04° N. Converted through the wrong box,
+  the summit pixel lay about 11 km south of Mount Rainier.
+- Fix: compute the tile's bounds from z/x/y in the bake and the summit from
+  the highest sample (121.761° W, 46.853° N), then derive the collar labels
+  from where the relief is drawn, the scale bar from km per pixel (a round
+  distance of 55 to 92 px), the legend from the data's minimum and maximum,
+  and the relief's aspect from the ground size. Rotate side labels so they
+  fit the margin.
+- Test: convert a known feature's pixel back to coordinates; zoom and check
+  that the scale bar's distance changes.
+
 ### Base data too coarse for the scale (tangram 004)
 
 - Screen: no San Francisco Bay; coastal highways over the sea, at zoom 8 on
