@@ -1,0 +1,103 @@
+id: mapbox-049-disable-scroll-zoom
+request: >-
+  ホイールでの拡大縮小を無効にした地図を表示したい。ドラッグによるパンは有効、
+  ダブルクリックによるズームは有効のまま。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 背景地図と入力の切り替えだけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: wheel-inert
+    need: ホイール操作でカメラが 1 px も動かず、パンとダブルクリックズームは機能する
+    unmeasured: verification の checks でホイール前後のカメラ状態とピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/049-disable-scroll-zoom/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/049-disable-scroll-zoom/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-049-disable-scroll-zoom/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: disable-by-not-handling
+    finding: スクロールズームの無効化は「イベントを preventDefault するだけでズームを計算しない」が最小。ハンドラを外すとページ自体がスクロールするので、既定動作の抑止だけは残す
+    evidence: wheel-does-not-zoom が zoom 3 のまま、カーソル下のピクセルも不変
+  - id: zoom-anchored-dblclick
+    finding: ダブルクリックズームはホイールズームと同じ zoomAtPoint を使い回せる。カーソル下の地理座標を保つ式は共通で、入力の違いだけを吸収すればよい
+    evidence: double-click-zooms が (700,300) の地理座標を 1.5 px 以内に保つ
+  - id: no-camera-during-wheel
+    finding: ズームを計算しないので、ホイール連打でも再描画が 1 度も起きない。カメラ状態の比較は浮動小数の完全一致で検証できる
+    evidence: 2 回のホイール後も center の値がビット単位で一致
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/049-disable-scroll-zoom/index.html
+      - examples/mapbox/049-disable-scroll-zoom/main.ts
+      - examples/mapbox/049-disable-scroll-zoom/scrollzoom.ts
+    dependencies: []
+    why: 入力を捨てるだけの例なので、描画は Canvas 2D の陸地塗りで十分
+  alternatives:
+    - option: CSS の touch-action / overscroll-behavior で止める
+      rejected_because: ホイールイベント自体は届くため、カメラを動かさない制御は結局 JS 側に必要
+    - option: WebGL2
+      rejected_because: 静的な陸地塗りに初期化コストが見合わない
+  not_doing: [3D地形, 地名ラベル, 回転操作, ピンチズーム, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: wheel-does-not-zoom
+      what: ホイールを 2 回送ってもズームと中心が変わらず、画面のピクセルも同じ
+      how: カーソル下の WheelEvent 前後で zoom / center / ピクセルを比較
+      expected: 'zoom === 3、center が一致、ピクセルが一致'
+    - id: double-click-zooms
+      what: ダブルクリックで zoom 4 になり、カーソル下の地理座標が動かない
+      how: (700,300) へ dblclick を送り、その地理座標の画面位置を比較
+      expected: 'zoom === 4、位置の差 < 1.5 px'
+    - id: wheel-stays-disabled
+      what: ズーム後もホイールは無効のまま
+      how: ズーム後に別の位置でホイールを送る
+      expected: 'zoom と center が一致'
+    - id: drag-still-pans
+      what: ドラッグによるパンは有効
+      how: (200,600)→(240,620) のドラッグ前後で中心と地物位置を比較
+      expected: '中心が (-40/scale, -20/scale)、地物が +40, +20 px'
+  harness:
+    - contextlost が起きたらエラーにする

@@ -1,0 +1,113 @@
+id: maplibre-040-center-the-map-on-a-clicked-symbol
+request: >-
+  ニューヨーク・ロンドン・東京の3つのシンボルを置いた世界地図を表示し、シンボルを
+  クリックすると地図がその都市を中心へイージングしながら移動するようにしたい。
+  空の場所のクリックでは動かず、ドラッグでパン、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 3つのピンと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とピンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パンとカメラ移動が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: click-to-centre
+    need: ピンのクリックでその都市が 600 ms のイージングで画面中心に来る
+    unmeasured: verification の checks でクリック後の中心座標とピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/040-center-the-map-on-a-clicked-symbol/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/040-center-the-map-on-a-clicked-symbol/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-040-center-the-map-on-a-clicked-symbol/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: tween-on-mercator-centre
+    finding: カメラ移動は中心のメルカトル座標を線形補間し、イージング係数を掛けるだけで足りる。地図の投影は毎フレーム中心から計算するので、カメラ行列を別に持つ必要はない
+    evidence: click-centers-on-symbol が 600 ms 後に中心座標とシンボル画面位置を 0.5 px 以内で一致
+  - id: deterministic-animation-hook
+    finding: rAF 駆動のトゥイーンに advance(ms) を併設すると、計測で時間に依存せず「終了後の状態」を検証できる。setAnimating(false) で rAF を止めれば同じフレームを何度でも再現できる
+    evidence: bench は advance(700) だけで 2 つの都市への移動を検証
+  - id: drag-cancels-tween
+    finding: 移動中にユーザーがドラッグしたらトゥイーンを捨てる。放置するとカメラが勝手に戻って操作と競合する
+    evidence: drag-pans がトゥイーン後に正確なパン量で中心が動く
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/040-center-the-map-on-a-clicked-symbol/index.html
+      - examples/maplibre/040-center-the-map-on-a-clicked-symbol/main.ts
+      - examples/maplibre/040-center-the-map-on-a-clicked-symbol/symbol.ts
+    dependencies: []
+    why: ピン3本と中心移動だけなら Canvas 2D のパス描画と中心座標の補間が最小
+  alternatives:
+    - option: MapLibre の flyTo / easeTo 相当を持つ汎用カメラ
+      rejected_because: この例に必要なのは中心の線形補間だけで、ピッチ・方位・ズーム曲線は不要
+    - option: WebGL2
+      rejected_because: 3本のピンと陸地塗りのために頂点バッファとシェーダーを用意する利点がないため
+  not_doing: [3D地形, 地名ラベル, ピンの衝突回避, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: symbols-visible
+      what: 3つのピンがそれぞれの地理座標に描かれている
+      how: 各ピンの頭部ピクセルを読み、都市ごとの色と比較
+      expected: '3都市すべてのピクセルが指定色と差 24 以内'
+    - id: click-centers-on-symbol
+      what: ロンドンのピンをクリックすると 600 ms 後にロンドンが画面中心に来る
+      how: ピン頭部へ pointerdown/up を送り、advance(700) 後の中心座標と画面位置を検証
+      expected: '中心 = ロンドンのメルカトル座標、画面位置 = (幅/2, 高さ/2) と差 < 0.5 px'
+    - id: click-empty-does-not-move
+      what: ピンから離れた場所のクリックではカメラが動かない
+      how: (700,620) をクリックして中心座標が不変であることを検証
+      expected: '中心座標が完全に一致し、トゥイーンが始まらない'
+    - id: click-other-symbol
+      what: 別のピンをクリックするとその都市が新しい中心になる
+      how: 東京のピンへクリックし、advance(700) 後の中心と画面位置を検証
+      expected: '中心 = 東京のメルカトル座標、画面位置 = 画面中心と差 < 0.5 px'
+    - id: drag-pans
+      what: ピン以外のドラッグで地図がパンする
+      how: (200,620)→(240,640) の pointer ドラッグ後の中心座標を検証
+      expected: '中心が (-40/scale, -20/scale) だけ動く'
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでカーソル下の地理座標が動かない
+      how: 東京のピン位置を zoomAtPoint(…, 3.5) し、前後の画面位置を比較
+      expected: 'ピンの移動 < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

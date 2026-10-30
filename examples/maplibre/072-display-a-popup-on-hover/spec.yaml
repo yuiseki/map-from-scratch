@@ -1,0 +1,113 @@
+id: maplibre-072-display-a-popup-on-hover
+request: >-
+  中心座標 [-96.0, 37.8]、ズーム 3 の地図に青いマーカーを1つ置き、マーカーに
+  ポインタを近づけると「You hovered here!」の吹き出し型ポップアップを表示したい。
+  離すと消え、ドラッグでパン、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: マーカー1個とホバー時の吹き出しに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とマーカーが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: hover-hit-testing
+    need: マーカーから 14 px 以内のポインタでポップアップが開き、離れると閉じる
+    unmeasured: verification の checks でホバー距離ごとの表示状態とピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/072-display-a-popup-on-hover/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/072-display-a-popup-on-hover/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-072-display-a-popup-on-hover/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: hover-in-screen-space
+    finding: ホバー判定はマーカーのスクリーン座標との距離 14 px だけで済み、地物の空間インデックスやレイキャストは不要。ポインタ移動のたびに比較1回、状態が変わったときだけ再描画する
+    evidence: hover-radius が 12 px で表示・16 px で非表示の両方を PASS
+  - id: redraw-only-on-state-change
+    finding: ポインタ移動ごとに再描画すると 60 fps を無駄に消費する。hovering フラグが変化したときだけ draw を呼ぶことで、マーカー周辺を動き回っても描画は 1 回で済む
+    evidence: ポインタ移動を 3 回送っても再描画は状態変化時のみ
+  - id: popup-inside-the-same-canvas
+    finding: 吹き出しを DOM オーバーレイにせず Canvas に描くと、パン中もマーカーと吹き出しの相対位置が 1 フレームで一致する
+    evidence: popup-follows-pan が 40×25 px で先端 0.5 px 以内
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/072-display-a-popup-on-hover/index.html
+      - examples/maplibre/072-display-a-popup-on-hover/main.ts
+      - examples/maplibre/072-display-a-popup-on-hover/popup.ts
+    dependencies: []
+    why: マーカー1個とホバー吹き出しなら Canvas 2D のパス描画が最小・最速
+  alternatives:
+    - option: DOM Popup (MapLibre の Popup クラスと同じ HTML オーバーレイ)
+      rejected_because: パン中に translate3d を同期させるレイアウト処理と 1 フレーム遅れのジッターを避けるため
+    - option: WebGL2
+      rejected_because: 吹き出しとテキストのために SDF アトラスやメッシュ生成が必要になり、コードサイズが増えるため
+  not_doing: [3D地形, 地名ラベル, 複数マーカーの衝突回避, タッチの長押しホバー代替, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: popup-hidden-until-hover
+      what: ホバー前は吹き出しが描画されていない
+      how: popupVisible と吹き出し予定位置のピクセルを検証
+      expected: 'popupVisible === false かつ白でない'
+    - id: hover-opens-popup
+      what: マーカー上にポインタを移すと吹き出しが開き、マーカーの青い点も見える
+      how: pointermove をマーカー中心へ送り、吹き出し内と点のピクセルを検証
+      expected: '吹き出し内が白、点が青 (r<80, b>150)'
+    - id: pointer-leave-hides-popup
+      what: ポインタを 90 px 離すと吹き出しが消える
+      how: pointermove を離れた位置へ送る
+      expected: 'popupVisible === false かつ元の位置が白でない'
+    - id: hover-radius
+      what: 14 px のホバー半径の内側では表示、外側では非表示
+      how: 12 px と 16 px の位置へ pointermove を送る
+      expected: '12 px → 表示、16 px → 非表示、戻すと表示'
+    - id: popup-follows-pan
+      what: 40×25 px のパンで吹き出しも同じ量だけ移動し、先端はマーカーに留まる
+      how: パン前後のバウンズ差分とマーカー座標を検証
+      expected: 'dx=40, dy=25、先端とマーカーの差 < 0.5 px、吹き出し内が白'
+    - id: popup-anchors-on-zoom
+      what: マーカーを中心に zoom 5 へ拡大してもマーカーと吹き出しが同じ位置に留まる
+      how: zoomAtPoint(マーカー, 5) の後の座標とピクセルを検証
+      expected: 'マーカーの移動 < 1.5 px、吹き出し内が白'
+  harness:
+    - contextlost が起きたらエラーにする
