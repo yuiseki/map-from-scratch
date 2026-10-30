@@ -43,7 +43,22 @@ export class LuxembourgRailMap {
   async load(baseDir = '../../..'): Promise<void> {
     const res = await fetch(`${baseDir}/data/baked/forge3d-004-luxembourg-rail-network/luxembourg.json`);
     this.data = (await res.json()) as LuxembourgData;
+    this.fitBoundary();
     this.draw();
+  }
+
+  // Open on the whole country: a fixed zoom 10 is taller than an 800 px window.
+  // The baked boundary is already in Web Mercator units (0..1).
+  private fitBoundary(): void {
+    const xs = this.data.boundary.map(([x]) => x);
+    const ys = this.data.boundary.map(([, y]) => y);
+    if (!xs.length) return;
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = this.canvas.width / this.dpr, h = this.canvas.height / this.dpr;
+    const fit = Math.min((w * 0.9) / (maxX - minX), (h * 0.9) / (maxY - minY)) / 256;
+    this.zoom = Math.max(7, Math.min(15, Math.log2(fit)));
+    const cy = (0.5 - (minY + maxY) / 2) * 2 * Math.PI;
+    this.center = { lon: ((minX + maxX) / 2) * 360 - 180, lat: (2 * Math.atan(Math.exp(cy)) - Math.PI / 2) * (180 / Math.PI) };
   }
 
   private resize(): void {
