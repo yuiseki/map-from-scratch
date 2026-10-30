@@ -91,19 +91,26 @@ export async function mount(
     ctx.strokeStyle = '#dad7d0';
     ctx.lineWidth = 1;
 
-    for (const poly of polygons) {
-      if (poly.length === 0) continue;
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const rx = originX + ring[i][0] * scale;
-          const ry = originY + ring[i][1] * scale;
-          if (i === 0) ctx.moveTo(rx, ry);
-          else ctx.lineTo(rx, ry);
+    // Repeat the world horizontally so land continues past the antimeridian,
+    // as MapLibre's world copies do.
+    const minWrap = Math.floor(centerMx - width / (2 * scale));
+    const maxWrap = Math.floor(centerMx + width / (2 * scale));
+    for (let wrap = minWrap; wrap <= maxWrap; wrap++) {
+      const shiftX = originX + wrap * scale;
+      for (const poly of polygons) {
+        if (poly.length === 0) continue;
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 0; i < ring.length; i++) {
+            const rx = shiftX + ring[i][0] * scale;
+            const ry = originY + ring[i][1] * scale;
+            if (i === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
         }
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fill();
-      ctx.stroke();
     }
 
     // GeoJSON LineString
