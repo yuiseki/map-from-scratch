@@ -10,6 +10,8 @@ export class TangramHighwaysMap {
   ctx: CanvasRenderingContext2D;
   polygons: Polygon[] = [];
   highways: Line[] = [];
+  // 10m land for the area of the opening view, drawn over the 110m land.
+  coast: { bbox: number[]; polygons: Polygon[] } = { bbox: [0, 0, 0, 0], polygons: [] };
   center = { lon: -122.4194, lat: 37.7749 };
   zoom = 8;
   dpr = 1;
@@ -34,12 +36,14 @@ export class TangramHighwaysMap {
   }
 
   async load(baseDir = '../../..'): Promise<void> {
-    const [landRes, hwRes] = await Promise.all([
+    const [landRes, hwRes, coastRes] = await Promise.all([
       fetch(`${baseDir}/data/baked/tangram-004-highways-demo/land.json`),
       fetch(`${baseDir}/data/baked/tangram-004-highways-demo/highways.json`),
+      fetch(`${baseDir}/data/baked/tangram-004-highways-demo/coast.json`),
     ]);
     this.polygons = (await landRes.json()) as Polygon[];
     this.highways = (await hwRes.json()) as Line[];
+    this.coast = (await coastRes.json()) as typeof this.coast;
     this.draw();
   }
 
@@ -126,19 +130,35 @@ export class TangramHighwaysMap {
     ctx.strokeStyle = '#2e3846';
     ctx.lineWidth = 1;
 
-    for (const poly of this.polygons) {
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const rx = w / 2 + (ring[i][0] - centerMx) * scale;
-          const ry = h / 2 + (ring[i][1] - centerMy) * scale;
-          if (i === 0) ctx.moveTo(rx, ry);
-          else ctx.lineTo(rx, ry);
+    const drawLand = (polygons: Polygon[]): void => {
+      for (const poly of polygons) {
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 0; i < ring.length; i++) {
+            const rx = w / 2 + (ring[i][0] - centerMx) * scale;
+            const ry = h / 2 + (ring[i][1] - centerMy) * scale;
+            if (i === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
         }
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fill();
-      ctx.stroke();
-    }
+    };
+    drawLand(this.polygons);
+
+    // 1b. Inside the detail box, sea first and then the 10m land. The baked
+    // polygons reach past the box, so their cut edges are clipped away.
+    const [x0, y0, x1, y1] = this.coast.bbox.map((v, i) => (i % 2 ? h / 2 + (v - centerMy) * scale : w / 2 + (v - centerMx) * scale));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, y0, x1 - x0, y1 - y0);
+    ctx.clip();
+    ctx.fillStyle = '#151922';
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillStyle = '#1e2430';
+    drawLand(this.coast.polygons);
+    ctx.restore();
 
     // 2. Draw Highways (Zoom-dependent line width)
     // Scale line width exponentially with zoom (z6 -> ~1px, z8 -> ~2.2px, z10 -> ~4.5px)

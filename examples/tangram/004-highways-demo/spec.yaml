@@ -50,12 +50,17 @@ datasets:
     - id: ne-110m-land
       origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
       license: Natural Earth パブリックドメイン
+    - id: ne-countries
+      origin: https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip
+      license: Natural Earth パブリックドメイン
   outputs:
     - data/baked/tangram-004-highways-demo/highways.json
     - data/baked/tangram-004-highways-demo/land.json
+    - data/baked/tangram-004-highways-demo/coast.json
   preparation:
     - ベイエリア（サンフランシスコ周辺）の主要高速道路ラインを Web Mercator 座標 [0, 1] に投影して量子化
-    - 背景陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 背景陸地ポリゴン（110m、全球）を Web Mercator 座標 [0, 1] に小数 4 桁で投影
+    - 初期表示の範囲（西経 128～116.5°、北緯 35～40.6°）だけ 10m の国ポリゴンを切り抜いて重ねる。110m の海岸はサンフランシスコ湾がなく、海沿いの高速道路が海の上に出るため
 
 performance_knowledge:
   - id: canvas-zoom-dependent-line-styling
