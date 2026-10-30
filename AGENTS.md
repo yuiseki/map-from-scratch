@@ -23,7 +23,7 @@
    - すべての `requirements` は `evaluation.budgets` の数値目標に紐づけるか、`unmeasured` の理由を明記します。
    - `verification.checks` では中間バッファではなく**実際に画面に描かれたピクセル**を読み戻して検証し、各反復で `{"check": id, "pass": bool, "detail": ...}` を出力します。
 5. **先行エンジンの知見（スキル & `ref-repos/`）の活用とライセンス遵守**
-   - 実装前に `.agents/skills/` の該当トピックと `ref-repos/`（`ref-repos/clone.sh` で取得する約48個の地図エンジン・空間ツール）の実装を調査し、採用・却下した理由を `spec.yaml` の `performance_knowledge` や `architecture_selection`、コードコメントに記録します。
+   - 実装前に `.agents/skills/` の該当トピックと `ref-repos/`（`ref-repos/clone.sh` で取得する130個以上の地図エンジン・空間ツール）の実装を調査し、採用・却下した理由を `spec.yaml` の `performance_knowledge` や `architecture_selection`、コードコメントに記録します。
    - 本リポジトリは **GPL-3.0-or-later** です。GPL-3 / GPL-2.0-or-later / LGPL / 寛容ライセンスのコードは出典ファイルをコメントに明記して翻案できますが、**GPL-2.0-only（GeoServer、Navit の一部など）のコードは読むだけとし、コピー・翻案してはいけません**。
 
 ---

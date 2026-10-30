@@ -66,6 +66,13 @@ Evidence for pushing width into the shader:
   MapLibre Native triangulates fill outlines on Metal and WebGPU, keeping
   `gfx::Lines` only on GL [8]. A 1 px hairline with `gl.LINES` is fine (02)
   [117].
+- Storage buffer vertex pulling in modern WebGPU: pygfx skips vertex buffers
+  and CPU polygon tessellation entirely. It puts node positions into a
+  storage buffer and emits `6 * N` vertices with no vertex attributes bound.
+  The vertex shader uses `vertex_index` to pull $P_{i-1}, P_i, P_{i+1}$,
+  generating screen-space miters, bevels, round caps and round joins in WGSL
+  [118]. This completely eliminates CPU attribute expansion and buffer
+  reallocations during continuous camera motion.
 
 ## Decisions, with trade-offs and evidence
 
@@ -400,3 +407,4 @@ Evidence for pushing width into the shader:
 115. ref-repos/SciTools__cartopy/lib/cartopy/trace.pyx, https://github.com/SciTools/cartopy/pull/2083, https://github.com/SciTools/cartopy/pull/1808
 116. https://github.com/SciTools/cartopy/pull/1607, ref-repos/SciTools__cartopy/lib/cartopy/crs.py
 117. skills/map-from-scratch/references/patterns.md, examples/05-tokyo-roads-native/spec.yaml, examples/05-tokyo-roads-native/roads.c, examples/02-world-population-mobile/map.ts
+118. ref-repos/pygfx__pygfx/pygfx/renderers/wgpu/wgsl/line.wgsl, https://almarklein.org/line_rendering.html, https://github.com/pygfx/pygfx

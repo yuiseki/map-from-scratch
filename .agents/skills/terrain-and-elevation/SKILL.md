@@ -47,6 +47,8 @@ refer to the Sources list at the end of this file.
 - Know which encoding a source uses: the Mapterhorn planet PMTiles here is
   Terrarium, and decoding it as Mapbox Terrain-RGB gives nonsense [114].
   MapLibre Native's hillshade is compatible with both encodings [20].
+  forge3d decodes Terrarium tiles into f32 elevation buffers and reads
+  Cloud Optimized GeoTIFFs (COG) by byte range directly in wgpu [116].
 - A non-image format avoids both problems. ortho-earth's altpbf stores
   delta-coded SVarint grids under deflate-raw (native
   `DecompressionStream`) and decodes straight into an `Int16Array`: a
@@ -456,3 +458,4 @@ Local paths are relative to the repository root.
 113. https://github.com/mapsforge/mapsforge/pull/1561; https://github.com/mapsforge/mapsforge/pull/1569
 114. .agents/skills/yuiseki-open-data/references/catalog.md (Mapterhorn planet.pmtiles, ETOPO_2022_15s_bed.tif)
 115. skills/map-from-scratch/references/patterns.md (Interaction: picking with a 1x1 id render)
+116. ref-repos/milos-agathon__forge3d/src/gis/cog_range.rs, ref-repos/milos-agathon__forge3d/src/gis/terrarium.rs, https://github.com/milos-agathon/forge3d

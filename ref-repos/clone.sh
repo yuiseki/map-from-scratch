@@ -131,6 +131,8 @@ sasgis/sas.planet.src                    desktop-imagery   GPL-3.0
 originalankur/maptoposter                static-map        MIT
 c2g-dev/city2graph                       spatial-graphs    BSD-3-Clause
 shashwatak/satellite-js                  orbit-math        MIT
+milos-agathon/forge3d                   rust-webgpu-3d    MIT
+pygfx/pygfx                              python-webgpu     BSD-2-Clause
 openstreetmap/id-tagging-schema          osm-schema        ISC
 osmlab/name-suggestion-index             osm-catalog       BSD-3-Clause
 EOF
@@ -172,10 +174,12 @@ export -f one
 export UPDATE DEPTH
 export DEPTH_ARGS_STR="${DEPTH_ARGS[*]:-}"
 
+shopt -s nocasematch
 selected=$(echo "$REPOS" | awk '{print $1}' | while read -r r; do
   if [[ ${#FILTER[@]} -eq 0 ]]; then echo "$r"; continue; fi
-  for f in "${FILTER[@]}"; do if [[ "${r,,}" == *"${f,,}"* ]]; then echo "$r"; break; fi; done
+  for f in "${FILTER[@]}"; do if [[ "$r" == *"$f"* ]]; then echo "$r"; break; fi; done
 done)
+shopt -u nocasematch
 [[ -n "$selected" ]] || { echo "no repository matches: ${FILTER[*]}" >&2; exit 1; }
 
 # xargs runs each clone in a fresh bash; rebuild the depth arguments there.
