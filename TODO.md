@@ -863,7 +863,7 @@
 
 出典: [forge3d Gallery](https://milos-agathon.github.io/forge3d/gallery/index.html)。Rust/wgpu ベースの地形・3D 可視化ギャラリーから 10 件を対象とする。
 
-- [ ] `forge3d-001-mount-rainier` → `examples/forge3d/001-mount-rainier/` — [Mount Rainier](https://milos-agathon.github.io/forge3d/gallery/01-mount-rainier.html)
+- [x] `forge3d-001-mount-rainier` → `examples/forge3d/001-mount-rainier/` — [Mount Rainier](https://milos-agathon.github.io/forge3d/gallery/01-mount-rainier.html)
 - [ ] `forge3d-002-mount-fuji-labels` → `examples/forge3d/002-mount-fuji-labels/` — [Mount Fuji labels](https://milos-agathon.github.io/forge3d/gallery/02-mount-fuji-labels.html)
 - [ ] `forge3d-003-swiss-landcover` → `examples/forge3d/003-swiss-landcover/` — [Swiss land-cover](https://milos-agathon.github.io/forge3d/gallery/03-swiss-landcover.html)
 - [x] `forge3d-004-luxembourg-rail-network` → `examples/forge3d/004-luxembourg-rail-network/` — [Luxembourg rail network](https://milos-agathon.github.io/forge3d/gallery/04-luxembourg-rail-network.html)
@@ -884,5 +884,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **54 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **55 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

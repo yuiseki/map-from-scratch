@@ -1,0 +1,110 @@
+id: forge3d-001-mount-rainier
+request: >-
+  forge3d の代表例「Mount Rainier」のように、Mt. Rainier の DEM を 3D 地形として表示し、
+  オービットカメラで回転・ズームして山体を眺めたい。太陽は西北 302°・高度 24°に固定。
+  外部ライブラリなし、WebGL2 の 1 ドローコールで最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 地形はベイクした 2 枚のテクスチャと 1 本のインデックスバッファだけで描く
+  - id: quick-start
+    need: ページを開いて即座に山体が現れる
+    rationale: 初期化ラグなしで 500 ms 以内に表示
+  - id: smooth-interaction
+    need: オービットとズームが滑らかに追従する
+    rationale: 1 ドローコールで 29 万三角形を描くため、再描画はフレーム予算内に収まる
+  - id: terrain-shape
+    need: 標高が 3D 形状として正しく投影される（山頂が谷より上に描かれる）
+    unmeasured: verification の checks で山頂と谷のスクリーン座標を比較
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 650000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/001-mount-rainier/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: rainier.bin の取得から初回の 3D 描画まで
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 60 フレームのオービット（方位 1°/フレーム）中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/001-mount-rainier/bake.ts]
+  sources:
+    - id: mapzen-terrarium-z11
+      origin: AWS Open Data Terrain Tiles (Mapzen terrarium), z11 x330-331 y721-722
+      license: Public Domain / CC0 (elevation data from USGS 3DEP)
+  outputs:
+    - data/baked/forge3d-001-mount-rainier/rainier.bin
+  preparation:
+    - z11 の terrarium 4 タイルを 512x512 に接続し、山頂を中心に 384x384（約 20 km、52 m/px）を切り出す
+    - 16 bit の標高グリッド（頂点シェーダが変位に読む）と、太陽 302°/24° の Lambert 陰影を焼き込んだ RGB グリッド（フラグメントシェーダが色に読む）を 1 ファイルに並べる
+    - 実行時のシェーダは法線も太陽も持たない: 陰影は焼き込み済みで、頂点シェーダは高さ 1 回の参照で済む
+
+performance_knowledge:
+  - id: shading-at-bake-time
+    finding: 太陽を固定した地形ビューでは、Lambert 陰影を色テクスチャに焼くと頂点シェーダは高さ参照 1 回だけで済み、29 万三角形を 1 ドローコールで描いても再描画が数 ms に収まる
+    evidence: 384x384 グリッド（293,378 三角形）を UNSIGNED_INT インデックス 1 本で描き、redraw_ms は 8 ms 予算に対して計測値は下記のとおり
+    applies_when: 太陽・ライトが固定の 3D 地形ビューア
+  - id: height-texture-vertex-fetch
+    finding: 標高を R16UI テクスチャにして頂点シェーダで texelFetch すると、頂点バッファ（384x384x12 バイト）を送らずに済み、CPU 側は 1 回のテクスチャアップロードだけになる
+    evidence: 頂点属性はゼロ、gl_VertexID から (u, v) を作る。rainier.bin は 720 KB、gzip 522 KB
+    applies_when: 格子 DEM を GPU で変位させる地形描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/forge3d/001-mount-rainier/index.html
+      - examples/forge3d/001-mount-rainier/main.ts
+      - examples/forge3d/001-mount-rainier/terrain.ts
+      - examples/forge3d/001-mount-rainier/gl.ts
+    dependencies: []
+    why: 高さテクスチャ + 焼き込み陰影テクスチャで、地形全体を 1 ドローコールにする
+  alternatives:
+    - option: Canvas 2D の画家順ソート
+      rejected_because: 29 万三角形を毎フレーム塗り分けると再描画がフレーム予算を超え、セル数を落とすと山体がブロック状になる
+    - option: forge3d / Rust Wasm の wgpu
+      rejected_because: 固定シーンの地形 1 枚に Wasm とパイプライン初期化のコストは見合わない
+  not_doing: [タイルストリーミング, LOD, 水面, 動く太陽, 建物]
+
+verification:
+  checks:
+    - id: terrain-fills-view
+      what: 地平線より上は空（アルファ 0）、画面中央は地形（アルファ 255）
+      how: WebGL の readPixels で上空と中央のピクセルを読む
+      expected: 空の alpha < 10、中央の alpha > 200
+    - id: summit-is-snow
+      what: 山頂テクセルが雪の色（無彩色・明るい）で描かれている
+      how: 山頂の (u, v) を投影し、その画面ピクセルの輝度と RGB の広がりを読む
+      expected: alpha > 200、輝度 > 90、最大差 < 30
+    - id: summit-stands-above-valley
+      what: 標高が形状として効いている（カメラ側の谷が山頂より画面で下に描かれる）
+      how: 山頂から 1.2〜4 km のカメラ方向で最も低い DEM サンプルを投影し、山頂との画面 y を比較
+      expected: 谷の y が山頂より 6 px 以上下、かつ谷の alpha > 200
+    - id: orbit-moves-terrain
+      what: ドラッグ相当の方位回転で地形が横に動き、地形は描画され続ける
+      how: 山頂は回転中心で常に画面中央にあるため、山頂から 2 km 東の点を投影し、az を 60°回した前後でその画面 x の移動量と中央の alpha を測る
+      expected: 移動量 > 40 px、中央の alpha > 200
+    - id: zoom-changes-scale
+      what: ズームで地形の見かけの大きさが変わる
+      how: 山頂と 1.5 km 東の点の画面距離を半径 9 km と 5 km で比較
+      expected: 比 > 1.5
+  harness:
+    - contextlost が起きたらエラーにする
