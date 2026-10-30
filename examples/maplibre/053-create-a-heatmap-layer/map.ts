@@ -21,7 +21,8 @@ export class MaplibreHeatmapMap {
   private onRender?: () => void;
   private kernelCanvas: HTMLCanvasElement | null = null;
   private heatmapCanvas: HTMLCanvasElement | null = null;
-  private cachedZoom = -1;
+  // World x, y (0..1) of the heat cache's top-left pixel, and its zoom.
+  private cache = { x: 0, y: 0, zoom: -1 };
 
   constructor(canvas: HTMLCanvasElement, onRender?: () => void) {
     this.canvas = canvas;
@@ -34,6 +35,7 @@ export class MaplibreHeatmapMap {
     this.resize();
     window.addEventListener('resize', () => {
       this.resize();
+      this.updateHeatmapCache();
       this.draw();
     });
     this.setupInteractions();
@@ -65,15 +67,22 @@ export class MaplibreHeatmapMap {
     this.kernelCanvas = offscreen;
   }
 
+  // The heat is drawn for the screen plus half a screen on each side, not for
+  // the whole world: a world-sized canvas is 256 * 2^zoom px wide, past the
+  // browser's canvas limit at zoom 7 (the heat vanished), and its kernels were
+  // cut at 180 deg. Rebuilt on zoom and when a pan leaves the margin.
   private updateHeatmapCache(): void {
     if (!this.kernelCanvas || this.pointCount === 0) return;
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
     const scale = 256 * Math.pow(2, this.zoom);
-    const worldW = Math.round(scale);
-    const worldH = Math.round(scale);
+    const cw = Math.ceil(w * 2), ch = Math.ceil(h * 2);
+    const x0 = mercX(this.center.lon) - cw / 2 / scale;
+    const y0 = mercY(this.center.lat) - ch / 2 / scale;
 
-    const offscreen = document.createElement('canvas');
-    offscreen.width = worldW;
-    offscreen.height = worldH;
+    const offscreen = this.heatmapCanvas ?? document.createElement('canvas');
+    offscreen.width = cw;
+    offscreen.height = ch;
     const octx = offscreen.getContext('2d');
     if (!octx) return;
 
@@ -81,33 +90,35 @@ export class MaplibreHeatmapMap {
     const baseR = Math.max(16, Math.min(48, 22 * Math.pow(1.2, this.zoom - 2)));
     const pts = this.points;
     const count = this.pointCount;
+    const kMin = Math.floor(x0), kMax = Math.floor(x0 + cw / scale);
 
-    for (let i = 0; i < count; i++) {
-      const idx = i * 3;
-      const pmx = pts[idx];
-      const pmy = pts[idx + 1];
-      const weight = pts[idx + 2];
-
-      const sx = pmx * scale;
-      const sy = pmy * scale;
-      const r = baseR * (0.7 + weight * 0.6);
-      octx.drawImage(this.kernelCanvas, sx - r, sy - r, r * 2, r * 2);
+    for (let k = kMin; k <= kMax; k++) {
+      for (let i = 0; i < count; i++) {
+        const idx = i * 3;
+        const r = baseR * (0.7 + pts[idx + 2] * 0.6);
+        const sx = (pts[idx] + k - x0) * scale;
+        const sy = (pts[idx + 1] - y0) * scale;
+        if (sx < -r || sy < -r || sx > cw + r || sy > ch + r) continue;
+        octx.drawImage(this.kernelCanvas, sx - r, sy - r, r * 2, r * 2);
+      }
     }
 
     // Epicenter dots
     octx.globalCompositeOperation = 'source-over';
     octx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    for (let i = 0; i < count; i++) {
-      const idx = i * 3;
-      const sx = pts[idx] * scale;
-      const sy = pts[idx + 1] * scale;
-      octx.beginPath();
-      octx.arc(sx, sy, 1.5, 0, Math.PI * 2);
-      octx.fill();
+    for (let k = kMin; k <= kMax; k++) {
+      for (let i = 0; i < count; i++) {
+        const sx = (pts[i * 3] + k - x0) * scale;
+        const sy = (pts[i * 3 + 1] - y0) * scale;
+        if (sx < 0 || sy < 0 || sx > cw || sy > ch) continue;
+        octx.beginPath();
+        octx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+        octx.fill();
+      }
     }
 
     this.heatmapCanvas = offscreen;
-    this.cachedZoom = this.zoom;
+    this.cache = { x: x0, y: y0, zoom: this.zoom };
   }
 
   async load(baseDir = '../../..'): Promise<void> {
@@ -142,6 +153,12 @@ export class MaplibreHeatmapMap {
     this.center.lon = centerMx * 360 - 180;
     const y2 = (0.5 - centerMy) * 2 * Math.PI;
     this.center.lat = (2 * Math.atan(Math.exp(y2)) - Math.PI / 2) * (180 / Math.PI);
+    if (this.heatmapCanvas) {
+      const w = this.canvas.width / this.dpr, h = this.canvas.height / this.dpr;
+      const left = (mercX(this.center.lon) - this.cache.x) * scale - w / 2;
+      const top = (mercY(this.center.lat) - this.cache.y) * scale - h / 2;
+      if (left < 0 || top < 0 || left + w > this.heatmapCanvas.width || top + h > this.heatmapCanvas.height) this.updateHeatmapCache();
+    }
     this.draw();
   }
 
@@ -213,7 +230,9 @@ export class MaplibreHeatmapMap {
     ctx.strokeStyle = '#23324d';
     ctx.lineWidth = 1;
 
-    for (let copy = -1; copy <= 1; copy++) {
+    // As many world copies as the screen spans (four at zoom 1 on 1920 px).
+    const copyMin = Math.floor(centerMx - w / 2 / scale), copyMax = Math.floor(centerMx + w / 2 / scale);
+    for (let copy = copyMin; copy <= copyMax; copy++) {
       const offsetX = copy * scale;
       for (const poly of this.polygons) {
         ctx.beginPath();
@@ -232,11 +251,7 @@ export class MaplibreHeatmapMap {
 
     // 3. Heatmap Layer: Cached World Density Field
     if (this.heatmapCanvas) {
-      for (let copy = -1; copy <= 1; copy++) {
-        const sx = w / 2 - centerMx * scale + copy * scale;
-        const sy = h / 2 - centerMy * scale;
-        ctx.drawImage(this.heatmapCanvas, sx, sy);
-      }
+      ctx.drawImage(this.heatmapCanvas, w / 2 + (this.cache.x - centerMx) * scale, h / 2 + (this.cache.y - centerMy) * scale);
     }
 
     ctx.restore();
