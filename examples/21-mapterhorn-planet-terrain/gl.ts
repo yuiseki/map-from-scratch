@@ -18,7 +18,7 @@ const float PI = 3.141592653589793;
 const float EARTH = 6371000.0;
 float heightAt(vec2 uv) {
   ivec2 pixel = ivec2(clamp(floor(uv * 512.0), vec2(0.0), vec2(511.0)));
-  vec3 rgb = texelFetch(u_dem, pixel, 0).rgb * 255.0;
+  vec3 rgb = floor(texelFetch(u_dem, pixel, 0).rgb * 255.0 + 0.5);   // exact bytes: the sea is 0 m
   return rgb.r * 256.0 + rgb.g + rgb.b / 256.0 - 32768.0;
 }
 void main() {
@@ -58,7 +58,8 @@ out vec4 color;
 void main() {
   float h = v_height;
   vec3 c;
-  if (h < 0.0) c = vec3(0.09, 0.28, 0.39);
+  // Mapterhorn has no bathymetry: the sea is exactly 0 m.
+  if (h <= 0.0) c = vec3(0.09, 0.28, 0.39);
   else {
     c = mix(vec3(0.22, 0.43, 0.29), vec3(0.53, 0.58, 0.34), smoothstep(0.0, 900.0, h));
     c = mix(c, vec3(0.55, 0.47, 0.35), smoothstep(900.0, 2500.0, h));
