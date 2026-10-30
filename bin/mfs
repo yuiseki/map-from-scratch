@@ -13,6 +13,7 @@
 #   MFS_MEMORY   container memory cap  (default 8g)
 #   MFS_CPUS     container CPU quota   (default 8)
 #   MFS_PORT     host port for serve   (default 8080)
+#   MFS_DISPLAY  headless or xvfb, overrides benchmarks.display of a browser run
 #   MFS_SOURCES  host dir mounted read-only at the same path, for raw data
 #                (default /sata_hdd_24tb when it exists)
 set -euo pipefail
@@ -53,6 +54,7 @@ SOURCES=${MFS_SOURCES-/sata_hdd_24tb}
 [[ -n "$SOURCES" && -d "$SOURCES" ]] && args+=(-v "$SOURCES:$SOURCES:ro")
 [[ "${1:-}" == serve ]] && args+=(-p "${MFS_PORT:-8080}:${2:-8080}")
 [[ -n "${MFS_PAGE_QUERY:-}" ]] && args+=(-e "MFS_PAGE_QUERY=$MFS_PAGE_QUERY")
+[[ -n "${MFS_DISPLAY:-}" ]] && args+=(-e "MFS_DISPLAY=$MFS_DISPLAY")
 [[ -n "${MFS_CHROME_FLAGS:-}" ]] && args+=(-e "MFS_CHROME_FLAGS=$MFS_CHROME_FLAGS")
 [[ -n "${DISPLAY:-}" && -d /tmp/.X11-unix ]] && args+=(-e "DISPLAY=$DISPLAY" -v /tmp/.X11-unix:/tmp/.X11-unix)
 

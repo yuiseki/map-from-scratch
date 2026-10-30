@@ -74,3 +74,8 @@ test('a build that needs a toolchain says how to get it, unless the image has it
   assert.equal(missingToolchain(s, 'emscripten'), null);
   assert.equal(missingToolchain(validateSpec(structuredClone(browser), '01-x'), undefined), null);
 });
+
+test('display is headless or xvfb', () => {
+  assert.equal(validateSpec({ ...structuredClone(browser), run: { ...browser.run, display: 'xvfb' } }, '01-x').run.display, 'xvfb');
+  assert.throws(() => validateSpec({ ...structuredClone(browser), run: { ...browser.run, display: 'x11' } }, '01-x'), /display/);
+});

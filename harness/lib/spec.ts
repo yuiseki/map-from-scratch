@@ -74,10 +74,12 @@ export function fromDefinition(def: Definition): Loose {
         name: b.network.name, latencyMs: b.network.latency_ms,
         downloadKbps: b.network.download_mbps * 1000, uploadKbps: (b.network.upload_mbps ?? b.network.download_mbps) * 1000,
       },
+      display: b.display,
     }
     : { cmd: b.cmd };
   if (run.viewport === undefined) delete run.viewport;
   if (run.network === undefined) delete run.network;
+  if (run.display === undefined) delete run.display;
   return {
     id: def.id,
     request: def.request,
@@ -108,6 +110,7 @@ export function validateSpec(spec: Loose, dirName: string): Spec {
     if (!spec.run.page) fail('run.page is required for a browser renderer');
     spec.run.viewport = { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false, ...spec.run.viewport };
     spec.run.cpuThrottle ??= 1;
+    if (spec.run.display !== undefined && !['headless', 'xvfb'].includes(spec.run.display)) fail('benchmarks.display must be headless or xvfb');
   } else if (!Array.isArray(spec.run.cmd)) {
     fail('run.cmd (argv array) is required for a native renderer');
   }

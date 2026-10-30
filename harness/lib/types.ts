@@ -26,6 +26,11 @@ export interface Viewport {
   mobile: boolean;
 }
 
+// Where a browser run draws: headless Chromium, or a headed one on a private
+// Xvfb display. Headless Chromium only offers WebGPU on SwiftShader; headed on
+// Xvfb it gets the NVIDIA adapter (WebGL2 goes through ANGLE Vulkan either way).
+export type Display = 'headless' | 'xvfb';
+
 // Emulated network for a browser run (CDP Network.emulateNetworkConditions).
 export interface Network { name?: string; latencyMs: number; downloadKbps: number; uploadKbps: number }
 
@@ -40,7 +45,7 @@ export interface Spec {
   bake?: string[];
   build?: string[];
   toolchain?: string;
-  run: { page?: string; viewport?: Viewport; cpuThrottle?: number; network?: Network; cmd?: string[] };
+  run: { page?: string; viewport?: Viewport; cpuThrottle?: number; network?: Network; display?: Display; cmd?: string[] };
   iterations: number;
   timeoutMs: number;
   footprint: { code: string[]; data: string[]; elf?: string[] };
@@ -67,6 +72,7 @@ export interface Definition {
     viewport?: { width: number; height: number; device_scale_factor?: number; mobile?: boolean };
     cpu_throttle?: number;
     network?: { name?: string; latency_ms: number; download_mbps: number; upload_mbps?: number };
+    display?: 'headless' | 'xvfb';
     cmd?: string[];
     iterations?: number;
     timeout_ms?: number;

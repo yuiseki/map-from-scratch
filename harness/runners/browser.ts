@@ -6,10 +6,48 @@ import { CDP } from '../lib/cdp.ts';
 import { serve } from '../lib/serve.ts';
 import { Collector } from '../lib/protocol.ts';
 import type { AddressInfo } from 'node:net';
-import type { MfsEvent, RawResult, Spec } from '../lib/types.ts';
+import type { Display, MfsEvent, RawResult, Spec } from '../lib/types.ts';
 
 export interface Chrome { cdp: CDP; pid: number; close(): Promise<void> }
 type RunSettings = Pick<Spec, 'run' | 'timeoutMs'>;
+
+// MFS_DISPLAY overrides the spec's benchmarks.display, so a WebGL2 example can
+// be measured the same way as a WebGPU one it is compared with.
+export function displayFor(run: Spec['run']): Display {
+  const env = process.env.MFS_DISPLAY;
+  if (env === 'headless' || env === 'xvfb') return env;
+  if (env) throw new Error(`MFS_DISPLAY must be headless or xvfb, not ${env}`);
+  return run.display ?? 'headless';
+}
+
+// A private X server for a headed Chromium. -displayfd picks a free display
+// and writes its number once the server accepts connections. Without root
+// there is no /tmp/.X11-unix, so Xvfb listens on the abstract socket only.
+async function startXvfb(): Promise<{ display: string; stop(): Promise<void> }> {
+  const proc = spawn('Xvfb', ['-displayfd', '3', '-screen', '0', '3840x2160x24', '-nolisten', 'tcp'], {
+    stdio: ['ignore', 'ignore', 'pipe', 'pipe'],
+  });
+  let err = '';
+  proc.stderr!.on('data', (d) => { err += d; });
+  const display = await new Promise<string>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Xvfb did not start:\n${err}`)), 10000);
+    let buf = '';
+    (proc.stdio[3] as NodeJS.ReadableStream).on('data', (d) => {
+      buf += d;
+      if (buf.includes('\n')) { clearTimeout(timer); resolve(`:${buf.trim()}`); }
+    });
+    proc.on('error', (e) => { clearTimeout(timer); reject(e); });
+    proc.on('exit', (code) => { clearTimeout(timer); reject(new Error(`Xvfb exited ${code}:\n${err}`)); });
+  });
+  return {
+    display,
+    async stop() {
+      if (proc.exitCode !== null) return;
+      proc.kill('SIGTERM');
+      await new Promise((r) => proc.once('exit', r));
+    },
+  };
+}
 
 // GPU flags for headless Chromium on Linux with the NVIDIA driver injected by
 // the container runtime. Override with MFS_CHROME_FLAGS when a machine needs
@@ -25,15 +63,26 @@ const GPU_FLAGS = [
   '--enable-blink-features=CanvasDrawElement',
   '--disable-gpu-vsync',
   '--disable-frame-rate-limit',
+  // WebGPU timestamp queries are rounded to 100 us without this.
+  '--enable-webgpu-developer-features',
 ];
 
-export async function launchChrome(logFile?: string): Promise<Chrome> {
+// A headed browser hides and throttles tabs it thinks nobody looks at.
+const HEADED_FLAGS = [
+  '--window-size=1920,1080',
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding',
+];
+
+export async function launchChrome(logFile?: string, display: Display = 'headless'): Promise<Chrome> {
   const profileBase = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.cache');
   mkdirSync(profileBase, { recursive: true });
   const userDir = mkdtempSync(join(profileBase, 'mfs-chrome-'));
   const flags = process.env.MFS_CHROME_FLAGS ? process.env.MFS_CHROME_FLAGS.split(/\s+/) : GPU_FLAGS;
+  const xvfb = display === 'xvfb' ? await startXvfb() : null;
   const proc = spawn(process.env.CHROME_BIN ?? 'chromium', [
-    '--headless=new',
+    ...(xvfb ? HEADED_FLAGS : ['--headless=new']),
     '--no-sandbox',
     '--no-first-run',
     '--no-default-browser-check',
@@ -41,7 +90,7 @@ export async function launchChrome(logFile?: string): Promise<Chrome> {
     `--user-data-dir=${userDir}`,
     ...flags,
     'about:blank',
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  ], { stdio: ['ignore', 'ignore', 'pipe'], env: xvfb ? { ...process.env, DISPLAY: xvfb.display } : process.env });
   const wsUrl = await new Promise<string>((resolve, reject) => {
     let buf = '';
     const timer = setTimeout(() => reject(new Error(`chromium did not start:\n${buf}`)), 30000);
@@ -52,7 +101,7 @@ export async function launchChrome(logFile?: string): Promise<Chrome> {
       if (m) { clearTimeout(timer); resolve(m[1]); }
     });
     proc.on('exit', (code) => reject(new Error(`chromium exited ${code}:\n${buf}`)));
-  });
+  }).catch(async (e) => { await xvfb?.stop(); throw e; });
   const cdp = await CDP.connect(wsUrl);
   return {
     cdp,
@@ -61,6 +110,7 @@ export async function launchChrome(logFile?: string): Promise<Chrome> {
       cdp.close();
       proc.kill('SIGKILL');
       await new Promise((r) => proc.once('exit', r));
+      await xvfb?.stop();
       rmSync(userDir, { recursive: true, force: true });
     },
   };
@@ -163,11 +213,12 @@ export async function benchBrowser(root: string, spec: RunSettings, outDir: stri
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/${spec.run.page}?bench=1${extra}`;
   const logFile = join(outDir, 'chrome.log');
   writeFileSync(logFile, '');
-  const chrome = await launchChrome(logFile);
+  const display = displayFor(spec.run);
+  const chrome = await launchChrome(logFile, display);
   const collector = new Collector();
   try {
     const { product } = await chrome.cdp.send('Browser.getVersion');
-    collector.add({ info: { browser: product, page_query: process.env.MFS_PAGE_QUERY ?? '' } });
+    collector.add({ info: { browser: product, display, page_query: process.env.MFS_PAGE_QUERY ?? '' } });
     const warm = new Collector();
     const warmSpec: RunSettings = { run: { viewport: { width: 64, height: 64, deviceScaleFactor: 1, mobile: false }, cpuThrottle: 1 }, timeoutMs: 30000 };
     const base = url.slice(0, url.indexOf('/', 'http://'.length));

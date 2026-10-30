@@ -118,3 +118,10 @@ test('chosen.toolchain names the image the build needs', () => {
   assert.equal(fromDefinition(d).toolchain, 'emscripten');
   assert.equal(fromDefinition(def()).toolchain, undefined);
 });
+
+test('benchmarks.display carries over to the run settings', () => {
+  const d = def();
+  d.benchmarks.display = 'xvfb';
+  assert.equal(fromDefinition(d).run.display, 'xvfb');
+  assert.equal('display' in fromDefinition(def()).run, false);
+});

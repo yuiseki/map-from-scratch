@@ -16,6 +16,7 @@ RUN apt-get update \
       python3-venv \
       osmium-tool \
       procps \
+      xvfb \
       fonts-noto-cjk \
  && rm -rf /var/lib/apt/lists/*
 
