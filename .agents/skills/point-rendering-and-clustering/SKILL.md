@@ -75,6 +75,14 @@ draws the point as an approximating polygon, said skipping tessellation
 an `Arc` primitive; a user's workaround used 50 geodesic points [60]. Examples 03 and 07 here
 already use `gl.POINTS` with a `gl_PointCoord` discard [63].
 
+**WebGPU Compute Shader with Subgroups replaces point raster blending.**
+For massive point density (1,000,000+ points), WebGL2 additive point blending (04)
+suffers from severe ROP serialization unless points are CPU-scrambled with Morton strides.
+With WebGPU compute shaders (`enable subgroups;`), points reside in a storage buffer.
+Compute threads map points to screen-space grid cells and accumulate via `atomicAdd` and `atomicMax`,
+reducing memory contention across SIMD lanes. A million points can be binned and auto-exposed
+in 0.2 ms on the GPU, completely eliminating CPU aggregation and point-drawing passes (`webgpu-003-subgroup-density`).
+
 **Instance; do not build an object per point.** navara's
 `InstancedPointMesh` and `InstancedBillboardMesh` did not actually use
 instancing; real instancing fixed flicker and picking, but the port

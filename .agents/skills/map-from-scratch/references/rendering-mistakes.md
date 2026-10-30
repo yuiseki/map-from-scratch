@@ -525,3 +525,10 @@ pass.
   a Promise that resolves upon Wasm stack resumption.
 - Memory views: Ensure `-sEXPORTED_RUNTIME_METHODS=...,HEAPU8` is passed if accessing `Module.HEAPU8.buffer`
   from outside the module; otherwise `Module.HEAPU8` is `undefined`.
+
+### WebGPU in Headless Chromium with SwiftShader: swapchain configuration crashes GPU process (webgpu-002, webgpu-003)
+
+- Screen: `AbortError: Failed to execute 'mapAsync' on 'GPUBuffer': A valid external Instance reference no longer exists`, or `SharedImageStub: Unable to create shared image`.
+- Why: When running Chromium with `--enable-unsafe-webgpu --use-angle=swiftshader` in Docker/headless CI without a hardware GPU, `canvas.getContext('webgpu').configure()` attempts to bind a swapchain backing (`WebGPUSwapBufferProvider`). Because SwiftShader ANGLE lacks a Vulkan/GLES SharedImageBackingFactory for swapchain presentation, the GPU process encounters an unhandled IPC error and crashes, instantly destroying the `GPUDevice`.
+- Fix: Detect SwiftShader via `const isSwiftShader = gpuDesc.toLowerCase().includes('swiftshader');`. When true, skip `canvas.getContext('webgpu')` and render directly into an offscreen `GPUTexture` (`createTexture({ format, usage: RENDER_ATTACHMENT | COPY_SRC })`). In production browsers with hardware adapters, use `webgpuCtx.getCurrentTexture()`. This keeps headless CI benchmarks 100% reliable without crashing.
+- `mapAsync` staging buffers: Never call `mapAsync` concurrently on the same buffer, and avoid re-using a static staging buffer across frame submissions in SwiftShader. Create a small transient `readBuffer` (256 B aligned), map it, read it, and immediately call `readBuffer.destroy()`.

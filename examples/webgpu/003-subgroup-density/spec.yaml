@@ -1,0 +1,104 @@
+id: webgpu-003-subgroup-density
+request: >-
+  東京23区の OSM 全域からサンプリングした 104 万点（1,048,576 点）の点密度を WebGPU Compute Shader と
+  Subgroups（SIMD レーン集約）を用いて GPU 上で直接 2D グリッド（512x512）に集計・平滑化し、
+  Turbo カラーマップのヒートマップとして 60 fps で滑らかに再描画したい。
+
+requirements:
+  - id: million-points
+    need: 104万点（1,048,576点）の大規模点群を GPU 上で保持・集計する
+    unmeasured: verification checks の points-loaded と density-grid-populated で確認
+  - id: subgroup-acceleration
+    need: WebGPU subgroups 機能による SIMD レーン集約でアトミック競合を抑える
+    unmeasured: verification checks の subgroups-enabled で確認
+  - id: light-footprint
+    need: 外部依存ゼロで配布コードサイズとデータサイズを最小限に抑える
+    rationale: 生 WebGPU API と WGSL のみで実装し、コード gzip 7 KB 以下、データ gzip 4 MB 以下
+  - id: quick-start
+    need: ページを開いて即座に密度ヒートマップが表示される
+    rationale: 初期化ラグなしで 1,200 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズーム操作時に 60 fps で滑らかに再描画される
+    rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 2.0 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 4000000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 45, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/003-subgroup-density/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 100万点バイナリ読み込みから初回 WebGPU ヒートマップ描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームの地図パン中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/webgpu/003-subgroup-density/bake.ts]
+  sources:
+    - id: osm-tokyo23
+      origin: OpenStreetMap 東京都心・23区全域ノード群
+      license: ODbL (© OpenStreetMap contributors)
+  outputs:
+    - data/baked/webgpu-003-subgroup-density/points.bin
+
+performance_knowledge:
+  - what: WebGPU Compute + Subgroups による大規模点密度集計
+    why: >-
+      CPU 側での 100 万点の 2D グリッド集計や KDE 計算はフレームあたり 50〜100 ms を要し、パン・ズーム操作時に致命的なラグを招く。
+      一方 WebGPU Compute Shader では 1,048,576 点を並列にセル座標変換し、atomicAdd および atomicMax でグリッド累積と最大密度決定を
+      完全 GPU 内で 0.5 ms 未満で完了できる。subgroups 拡張を用いることで SIMD レーン間での同一セル書き込みを効率的に合流させ、
+      VRAM アトミック競合を劇的に抑制する。
+  - what: Fullscreen Quad による Bilinear Colormap レンダリング
+    why: >-
+      集計された 512x512 の密度グリッドをテクスチャサンプリングし、双線形補間（Bilinear Filtering）と log(1 + count) / log(1 + max)
+      正規化をピクセル単位で行うことで、ブロッキーなグリッド感を消した滑らかな連続密度場（KDE 様の見た目）を瞬時に描画できる。
+
+architecture_selection:
+  chosen:
+    language: TypeScript (erasableSyntaxOnly)
+    runtime: browser
+    graphics: WebGPU (WGSL compute + fullscreen raster pass)
+    gpu: none
+    code:
+      - examples/webgpu/003-subgroup-density/index.html
+      - examples/webgpu/003-subgroup-density/main.ts
+      - examples/webgpu/003-subgroup-density/map.ts
+  not_doing:
+    - CPU side density binning / KDE loop (GPU compute 完全移行)
+    - WebGL2 point additive blending (ROP 競合・CPU Morton 分散ソートを排除)
+    - 外部ライブラリ（Deck.gl, D3, Turf.js, Three.js 等）の使用
+
+verification:
+  checks:
+    - id: points-loaded
+      what: 1,048,576 点（1M nodes）が GPU Storage Buffer にロードされている
+      how: map.pointCount の数値検証
+      expected: 1048576
+    - id: subgroups-enabled
+      what: WebGPU subgroups 機能がアダプターから取得・有効化されている
+      how: map.hasSubgroups フラグ検証
+      expected: true
+    - id: density-grid-populated
+      what: Compute Shader により 2D 密度グリッドにピーク密度が集計されている
+      how: getMaxDensity() による GPU バッファ読み戻し
+      expected: peakDensity >= 20
+    - id: heatmap-pixels-rendered
+      what: 画面中央（東京中心部）のピクセルが背景色と異なり Turbo カラーで着色されている
+      how: readPixel による実描画ピクセル読み戻し
+      expected: non-background colored pixel
+    - id: pan-updates-density
+      what: 地図パン操作により表示範囲のピーク密度が動的に再計算される
+      how: panBy 実行前後の getMaxDensity() 変化検証
+      expected: peakDensity updates dynamically
