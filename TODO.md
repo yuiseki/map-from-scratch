@@ -859,7 +859,22 @@
 - [ ] `cesium-309-web-map-tile-service-with-time` → `examples/cesium/309-web-map-tile-service-with-time/` — [Web Map Tile Service With Time](https://sandcastle.cesium.com/?src=web-map-tile-service-with-time)
 - [ ] `cesium-310-z-indexing-geometry` → `examples/cesium/310-z-indexing-geometry/` — [Z Indexing Geometry](https://sandcastle.cesium.com/?src=z-indexing-geometry)
 
+## forge3d: 10 件
+
+出典: [forge3d Gallery](https://milos-agathon.github.io/forge3d/gallery/index.html)。Rust/wgpu ベースの地形・3D 可視化ギャラリーから 10 件を対象とする。
+
+- [ ] `forge3d-001-mount-rainier` → `examples/forge3d/001-mount-rainier/` — [Mount Rainier](https://milos-agathon.github.io/forge3d/gallery/01-mount-rainier.html)
+- [ ] `forge3d-002-mount-fuji-labels` → `examples/forge3d/002-mount-fuji-labels/` — [Mount Fuji labels](https://milos-agathon.github.io/forge3d/gallery/02-mount-fuji-labels.html)
+- [ ] `forge3d-003-swiss-landcover` → `examples/forge3d/003-swiss-landcover/` — [Swiss land-cover](https://milos-agathon.github.io/forge3d/gallery/03-swiss-landcover.html)
+- [ ] `forge3d-004-luxembourg-rail-network` → `examples/forge3d/004-luxembourg-rail-network/` — [Luxembourg rail network](https://milos-agathon.github.io/forge3d/gallery/04-luxembourg-rail-network.html)
+- [ ] `forge3d-005-3d-buildings` → `examples/forge3d/005-3d-buildings/` — [3D buildings](https://milos-agathon.github.io/forge3d/gallery/05-3d-buildings.html)
+- [ ] `forge3d-006-point-cloud` → `examples/forge3d/006-point-cloud/` — [Point cloud](https://milos-agathon.github.io/forge3d/gallery/06-point-cloud.html)
+- [ ] `forge3d-007-camera-flyover` → `examples/forge3d/007-camera-flyover/` — [Camera flyover](https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html)
+- [ ] `forge3d-008-vector-export` → `examples/forge3d/008-vector-export/` — [Vector export](https://milos-agathon.github.io/forge3d/gallery/08-vector-export.html)
+- [ ] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
+- [ ] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
+
 ## 進捗
 
-- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **18 件**（maplibre-010、012、013、056、061、069、070、073、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **18 件**（maplibre-010、012、013、056、061、069、070、073、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
