@@ -13,12 +13,6 @@ function resize(): void {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
-window.addEventListener('resize', () => {
-  resize();
-  if (mapInstance) {
-    mapInstance.render();
-  }
-});
 resize();
 
 const DATA_URL = '../../../data/baked/htmlcanvas-002-webgpu-map-label/landmarks.json';
@@ -26,6 +20,12 @@ const DATA_URL = '../../../data/baked/htmlcanvas-002-webgpu-map-label/landmarks.
 const startTime = performance.now();
 const mapInstance = await mount(canvas, canvasHtml, DATA_URL);
 const firstFrameMs = performance.now() - startTime;
+// Registered after mount: a resize during the await read mapInstance in its
+// temporal dead zone and threw.
+window.addEventListener('resize', () => {
+  resize();
+  mapInstance.render();
+});
 
 let relayoutCount = 1; // Initial HTML layout
 

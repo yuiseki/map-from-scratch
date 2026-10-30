@@ -114,6 +114,9 @@ export async function mount(
         device,
         format: presentationFormat,
         alphaMode: 'premultiplied',
+        // COPY_SRC for readPixel: without it the copy failed validation and
+        // every pixel read back as 0.
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
       });
     }
   }
@@ -628,6 +631,8 @@ export async function mount(
     const pixel = new Uint8Array(readBuffer.getMappedRange().slice(0, 4));
     readBuffer.unmap();
     readBuffer.destroy();
+    // The preferred canvas format is bgra8unorm on macOS: return RGBA.
+    if (texture.format === 'bgra8unorm') [pixel[0], pixel[2]] = [pixel[2], pixel[0]];
     return pixel;
   }
 

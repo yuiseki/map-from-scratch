@@ -193,6 +193,17 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
           }
         }
         ctx.fill();
+        // Stroke the coast, not the 180° cut: Natural Earth splits land there,
+        // and its edge drew a line across Chukotka.
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 1; i < ring.length; i++) {
+            const a = ring[i - 1], b = ring[i];
+            if ((a[0] <= 0 && b[0] <= 0) || (a[0] >= 1 && b[0] >= 1)) continue;
+            ctx.moveTo(shiftX + a[0] * scale, originY + a[1] * scale);
+            ctx.lineTo(shiftX + b[0] * scale, originY + b[1] * scale);
+          }
+        }
         ctx.stroke();
       }
     }

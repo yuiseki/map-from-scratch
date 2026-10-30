@@ -98,43 +98,44 @@
 
   <!-- HTML-in-Canvas offscreen texture atlas generator -->
   <canvas id="canvas-html" width="1024" height="256" layoutsubtree content="drawable">
-    <!-- 6 HTML label card elements MUST be direct children of <canvas layoutsubtree> -->
-    <div id="label-0" class="map-label-card">
+    <!-- 6 HTML label card elements MUST be direct children of <canvas layoutsubtree>,
+         each marked drawable (Chrome 159 draws only those). -->
+    <div id="label-0" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #0284c7;">総合電波塔</span>
         <span class="label-rating">★ 4.6</span>
       </div>
       <div class="label-title">東京タワー</div>
     </div>
-    <div id="label-1" class="map-label-card">
+    <div id="label-1" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #7c3aed;">超高層</span>
         <span class="label-rating">★ 4.7</span>
       </div>
       <div class="label-title">東京スカイツリー</div>
     </div>
-    <div id="label-2" class="map-label-card">
+    <div id="label-2" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #16a34a;">歴史・庭園</span>
         <span class="label-rating">★ 4.8</span>
       </div>
       <div class="label-title">皇居東御苑</div>
     </div>
-    <div id="label-3" class="map-label-card">
+    <div id="label-3" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #dc2626;">寺社仏閣</span>
         <span class="label-rating">★ 4.6</span>
       </div>
       <div class="label-title">浅草寺 本堂</div>
     </div>
-    <div id="label-4" class="map-label-card">
+    <div id="label-4" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #ea580c;">都市回廊</span>
         <span class="label-rating">★ 4.5</span>
       </div>
       <div class="label-title">渋谷交差点</div>
     </div>
-    <div id="label-5" class="map-label-card">
+    <div id="label-5" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #059669;">文化・公園</span>
         <span class="label-rating">★ 4.5</span>
