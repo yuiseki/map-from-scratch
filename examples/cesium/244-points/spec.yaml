@@ -1,0 +1,95 @@
+id: cesium-244-points
+request: >-
+  CesiumJS Sandcastle の「Points」のように、3D 地球儀上に 5,000 個の点プリミティブを配置し、
+  視線に応じた地平線オクルージョン判定（裏面カリング）とカラーバッチ描画により 60 fps で高速に回転・ズーム表示したい。
+  ドラッグで回転、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 5,000 点の 3D プリミティブ表示に CesiumJS エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に 3D 地球儀と点群が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによる回転や拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: horizon-culling
+    need: 地球の前面にある点のみが描画され、地平線の裏側に回った点は正確に遮蔽・カリングされる
+    unmeasured: verification の checks で回転前後のピクセル色と遮蔽を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 70000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/244-points/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地球陸地および5,000点の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの地球儀回転操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/cesium/244-points/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/cesium-244-points/land.json
+    - data/baked/cesium-244-points/points.bin
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを球面緯経度座標で格納
+    - 世界各地に均等分散する5,000点の位置・カラー種別（5種）・サイズをコンパクトなバイナリ（8バイト/点）としてベイク
+
+performance_knowledge:
+  - id: canvas2d-point-primitive-batching
+    finding: 5,000 点の大規模ポイントプリミティブも、球面座標からカメラ視線オクルージョン（z > 0）による高速裏面カリングとカラー別パス合成（5回のバッチ fill）を行うことで、GPU なし・Canvas 2D でも 0.5 ms 未満で高速に描画可能
+    evidence: 再描画時間 p95 0.55 ms 前後、フレーム間隔 p95 6 ms 未満を達成
+    applies_when: 3D 地球儀上の大規模点群・ピン・散布図描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/cesium/244-points/index.html
+      - examples/cesium/244-points/main.ts
+      - examples/cesium/244-points/globe.ts
+    dependencies: []
+    why: 3D 地球儀正射投影とカラー別バッチ点描画を Canvas 2D で最速・最小に実装
+  alternatives:
+    - option: CesiumJS フルスタック
+      rejected_because: 数十 MB の WebGL エンジンとシェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形メッシュ, 大気散乱シェーダー, リアルタイム衛星軌道シミュレーション]
+
+verification:
+  checks:
+    - id: front-points-rendered
+      what: 地球儀の前面にある点群プリミティブが鮮やかに描画されている
+      how: getImageData で前面の基準点群座標のピクセル色を検証
+      expected: 点プリミティブの鮮やかなカラー（黄・シアン・緑等）が検出される
+    - id: backside-points-occluded
+      what: 地球儀の裏側に回った点はオクルージョン判定により描画されない
+      how: 地球儀を180度反転させたときの該当位置のピクセル色を検証
+      expected: 背景宇宙色または海洋色が維持される
+    - id: points-rotate-with-drag
+      what: ドラッグ操作で地球儀を回転させたとき、点群が同期して正確に移動する
+      how: 回転後の移動先ピクセルの色を検証
+      expected: 移動先で点群カラーが検出される
+  harness:
+    - contextlost が起きたらエラーにする

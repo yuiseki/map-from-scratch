@@ -791,7 +791,7 @@
 - [ ] `cesium-241-picking-dev` → `examples/cesium/241-picking-dev/` — [Picking Dev](https://sandcastle.cesium.com/?src=picking-dev)
 - [ ] `cesium-242-plane` → `examples/cesium/242-plane/` — [Plane](https://sandcastle.cesium.com/?src=plane)
 - [ ] `cesium-243-pointprimitives-dev` → `examples/cesium/243-pointprimitives-dev/` — [Pointprimitives Dev](https://sandcastle.cesium.com/?src=pointprimitives-dev)
-- [ ] `cesium-244-points` → `examples/cesium/244-points/` — [Points](https://sandcastle.cesium.com/?src=points)
+- [x] `cesium-244-points` → `examples/cesium/244-points/` — [Points](https://sandcastle.cesium.com/?src=points)
 - [ ] `cesium-245-polygon` → `examples/cesium/245-polygon/` — [Polygon](https://sandcastle.cesium.com/?src=polygon)
 - [ ] `cesium-246-polygon-dev` → `examples/cesium/246-polygon-dev/` — [Polygon Dev](https://sandcastle.cesium.com/?src=polygon-dev)
 - [ ] `cesium-247-polygon-outline-dev` → `examples/cesium/247-polygon-outline-dev/` — [Polygon Outline Dev](https://sandcastle.cesium.com/?src=polygon-outline-dev)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **32 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **33 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
