@@ -64,7 +64,8 @@
   <!-- Native Canvas with HTML-in-Canvas attribute layoutsubtree content="drawable" -->
   <canvas id="canvas" layoutsubtree content="drawable">
     <!-- Real HTML Popup element rendered inside canvas -->
-    <div id="map-popup" class="popup-card">
+    <!-- drawElementImage draws only children marked drawable (Chrome 159). -->
+    <div id="map-popup" class="popup-card" drawable>
       <div class="popup-header">
         <div id="popup-title" class="popup-title">東京タワー</div>
         <div id="popup-badge" class="popup-badge">総合電波塔</div>
