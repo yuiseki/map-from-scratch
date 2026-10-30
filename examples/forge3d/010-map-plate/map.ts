@@ -128,6 +128,13 @@ export class MapPlate {
     this.reliefCanvas = offscreen;
   }
 
+  // Ground height over width of the tile (a Mercator tile is close to square).
+  private groundAspect(): number {
+    if (!this.dem) return 1;
+    const [w, s0, e, n] = this.dem.bounds;
+    return ((n - s0) * 110.57) / ((e - w) * 111.32 * Math.cos(((n + s0) / 2) * Math.PI / 180));
+  }
+
   panBy(dx: number, dy: number): void {
     this.panOffset.x += dx;
     this.panOffset.y += dy;
@@ -195,6 +202,9 @@ export class MapPlate {
     ctx.rect(mx, my, mapW, mapH);
     ctx.clip();
 
+    // Where the relief lands on screen; the furniture is derived from it.
+    let plate = { left: mx, top: my, width: mapW, height: mapH };
+
     // Map content background
     ctx.fillStyle = '#1e2832';
     ctx.fillRect(mx, my, mapW, mapH);
@@ -204,23 +214,25 @@ export class MapPlate {
       const rx = mx + mapW / 2 + this.panOffset.x;
       const ry = my + mapH / 2 + this.panOffset.y;
       const drawSize = Math.min(mapW, mapH) * 1.05 * this.zoom;
+      const drawH = drawSize * this.groundAspect();
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(
         this.reliefCanvas,
         rx - drawSize / 2,
-        ry - drawSize / 2,
+        ry - drawH / 2,
         drawSize,
-        drawSize
+        drawH
       );
+      plate = { left: rx - drawSize / 2, top: ry - drawH / 2, width: drawSize, height: drawH };
 
       // Summit elevation marker & text
       if (this.dem) {
         const peakNormX = this.dem.peak[0] - 0.5;
         const peakNormY = this.dem.peak[1] - 0.5;
         const peakSx = rx + peakNormX * drawSize;
-        const peakSy = ry + peakNormY * drawSize;
+        const peakSy = ry + peakNormY * drawH;
 
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#1a202c';
@@ -252,14 +264,25 @@ export class MapPlate {
     // Coordinate margin ticks & labels
     ctx.fillStyle = '#2d3748';
     ctx.font = '9px system-ui, sans-serif';
+    // Labels give the coordinates at those points of the frame, from the
+    // tile's extent and where the relief is drawn (they were fixed strings
+    // for another box, and the latitudes were cut off by the page edge).
+    const [west, south, east, north] = this.dem ? this.dem.bounds : [0, 0, 0, 0];
+    const dm = (v: number, pos: string, neg: string): string => {
+      const a = Math.abs(v), d = Math.floor(a), m = Math.round((a - d) * 60);
+      return `${m === 60 ? d + 1 : d}°${String(m % 60).padStart(2, '0')}'${v < 0 ? neg : pos}`;
+    };
+    const lonAt = (x: number): string => dm(west + ((x - plate.left) / plate.width) * (east - west), 'E', 'W');
+    const latAt = (y: number): string => dm(north - ((y - plate.top) / plate.height) * (north - south), 'N', 'S');
     ctx.textAlign = 'center';
-    ctx.fillText("122°00'W", mx + 20, my - 8);
-    ctx.fillText("121°45'W", mx + mapW / 2, my - 8);
-    ctx.fillText("121°30'W", mx + mapW - 20, my - 8);
-
-    ctx.textAlign = 'right';
-    ctx.fillText("46°55'N", mx - 8, my + 15);
-    ctx.fillText("46°45'N", mx - 8, my + mapH - 10);
+    for (const x of [mx + 20, mx + mapW / 2, mx + mapW - 20]) ctx.fillText(lonAt(x), x, my - 8);
+    for (const y of [my + 15, my + mapH - 15]) {
+      ctx.save();
+      ctx.translate(mx - 10, y);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(latAt(y), 0, 0);
+      ctx.restore();
+    }
 
     // 4. Title Cartouche Banner (Top Center)
     const tw = 280;
@@ -280,7 +303,7 @@ export class MapPlate {
     ctx.fillText('MINI DEM PLATE', tx + tw / 2, ty + 19);
     ctx.font = '9px system-ui, sans-serif';
     ctx.fillStyle = '#4a5568';
-    ctx.fillText('MOUNT RAINIER • 1:50,000 RELIEF', tx + tw / 2, ty + 35);
+    ctx.fillText('MOUNT RAINIER • SHADED RELIEF', tx + tw / 2, ty + 35);
 
     // 5. Cartographic Furniture: North Arrow (Top Right)
     const nx = mx + mapW - 40;
@@ -325,10 +348,13 @@ export class MapPlate {
     ctx.lineWidth = 1;
     ctx.strokeRect(sbX, sbY, sbW, sbH);
 
-    // Graphic bar: 4 alternating blocks (0, 2.5, 5, 7.5, 10 km)
+    // Graphic bar: 4 alternating blocks, as long as a round distance that
+    // takes 55 to 92 px at the current zoom (it was 10 km at any zoom).
+    const kmPerPx = this.dem ? (east - west) * 111.32 * Math.cos(((north + south) / 2) * Math.PI / 180) / plate.width : 0;
+    const barKm = [0.5, 1, 2, 3, 5, 10, 15, 20, 30, 50].find((k) => k / kmPerPx >= 55) ?? 50;
     const barX = sbX + 14;
     const barY = sbY + 16;
-    const barW = 90;
+    const barW = barKm / kmPerPx;
     const barH = 5;
     const segW = barW / 4;
 
@@ -342,8 +368,8 @@ export class MapPlate {
     ctx.font = '8px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('0', barX, barY - 3);
-    ctx.fillText('5 km', barX + segW * 2, barY - 3);
-    ctx.fillText('10 km', barX + barW, barY - 3);
+    ctx.fillText(`${barKm / 2} km`, barX + segW * 2, barY - 3);
+    ctx.fillText(`${barKm} km`, barX + barW, barY - 3);
 
     // 7. Cartographic Furniture: Elevation Legend (Bottom Left)
     const legW = 130;
@@ -374,9 +400,10 @@ export class MapPlate {
     ctx.fillStyle = '#1a202c';
     ctx.font = '8px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('500m', rX, rY - 3);
+    const metres = (v: number): string => `${String(Math.round(v)).replace(/\B(?=(\d{3})+$)/, ',')} m`;
+    ctx.fillText(this.dem ? metres(this.dem.minElev) : '', rX, rY - 3);
     ctx.textAlign = 'right';
-    ctx.fillText('4,392m', rX + rW, rY - 3);
+    ctx.fillText(this.dem ? metres(this.dem.maxElev) : '', rX + rW, rY - 3);
 
     // 8. Bottom Plate Metadata Footer
     ctx.fillStyle = '#718096';

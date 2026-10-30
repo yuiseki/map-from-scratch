@@ -117,13 +117,21 @@ async function bake(): Promise<void> {
     }
   }
 
+  // The tile's own extent (z10/165/360), not a hand-written box: the labels,
+  // scale bar and summit position are derived from it. The summit is the
+  // highest sample, as (x, y) fractions of the grid from the north-west corner.
+  const [Z, TX, TY] = [10, 165, 360];
+  const lonOf = (x: number): number => (x / 2 ** Z) * 360 - 180;
+  const latOf = (y: number): number => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** Z))) * 180) / Math.PI;
+  let top = 0;
+  for (let i = 1; i < elevs.length; i++) if (elevs[i] > elevs[top]) top = i;
   const result = {
     width: outW,
     height: outH,
-    bounds: [-122.0, 46.7, -121.6, 46.95],
+    bounds: [lonOf(TX), latOf(TY + 1), lonOf(TX + 1), latOf(TY)].map((v) => Number(v.toFixed(5))),
     minElev: Math.min(...elevs),
     maxElev: Math.max(...elevs),
-    peak: [167 / 255, 199 / 255],
+    peak: [(top % outW) / (outW - 1), Math.floor(top / outW) / (outH - 1)],
     elevations: Array.from(elevs),
   };
 
