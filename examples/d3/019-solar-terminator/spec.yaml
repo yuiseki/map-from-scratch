@@ -87,7 +87,7 @@ verification:
     - id: land-loaded
       what: 陸地ポリゴンが 100 件超読まれる
       how: map.polygons.length を検証
-      expected: >100
+      expected: 100 件超
     - id: subsolar-position
       what: 2026-10-30 12:00 UTC の太陽直下点が経度 -4 度前後・緯度 -13 度前後になる
       how: map.subsolar() を検証
