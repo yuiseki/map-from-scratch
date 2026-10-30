@@ -117,8 +117,12 @@ verification:
       how: パン前後の画面座標差と中央ピクセルを検証
       expected: dx=40, dy=20, 赤系
     - id: zoom-keeps-circles
-      what: ズーム 7 でも同じ点が画面中央に残る
+      what: ズーム上限 6 でも同じ点が画面中央に残る
       how: centerOn 後にズームして中央ピクセルを検証
       expected: a>200, r>200
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでポインタの下の地点が動かない
+      how: 中心から 120x60 px ずれた地震の画面座標をポインタとして zoomAt(4) し、画面座標が 1.5 px 以内に残るか検証
+      expected: 位置差 < 1.5 px
   harness:
     - webglcontextlost が起きたらエラーにする

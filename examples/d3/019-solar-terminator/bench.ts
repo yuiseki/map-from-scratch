@@ -105,6 +105,18 @@ export async function run(map: SolarTerminatorMap, firstFrameMs: number): Promis
     detail: `${rgba(zoomedPx)} at zoom 2`,
   });
 
+  // Wheel zoom must keep the place under the pointer, not the screen centre.
+  const anchor = map.screenPos(sun.lon, sun.lat);
+  map.zoomAt(3, anchor.x, anchor.y);
+  const held = map.screenPos(sun.lon, sun.lat);
+  emit({
+    check: 'wheel-zoom-keeps-point',
+    pass:
+      map.zoom === 3 &&
+      Math.abs(held.x - anchor.x) < 1.5 && Math.abs(held.y - anchor.y) < 1.5,
+    detail: `sun at (${anchor.x.toFixed(1)}, ${anchor.y.toFixed(1)}) before, (${held.x.toFixed(1)}, ${held.y.toFixed(1)}) after zoom 3`,
+  });
+
   map.setZoom(1);
   map.panBy(-40, -20);
   map.setUtcHour(6);

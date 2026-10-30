@@ -76,6 +76,23 @@ export class CirclesMap {
     this.draw();
   }
 
+  // Zoom keeping the point under (x, y) in CSS pixels where it was.
+  zoomAt(zoom: number, x: number, y: number): void {
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
+    const scale = 256 * Math.pow(2, this.zoom);
+    const mx = mercX(this.center.lon) + (x - w / 2) / scale;
+    const my = mercY(this.center.lat) + (y - h / 2) / scale;
+    this.zoom = Math.max(1, Math.min(8, zoom));
+    const next = 256 * Math.pow(2, this.zoom);
+    const centerMx = mx - (x - w / 2) / next;
+    const centerMy = my - (y - h / 2) / next;
+    this.center.lon = centerMx * 360 - 180;
+    const y2 = (0.5 - centerMy) * 2 * Math.PI;
+    this.center.lat = (2 * Math.atan(Math.exp(y2)) - Math.PI / 2) * (180 / Math.PI);
+    this.draw();
+  }
+
   setCenter(lon: number, lat: number): void {
     this.center = { lon, lat };
     this.draw();
@@ -120,7 +137,8 @@ export class CirclesMap {
     });
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.setZoom(Math.max(1, Math.min(8, this.zoom + (e.deltaY < 0 ? 0.25 : -0.25))));
+      const rect = this.canvas.getBoundingClientRect();
+      this.zoomAt(this.zoom + (e.deltaY < 0 ? 0.25 : -0.25), e.clientX - rect.left, e.clientY - rect.top);
     }, { passive: false });
   }
 

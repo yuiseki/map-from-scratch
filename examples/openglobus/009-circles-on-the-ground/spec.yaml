@@ -114,5 +114,9 @@ verification:
       what: 東京を中心にズーム 3 にすると円が中心に残り、半径が約2倍になる
       how: ズーム後の半径と塗りピクセルを検証
       expected: R が 1.8〜2.2 倍, b - r > 50
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでポインタの下の地点が動かない
+      how: 東京の画面座標をポインタとして zoomAt(3) し、東京の画面座標が 1.5 px 以内に残るか検証
+      expected: 位置差 < 1.5 px
   harness:
     - contextlost が起きたらエラーにする

@@ -86,6 +86,21 @@ export class SolarTerminatorMap {
     this.draw();
   }
 
+  // Zoom keeping the point under (x, y) in CSS pixels where it was, as
+  // MapLibre and Leaflet do.
+  zoomAt(zoom: number, x: number, y: number): void {
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
+    const scale = this.worldScale();
+    const mx = mercX(this.center.lon) + (x - w / 2) / scale;
+    const my = mercY(this.center.lat) + (y - h / 2) / scale;
+    this.zoom = Math.max(1, Math.min(6, zoom));
+    const next = this.worldScale();
+    this.center.lon = normLon((mx - (x - w / 2) / next) * 360 - 180);
+    this.center.lat = mercLat(Math.max(0.02, Math.min(0.98, my - (y - h / 2) / next)));
+    this.draw();
+  }
+
   screenPos(lon: number, lat: number): { x: number; y: number } {
     const w = this.canvas.width / this.dpr;
     const h = this.canvas.height / this.dpr;
@@ -119,7 +134,8 @@ export class SolarTerminatorMap {
     });
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.setZoom(this.zoom + (e.deltaY < 0 ? 0.25 : -0.25));
+      const rect = this.canvas.getBoundingClientRect();
+      this.zoomAt(this.zoom + (e.deltaY < 0 ? 0.25 : -0.25), e.clientX - rect.left, e.clientY - rect.top);
     }, { passive: false });
   }
 

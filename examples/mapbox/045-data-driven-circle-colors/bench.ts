@@ -100,7 +100,20 @@ export async function run(map: DataDrivenCirclesMap, firstFrameMs: number): Prom
     emit({
       check: 'zoom-keeps-circles',
       pass: zoomPx[3] > 200 && zoomPx[0] > 200,
-      detail: `${rgba(zoomPx)} at zoom 7`,
+      detail: `${rgba(zoomPx)} at zoom 6 (the maximum)`,
+    });
+
+    // Wheel zoom must keep the place under the pointer, not the screen centre.
+    map.setZoom(3);
+    map.centerOn(big);
+    map.panBy(120, -60);
+    const anchor = map.screenOf(big);
+    map.zoomAt(4, anchor.x, anchor.y);
+    const held = map.screenOf(big);
+    emit({
+      check: 'wheel-zoom-keeps-point',
+      pass: map.cam.zoom === 4 && Math.abs(held.x - anchor.x) < 1.5 && Math.abs(held.y - anchor.y) < 1.5,
+      detail: `quake at (${anchor.x.toFixed(1)}, ${anchor.y.toFixed(1)}) before, (${held.x.toFixed(1)}, ${held.y.toFixed(1)}) after zoom 4`,
     });
   }
 

@@ -216,6 +216,20 @@ export class DataDrivenCirclesMap {
     this.draw();
   }
 
+  // Zoom keeping the point under (x, y) in CSS pixels where it was.
+  zoomAt(zoom: number, x: number, y: number): void {
+    const w = this.canvas.width / this.dpr;
+    const h = this.canvas.height / this.dpr;
+    const scale = 512 * 2 ** this.cam.zoom;
+    const mx = this.cam.x + (x - w / 2) / scale;
+    const my = this.cam.y + (y - h / 2) / scale;
+    this.cam.zoom = Math.max(1, Math.min(6, zoom));
+    const next = 512 * 2 ** this.cam.zoom;
+    this.cam.x = mx - (x - w / 2) / next;
+    this.cam.y = my - (y - h / 2) / next;
+    this.draw();
+  }
+
   setCenter(lon: number, lat: number): void {
     this.cam.x = mercX(lon);
     this.cam.y = mercY(lat);
@@ -274,7 +288,8 @@ export class DataDrivenCirclesMap {
     });
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.setZoom(this.cam.zoom + (e.deltaY < 0 ? 0.25 : -0.25));
+      const rect = this.canvas.getBoundingClientRect();
+      this.zoomAt(this.cam.zoom + (e.deltaY < 0 ? 0.25 : -0.25), e.clientX - rect.left, e.clientY - rect.top);
     }, { passive: false });
   }
 

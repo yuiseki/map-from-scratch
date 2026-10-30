@@ -124,5 +124,9 @@ verification:
       what: ズーム 2 でもマーカーは直下点に残る
       how: ズーム後の画面座標のピクセルを検証
       expected: 黄色
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでポインタの下の地点が動かない
+      how: 直下点の画面座標をポインタとして zoomAt(3) し、直下点の画面座標が 1.5 px 以内に残るか検証
+      expected: 位置差 < 1.5 px
   harness:
     - contextlost が起きたらエラーにする

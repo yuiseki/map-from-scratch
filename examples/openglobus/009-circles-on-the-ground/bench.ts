@@ -84,6 +84,17 @@ export async function run(map: CirclesMap, firstFrameMs: number): Promise<void> 
   });
   map.panBy(-40, -20);
 
+  // Wheel zoom must keep the place under the pointer, not the screen centre.
+  const [wx, wy] = map.screenFromMercator(mercX(139.69), mercY(35.69));
+  map.zoomAt(3, wx, wy);
+  const [wx2, wy2] = map.screenFromMercator(mercX(139.69), mercY(35.69));
+  emit({
+    check: 'wheel-zoom-keeps-point',
+    pass: map.zoom === 3 && Math.abs(wx2 - wx) < 1.5 && Math.abs(wy2 - wy) < 1.5,
+    detail: `Tokyo at (${wx.toFixed(1)}, ${wy.toFixed(1)}) before, (${wx2.toFixed(1)}, ${wy2.toFixed(1)}) after zoom 3`,
+  });
+  map.setZoom(2);
+
   map.setCenter(139.69, 35.69);
   map.setZoom(3);
   const zoomR = map.circleRadiusPx('Tokyo');
