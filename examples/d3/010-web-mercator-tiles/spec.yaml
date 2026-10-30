@@ -1,0 +1,131 @@
+id: d3-010-web-mercator-tiles
+request: >-
+  D3 の tile / geo のデモと同じ意図で、Web Mercator のラスタータイル地図に
+  タイル境界と z/x/y のアドレスを重ねて表示したい。TileJSON
+  （https://tile.yuiseki.net/styles/512/osm-carto.json）の tiles テンプレート・
+  tileSize・minzoom/maxzoom・attribution を読んで描き、ポインタ下のタイルの
+  z/x/y を読み出せるようにする。ドラッグでパン、ホイールでズーム。
+  地図エンジンも D3 本体も使わず Canvas 2D で実装する。
+
+requirements:
+  - id: tilejson-driven
+    need: TileJSON の url・tileSize・ズーム範囲をそのまま入力にする
+    rationale: タイルサイズ（512px）と URL をコードに埋め込まない
+    unmeasured: verification の tilejson-loaded で読み込み結果を検証
+  - id: tile-grid-overlay
+    need: タイル境界線と各タイルの z/x/y を地図に重ね、ポインタ下のアドレスを出す
+    rationale: d3-tile のデモの主目的はタイル格子そのものを見せること
+    unmeasured: verification の grid-lines-visible と tile-address-follows-geography で検証
+  - id: light-footprint
+    need: 地図エンジンも D3 も積まずに配布コードを最小化する
+    rationale: 512px タイルの配置・取得・格子描画だけで足りる
+  - id: quick-start
+    need: 4G 相当（60 ms 遅延・9 Mbps）で最初のビューがタイルで埋まる
+    rationale: 初回は TileJSON 1 本と可視タイル 9〜12 枚の取得
+  - id: smooth-interaction
+    need: タイル取得済みの状態でパンが 60 fps (20 ms 未満) で動く
+    rationale: 等倍 blit と格子の線・ラベルだけで、取得より描画が軽い
+  - id: seam-free
+    need: タイル境界に背景色の筋を出さない
+    rationale: 各辺を独立に丸めると 1〜2 px の隙間が出る既知の不具合がある
+    unmeasured: verification の tiles-cover-viewport で背景色の露出を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7500, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 6000, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 4.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/d3/010-web-mercator-tiles/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  network: {name: 4G, latency_ms: 60, download_mbps: 9, upload_mbps: 3}
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: TileJSON の取得から、可視タイルがすべて decode されて最初のビューが埋まるまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: タイル取得済みのビューで60フレームパンしたときの再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  sources:
+    - id: yuiseki-osm-tiles
+      origin: https://tile.yuiseki.net/styles/512/
+      license: OpenMapTiles / OpenStreetMap contributors（タイルの帰属表示をページに出す）
+  outputs: []
+  preparation:
+    - ベイクなし。TileJSON とタイルは実行時に取得する（実行時データは footprint の data に含まれない）
+    - 可視タイルは整数ズーム（round(zoom)）で選び、2^(zoom−zi) 倍して配置する
+    - 格子の各辺は描画と同じ式（原点＋整数インデックス）から CSS px で求め、線は +0.5 px に引く
+    - タイルは ImageBitmap に decode して LRU キャッシュ（200 枚超で可視タイル以外を解放）に載せる
+
+performance_knowledge:
+  - id: grid-over-edge-rule
+    finding: タイル境界線を同じ配置式（X = round(originX + x*tileDev)）から引くと、線・ラベル・当たり判定の z/x/y が描画と必ず一致し、境界線が隙間の位置を指す
+    evidence: tile-address-follows-geography は中心の z/x/y が Web Mercator の式と一致し、1タイル幅パンで x が 1 減ることを確認
+    applies_when: タイル格子・デバッグ用オーバーレイ・タイルの当たり判定を描くとき
+  - id: line-contrast-not-absolute-colour
+    finding: 地図の上に重ねた半透明の線は下地の色で合成後の色が変わるため、絶対色で探すと取りこぼす。境界の画素と左右 6 px の「青さ (b−r)」の差で判定すると、水・道路・文字の上でも安定する
+    evidence: 格子線の検査を背景色 0 件のビューで 70% 以上のサンプルが通る条件にした
+    applies_when: 地図の上に描いた注記・線・ハイライトをピクセル読み戻しで検証するとき
+  - id: decode-with-createImageBitmap
+    finding: fetch → blob → createImageBitmap で decode がフレームから外れる（RustGIS の 20〜30 ms/枚の wasm デコードを置き換えた経路）
+    evidence: 取得済みタイルで60フレームパンしたとき redraw_ms p95 0.305 ms、frame_interval_ms p95 7.18 ms
+    applies_when: ラスタータイルをブラウザで表示し、パン中のフレーム時間を測るとき
+  - id: ancestor-fallback
+    finding: 未取得タイルは 6 世代上まで祖先の部分矩形で埋めると、ズーム直後でも背景が露出しない
+    evidence: 初回ビューの 8×6 格子 48 点で背景色 0 件（tiles-cover-viewport、3 回の反復とも）
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/d3/010-web-mercator-tiles/index.html
+      - examples/d3/010-web-mercator-tiles/main.ts
+      - examples/d3/010-web-mercator-tiles/tiles.ts
+    dependencies: []
+    why: 512px PNG の等倍 blit と格子の線・ラベルだけなら Canvas 2D で足り、D3 のスケールや汎用エンジンを持ち込む理由がない
+  alternatives:
+    - option: d3-tile + d3-geo + D3 本体
+      rejected_because: 投影は Web Mercator 固定でラスタを置くだけなので、D3 一式（数十 KB）を読む必要がない
+    - option: MapLibre GL JS のラスターソース
+      rejected_because: 格子と z/x/y の可視化はエンジンの外側の仕事で、WebGL とスタイル解析は不要
+  not_doing: [ベクタタイル, 回転・ピッチ, 地形, ラベル衝突, オフラインキャッシュ, WebGL]
+
+verification:
+  checks:
+    - id: tilejson-loaded
+      what: 'TileJSON の tileSize と tiles を読んで描いている'
+      how: 読み込み後の map.tileJson を検査
+      expected: 'tileSize = 512、tiles が {z}/{x}/{y} 形式'
+    - id: tiles-cover-viewport
+      what: 'ビューポート全体がタイルで埋まっている'
+      how: 画面上の 8×6 格子を読み戻し、背景色 (233,238,242) のピクセル数を数える
+      expected: '背景色 0 件'
+    - id: grid-lines-visible
+      what: 'タイル境界線が地図の上に見えている'
+      how: 境界の x 上と左右 6 px の青さ (b−r) を比べる
+      expected: '8 サンプル以上で 70% 以上が境界線の上'
+    - id: tile-address-follows-geography
+      what: '中心の z/x/y が Web Mercator の式と一致し、パンで x が追従する'
+      how: 中心の lon/lat から z/x/y を計算して tileAddressAt と比較し、1タイル幅パンで x が 1 減るか見る
+      expected: '一致し、x が 1 減る'
+    - id: pan-moves-tiles-exactly
+      what: '整数パンで画像と格子がその画素数だけ動く'
+      how: 6点の色を控えて panBy(64,48) し、移動先の色が一致するか比較
+      expected: '6/6 一致'
+    - id: zoom-keeps-point-and-tile-set
+      what: 'ホイールズームでカーソル下の地図座標が動かず、タイルの z が切り替わる'
+      how: zoomAtPoint で +0.6 ズームし、同じ地図座標の画面位置のずれとタイル z を見る
+      expected: 'ずれ < 1.5 px かつ z が 1 増える'
+  harness:
+    - contextlost が起きたらエラーにする

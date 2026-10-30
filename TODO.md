@@ -238,7 +238,7 @@
 - [ ] `d3-007-projection-comparison` → `examples/d3/007-projection-comparison/` — [Projection comparison](https://observablehq.com/@d3/projection-comparison)
 - [ ] `d3-008-antimeridian-cutting` → `examples/d3/008-antimeridian-cutting/` — [Antimeridian cutting](https://observablehq.com/@d3/antimeridian-cutting)
 - [ ] `d3-009-tissots-indicatrix` → `examples/d3/009-tissots-indicatrix/` — [Tissot’s indicatrix](https://observablehq.com/@d3/tissots-indicatrix)
-- [ ] `d3-010-web-mercator-tiles` → `examples/d3/010-web-mercator-tiles/` — [Web Mercator tiles](https://observablehq.com/@d3/web-mercator-tiles)
+- [x] `d3-010-web-mercator-tiles` → `examples/d3/010-web-mercator-tiles/` — [Web Mercator tiles](https://observablehq.com/@d3/web-mercator-tiles)
 - [ ] `d3-011-raster-tiles` → `examples/d3/011-raster-tiles/` — [Raster tiles](https://observablehq.com/@d3/raster-tiles)
 - [ ] `d3-012-vector-tiles` → `examples/d3/012-vector-tiles/` — [Vector tiles](https://observablehq.com/@d3/vector-tiles)
 - [ ] `d3-013-clipped-map-tiles` → `examples/d3/013-clipped-map-tiles/` — [Clipped map tiles](https://observablehq.com/@d3/clipped-map-tiles)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **51 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **52 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
