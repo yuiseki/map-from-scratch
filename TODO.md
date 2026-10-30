@@ -727,7 +727,7 @@
 - [ ] `cesium-177-ground-primitive-dev` → `examples/cesium/177-ground-primitive-dev/` — [Ground Primitive Dev](https://sandcastle.cesium.com/?src=ground-primitive-dev)
 - [ ] `cesium-178-ground-primitive-materials-dev` → `examples/cesium/178-ground-primitive-materials-dev/` — [Ground Primitive Materials Dev](https://sandcastle.cesium.com/?src=ground-primitive-materials-dev)
 - [ ] `cesium-179-headingpitchroll` → `examples/cesium/179-headingpitchroll/` — [Headingpitchroll](https://sandcastle.cesium.com/?src=headingpitchroll)
-- [ ] `cesium-180-hello-world` → `examples/cesium/180-hello-world/` — [Hello World](https://sandcastle.cesium.com/?src=hello-world)
+- [x] `cesium-180-hello-world` → `examples/cesium/180-hello-world/` — [Hello World](https://sandcastle.cesium.com/?src=hello-world)
 - [ ] `cesium-181-high-dynamic-range` → `examples/cesium/181-high-dynamic-range/` — [High Dynamic Range](https://sandcastle.cesium.com/?src=high-dynamic-range)
 - [ ] `cesium-182-html-overlays` → `examples/cesium/182-html-overlays/` — [Html Overlays](https://sandcastle.cesium.com/?src=html-overlays)
 - [ ] `cesium-183-hybrid-snapping-dev` → `examples/cesium/183-hybrid-snapping-dev/` — [Hybrid Snapping Dev](https://sandcastle.cesium.com/?src=hybrid-snapping-dev)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **19 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **20 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、cesium-180、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

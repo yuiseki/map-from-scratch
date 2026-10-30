@@ -1,0 +1,96 @@
+id: cesium-180-hello-world
+request: >-
+  CesiumJS の最も基本的な「Hello World」のように、暗黒の宇宙空間に浮かぶ 3D 地球儀を表示したい。
+  マウスのドラッグで地球を全方向に回転し、ホイールでカメラの拡大・縮小ができること。外部ライブラリゼロ、Canvas 2D による直接描画で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: CesiumJS フルバンドル（数 MB）を読み込まず、3D 地球儀に必要な最小限の正射投影とジオメトリのみで構成
+  - id: quick-start
+    need: ページを開いて即座に 3D 地球儀が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによる回転やホイールズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: globe-accuracy
+    need: 3D 球面上に海洋と大陸が正しく配置され、背面カリングと正射方位クリッピングにより破綻なく描画される
+    unmeasured: verification の checks で画面ピクセル色と回転・ズーム変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/180-hello-world/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地球儀ジオメトリの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの地球儀回転中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/cesium/180-hello-world/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/cesium-180-hello-world/land.bin
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを earcut で三角形分割
+    - 頂点座標を経緯度 x 100 の 16bit 整数に量子化して単一バイナリに格納
+
+performance_knowledge:
+  - id: canvas2d-orthographic-globe
+    finding: GPU/WebGL2 への依存を持たず、Canvas 2D 上で球面回転行列と背面三角形カリング（法線 Z > 0 判定）を行う正射方位投影描画により、あらゆる環境（ヘッドレスや非 GPU 環境を含む）で 0.5 ms 未満の再描画性能を達成できる
+    evidence: 再描画時間 p95 0.3 ms 前後、初回描画 10 ms 前後を達成
+    applies_when: 宇宙空間に浮かぶ 3D 地球儀の全体俯瞰や軌道カメラ操作
+  - id: spherical-clip-gradient-depth
+    finding: 球面外周への clip() と太陽光・大気層・球面減光のラジアルグラデーションを組み合わせることで、3D シェーダーと同等の立体感と大気光を Canvas 2D だけで表現できる
+    evidence: 描画コール数数十回でリアルな 3D 地球儀の外観を実現
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/cesium/180-hello-world/index.html
+      - examples/cesium/180-hello-world/main.ts
+      - examples/cesium/180-hello-world/globe.ts
+    dependencies: []
+    why: 3D 地球儀の正射投影、背面カリング、大気・太陽光グラデーションを Canvas 2D で軽量に直接描画
+  alternatives:
+    - option: CesiumJS フルスタック
+      rejected_because: バンドルサイズが数 MB に達し、単純な地球儀表示には過大
+  not_doing: [3D地形, 地名ラベル, 大気散乱シェーダー, タイルストリーミング]
+
+verification:
+  checks:
+    - id: globe-rendered
+      what: 画面隅に宇宙空間ピクセル（暗黒）、画面中央に地球儀ピクセル（海洋または陸地）が描画されている
+      how: getImageData で座標位置のピクセル色を検証
+      expected: space: r < 25 && g < 25 && b < 35, globe center: g > 35 || b > 55
+    - id: globe-rotates-with-drag
+      what: 地球儀を回転させたとき、画面中央のピクセル色が更新される
+      how: 回転前後の特定座標の色変化を検証
+      expected: 大陸が回転移動し、ピクセル色が変化する
+    - id: globe-scales-with-zoom
+      what: ズームインにより地球儀の表示半径が拡大する
+      how: 球面縁部（半径外側）がズーム後に球体内側色へと変化することを検証
+      expected: ズーム後に球体半径が拡大する
+  harness:
+    - contextlost が起きたらエラーにする
