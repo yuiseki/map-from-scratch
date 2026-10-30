@@ -1,0 +1,123 @@
+id: maplibre-018-add-a-raster-tile-source
+request: >-
+  TileJSON で配信されるラスタータイル地図（512px、XYZ）を表示したい。
+  TileJSON の tiles テンプレート・tileSize・minzoom/maxzoom・attribution を読んで描き、
+  ドラッグでパン、ホイールで拡大縮小、3つのスタイル（osm-carto / osm-liberty / osm-bright）を
+  切り替えられるようにする。地図エンジンは使わず Canvas 2D で実装する。
+
+requirements:
+  - id: tilejson-driven
+    need: 3つの TileJSON（https://tile.yuiseki.net/styles/512/*.json）をそのまま入力にする
+    rationale: タイルURL・タイルサイズ・ズーム範囲・帰属表示をコードに埋め込まず TileJSON から読む
+    unmeasured: verification の tilejson-loaded / style-switch-repaints で TileJSON 由来の描画を検証
+  - id: light-footprint
+    need: 地図エンジンを積まずに配布コードを最小化する
+    rationale: タイルの配置・取得・LRU だけで足りる用途に MapLibre 一式は不要
+  - id: quick-start
+    need: 4G 相当（60 ms 遅延・9 Mbps）で最初のビューがタイルで埋まる
+    rationale: 初回は TileJSON 1 本と可視タイル 6〜9 枚の取得
+  - id: smooth-interaction
+    need: タイル取得済みの状態でパンが 60 fps (20 ms 未満) で動く
+    rationale: 512px タイルを等倍 blit するだけなので、取得より描画が軽い
+  - id: seam-free
+    need: タイル境界に背景色の筋を出さない
+    rationale: 半端な小数座標で置くと 1〜2 px の隙間が出る（OpenLayers/Leaflet の既知の不具合）
+    unmeasured: verification の no-seams-between-tiles でタイル境界のピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 5000, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 4.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/018-add-a-raster-tile-source/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  network: {name: 4G, latency_ms: 60, download_mbps: 9, upload_mbps: 3}
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: TileJSON の取得から、可視タイルがすべて decode されて最初のビューが埋まるまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: タイル取得済みのビューで60フレームパンしたときの再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  sources:
+    - id: yuiseki-osm-tiles
+      origin: https://tile.yuiseki.net/styles/512/
+      license: OpenMapTiles / OpenStreetMap contributors（タイルの帰属表示をページに出す）
+  outputs: []
+  preparation:
+    - ベイクなし。TileJSON とタイルは実行時に取得する（実行時データは footprint の data に含まれない）
+    - 可視タイルは整数ズーム（round(zoom)）で選び、2^(zoom−zi) 倍して配置する
+    - タイルは ImageBitmap に decode して LRU キャッシュ（200 枚超で可視タイル以外を解放）に載せる
+
+performance_knowledge:
+  - id: one-expression-per-tile-edge
+    finding: タイルの左右端をそれぞれ独立に丸めると隙間が出る。原点＋整数インデックスから X0 = round(originX + x*tile) と X1 = round(originX + (x+1)*tile) を計算し、幅を X1−X0 にすると隣接タイルが同じ境界を共有し、等倍時は背景色の筋が出ない
+    evidence: タイル境界の x 列・y 行を各5点（20〜30点）読み、背景色 0 件（no-seams-between-tiles）
+  - id: ancestor-fallback
+    finding: 未取得のタイルは 6 世代上まで祖先の部分矩形（2^dz 分割）で埋めると、ズーム直後でも背景が露出しない。取得できたら差し替える
+    evidence: 初回ビューの 8×6 格子 48 点で背景色 0 件（tiles-cover-viewport）
+  - id: decode-with-createImageBitmap
+    finding: fetch → blob → createImageBitmap にすると画像の decode がメインスレッドのフレームから外れる。RustGIS は wasm デコードで 1 枚 20〜30 ms かかっていたのをこの経路に変えて解消した
+    evidence: 取得済みタイルのパンで redraw_ms p95 0.125 ms、frame_interval_ms p95 6.52 ms
+  - id: bounded-tile-cache
+    finding: ImageBitmap は close() するまで GPU メモリを保持する。200 枚で LRU 破棄し、可視タイルは破棄しない
+    evidence: スタイル切替を含む3回の反復で js_heap_mb は 1.4767 / 1.4768 / 1.4769 MB と横ばい
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/018-add-a-raster-tile-source/index.html
+      - examples/maplibre/018-add-a-raster-tile-source/main.ts
+      - examples/maplibre/018-add-a-raster-tile-source/tiles.ts
+    dependencies: []
+    why: 512px の PNG タイルを等倍で並べるだけなら Canvas 2D の drawImage で十分で、テクスチャ配列やシェーダーは要らない
+  alternatives:
+    - option: MapLibre GL JS（ベースライン）
+      rejected_because: ラスタータイル 1 レイヤーのためにエンジン全体（スタイル解析・WebGL・ワーカー）を積む必要がない
+    - option: 256px 前提でタイルを縮小表示
+      rejected_because: 512px で焼かれたラベルと線が半分になり、TileJSON の tileSize を無視することになる
+    - option: 毎フレーム createImageBitmap で親タイルを合成
+      rejected_because: 取得済みタイルは blit だけで足り、合成はフレーム予算の無駄
+  not_doing: [ベクタタイル, 回転・ピッチ, 地形, ラベル衝突, オフラインキャッシュ, WebGL]
+
+verification:
+  checks:
+    - id: tilejson-loaded
+      what: 'TileJSON の tileSize と tiles を読んで描いている'
+      how: 読み込み後の map.tileJson と styleUrl を検査
+      expected: 'tileSize = 512、tiles が1本以上、styleUrl が指定した TileJSON'
+    - id: tiles-cover-viewport
+      what: 'ビューポート全体がタイルで埋まっている'
+      how: 画面上の 8×6 格子を読み戻し、背景色 (233,238,242) のピクセル数を数える
+      expected: '背景色 0 件'
+    - id: no-seams-between-tiles
+      what: 'タイル境界に背景色の筋がない'
+      how: タイル境界の x 列・y 行を各5点読み戻す
+      expected: '背景色 0 件（10 サンプル以上）'
+    - id: pan-moves-tiles-exactly
+      what: '整数パンで画像がその画素数だけ動く'
+      how: 6点の色を控えて panBy(64,48) し、移動先の色が一致するか比較
+      expected: '6/6 一致'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の地図座標が動かない'
+      how: zoomAtPoint で 5.0→5.6 にズームし、同じ地図座標の画面位置のずれを測る
+      expected: 'ずれ < 1.5 px'
+    - id: style-switch-repaints
+      what: '別の TileJSON（osm-bright）に切り替えると絵が変わる'
+      how: 6点の色を控えて setStyle し、色差 > 24 の点数を数える
+      expected: '3点以上が変化し、styleUrl が切り替え先'
+  harness:
+    - contextlost が起きたらエラーにする

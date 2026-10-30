@@ -37,7 +37,7 @@
 - [ ] `maplibre-015-add-a-multidirectional-hillshade-layer` → `examples/maplibre/015-add-a-multidirectional-hillshade-layer/` — [Add a multidirectional hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-multidirectional-hillshade-layer/)
 - [ ] `maplibre-016-add-a-new-layer-below-labels` → `examples/maplibre/016-add-a-new-layer-below-labels/` — [Add a new layer below labels](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-new-layer-below-labels/)
 - [ ] `maplibre-017-add-a-pattern-to-a-polygon` → `examples/maplibre/017-add-a-pattern-to-a-polygon/` — [Add a pattern to a polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-pattern-to-a-polygon/)
-- [ ] `maplibre-018-add-a-raster-tile-source` → `examples/maplibre/018-add-a-raster-tile-source/` — [Add a raster tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-raster-tile-source/)
+- [x] `maplibre-018-add-a-raster-tile-source` → `examples/maplibre/018-add-a-raster-tile-source/` — [Add a raster tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-raster-tile-source/)
 - [ ] `maplibre-019-add-a-simple-custom-layer-on-a-globe` → `examples/maplibre/019-add-a-simple-custom-layer-on-a-globe/` — [Add a simple custom layer on a globe](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-simple-custom-layer-on-a-globe/)
 - [ ] `maplibre-020-add-a-stretchable-image-to-the-map` → `examples/maplibre/020-add-a-stretchable-image-to-the-map/` — [Add a stretchable image to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-stretchable-image-to-the-map/)
 - [ ] `maplibre-021-add-a-vector-tile-source` → `examples/maplibre/021-add-a-vector-tile-source/` — [Add a vector tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-vector-tile-source/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **50 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **51 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
