@@ -87,10 +87,13 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   function updateActiveFlows() {
     activeFlows = [];
     if (selectedCountyIdx >= 0) {
+      // Only the selected county's own records, as deck.gl reads
+      // selected.properties.flows: the sign is in-flow (+) or out-flow (-)
+      // from its side. The other counties' records about it (t === selected)
+      // carry the opposite sign and repeated each pair, so out-flows were
+      // drawn as in-flows.
       for (const fl of flows) {
-        if (fl.s === selectedCountyIdx || fl.t === selectedCountyIdx) {
-          activeFlows.push(fl);
-        }
+        if (fl.s === selectedCountyIdx) activeFlows.push(fl);
       }
       activeFlows.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
       if (activeFlows.length > 200) {
