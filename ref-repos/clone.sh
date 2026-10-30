@@ -42,6 +42,8 @@ CesiumGS/cesium                           web-3d-globe      Apache-2.0
 Project-PLATEAU/PLATEAU-VIEW-4.0          web-3d-city       Apache-2.0
 Project-PLATEAU/PLATEAU-VIEW-5.0          web-3d-city       Apache-2.0
 visgl/deck.gl                             web-layers        MIT
+visgl/luma.gl                             webgl-webgpu      MIT (LICENSE; includes MIT-licensed PhiloGL and three.js parts)
+keplergl/kepler.gl                        web-analysis      MIT
 kenjiyoshidahome2026-bit/ortho-earth      web-3d-globe      GPL-3.0-or-later (engine), MIT, CC BY-SA 4.0 (data); see README
 qgis/QGIS                                 desktop-gis       GPL-2.0-or-later
 OSGeo/grass                               desktop-gis       GPL-2.0-or-later
