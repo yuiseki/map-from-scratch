@@ -169,11 +169,19 @@ of the screen; a popup on the far side of 180°.
 
 ## Markers
 
-### A legend that drifts from the data (openglobus 004)
+### A legend that drifts from the data (repeated: openglobus 004 and 062, mapbox 045)
 
-- Screen: five billboards on the map, three in the legend.
-- Why: the legend was written by hand in `index.html`; the bake listed five.
-- Fix: build the legend from the data the renderer draws, or check the counts.
+- openglobus 004: five billboards on the map, three in the legend.
+- openglobus 062: "Administrative Country Boundaries" over Natural Earth 110m
+  land, which has no borders.
+- mapbox 045: both colour bars (M1–M3 and M3–M6) used the whole amber–blue–red
+  gradient, while the shader goes amber to blue, then blue to red; the M6
+  size swatch was 26 px for a 14 px radius.
+- Why: legends are written by hand in `index.html` and never compared with
+  the bake or the shader's stops.
+- Fix: build the legend from the data and the same stops the renderer uses,
+  or check its items against them; read REQUEST.md and the legend side by
+  side with the screen.
 
 Marker anchoring itself (the tip on the coordinate) was right in every
 example checked (010, 009, 213, 244 not yet).
