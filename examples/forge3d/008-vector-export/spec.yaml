@@ -1,0 +1,111 @@
+id: forge3d-008-vector-export
+request: >-
+  forge3d のギャラリー例「Vector export」のように、表示中の地図（ルクセンブルクの
+  鉄道網）をベクター形式（SVG）として書き出せる地図がほしい。画面の地図は Canvas 2D で
+  最速・最小に描き、書き出しは表示と同じジオメトリ・色・画面座標で行う。外部ライブラリなし。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 領土・鉄道・駅だけの出力に汎用エンジンは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: vector-export
+    need: 表示中のビューと同寸法・同座標の SVG を書き出せる
+    unmeasured: verification checks で SVG 文字列と画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 15000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/008-vector-export/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地図データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/008-vector-export/bake.ts]
+  sources:
+    - id: forge3d-luxembourg-rail
+      origin: examples/forge3d/004-luxembourg-rail-network/bake.ts と同じ例示ジオメトリ
+      license: この例のために用意した例示データ
+  outputs:
+    - data/baked/forge3d-008-vector-export/luxembourg.json
+  preparation:
+    - ルクセンブルクの領土ポリゴン・鉄道6路線・駅6点を Web Mercator 座標へ投影して量子化
+
+performance_knowledge:
+  - id: export-reuses-viewport-transform
+    finding: 画面描画と SVG 書き出しで同じビュー変換（origin と scale）を使い回せるため、書き出した SVG は現在の表示とピクセル単位で一致する
+    evidence: 書き出した SVG の path 数と circle 数がデータ数と一致し、画面の駅色とズーム後の位置検証も通る
+    applies_when: Canvas 地図からベクターを書き出すとき
+  - id: svg-as-string-not-dom
+    finding: 書き出しは DOM の SVG 要素を組み立てず、文字列連結で行うとコードも実行コストも小さい
+    evidence: 書き出し処理は描画パスと同じ座標計算のみで、追加のライブラリを要しない
+    applies_when: 単発のベクター出力（ダウンロード・コピー）
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + SVG 文字列出力
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/forge3d/008-vector-export/index.html
+      - examples/forge3d/008-vector-export/main.ts
+      - examples/forge3d/008-vector-export/map.ts
+    dependencies: []
+    why: 画面は Canvas 2D が最速で、SVG は同じ座標変換を文字列にするだけで足りる
+  alternatives:
+    - option: SVG を主表示にする
+      rejected_because: パン・ズームのたびに DOM を更新するより Canvas 再描画のほうが軽い
+    - option: WebGL2
+      rejected_because: ライン数本の表示と書き出しに不要
+  not_doing: [3D地形, 地名ラベル, GeoJSON 以外の書き出し形式, 印刷用の地図記号]
+
+verification:
+  checks:
+    - id: stations-visible
+      what: ルクセンブルク駅の位置に赤い駅マーカーが描かれている
+      how: 駅の画面座標周辺 7x7 px の色を検証
+      expected: r>180, g<100, b<120
+    - id: rails-visible
+      what: 北線上の駅から離れた点に青い鉄道線が描かれている
+      how: 画面上の座標周辺の色を検証
+      expected: r<100, g<140, b>180
+    - id: svg-export-geometry
+      what: 書き出した SVG に領土1パスと鉄道6パス、駅6円、viewBox が含まれる
+      how: exportSvg() の文字列を検証
+      expected: path=7, circle=6, viewBox あり
+    - id: svg-export-labels
+      what: 書き出した SVG に全駅名が含まれる
+      how: exportSvg() の文字列を検証
+      expected: 6駅名すべて
+    - id: pan-moves-stations
+      what: 40x20 px のパンで駅が同じだけ動く
+      how: パン前後の駅画面座標と色を検証
+      expected: dx=40, dy=20, 赤
+    - id: zoom-keeps-stations
+      what: ズームを1段上げても駅が赤く描かれる
+      how: ズーム後の駅画面座標の色を検証
+      expected: 赤
+  harness:
+    - contextlost が起きたらエラーにする
