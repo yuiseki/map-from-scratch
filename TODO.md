@@ -904,7 +904,7 @@
 - [x] `opfs-001-offline-pmtiles` → `examples/opfs/001-offline-pmtiles/` — [OPFS SyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle)
 - [x] `wasm-001-jspi-range-reader` → `examples/wasm/001-jspi-range-reader/` — [V8 JSPI (JavaScript Promise Integration)](https://v8.dev/blog/jspi)
 - [x] `htmlcanvas-001-rich-map-popup` → `examples/htmlcanvas/001-rich-map-popup/` — [WICG HTML-in-Canvas (CanvasDrawElement)](https://html-in-canvas.dev)
-- [ ] `htmlcanvas-002-webgpu-map-label` → `examples/htmlcanvas/002-webgpu-map-label/` — [HTML-in-Canvas WebGPU Labels](https://html-in-canvas.dev)
+- [x] `htmlcanvas-002-webgpu-map-label` → `examples/htmlcanvas/002-webgpu-map-label/` — [HTML-in-Canvas WebGPU Labels](https://html-in-canvas.dev)
 
 ## 進捗
 

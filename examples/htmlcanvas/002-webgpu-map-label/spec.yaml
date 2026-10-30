@@ -1,0 +1,116 @@
+id: htmlcanvas-002-webgpu-map-label
+request: >-
+  HTML-in-Canvas（WICG drawElementImage）で生成した実 HTML ラベルカードを WebGPU レンダリングパイプラインへ取り込み、
+  地図上のラベルとして GPU インスタンス描画し、パン・ズーム時に HTML の再レイアウトやテクスチャ再アップロードなしで追従させたい。
+
+requirements:
+  - id: html-labels-in-webgpu
+    need: 実 HTML 要素（バッジ・星評価・日本語見出し）を CanvasDrawElement 経由で WebGPU テクスチャアトラスに取り込み合成する
+    unmeasured: verification checks の html-in-canvas-supported と labels-rendered-on-webgpu で確認
+  - id: webgpu-acceleration
+    need: WebGPU パイプライン内で地図背景・ピン・ラベルクアッドを GPU 上で直接描画する
+    unmeasured: verification checks の webgpu-initialized と labels-loaded で確認
+  - id: zero-relayout-on-move
+    need: パン・ズーム操作中に HTML の再レイアウトやテクスチャの毎フレーム再アップロードを発生させない
+    unmeasured: verification checks の zero-uploads-during-pan で確認
+  - id: dynamic-label-updates
+    need: ラベル内容更新時のみテクスチャアトラスを再描画・再アップロードする
+    unmeasured: verification checks の texture-updated-on-change で確認
+  - id: light-footprint
+    need: 外部依存ゼロで配布コードサイズとデータサイズを最小限に抑える
+    rationale: 生 WebGPU API + WICG HTML-in-Canvas のみで実装し、コード gzip 7.5 KB 以下、データ gzip 5 KB 以下
+  - id: smooth-interaction
+    need: パン・ズーム操作時に 60 fps で滑らかに再描画される
+    rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 5.0 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: light-footprint}
+    - {metric: redraw_ms, stat: p95, max: 35.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/htmlcanvas/002-webgpu-map-label/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  chrome_flags:
+    - --enable-blink-features=CanvasDrawElement
+  scenarios:
+    - id: first-frame
+      what: 初期化から初回 HTML-in-Canvas テクスチャ生成と WebGPU ラベル描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 地図パン中の GPU クアッド追従と再描画
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/htmlcanvas/002-webgpu-map-label/bake.ts]
+  sources:
+    - id: tokyo-landmarks-6
+      origin: 東京都心主要ランドマーク 6 地点
+      license: Public Domain / Open Data
+  outputs:
+    - data/baked/htmlcanvas-002-webgpu-map-label/landmarks.json
+
+performance_knowledge:
+  - what: HTML-in-Canvas による WebGPU ラベルテクスチャ生成とインスタンス描画
+    why: >-
+      地図上の情報カードやバッジラベルを WebGPU で描画する場合、従来は SDF（Signed Distance Field）フォント描画や
+      Canvas 2D の fillText() によるテクスチャ生成が使われてきた。しかし角丸バッジ、星評価アイコン、複数行フォント、
+      シャドウを伴うリッチなカードを自前描画で構成するのは実装コストが極めて高い。
+      WICG HTML-in-Canvas（drawElementImage）を用いることで、ブラウザ標準の CSS/HTML レイアウトエンジンが描画した
+      DOM 要素をテクスチャアトラスにブリットし、`device.queue.copyExternalImageToTexture` で WebGPU テクスチャに転送できる。
+  - what: GPU 側でのアンカー変換とゼロ・リレイアウト
+    why: >-
+      パンやズームのたびに HTML 要素を再描画したりテクスチャを再アップロードすると、フレームあたり数十 ms の CPU スタイル計算と
+      バス転送が発生し描画が破綻する。
+      本設計では各ラベルのサイズと UV 座標を一度だけ Storage Buffer に記録し、Vertex Shader がカメラの
+      `viewProj` 行列（または center と scale）から地理座標アンカーを画面空間に投影し、クアッドの頂点オフセットを加算する。
+      これにより、パン・ズーム操作中はテクスチャアップロード回数ゼロ・HTML 再計算ゼロで 60 fps の完全追従が実現する。
+
+architecture_selection:
+  chosen:
+    language: TypeScript (erasableSyntaxOnly)
+    runtime: browser
+    api: WebGPU + HTML-in-Canvas (CanvasDrawElement)
+    gpu: none
+    code:
+      - examples/htmlcanvas/002-webgpu-map-label/index.html
+      - examples/htmlcanvas/002-webgpu-map-label/main.ts
+      - examples/htmlcanvas/002-webgpu-map-label/map.ts
+  not_doing:
+    - 毎フレームの HTML 再レイアウト・再ラスタライズ (初回および内容変更時のみアトラス更新)
+    - Canvas 2D fillText や SDF 文字描画による UI 再実装 (実 HTML/CSS の活用)
+    - 外部ライブラリ（Three.js, Pixi.js, MapLibre 等）の使用
+
+verification:
+  checks:
+    - id: html-in-canvas-supported
+      what: ブラウザで CanvasRenderingContext2D.prototype.drawElementImage が有効であること
+      how: typeof ctxHtml.drawElementImage === 'function' の確認
+      expected: true
+    - id: webgpu-initialized
+      what: WebGPU デバイスが正常に取得・初期化されていること
+      how: map.gpuName.length > 0 の確認
+      expected: true
+    - id: labels-loaded
+      what: 6 件のランドマークが GPU インスタンスバッファにロードされていること
+      how: landmarks.length === 6 の確認
+      expected: 6
+    - id: labels-rendered-on-webgpu
+      what: WebGPU レンダーパスにより地図背景上に白いラベルカードがピクセルとして合成されていること
+      how: Imperial Palace 付近の画面ピクセル読み戻しで背景色（暗青）と異なりカード色（白）であること
+      expected: !isBackground && isCardWhite
+    - id: zero-uploads-during-pan
+      what: パン・ズーム操作中にテクスチャアップロードが 1 回のまま増加しないこと
+      how: 複数回 panBy / zoomBy 実行前後の textureUploadCount 比較
+      expected: uploadsBefore === uploadsAfter && uploadsBefore === 1
+    - id: texture-updated-on-change
+      what: ラベル内容更新時にのみテクスチャアトラスが再生成されアップロード回数が 1 増加すること
+      how: updateLabelContent() 実行後の textureUploadCount 検証
+      expected: uploadsAfterUpdate === uploadsAfter + 1

@@ -574,7 +574,7 @@ pass.
 - Fix: Detect SwiftShader via `const isSwiftShader = gpuDesc.toLowerCase().includes('swiftshader');`. When true, skip `canvas.getContext('webgpu')` and render directly into an offscreen `GPUTexture` (`createTexture({ format, usage: RENDER_ATTACHMENT | COPY_SRC })`). In production browsers with hardware adapters, use `webgpuCtx.getCurrentTexture()`. This keeps headless CI benchmarks 100% reliable without crashing.
 - `mapAsync` staging buffers: Never call `mapAsync` concurrently on the same buffer, and avoid re-using a static staging buffer across frame submissions in SwiftShader. Create a small transient `readBuffer` (256 B aligned), map it, read it, and immediately call `readBuffer.destroy()`.
 
-### HTML-in-Canvas (WICG): InvalidStateError and paint lifecycle (htmlcanvas-001)
+### HTML-in-Canvas (WICG): InvalidStateError and paint lifecycle (htmlcanvas-001, htmlcanvas-002)
 
 - Screen: `InvalidStateError: Failed to execute 'drawElementImage' on 'CanvasRenderingContext2D': No cached paint record for element`.
 - Why: When an HTML element inside `<canvas layoutsubtree content="drawable">` has its DOM contents, classes, or styles updated, Chromium marks the subtree dirty. Calling `ctx.drawElementImage(element, dx, dy)` before the browser compositor performs a paint pass results in an immediate `InvalidStateError` because no valid display item list exists yet.
@@ -588,4 +588,8 @@ pass.
   }
   ctx.drawElementImage(popup, pRect.x, pRect.y);
   ```
+- Intermediate parent wrappers prohibited: Blink requires elements passed to `drawElementImage` to be **direct children** of `<canvas layoutsubtree>`. Wrapping cards in `<div id="container">` throws `InvalidStateError: The element can only be drawn into its nearest ancestor <canvas>`.
+- Offscreen canvas culling: Placing `<canvas layoutsubtree>` outside the viewport (e.g. `left: -9999px`) causes Blink's compositor to cull the subtree from painting, producing an empty paint record of all zeros. Keep offscreen atlas canvases inside the viewport but behind the display canvas (`position: absolute; top: 0; left: 0; z-index: -1; pointer-events: none;`).
+- WGSL Uniform Control Flow in WebGPU Shaders: Calling `textureSample` inside or after an `if (in.isPin == 1u)` conditional fails with `error: 'textureSample' must only be called from uniform control flow`. Separate differing primitive types into dedicated pipeline entry points (`fs_pins` and `fs_labels`) rather than branching inside a single uber-shader.
+- WebGPU `copyTextureToBuffer` validation: When copying 2D textures where `height > 1`, `rowsPerImage: h` is strictly required alongside `bytesPerRow` (must be 256 B aligned). Omitting `rowsPerImage` fails buffer validation silently and leaves the destination buffer zeroed.
 - Hit Testing & Clicks: In current Chromium builds, `document.elementFromPoint` over the canvas surface resolves to the canvas element itself rather than nested HTML-in-Canvas elements. Track element bounding boxes in canvas space and route clicks directly to `childElement.click()`. Await the re-render so that updated CSS styles are recorded before pixel readback.
