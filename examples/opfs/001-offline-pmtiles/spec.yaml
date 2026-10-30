@@ -93,6 +93,10 @@ verification:
       what: 画面中央に陸地ポリゴンが描画されている
       how: 画面中央付近のピクセル色を検証
       expected: 海洋色（#0f172a）と異なる陸地色（#1e293b）
+    - id: square-tiles-and-world-copies
+      what: canvas の画素数が表示サイズに一致してタイルが正方形のまま描かれ、陸地が東西の世界コピーにも描かれる
+      how: canvas.width/height と clientWidth/Height×dpr を比べ、画面中央から 1 世界ぶん東のピクセルを読む
+      expected: 一致し、1 世界東も陸地色
     - id: pan-triggers-opfs-reads
       what: 地図をパンしたとき、追加のタイルが OPFS 同期 I/O で取得され、ネットワーク要求が 0 のままである
       how: パン前後の readCount とネットワーク要求数を検証

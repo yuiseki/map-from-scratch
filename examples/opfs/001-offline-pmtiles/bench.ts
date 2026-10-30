@@ -42,6 +42,28 @@ export async function runBench(map: OpfsMap, firstFrameMs: number): Promise<void
     detail: `rgba(${Array.from(centerPx).join(',')}) at screen center (${cx}, ${cy})`,
   });
 
+  // Verification 3b: the map keeps its shape and repeats. The canvas once
+  // kept its 1024x768 backing store under a full-window CSS size, so the
+  // square tiles were stretched; and one world was drawn, so a 1024 px
+  // screen at zoom 1.2 (588 px a world) had ocean where land repeats.
+  const dpr = window.devicePixelRatio || 1;
+  const square = canvas.width === Math.round(canvas.clientWidth * dpr) && canvas.height === Math.round(canvas.clientHeight * dpr);
+  // A column left of centre and the same column one world east must show
+  // the same land and sea, row by row.
+  const land = (p: Uint8ClampedArray) => p[0] >= 25 && p[1] >= 35 && p[2] >= 50;
+  const colA = cx - 100 * dpr, colB = colA + map.worldPx() * dpr;
+  let landRows = 0, differ = 0;
+  for (let y = 0; y < canvas.height; y += 4) {
+    const a = land(map.readPixel(colA, y)), b = land(map.readPixel(colB, y));
+    if (a) landRows++;
+    if (a !== b) differ++;
+  }
+  emit({
+    check: 'square-tiles-and-world-copies',
+    pass: square && colB < canvas.width && landRows > 10 && differ <= 2,
+    detail: `backing ${canvas.width}x${canvas.height} for CSS ${canvas.clientWidth}x${canvas.clientHeight} at dpr ${dpr}; columns ${colA} and ${Math.round(colB)}: ${landRows} land rows, ${differ} differ`,
+  });
+
   // Verification 4: Pan triggers OPFS reads with zero network
   const readsBefore = stats0.totalSyncReads;
   map.panBy(300, 150);

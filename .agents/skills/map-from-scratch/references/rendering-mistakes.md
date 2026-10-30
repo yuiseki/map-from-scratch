@@ -14,7 +14,7 @@ what went wrong.
 
 ## World wrapping
 
-### Land drawn once (repeated: maplibre 010, 012, 013, 061, 070, 073; mapbox 127)
+### Land drawn once (repeated: maplibre 010, 012, 013, 061, 070, 073; mapbox 127; opfs 001)
 
 - Screen: Alaska or Chukotka ends in a straight vertical edge at 180°; the
   far side of the Pacific is empty. At the opening zoom of 061, 070, 073 and
@@ -100,6 +100,19 @@ range from the screen width, as above, never a constant.
 The staircase on its contour bands comes from `texelFetch` without
 interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
+### A fixed backing store stretched by CSS (opfs 001)
+
+- Screen: the world twice as wide as tall at 1920x1021; Antarctica a band
+  across the bottom third.
+- Why: `<canvas width="1024" height="768">` with `width: 100%; height: 100%`
+  in CSS. The square tiles were drawn square in a 1024x768 bitmap and the
+  browser stretched it 1.875 times across and 1.33 times down. The bench
+  viewport is 1024x768, so every check passed.
+- Test: `canvas.width === round(clientWidth·dpr)` and the same for height
+  (`square-tiles-and-world-copies`), and look at the page at a size other
+  than the bench viewport.
+- Fix: size the backing store from `clientWidth·dpr` on load and on resize,
+  draw in CSS px under `setTransform(dpr, …)`.
 ## Interaction
 
 ### Dragging moves the map the wrong way (deckgl 019)
@@ -115,7 +128,7 @@ interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
 Seen once so far.
 
-### Wheel zoom about the screen centre (repeated: 23 flat 2D examples)
+### Wheel zoom about the screen centre (repeated: 23 flat 2D examples; opfs 001)
 
 - Screen: the place under the pointer slides away while zooming; MapLibre,
   Leaflet and Mapbox keep it under the pointer.

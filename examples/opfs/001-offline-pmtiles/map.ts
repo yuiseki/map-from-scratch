@@ -14,6 +14,7 @@ export interface OpfsMap {
   render: () => void;
   panBy: (dx: number, dy: number) => void;
   zoomBy: (delta: number) => void;
+  worldPx: () => number;
   getStats: () => Promise<OpfsMapStats>;
   readPixel: (x: number, y: number) => Uint8ClampedArray;
   onTileLoaded?: () => void;
@@ -37,10 +38,19 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
 
   const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 
-  // Camera state
-  let cx = 0; // lon
-  let cy = 20; // lat
+  // Camera state: the centre in Web Mercator units (0..1 across one world)
+  let mx = 0.5;
+  let my = 0.5 - Math.log(Math.tan(Math.PI / 4 + (20 * Math.PI) / 360)) / (2 * Math.PI); // 20° N
   let zoom = 1.2;
+
+  // The backing store follows the element's CSS size, so tiles stay square.
+  let dpr = 1;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(canvas.clientWidth * dpr);
+    canvas.height = Math.round(canvas.clientHeight * dpr);
+  }
+  resize();
 
   const tileCache = new Map<string, TileData>();
   let inFlight = new Set<string>();
@@ -91,17 +101,10 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
     worker.postMessage({ type: 'init', archiveUrl });
   });
 
-  function mercX(lon: number): number {
-    return (lon + 180) / 360;
-  }
-  function mercY(lat: number): number {
-    const s = Math.sin((Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180);
-    return 0.5 - (0.25 * Math.log((1 + s) / (1 - s))) / Math.PI;
-  }
-
   function render() {
-    const w = canvas.width;
-    const h = canvas.height;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Ocean background
     ctx.fillStyle = '#0f172a';
@@ -109,21 +112,17 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
 
     const zi = Math.max(0, Math.min(2, Math.floor(zoom)));
     const n = 1 << zi;
-    const scale = (256 * Math.pow(2, zoom)) / n;
+    const world = 256 * Math.pow(2, zoom);
+    const tileSize = world / n;
 
-    const mx = mercX(cx);
-    const my = mercY(cy);
-
-    const screenCenterX = w / 2;
-    const screenCenterY = h / 2;
-
-    // Render tiles
+    // Every world copy that touches the screen, east and west.
+    const k0 = Math.floor(mx - w / 2 / world), k1 = Math.floor(mx + w / 2 / world);
+    for (let k = k0; k <= k1; k++)
     for (let x = 0; x < n; x++) {
       for (let y = 0; y < n; y++) {
         // Tile top-left in screen coords
-        const tileLeft = screenCenterX + (x / n - mx) * (256 * Math.pow(2, zoom));
-        const tileTop = screenCenterY + (y / n - my) * (256 * Math.pow(2, zoom));
-        const tileSize = scale;
+        const tileLeft = w / 2 + (k + x / n - mx) * world;
+        const tileTop = h / 2 + (y / n - my) * world;
 
         // Culling
         if (tileLeft + tileSize < 0 || tileLeft > w || tileTop + tileSize < 0 || tileTop > h) {
@@ -150,13 +149,21 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
 
         for (const ring of cached.rings) {
           if (ring.length < 6) continue;
+          const X = (i: number) => tileLeft + ring[i] * tileSize, Y = (i: number) => tileTop + ring[i + 1] * tileSize;
           ctx.beginPath();
-          ctx.moveTo(tileLeft + ring[0] * tileSize, tileTop + ring[1] * tileSize);
-          for (let i = 2; i < ring.length; i += 2) {
-            ctx.lineTo(tileLeft + ring[i] * tileSize, tileTop + ring[i + 1] * tileSize);
-          }
+          ctx.moveTo(X(0), Y(0));
+          for (let i = 2; i < ring.length; i += 2) ctx.lineTo(X(i), Y(i));
           ctx.closePath();
           ctx.fill();
+          // Stroke the coast only: an edge lying on the tile border is where
+          // the bake clipped the polygon, not a shore.
+          ctx.beginPath();
+          const m = ring.length;
+          for (let i = 0; i < m; i += 2) {
+            const j = (i + 2) % m, ax = ring[i], ay = ring[i + 1], bx = ring[j], by = ring[j + 1];
+            const cut = (ax === bx && (ax <= 0 || ax >= 1)) || (ay === by && (ay <= 0 || ay >= 1));
+            if (!cut) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
+          }
           ctx.stroke();
         }
 
@@ -184,13 +191,9 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
     if (!dragging) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
-    const worldSize = 256 * Math.pow(2, zoom);
-    cx -= (dx / worldSize) * 360;
-    cy += (dy / worldSize) * 180;
-    cy = Math.max(-80, Math.min(80, cy));
     lastX = e.clientX;
     lastY = e.clientY;
-    render();
+    panBy(dx, dy);
   });
 
   const stopDrag = (e: PointerEvent) => {
@@ -202,29 +205,44 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
   canvas.addEventListener('pointerup', stopDrag);
   canvas.addEventListener('pointercancel', stopDrag);
 
+  function panBy(dx: number, dy: number) {
+    const world = 256 * Math.pow(2, zoom);
+    mx -= dx / world;
+    mx -= Math.floor(mx);
+    my = Math.max(0, Math.min(1, my - dy / world));
+    render();
+  }
+
+  // Zoom about (px, py) in CSS px: the point under it stays put.
+  function zoomAt(z: number, px: number, py: number) {
+    const ox = px - canvas.width / dpr / 2, oy = py - canvas.height / dpr / 2;
+    const before = 256 * Math.pow(2, zoom);
+    zoom = Math.max(0.5, Math.min(2.8, z));
+    const after = 256 * Math.pow(2, zoom);
+    mx += ox / before - ox / after;
+    my = Math.max(0, Math.min(1, my + oy / before - oy / after));
+    render();
+  }
+
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    zoom = Math.max(0.5, Math.min(2.8, zoom - e.deltaY * 0.002));
-    render();
+    const rect = canvas.getBoundingClientRect();
+    zoomAt(zoom - e.deltaY * 0.002, e.clientX - rect.left, e.clientY - rect.top);
   }, { passive: false });
 
-  // Initial draw
+  // Initial draw. Nothing may ask the worker for tiles before it is ready:
+  // the 'ready' listener above takes the first message it gets.
+  window.addEventListener('resize', () => { resize(); render(); });
   render();
 
   const mapInstance: OpfsMap = {
     canvas,
     ctx,
     render,
-    panBy(dx: number, dy: number) {
-      const worldSize = 256 * Math.pow(2, zoom);
-      cx -= (dx / worldSize) * 360;
-      cy += (dy / worldSize) * 180;
-      cy = Math.max(-80, Math.min(80, cy));
-      render();
-    },
+    panBy,
+    worldPx: () => 256 * Math.pow(2, zoom),
     zoomBy(delta: number) {
-      zoom = Math.max(0.5, Math.min(2.8, zoom + delta));
-      render();
+      zoomAt(zoom + delta, canvas.width / dpr / 2, canvas.height / dpr / 2);
     },
     async getStats(): Promise<OpfsMapStats> {
       return new Promise((resolve) => {
