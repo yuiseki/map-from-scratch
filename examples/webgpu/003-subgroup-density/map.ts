@@ -4,7 +4,7 @@
 // - WGSL compute shader with `enable subgroups;`
 // - Bins 1,048,576 points in parallel into a 2D density grid
 // - Uses `atomicAdd` and `atomicMax` to compute density and peak density on GPU
-// - Fullscreen render pass samples the grid with bilinear filtering and Turbo/Magma colormap
+// - Fullscreen render pass samples the grid with bilinear filtering and the Turbo colormap
 // - Interactive pan and zoom without CPU iteration
 
 const GPUBufferUsage = {
@@ -44,9 +44,10 @@ export interface DensityMap {
   pointCount: number;
   gpu: string;
   hasSubgroups: boolean;
+  view: () => [number, number, number, number, number, number];
   render: () => void;
   panBy: (dx: number, dy: number) => void;
-  zoomBy: (delta: number) => void;
+  zoomBy: (delta: number, x?: number, y?: number) => void;
   getMaxDensity: () => Promise<number>;
   readPixel: (x: number, y: number) => Promise<Uint8Array>;
 }
@@ -176,27 +177,37 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
 
     @compute @workgroup_size(64)
     fn main(@builtin(global_invocation_id) gid: vec3u) {
+      // No early return: the subgroup operations below need every lane.
       let idx = gid.x;
-      if (idx >= u.pointCount) { return; }
-
-      let packed = points[idx];
+      let packed = points[min(idx, u.pointCount - 1u)];
       let px = f32(packed & 0xffffu) / 65535.0;
       let py = f32((packed >> 16u) & 0xffffu) / 65535.0;
-
-      // Filter against viewport bounds
-      if (px < u.viewMin.x || px > u.viewMax.x || py < u.viewMin.y || py > u.viewMax.y) {
-        return;
-      }
+      let inside = idx < u.pointCount && px >= u.viewMin.x && px <= u.viewMax.x && py >= u.viewMin.y && py <= u.viewMax.y;
 
       let normX = (px - u.viewMin.x) / (u.viewMax.x - u.viewMin.x);
       let normY = (py - u.viewMin.y) / (u.viewMax.y - u.viewMin.y);
 
       let cellX = u32(clamp(normX * f32(u.gridSize.x), 0.0, f32(u.gridSize.x - 1u)));
       let cellY = u32(clamp(normY * f32(u.gridSize.y), 0.0, f32(u.gridSize.y - 1u)));
-      let cellIdx = cellY * u.gridSize.x + cellX;
-
-      let newCount = atomicAdd(&grid[cellIdx], 1u) + 1u;
-      atomicMax(&maxDensity[0], newCount);
+      let cellIdx = select(0xffffffffu, cellY * u.gridSize.x + cellX, inside);
+      ${hasSubgroups ? `
+      // The points are in Morton order, so neighbouring lanes mostly share a
+      // cell: the lanes in the first active lane's cell add their count in
+      // one atomic, the others add one each.
+      let first = subgroupBroadcastFirst(cellIdx);
+      let same = cellIdx == first;
+      let n = subgroupAdd(select(0u, 1u, same));
+      let elected = subgroupElect(); // the first active lane, so same is true there
+      if (same) {
+        if (elected && inside) {
+          atomicMax(&maxDensity[0], atomicAdd(&grid[cellIdx], n) + n);
+        }
+      } else if (inside) {
+        atomicMax(&maxDensity[0], atomicAdd(&grid[cellIdx], 1u) + 1u);
+      }` : `
+      if (inside) {
+        atomicMax(&maxDensity[0], atomicAdd(&grid[cellIdx], 1u) + 1u);
+      }`}
     }
   `;
 
@@ -253,15 +264,19 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
       return out;
     }
 
+    // Turbo, Ruofei Du's polynomial fit (Google, Apache-2.0):
+    // gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7.
+    // The coefficients this function had ran dark brown to orange to red,
+    // so every cell from t 0.5 to 0.9 was the same orange.
     fn turbo(t: f32) -> vec3f {
-      let c0 = vec3f(0.114083, 0.109832, 0.222628);
-      let c1 = vec3f(0.852431, 0.697479, -0.635848);
-      let c2 = vec3f(2.463378, 1.109861, 2.721464);
-      let c3 = vec3f(-7.697526, -5.922114, -8.318854);
-      let c4 = vec3f(9.102604, 8.441957, 10.129337);
-      let c5 = vec3f(-3.856950, -4.341498, -4.103738);
-      let s = clamp(t, 0.0, 1.0);
-      return c0 + s * (c1 + s * (c2 + s * (c3 + s * (c4 + s * c5))));
+      let x = clamp(t, 0.0, 1.0);
+      let p = array<f32, 6>(1.0, x, x * x, x * x * x, x * x * x * x, x * x * x * x * x);
+      var c = vec3f(0.0);
+      let r = array<f32, 6>(0.13572138, 4.61539260, -42.66032258, 132.13108234, -152.94239396, 59.28637943);
+      let g = array<f32, 6>(0.09140261, 2.19418839, 4.84296658, -14.18503333, 4.27729857, 2.82956604);
+      let b = array<f32, 6>(0.10667330, 12.64194608, -60.58204836, 110.36276771, -89.90310912, 27.34824973);
+      for (var k = 0; k < 6; k++) { c += p[k] * vec3f(r[k], g[k], b[k]); }
+      return clamp(c, vec3f(0.0), vec3f(1.0));
     }
 
     @fragment
@@ -328,12 +343,23 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   let cy = 0.5;
   let zoom = 1.0; // 1.0 = entire Tokyo 23 wards
 
+  // The data grid is square in ground units, so the view spans the screen's
+  // aspect: 1/zoom of it vertically. The density grid follows the same
+  // aspect (512 cells along the longer side) so its cells are square.
+  function gridDims(): [number, number] {
+    const a = canvas.clientWidth / canvas.clientHeight;
+    return a >= 1 ? [GRID_W, Math.max(1, Math.round(GRID_H / a))] : [Math.max(1, Math.round(GRID_W * a)), GRID_H];
+  }
+
+  // [minX, minY, maxX, maxY] in data units and the density grid size.
+  function view(): [number, number, number, number, number, number] {
+    const halfY = 0.5 / zoom;
+    const halfX = (halfY * canvas.clientWidth) / canvas.clientHeight;
+    return [cx - halfX, cy - halfY, cx + halfX, cy + halfY, ...gridDims()];
+  }
+
   function updateUniforms(): void {
-    const halfSpan = 0.5 / zoom;
-    const minX = cx - halfSpan;
-    const maxX = cx + halfSpan;
-    const minY = cy - halfSpan;
-    const maxY = cy + halfSpan;
+    const [minX, minY, maxX, maxY, gw, gh] = view();
 
     // Compute Uniforms:
     // [0..1] minX, minY, [2..3] maxX, maxY, [4..5] gridSize, [6] pointCount, [7] pad
@@ -344,8 +370,8 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     f32[1] = minY;
     f32[2] = maxX;
     f32[3] = maxY;
-    u32[4] = GRID_W;
-    u32[5] = GRID_H;
+    u32[4] = gw;
+    u32[5] = gh;
     u32[6] = pointCount;
     u32[7] = 0;
     device.queue.writeBuffer(computeUniformBuffer, 0, cData);
@@ -354,8 +380,8 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     // [0..1] gridSize, [2] colormap, [3] pad
     const rData = new ArrayBuffer(16);
     const ru32 = new Uint32Array(rData);
-    ru32[0] = GRID_W;
-    ru32[1] = GRID_H;
+    ru32[0] = gw;
+    ru32[1] = gh;
     ru32[2] = 0;
     ru32[3] = 0;
     device.queue.writeBuffer(renderUniformBuffer, 0, rData);
@@ -410,8 +436,14 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     render();
   }
 
-  function zoomBy(delta: number): void {
+  // Zoom by exp(delta) about (x, y) in CSS px (the centre when omitted):
+  // the ground under that point stays put.
+  function zoomBy(delta: number, x = canvas.clientWidth / 2, y = canvas.clientHeight / 2): void {
+    const ox = x - canvas.clientWidth / 2, oy = y - canvas.clientHeight / 2;
+    const k = 1 / zoom;
     zoom = Math.max(0.8, Math.min(32.0, zoom * Math.exp(delta)));
+    cx += ((k - 1 / zoom) * ox) / canvas.clientHeight;
+    cy += ((k - 1 / zoom) * oy) / canvas.clientHeight;
     render();
   }
 
@@ -436,6 +468,9 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
       size: 256,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
+    // A presented canvas texture reads back as zeros: draw again and copy in
+    // the same task, before the frame is presented.
+    if (webgpuCtx) render();
     const texture = webgpuCtx ? webgpuCtx.getCurrentTexture() : colorTexture;
     const encoder = device.createCommandEncoder();
     encoder.copyTextureToBuffer(
@@ -459,6 +494,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     pointCount,
     gpu: gpuDesc,
     hasSubgroups,
+    view,
     render,
     panBy,
     zoomBy,

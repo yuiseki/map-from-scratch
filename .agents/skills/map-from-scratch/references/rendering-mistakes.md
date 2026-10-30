@@ -447,6 +447,28 @@ summit sits at v 0.78, below the bottom edge of a 1920x1021 window (the
 data still covers the screen, and check it at the size people use
 (`summit-on-screen`).
 
+### A stride that stops early on Morton-ordered points (webgpu 003)
+
+Sampling 1,048,576 of 9,658,062 nodes with `i % 9 === 0` and stopping at
+the target count dropped the last 2.3 %; the nodes are in Morton order, so
+that was the whole south-east quadrant of the 23 wards (mostly sea, so few
+nodes). Sample by ratio (`floor((i + 1)·target/total)`), and look at the
+corners of a sampled data set.
+
+### A colormap named for one ramp and coded as another (webgpu 003)
+
+The function called `turbo` ran dark brown to orange to red; every cell
+from t 0.5 to 0.9 drew the same orange. Coefficients written from memory
+are not a colormap: copy them from the source (Turbo: Google's polynomial
+gist) and evaluate them at 0, 0.25 … 1 before use.
+
+### A GPU feature switched on and not used (webgpu 003)
+
+Not a picture error, a claim error: the page required `subgroups` and said
+"SIMD reduction" while the shader had no subgroup call. A check that the
+feature exists says nothing; compare the result of the path that uses it
+with a CPU computation (`gpu-peak-matches-cpu`).
+
 ## Outside the twelve
 
 ### Reading both sides of a pair (deckgl 001)

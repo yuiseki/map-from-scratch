@@ -94,6 +94,10 @@ verification:
       what: Compute Shader により 2D 密度グリッドにピーク密度が集計されている
       how: getMaxDensity() による GPU バッファ読み戻し
       expected: peakDensity >= 20
+    - id: gpu-peak-matches-cpu
+      what: subgroup で集約した GPU のピーク密度が、同じ点を CPU で同じ規則（f32 演算・同じグリッド）で集計したピークと一致する
+      how: points.bin を読み、map.view() の範囲とグリッドで CPU 集計して getMaxDensity() と比べる
+      expected: 一致
     - id: heatmap-pixels-rendered
       what: 画面中央（東京中心部）のピクセルが背景色と異なり Turbo カラーで着色されている
       how: readPixel による実描画ピクセル読み戻し

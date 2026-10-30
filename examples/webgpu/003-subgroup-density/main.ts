@@ -27,7 +27,12 @@ const firstFrameMs = performance.now() - startTime;
 const isBench = new URLSearchParams(window.location.search).has('bench');
 
 if (hudSubgroups) {
-  hudSubgroups.textContent = map.hasSubgroups ? 'Enabled (SIMD reduction)' : 'Fallback (Shared Atomics)';
+  hudSubgroups.textContent = map.hasSubgroups ? 'Enabled (one atomic per run of lanes in a cell)' : 'Not available (one atomic per point)';
+}
+const hudGrid = document.getElementById('hud-grid');
+if (hudGrid) {
+  const [, , , , gw, gh] = map.view();
+  hudGrid.textContent = `${gw} × ${gh} (${(gw * gh).toLocaleString()} cells)`;
 }
 
 if (!isBench) {
@@ -67,7 +72,8 @@ canvas.addEventListener('pointerup', () => {
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const delta = -e.deltaY * 0.002;
-  map.zoomBy(delta);
+  const r = canvas.getBoundingClientRect();
+  map.zoomBy(delta, e.clientX - r.left, e.clientY - r.top);
   map.getMaxDensity().then(val => {
     if (hudPeak) hudPeak.textContent = val.toLocaleString();
   });

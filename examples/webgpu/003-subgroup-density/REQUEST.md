@@ -1,6 +1,6 @@
 # webgpu-003-subgroup-density
 
-東京23区の OpenStreetMap 全域からサンプリングした 104 万点（1,048,576 点 = $2^{20}$ 点）の大規模点群に対し、WebGPU Compute Shader と Subgroups（SIMD レーン集約）を用いて GPU 上で直接 2D 密度グリッド（512×512 = 262,144 セル）に集計・自動露出決定（`atomicMax`）を行い、Turbo カラーマップのヒートマップとして滑らかに再描画するレンダラー。
+東京23区の OpenStreetMap 全域からサンプリングした 104 万点（1,048,576 点 = $2^{20}$ 点）の大規模点群に対し、WebGPU Compute Shader と Subgroups（SIMD レーン集約）を用いて GPU 上で直接 2D 密度グリッド（長辺 512 セル、画面の縦横比に合わせた正方セル）に集計・自動露出決定（`atomicMax`）を行い、Turbo カラーマップのヒートマップとして滑らかに再描画するレンダラー。
 
 - CPU 側での地物走査・KDE 集計ループを完全に排除し、全点を GPU Storage Buffer に保持
 - WGSL Compute Shader が 1,048,576 点を並列にスクリーン空間セルへ写像し、`atomicAdd` で密度加算
@@ -36,3 +36,9 @@
 3. **SwiftShader / ソフトウェア WebGPU 環境での swapchain 制約**:
    - Docker コンテナや SwiftShader 環境では `canvas.getContext('webgpu')` の `WebGPUSwapBufferProvider` が SharedImageBackingFactory 不在でクラッシュすることが判明。
    - SwiftShader 検出時は明示的にオフスクリーン `colorTexture` への描画・ピクセル読み戻し経路へ切り替えることで、ヘッドレス CI 環境でも堅牢に WebGPU Compute / Render パイプラインを検証できる。
+4. **レビューで直した点**:
+   - ベイクが 9,658,062 点から整数刻み（9 点おき）で 1,048,576 点を取って打ち切っていた。点は Morton 順なので、捨てた末尾 2.3% が南東の象限（江東・江戸川）をまるごと消していた。比で均等に間引く。
+   - 正方形のデータ範囲を画面全体に引き伸ばしていた（1920×843 で東西 2.3 倍）。範囲とグリッドを画面の縦横比に合わせる。
+   - `enable subgroups;` だけで subgroup 命令を使っていなかった。先頭レーンと同じセルの点を `subgroupAdd` でまとめて 1 回の `atomicAdd` にする。結果は CPU 集計と一致する（`gpu-peak-matches-cpu`）。
+   - Turbo と称する多項式が茶→橙→赤で、t 0.5〜0.9 が同じ橙だった。Google の Turbo 近似に置き換えた。
+   - ホイールズームをポインタ基準にした。実 GPU で表示済みの canvas を読むと 0 が返るので、読み取り前に描き直す。

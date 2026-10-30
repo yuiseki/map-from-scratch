@@ -32,8 +32,11 @@ const dy = new Uint16Array(bin.buffer, bin.byteOffset + 40 + totalNodes * 2, tot
 
 console.log(`Reading ${totalNodes} nodes from 04-osm-node-density...`);
 
-// Decode delta-coded Morton points to absolute coords
-const step = Math.floor(totalNodes / TARGET_COUNT);
+// Decode delta-coded Morton points to absolute coords, keeping every node
+// whose share i * TARGET / total crosses an integer. A whole stride
+// (floor(9.66 M / 1 M) = 9) stopped at node 9.44 M, and the nodes are in
+// Morton order, so the last 2.3 % that were dropped were the whole
+// south-east quadrant (Koto, Edogawa).
 const outBuffer = new ArrayBuffer(40 + TARGET_COUNT * 4);
 const dv = new DataView(outBuffer);
 dv.setUint32(0, MAGIC, true);
@@ -52,7 +55,7 @@ let written = 0;
 for (let i = 0; i < totalNodes && written < TARGET_COUNT; i++) {
   curX = (curX + dx[i]) & 0xffff;
   curY = (curY + dy[i]) & 0xffff;
-  if (i % step === 0 && written < TARGET_COUNT) {
+  if (Math.floor(((i + 1) * TARGET_COUNT) / totalNodes) > written) {
     coords[written * 2] = curX;
     coords[written * 2 + 1] = curY;
     written++;
