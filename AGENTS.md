@@ -40,7 +40,7 @@
 - `vendor/earcut/` : ベンダー同梱された earcut。
 - `.agents/skills/`（`.claude/skills`, `skills/map-from-scratch` からリンク）:
   - `map-from-scratch/` : 全体の手順 (`SKILL.md`)、`spec.yaml` 仕様 (`references/spec-yaml.md`)、設計パターン (`references/patterns.md`)、計測の落とし穴 (`references/pitfalls.md`)。
-  - 28個の技術トピックスキル（`line-tessellation`, `polygon-triangulation`, `label-placement`, `text-rendering`, `float-precision`, `data-range-requests`, `plateau-3d-tiles` など）とデータカタログ (`yuiseki-open-data`)。
+  - 30個の技術トピックスキル（`line-tessellation`, `polygon-triangulation`, `label-placement`, `text-rendering`, `float-precision`, `data-range-requests`, `plateau-3d-tiles`, `visual-review` など）とデータカタログ (`yuiseki-open-data`)。
 - `data/` / `results/` : ベイク生成データおよび計測結果の出力先（Git 管理外）。
 
 ---
@@ -97,4 +97,5 @@ tools/deploy-pages.sh           # サイト構築・全ページ検証・gh-page
 4. **テストと計測**:
    - `bin/mfs test` を実行し、ユニットテストと `tsc`（Node / Web 両方）が通ることを確認する。
    - 計測対象の環境では `bin/mfs bench <id>` を実行し、`results/<id>/screenshot.png` と `latest.json` を確認する（[計測の落とし穴](.agents/skills/map-from-scratch/references/pitfalls.md) に注意）。
+   - ブラウザでページを開き、[visual-review](.agents/skills/visual-review/SKILL.md) の手順で目視レビューする（検査がすべて通っても、潰れた地図・上下逆のカメラ・180°線で切れた陸地が残った実例がある）。
 5. **知見の記録**: 分かったこと（失敗した試みや計測ミスを含む）を数値とともに `spec.yaml` の `performance_knowledge` と `REQUEST.md` に記録する。

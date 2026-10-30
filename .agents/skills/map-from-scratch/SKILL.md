@@ -98,7 +98,7 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    startup-and-bundle-size, style-and-expressions, symbols-and-icons,
    terrain-and-elevation, testing-and-benchmarking, text-rendering,
    tile-cache-and-loading, tile-lod-and-overzoom, plateau-3d-tiles,
-   vector-tile-encoding,
+   vector-tile-encoding, visual-review,
    worker-threading; and yuiseki-open-data for the data itself. Then search
    `ref-repos/` (`rg -l` by concept, then read the few files that implement
    it) for the code, and note in `performance_knowledge` or a code comment
@@ -133,6 +133,9 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    measures (references/pitfalls.md); note the machine's load, which moves
    time budgets far more than GPU time. Change one thing at a time; for a
    parameter sweep pass it through `MFS_PAGE_QUERY` and compare runs.
+   Then open the page in a browser and review it as a user would
+   (`.agents/skills/visual-review`): every check can pass on a map that is
+   squashed, upside down or missing half the world.
 10. **Record** what was learnt in `performance_knowledge` (finding, evidence
    with numbers, when it applies), including dead ends and corrected mistakes.
 11. **Optionally compare** with a general engine under `baselines/` (see
