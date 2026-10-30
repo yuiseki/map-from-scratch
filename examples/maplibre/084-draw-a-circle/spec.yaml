@@ -1,0 +1,109 @@
+id: maplibre-084-draw-a-circle
+request: >-
+  MapLibre の "Draw a circle" 例と同じく、ニュージャージー州 [-74.5, 40] を中心とする
+  半径 50 km の円を半透明の青で背景地図の上に描き、ドラッグとホイールで操作したい。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 円1つと陸地だけで汎用エンジンを読み込む理由がない
+  - id: quick-start
+    need: ページを開いて即座に円が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: circle-on-map
+    need: 円が指定した中心・半径で描かれ、地図の操作に正しく追従する
+    unmeasured: verification checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/084-draw-a-circle/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 円データと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/084-draw-a-circle/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-084-draw-a-circle/circle.json
+    - data/baked/maplibre-084-draw-a-circle/land.json
+  preparation:
+    - MapLibre 公式例の中心 [-74.5, 40]・半径 50 km の円を 128 分割のリングとしてベイク
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: circle-as-mercator-ring
+    finding: メートル半径の円は経緯度空間で楕円になるため、ベイク時に Web Mercator のリングへ変換しておけば、実行時はポリゴンとして拡大縮小するだけで MapLibre の turf.circle と同じ形になる
+    evidence: ズーム 9 の 50 km 円が約 213 px の半径で描かれ、画面ピクセル検証で内外が分かれる
+    applies_when: 地理座標の半径指定（メートル）で円・バッファを描くとき
+  - id: translucent-fill-over-basemap
+    finding: 半透明の塗りは背景の陸地色と混ざるため、検証は単色一致ではなく青成分の差で判定すると安定する
+    evidence: 陸地 #f2efe9 上の 50% 青は rgba(121,184,244) になり、青 - 赤の差が 100 を超える
+    applies_when: 透明度付きの塗りをピクセル検証するとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/084-draw-a-circle/index.html
+      - examples/maplibre/084-draw-a-circle/main.ts
+      - examples/maplibre/084-draw-a-circle/circle.ts
+    dependencies: []
+    why: 陸地と円1つを描くだけなら Canvas 2D のパス塗りが最小・最速
+  alternatives:
+    - option: WebGL2
+      rejected_because: 単一ポリゴンの塗りにシェーダーとバッファ管理は過剰
+    - option: 円を解析的に (arc) 描く
+      rejected_because: 投影後の円は真円ではないため、メルカトル座標のリングをそのまま塗るほうが単純で正確
+  not_doing: [3D地形, 地名ラベル, 円のドラッグ編集, 半径の動的変更]
+
+verification:
+  checks:
+    - id: circle-data-loaded
+      what: 半径 50,000 m と中心 [-74.5, 40] がベイク済みデータから読まれる
+      how: map.radiusM と map.center を検証
+      expected: radiusM=50000, center=[-74.5,40]
+    - id: circle-fill-visible
+      what: 円の中心が半透明の青で塗られている
+      how: 中心の画面座標でピクセル色を検証
+      expected: b > 200, b - r >= 60, g >= 150
+    - id: circle-radius-kept
+      what: 中心から 170 px は円の内側、260 px は外側になる
+      how: 2点のピクセル色を検証
+      expected: 内側は青、外側は青でない
+    - id: pan-moves-circle
+      what: 40x20 px のパンで円が同じだけ動く
+      how: パン前後の画面座標差と中心ピクセルを検証
+      expected: dx=40, dy=20, 青
+    - id: zoom-keeps-circle
+      what: ズーム 10 でも円が中心に残る
+      how: ズーム後の中心ピクセルを検証
+      expected: 青
+  harness:
+    - contextlost が起きたらエラーにする

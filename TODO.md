@@ -103,7 +103,7 @@
 - [ ] `maplibre-081-display-line-that-crosses-180th-meridian` → `examples/maplibre/081-display-line-that-crosses-180th-meridian/` — [Display line that crosses 180th meridian](https://maplibre.org/maplibre-gl-js/docs/examples/display-line-that-crosses-180th-meridian/)
 - [ ] `maplibre-082-display-map-navigation-controls` → `examples/maplibre/082-display-map-navigation-controls/` — [Display map navigation controls](https://maplibre.org/maplibre-gl-js/docs/examples/display-map-navigation-controls/)
 - [ ] `maplibre-083-display-performance-metrics` → `examples/maplibre/083-display-performance-metrics/` — [Display Performance Metrics](https://maplibre.org/maplibre-gl-js/docs/examples/display-performance-metrics/)
-- [ ] `maplibre-084-draw-a-circle` → `examples/maplibre/084-draw-a-circle/` — [Draw a Circle](https://maplibre.org/maplibre-gl-js/docs/examples/draw-a-circle/)
+- [x] `maplibre-084-draw-a-circle` → `examples/maplibre/084-draw-a-circle/` — [Draw a Circle](https://maplibre.org/maplibre-gl-js/docs/examples/draw-a-circle/)
 - [ ] `maplibre-085-draw-geojson-points` → `examples/maplibre/085-draw-geojson-points/` — [Draw GeoJSON points](https://maplibre.org/maplibre-gl-js/docs/examples/draw-geojson-points/)
 - [ ] `maplibre-086-draw-geometries-with-terra-draw` → `examples/maplibre/086-draw-geometries-with-terra-draw/` — [Draw geometries with terra-draw](https://maplibre.org/maplibre-gl-js/docs/examples/draw-geometries-with-terra-draw/)
 - [ ] `maplibre-087-draw-polygon-with-mapbox-gl-draw` → `examples/maplibre/087-draw-polygon-with-mapbox-gl-draw/` — [Draw polygon with mapbox-gl-draw](https://maplibre.org/maplibre-gl-js/docs/examples/draw-polygon-with-mapbox-gl-draw/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **33 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **34 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
