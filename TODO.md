@@ -233,7 +233,7 @@
 - [ ] `d3-002-bivariate-choropleth` → `examples/d3/002-bivariate-choropleth/` — [Bivariate choropleth](https://observablehq.com/@d3/bivariate-choropleth)
 - [ ] `d3-003-us-state-choropleth` → `examples/d3/003-us-state-choropleth/` — [State choropleth](https://observablehq.com/@d3/us-state-choropleth/2)
 - [ ] `d3-004-world-choropleth` → `examples/d3/004-world-choropleth/` — [World choropleth](https://observablehq.com/@d3/world-choropleth/2)
-- [ ] `d3-005-world-map` → `examples/d3/005-world-map/` — [World map](https://observablehq.com/@d3/world-map)
+- [x] `d3-005-world-map` → `examples/d3/005-world-map/` — [World map](https://observablehq.com/@d3/world-map)
 - [ ] `d3-006-projection-transitions` → `examples/d3/006-projection-transitions/` — [Projection transitions](https://observablehq.com/@d3/projection-transitions)
 - [ ] `d3-007-projection-comparison` → `examples/d3/007-projection-comparison/` — [Projection comparison](https://observablehq.com/@d3/projection-comparison)
 - [ ] `d3-008-antimeridian-cutting` → `examples/d3/008-antimeridian-cutting/` — [Antimeridian cutting](https://observablehq.com/@d3/antimeridian-cutting)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **28 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **29 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

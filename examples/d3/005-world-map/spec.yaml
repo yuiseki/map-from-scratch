@@ -1,0 +1,106 @@
+id: d3-005-world-map
+request: >-
+  D3 の world map と同じ意図で、正距円筒図法の世界地図を陸地と10度刻みの経緯線で
+  描きたい。ブラウザで開いた瞬間に全体が見え、外部ライブラリなしで最速・最小に。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 静的な世界地図に汎用エンジンや D3 本体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 低解像度の陸地データだけで 300 ms 以内に表示
+  - id: map-accuracy
+    need: 経緯線と大陸の位置が正距円筒図法どおりで、日付変更線を越える陸地も破綻しない
+    unmeasured: verification の checks で画面ピクセルを検証
+  - id: redraw-cost
+    need: リサイズや再描画で全体を描き直しても 1 フレームに収まる
+    rationale: 60 Hz の1フレームは 16.7 ms。全陸地の再描画を 8.3 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.3, unit: ms, requirement: redraw-cost}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: redraw-cost}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/d3/005-world-map/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: redraw
+      what: 60回の全体再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/d3/005-world-map/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/d3-005-world-map/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを正距円筒の [0, 1] に投影して量子化
+    - 日付変更線を越えるリングを ±180 度で分割し、各片を [0, 1] に正規化
+
+performance_knowledge:
+  - id: static-projection-no-tiles
+    finding: 世界全体を1枚で見る静的な地図は、投影をベイク時に適用したポリゴン JSON と Canvas 2D の単純な描画で足り、タイル取得も毎フレームの投影計算も要らない
+    evidence: 110m 陸地の全体再描画は 60 回のループでも1フレーム未満に収まった
+    applies_when: 世界地図の俯瞰、図版・レポート用の静的背景、投影を切り替えない表示
+  - id: antimeridian-cut-at-bake
+    finding: 日付変更線をまたぐリングを描画時に処理するのではなく、ベイク時に ±180 度で分割して [0, 1] に正規化すると、実行時は座標を掛けるだけで破綻しない
+    evidence: アラスカとチュクチ半島の両方が、地図の反対側へ帯状に伸びずに陸地として描かれた
+    applies_when: 静的投影で全球の陸地・国境を塗る描画器
+  - id: graticule-before-land
+    finding: 経緯線を陸地より先に描くと、陸地の上に線が重ならず、元の D3 の見た目に近いまま描画命令を1パスで済ませられる
+    evidence: 海の上だけで経緯線のピクセルを検出できた
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/d3/005-world-map/index.html
+      - examples/d3/005-world-map/main.ts
+      - examples/d3/005-world-map/map.ts
+    dependencies: []
+    why: 静的な単一投影の世界地図は、ベイク済みポリゴンの Canvas 2D 塗りが最小かつ十分
+  alternatives:
+    - option: SVG (元例と同じ)
+      rejected_because: 数千のパス要素を DOM に置くと初回表示と再描画が遅く、配布サイズも大きい
+    - option: WebGL2
+      rejected_because: 静的表示ではシェーダーと頂点管理のオーバーヘッドだけが増える
+  not_doing: [タイル取得, パン・ズーム操作, 国名ラベル, 投影切り替え, 3D]
+
+verification:
+  checks:
+    - id: world-map-rendered
+      what: ヨーロッパ [10, 50] が陸地色、中央太平洋 [-133, 13] が海色で描かれている
+      how: getImageData で投影位置のピクセル色を検証
+      expected: land: |r-204|,|g-204|,|b-204| < 12, ocean: b > 235 かつ b-r > 8
+    - id: antimeridian-clean
+      what: 日付変更線の両側（アラスカ [-150, 65]、チュクチ [170, 67]）が陸地として描かれ、帯状のにじみがない
+      how: 両地点のピクセル色を検証
+      expected: 両方とも陸地色
+    - id: graticule-drawn
+      what: 赤道と西経30度の交点付近に、海色以外の経緯線ピクセルがある
+      how: 5x5 の画素領域で海色でないピクセルを数える
+      expected: 1 ピクセル以上
+    - id: redraw-stable
+      what: 60回の再描画後も陸地の位置が変わらない
+      how: 再描画後に [10, 50] のピクセル色を再検証
+      expected: 陸地色
+  harness:
+    - contextlost が起きたらエラーにする
