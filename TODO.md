@@ -1,4 +1,4 @@
-# TODO: 4つの地図 example ギャラリーを1例1描画器で実装する
+# TODO: 地図 example ギャラリーを1例1描画器で実装する
 
 2026-10-29 時点の各公式ギャラリーを棚卸しした。**このファイルは実装計画であり、速度の達成結果ではない。**
 
@@ -261,7 +261,27 @@
 - [ ] `d3-030-hexbin-map` → `examples/d3/030-hexbin-map/` — [Hexbin map](https://observablehq.com/@d3/hexbin-map)
 - [ ] `d3-031-spilhaus-shoreline-map` → `examples/d3/031-spilhaus-shoreline-map/` — [Spilhaus shoreline map](https://observablehq.com/@d3/spilhaus-shoreline-map)
 
+## Tangram: 15 件
+
+出典: [Tangram Demo Repositories](https://github.com/tangrams?utf8=%E2%9C%93&q=demo&type=&language=)。Mapzen によるシェーダー駆動・YAML スタイル定義の 2D/3D WebGL 地図エンジン。15個の公式デモリポジトリが示す各目的・技術的挑戦（シェーダーアニメーション、道路フィルタ、カメラ/照明、標高シェーディング等）を独立描画器で再現する。
+
+- [ ] `tangram-001-filters-demo` → `examples/tangram/001-filters-demo/` — [Filtering data in Tangram](https://github.com/tangrams/filters-demo)
+- [ ] `tangram-002-generic-demo` → `examples/tangram/002-generic-demo/` — [Generic Tangram setup for Mapzen maps](https://github.com/tangrams/generic-demo)
+- [ ] `tangram-003-gui-demo` → `examples/tangram/003-gui-demo/` — [GUI style editor demo](https://github.com/tangrams/gui-demo)
+- [ ] `tangram-004-highways-demo` → `examples/tangram/004-highways-demo/` — [Zoom-dependent road styling](https://github.com/tangrams/highways-demo)
+- [ ] `tangram-005-lights-cameras-demo` → `examples/tangram/005-lights-cameras-demo/` — [Light and camera types and manipulations](https://github.com/tangrams/lights-cameras-demo)
+- [ ] `tangram-006-osm-webgl-demos` → `examples/tangram/006-osm-webgl-demos/` — [OSM vector data WebGL manipulation](https://github.com/tangrams/osm-webgl-demos)
+- [ ] `tangram-007-raster-baselayer-demo` → `examples/tangram/007-raster-baselayer-demo/` — [WebGL content over raster baselayer](https://github.com/tangrams/raster-baselayer-demo)
+- [ ] `tangram-008-road-filters-demo` → `examples/tangram/008-road-filters-demo/` — [Real-time road name filters](https://github.com/tangrams/road-filters-demo)
+- [ ] `tangram-009-shaders-demo` → `examples/tangram/009-shaders-demo/` — [Custom GLSL shaders for map styling](https://github.com/tangrams/shaders-demo)
+- [ ] `tangram-010-simple-demo` → `examples/tangram/010-simple-demo/` — [Simplest stand-alone Tangram setup](https://github.com/tangrams/simple-demo)
+- [ ] `tangram-011-spheremap-demos` → `examples/tangram/011-spheremap-demos/` — [Sphere map reflection and lighting demos](https://github.com/tangrams/spheremap-demos)
+- [ ] `tangram-012-tangram-android-demos` → `examples/tangram/012-tangram-android-demos/` — [Tangram Android SDK demos](https://github.com/tangrams/tangram-android-demos)
+- [ ] `tangram-013-terrain-demos` → `examples/tangram/013-terrain-demos/` — [Terrain data and heightmap manipulation](https://github.com/tangrams/terrain-demos)
+- [ ] `tangram-014-terrain-light-demo` → `examples/tangram/014-terrain-light-demo/` — [Dynamic terrain lighting demo](https://github.com/tangrams/terrain-light-demo)
+- [ ] `tangram-015-texture-demos` → `examples/tangram/015-texture-demos/` — [Tiled textures inside GLSL shaders](https://github.com/tangrams/texture-demos)
+
 ## 進捗
 
-- 対象: **225 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31）。実装済み **10 件**（maplibre-056、deckgl-006、007、008、010、011、012、018、025、d3-016）。
+- 対象: **240 件**（MapLibre 141、Leaflet 15、deck.gl 38、D3 31、Tangram 15）。実装済み **10 件**（maplibre-056、deckgl-006、007、008、010、011、012、018、025、d3-016）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
