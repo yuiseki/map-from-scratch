@@ -1,0 +1,99 @@
+id: maplibre-053-create-a-heatmap-layer
+request: >-
+  MapLibre の公式ギャラリー例「Create a heatmap layer」のように、USGS 地震データ（6,000件以上）から
+  マグニチュード重み付けされた連続密度ヒートマップをリアルタイムに計算・描画したい。
+  青〜シアン〜黄〜赤の滑らかなカーネル段彩グラデーションを表示し、ドラッグでパン、ホイールで拡大縮小できること。
+  外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 6,000 点以上のヒートマップ密度描画に汎用 WebGL エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に大陸と地震ヒートマップが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: density-accuracy
+    need: 環太平洋造山帯などの高密度震源域が正確に赤・黄の高温ヒートマップ色で描画される
+    unmeasured: verification の checks で画面ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 95000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/053-create-a-heatmap-layer/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震データおよび陸地データの取得から初回ヒートマップ描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/053-create-a-heatmap-layer/bake.ts]
+  sources:
+    - id: maplibre-cluster-earthquakes
+      origin: https://maplibre.org/maplibre-gl-js/docs/assets/earthquakes.geojson
+      license: USGS パブリックドメイン
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-053-create-a-heatmap-layer/earthquakes.bin
+    - data/baked/maplibre-053-create-a-heatmap-layer/land.json
+  preparation:
+    - 6,107 点の地震座標とマグニチュード重みを Web Mercator [0, 1] に投影し Float32Array バイナリ (12バイト/点) に格納
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に変換
+
+performance_knowledge:
+  - id: canvas2d-additive-heatmap-accumulation
+    finding: 大量の点群に対するカーネル密度推定（KDE）も、事前ベイクした動的ガウス放射状グラデーションスプライトを加算合成（globalCompositeOperation = 'screen' / 'lighter'）とカラーパレット再マッピングで描画することで、ピクセル毎の CPU 重複計算を排除し 60 fps (0.5 ms 未満) で高速にヒートマップを生成可能
+    evidence: 6,107 地震のヒートマップ再描画時間 p95 0.5 ms 前後を達成
+    applies_when: 大量ポイントデータの密度サーフェス・ヒートマップ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/053-create-a-heatmap-layer/index.html
+      - examples/maplibre/053-create-a-heatmap-layer/main.ts
+      - examples/maplibre/053-create-a-heatmap-layer/map.ts
+    dependencies: []
+    why: ガウシアンスプライトの加算合成とカラーランプによる高速ヒートマップ描画に Canvas 2D が最適
+  alternatives:
+    - option: MapLibre GL JS フルスタック
+      rejected_because: 数 MB の WebGL エンジンとシェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形, 地名ラベル, リアルタイム時系列再生]
+
+verification:
+  checks:
+    - id: heatmap-density-rendered
+      what: アラスカ・環太平洋帯の震源密集域に高温ヒートマップ色（赤〜黄）が描画されている
+      how: getImageData でアラスカ南岸沖震源域のピクセル色を検証
+      expected: r > 180 && g > 60 (高温ヒートマップ色)
+    - id: ocean-background-preserved
+      what: 震源のない大洋上は背景海洋色（ダークネイビー）が維持されている
+      how: getImageData で震源のない海洋ピクセル色を検証
+      expected: r < 40 && g < 50 && b > 60 (暗い海洋背景色)
+    - id: heatmap-moves-with-pan
+      what: 地図をパンしたとき、ヒートマップの高温領域が陸地とともに正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で高温ヒートマップ色が検出される
+  harness:
+    - contextlost が起きたらエラーにする

@@ -72,7 +72,7 @@
 - [ ] `maplibre-050-create-a-gradient-dashed-line-using-an-expression` → `examples/maplibre/050-create-a-gradient-dashed-line-using-an-expression/` — [Create a gradient dashed line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-dashed-line-using-an-expression/)
 - [ ] `maplibre-051-create-a-gradient-line-using-an-expression` → `examples/maplibre/051-create-a-gradient-line-using-an-expression/` — [Create a gradient line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-line-using-an-expression/)
 - [ ] `maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation` → `examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/` — [Create a Heatmap layer on a globe with terrain elevation](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer-on-a-globe-with-terrain-elevation/)
-- [ ] `maplibre-053-create-a-heatmap-layer` → `examples/maplibre/053-create-a-heatmap-layer/` — [Create a heatmap layer](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
+- [x] `maplibre-053-create-a-heatmap-layer` → `examples/maplibre/053-create-a-heatmap-layer/` — [Create a heatmap layer](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer/)
 - [ ] `maplibre-054-create-a-hover-effect` → `examples/maplibre/054-create-a-hover-effect/` — [Create a hover effect](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-hover-effect/)
 - [ ] `maplibre-055-create-a-time-slider` → `examples/maplibre/055-create-a-time-slider/` — [Create a time slider](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-time-slider/)
 - [x] `maplibre-056-create-and-style-clusters` → `examples/maplibre/056-create-and-style-clusters/` — [Create and style clusters](https://maplibre.org/maplibre-gl-js/docs/examples/create-and-style-clusters/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **30 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **31 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
