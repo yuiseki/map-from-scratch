@@ -28,7 +28,19 @@ function unwrap(ring: Ring): Ring {
 // holes stay together. Without the cut a ring crossing 180 deg fills as a
 // band across the whole map.
 function cut(ring: Ring): { k: number; ring: number[][] }[] {
+  // Start at a jump across 180 deg, so a ring around a pole is split at the
+  // map edge and not where the data happens to start (a seam at 59W).
+  const open = ring.slice(0, -1);
+  const jump = open.findIndex((p, i) => i > 0 && Math.abs(p[0] - open[i - 1][0]) > 180);
+  if (jump > 0) ring = [...open.slice(jump), ...open.slice(0, jump), open[jump]];
   const u = unwrap(ring);
+  // A ring around a pole (Antarctica) ends 360 deg from where it started:
+  // close it along the pole, or the pieces close with chords (wedges).
+  const turn = u[u.length - 1][0] - u[0][0];
+  if (Math.abs(turn) > 180) {
+    const pole = u.reduce((sum, p) => sum + p[1], 0) < 0 ? -90 : 90;
+    u.push([u[u.length - 1][0], pole], [u[0][0], pole]);
+  }
   const pieces: { k: number; ring: number[][] }[] = [];
   let k = Math.floor(xOf(u[0][0]));
   let cur: number[][] = [[Number((xOf(u[0][0]) - k).toFixed(5)), Number(yOf(u[0][1]).toFixed(5))]];
@@ -56,6 +68,10 @@ function cut(ring: Ring): { k: number; ring: number[][] }[] {
     cur.push([Number((b - k).toFixed(5)), Number(cy.toFixed(5))]);
   }
   pieces.push({ k, ring: cur });
+  // The ring is closed: the last piece continues into the first one.
+  if (pieces.length > 1 && pieces[0].k === pieces[pieces.length - 1].k) {
+    pieces[0].ring = pieces.pop()!.ring.concat(pieces[0].ring);
+  }
   return pieces;
 }
 

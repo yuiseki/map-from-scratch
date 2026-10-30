@@ -28,12 +28,15 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
 
   // Verification 2: land on both sides of the antimeridian (Alaska, Chukotka);
   // a ring that was not cut at 180 deg would spill across the map instead.
+  // Antarctica goes around the pole: cut wrongly it shows as two wedges with
+  // sea between them and the bottom edge, so check land next to the pole too.
   const alaska = pixelAt(-150, 65);
   const chukotka = pixelAt(170, 67);
+  const pole = [pixelAt(5, -88), pixelAt(-125, -88)];
   emit({
     check: 'antimeridian-clean',
-    pass: isLand(alaska) && isLand(chukotka),
-    detail: `Alaska rgba(${alaska.join(',')}), Chukotka rgba(${chukotka.join(',')})`,
+    pass: isLand(alaska) && isLand(chukotka) && pole.every(isLand),
+    detail: `Alaska rgba(${alaska.join(',')}), Chukotka rgba(${chukotka.join(',')}), near the pole ${pole.map((p) => `rgba(${p.join(',')})`).join(' ')}`,
   });
 
   // Verification 3: the 10-degree graticule is drawn over the ocean: within a
