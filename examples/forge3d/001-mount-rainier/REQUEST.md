@@ -35,9 +35,9 @@ forge3d の代表例「Mount Rainier」のように、Mt. Rainier の DEM を 3D
 
 | 項目 | 値 |
 | --- | --- |
-| 初回描画 first_frame_ms p50 | 38.08 ms（p95 140.4） |
-| 再描画 redraw_ms p95 | 0.05 ms（max 0.11） |
-| フレーム間隔 frame_interval_ms p95 | 0.42 ms |
+| 初回描画 first_frame_ms p50 | 43.8 ms（実行ごとに 38〜44 ms、p95 はコールドスタートで 140〜233） |
+| 再描画 redraw_ms p95 | 0.055 ms（max 0.11） |
+| フレーム間隔 frame_interval_ms p95 | 0.385 ms |
 | コード gzip | 5,774 B |
 | データ gzip | 540,000 B（rainier.bin 737,300 B） |
 | 検証チェック | 5 / 5 PASS |
