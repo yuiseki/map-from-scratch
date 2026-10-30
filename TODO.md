@@ -293,7 +293,7 @@
 - [ ] `openglobus-006-billboards-on-the-ground` → `examples/openglobus/006-billboards-on-the-ground/` — [Ground Billboards](https://sandbox.openglobus.org/examples/billboardsOnTheGround/billboardsOnTheGround.html)
 - [ ] `openglobus-007-camera-fly` → `examples/openglobus/007-camera-fly/` — [Fly Camera](https://sandbox.openglobus.org/examples/cameraFly/cameraFly.html)
 - [ ] `openglobus-008-canvas-tiles` → `examples/openglobus/008-canvas-tiles/` — [CanvasTiles Layer](https://sandbox.openglobus.org/examples/canvasTiles/canvasTiles.html)
-- [ ] `openglobus-009-circles-on-the-ground` → `examples/openglobus/009-circles-on-the-ground/` — [Ground Circles-Polylines](https://sandbox.openglobus.org/examples/circlesOnTheGround/circlesOnTheGround.html)
+- [x] `openglobus-009-circles-on-the-ground` → `examples/openglobus/009-circles-on-the-ground/` — [Ground Circles-Polylines](https://sandbox.openglobus.org/examples/circlesOnTheGround/circlesOnTheGround.html)
 - [ ] `openglobus-010-clocks` → `examples/openglobus/010-clocks/` — [Clocks](https://sandbox.openglobus.org/examples/clocks/clocks.html)
 - [ ] `openglobus-011-custom-control` → `examples/openglobus/011-custom-control/` — [Custom Plugin (open with the link)](https://sandbox.openglobus.org/examples/customControl/customControl.html)
 - [ ] `openglobus-012-custom-scene` → `examples/openglobus/012-custom-scene/` — [Custom Scene](https://sandbox.openglobus.org/examples/customScene/customScene.html)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **38 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、062、tangram-001、004、010、forge3d-004、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **39 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

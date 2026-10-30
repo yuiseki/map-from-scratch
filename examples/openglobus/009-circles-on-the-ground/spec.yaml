@@ -1,0 +1,118 @@
+id: openglobus-009-circles-on-the-ground
+request: >-
+  OpenGlobus の "Circles on the ground" 例と同じく、東京・ニューヨーク・ロンドンを中心とする
+  半径 1,500 / 1,200 / 1,000 km の地面円を半透明の色で陸地の上に描き、
+  ドラッグとホイールで操作したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 陸地と円3つだけに汎用3Dエンジンを読み込む理由がない
+  - id: quick-start
+    need: ページを開いて即座に円が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: circles-on-ground
+    need: 円が指定した中心・半径で描かれ、地図の操作に正しく追従する
+    unmeasured: verification checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 120000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/009-circles-on-the-ground/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 円データと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/openglobus/009-circles-on-the-ground/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/openglobus-009-circles-on-the-ground/land.json
+    - data/baked/openglobus-009-circles-on-the-ground/circles.json
+  preparation:
+    - OpenGlobus 公式例と同じ中心・メートル半径の円を 128 分割のリングとしてベイク
+    - 緯度ごとに経度方向の縮み（cos 緯度）を補正して地理座標の円を作る
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: circle-as-mercator-ring
+    finding: メートル半径の地面円は経緯度空間で楕円になり、緯度方向と経度方向で伸びが違う。ベイク時に cos 緯度で経度を補正してリングを作れば、実行時はポリゴンとして拡大縮小するだけで OpenGlobus の地面円と同じ形になる
+    evidence: ズーム 2 で東京 47.2 px / ニューヨーク 40.4 px / ロンドン 41.0 px の水平半径で描かれ、画面ピクセル検証で塗りが確認できる
+    applies_when: 地理座標の半径指定（メートル）で地球表面の円を描くとき
+  - id: translucent-fill-over-basemap
+    finding: 半透明の塗りは背景の海色・陸地色と混ざるため、検証は単色一致ではなく各色成分の差で判定すると安定する
+    evidence: 暗い海 #0b1220 の上の 28% シアンは rgba(24,66,92)、アンバーは rgba(77,57,26) になる
+    applies_when: 透明度付きの塗りをピクセル検証するとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/openglobus/009-circles-on-the-ground/index.html
+      - examples/openglobus/009-circles-on-the-ground/main.ts
+      - examples/openglobus/009-circles-on-the-ground/map.ts
+    dependencies: []
+    why: 正距円筒図法で全世界と円3つを描くだけなら Canvas 2D のパス塗りが最小・最速
+  alternatives:
+    - option: WebGL2
+      rejected_because: 単一ポリゴンの塗りにシェーダーとバッファ管理は過剰
+    - option: 円を解析的に (arc) 描く
+      rejected_because: 投影後の地面円は真円ではないため、メルカトル座標のリングをそのまま塗るほうが単純で正確
+  not_doing: [3D地球儀, 地名ラベル, 円のドラッグ編集, 半径の動的変更]
+
+verification:
+  checks:
+    - id: circles-loaded
+      what: 3つの円が 128 分割リングと 1,500 / 1,200 / 1,000 km の半径で読まれる
+      how: map.circles の半径とリング長を検証
+      expected: Tokyo 1500000, New York 1200000, London 1000000, ring 129 点
+    - id: tokyo-circle-fill
+      what: 東京の円の半径の半分の位置が半透明のシアンで塗られている
+      how: 中心から左へ 0.5R の画面座標でピクセル色を検証
+      expected: b > 75, b - r > 50, g > 55
+    - id: new-york-circle-fill
+      what: ニューヨークの円の半径の半分の位置が半透明のアンバーで塗られている
+      how: 中心から左へ 0.5R の画面座標でピクセル色を検証
+      expected: r > 55, r - b > 35, g > 40
+    - id: london-circle-fill
+      what: ロンドンの円の半径の半分の位置が半透明の紫で塗られている
+      how: 中心から左へ 0.5R の画面座標でピクセル色を検証
+      expected: b > 70, b - g > 25, r > 35
+    - id: radius-kept
+      what: ズーム 2 で各円の水平半径がベイクしたメートル半径どおりになる
+      how: circleRadiusPx でリング両端の画面距離を検証
+      expected: Tokyo 47.2 px, New York 40.4 px, London 41.0 px（±2.5）
+    - id: pan-moves-circles
+      what: 40x20 px のパンで円が同じだけ動き、塗りも残る
+      how: パン前後の東京の画面座標差と塗りピクセルを検証
+      expected: dx=40, dy=20, シアン
+    - id: zoom-keeps-circles
+      what: 東京を中心にズーム 3 にすると円が中心に残り、半径が約2倍になる
+      how: ズーム後の半径と塗りピクセルを検証
+      expected: R が 1.8〜2.2 倍, b - r > 50
+  harness:
+    - contextlost が起きたらエラーにする

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenGlobus: Circles on the ground</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1220; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+    .panel b { color: #93c5fd; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div><b>OpenGlobus 009</b>: ground circles</div>
+    <div>Tokyo 1,500 km / New York 1,200 km / London 1,000 km</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
