@@ -1,0 +1,101 @@
+id: opfs-001-offline-pmtiles
+request: >-
+  ブラウザの OPFS（Origin Private File System）に PMTiles アーカイブを配置し、
+  Dedicated Worker から FileSystemSyncAccessHandle で同期 Range 読み出しを行って
+  完全オフラインでパン・ズームできる世界地図を描画したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: サードパーティの PMTiles ライブラリを使わず、仕様準拠の自前リーダーを実装
+  - id: quick-start
+    need: ページを開いて即座に地図が表示される
+    rationale: OPFS への配置と初期タイル読み出しを 300 ms 以内に完了
+  - id: smooth-interaction
+    need: パン・ズーム操作時に 60 fps で滑らかに再描画される
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 2.0 ms 以下に
+  - id: opfs-sync-io
+    need: タイル要求が Worker 内の同期ファイルアクセスで処理され、ネットワーク通信が 0 であること
+    unmeasured: verification checks で OPFS 読み出し回数と画面描画を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 90000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/opfs/001-offline-pmtiles/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: OPFS ファイル準備から初期タイルの同期読み出し・Canvas 描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームの地図パン中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/opfs/001-offline-pmtiles/bake.ts]
+  sources:
+    - id: natural-earth-110m-land
+      origin: Natural Earth 1:110m Land Polygons
+      license: Public Domain
+  outputs:
+    - data/baked/opfs-001-offline-pmtiles/world.pmtiles
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンからズーム 0〜2 のタイル別ベクターポリゴンを生成
+    - PMTiles v3 仕様（127B ヘッダー、Hilbert tileId 索引、varint ディレクトリ）の単一アーカイブにベイク
+
+performance_knowledge:
+  - id: opfs-sync-access-handle
+    finding: FileSystemSyncAccessHandle.read() を Dedicated Worker 内で使用することで、HTTP Range リクエストで 20〜100 ms かかる PMTiles の断片読み出しを 0.05 ms 以下の同期 I/O で実行でき、ネットワーク往復遅延を完全に排除できる
+    evidence: OPFS read latency 計測で実証
+    applies_when: オフライン地図、大容量地理アーカイブ、リアルタイム同期読み出し
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + OPFS + Dedicated Worker
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/opfs/001-offline-pmtiles/index.html
+      - examples/opfs/001-offline-pmtiles/main.ts
+      - examples/opfs/001-offline-pmtiles/map.ts
+      - examples/opfs/001-offline-pmtiles/worker.ts
+    dependencies: []
+    why: FileSystemSyncAccessHandle は Web Worker 限定 API であり、メインスレッドの UI をブロックせず同期 I/O を行える唯一の標準手段
+  alternatives:
+    - option: HTTP Range Requests
+      rejected_because: 毎回 CORS / ネットワーク往復遅延が発生し、完全オフラインで動作しない
+    - option: IndexedDB Blob storage
+      rejected_because: IDB は非同期かつトランザクションオーバーヘッドがあり、SyncAccessHandle のようなゼロオーバーヘッド同期バイトオフセット read ができない
+  not_doing: [3D 地形標高, 全球衛星写真, リアルタイム地物検索]
+
+verification:
+  checks:
+    - id: opfs-stored
+      what: PMTiles アーカイブがブラウザの OPFS に格納されている
+      how: OPFS ファイルハンドルからサイズを取得してベイクファイルと比較
+      expected: OPFS ファイルサイズ > 0
+    - id: sync-access-reads
+      what: Worker 内で FileSystemSyncAccessHandle による同期 Range 読み出しが行われている
+      how: Worker から報告された sync read 回数と累積時間を検証
+      expected: readCount >= 4, 平均レイテンシ < 1.0 ms
+    - id: tiles-rendered
+      what: 画面中央に陸地ポリゴンが描画されている
+      how: 画面中央付近のピクセル色を検証
+      expected: 海洋色（#0f172a）と異なる陸地色（#1e293b）
+    - id: pan-triggers-opfs-reads
+      what: 地図をパンしたとき、追加のタイルが OPFS 同期 I/O で取得され、ネットワーク要求が 0 のままである
+      how: パン前後の readCount とネットワーク要求数を検証
+      expected: readCount 増加、ネットワーク要求 0
+  harness:
+    - contextlost が起きたらエラーにする
