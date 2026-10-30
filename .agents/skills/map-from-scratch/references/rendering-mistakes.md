@@ -36,12 +36,19 @@ what went wrong.
   maplibre 056. Search for the absence of the fix, not for one spelling of
   the bug.
 
-### Data layers drawn once while the land repeats (maplibre 056)
+### Data layers drawn once while the land repeats (repeated: maplibre 056; openglobus 050)
 
 With the land repeated, the clusters still sat on one copy at zoom 0. Draw
 every layer that has map positions per copy (for a WebGL layer, one draw per
 copy with the centre shifted by whole worlds), and offset labels and hit
 testing the same way.
+
+050 had the same split in a later example: the land loop repeated, the three
+points and their hit test did not, so the North America on the right of a
+1920 px screen had no New York. One helper that returns the copy range, used
+by land, points and the hit test, keeps them from drifting apart. A check
+that centres the map on 180° and clicks one world east of a point catches it
+at the 1024 px bench width, where one world fills the screen.
 
 ### A fixed number of copies (maplibre 053)
 

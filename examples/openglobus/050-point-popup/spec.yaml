@@ -118,5 +118,9 @@ verification:
       what: 'ホイールズームでカーソル下の点が動かない'
       how: zoomAt でロンドンをアンカーに zoom 2→3 し、画面上のずれを計測
       expected: 'ずれ < 1.5 px'
+    - id: point-repeats-on-world-copy
+      what: '陸地と同じく点も東西の世界コピーに描かれ、コピー側のクリックでもポップアップが出る'
+      how: 経度 180° を中心にし、1 世界ぶん東のニューヨークのピクセル色と clickAtScreen の結果を検証
+      expected: 'オレンジのピクセルと "New York, USA"'
   harness:
     - contextlost が起きたらエラーにする

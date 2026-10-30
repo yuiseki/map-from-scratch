@@ -72,6 +72,21 @@ export async function run(map: PopupPointsMap, firstFrameMs: number): Promise<vo
     detail: `activePopup="${map.activePopup?.text}"`,
   });
 
+  // The land repeats east and west, so the points must too. Centred on the
+  // antimeridian, New York is off the west edge of the world the points
+  // are stored in; one world east of that it must be drawn and clickable.
+  const saved = { ...map.center };
+  map.setCenter(180, saved.lat);
+  const ex = at('New York')[0] + 256 * Math.pow(2, map.zoom);
+  const copyPx = rgba(ex + 4, ny);
+  map.clickAtScreen(ex, ny);
+  map.setCenter(saved.lon, saved.lat);
+  emit({
+    check: 'point-repeats-on-world-copy',
+    pass: copyPx[0] > 200 && copyPx[2] < 80 && map.activePopup?.text === 'New York, USA',
+    detail: `${fmt(copyPx)} at (${Math.round(ex)},${Math.round(ny)}), activePopup="${map.activePopup?.text}"`,
+  });
+
   // 3. Pan cost and frame pacing.
   const raf = () => new Promise<number>(requestAnimationFrame);
   const redrawTimes: number[] = [];

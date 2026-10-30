@@ -106,13 +106,23 @@ export class PopupPointsMap {
     return [w / 2 + (mx - mercX(this.center.lon)) * scale, h / 2 + (my - mercY(this.center.lat)) * scale];
   }
 
+  // World copies that touch the viewport: land, points and hits all use it.
+  wraps(): [number, number] {
+    const half = this.canvas.width / this.dpr / (2 * 256 * Math.pow(2, this.zoom));
+    const cx = mercX(this.center.lon);
+    return [Math.floor(cx - half), Math.ceil(cx + half) - 1];
+  }
+
   clickAtScreen(x: number, y: number): void {
-    for (const p of this.points) {
-      const [sx, sy] = this.screenFromMercator(p.mx, p.my);
-      if (Math.hypot(x - sx, y - sy) <= HIT_RADIUS) {
-        this.activePopup = { text: p.text, mx: p.mx, my: p.my };
-        this.draw();
-        return;
+    const [w0, w1] = this.wraps();
+    for (let k = w0; k <= w1; k++) {
+      for (const p of this.points) {
+        const [sx, sy] = this.screenFromMercator(p.mx + k, p.my);
+        if (Math.hypot(x - sx, y - sy) <= HIT_RADIUS) {
+          this.activePopup = { text: p.text, mx: p.mx + k, my: p.my };
+          this.draw();
+          return;
+        }
       }
     }
     this.activePopup = null;
@@ -170,8 +180,7 @@ export class PopupPointsMap {
     ctx.fillStyle = '#1b2a41';
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1;
-    const minWrap = Math.floor(mercX(this.center.lon) - w / (2 * scale));
-    const maxWrap = Math.ceil(mercX(this.center.lon) + w / (2 * scale));
+    const [minWrap, maxWrap] = this.wraps();
     for (let wrap = minWrap; wrap <= maxWrap; wrap++) {
       const shiftX = originX + wrap * scale;
       for (const poly of this.polygons) {
@@ -193,8 +202,8 @@ export class PopupPointsMap {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.font = 'bold 12px system-ui, sans-serif';
-    for (const p of this.points) {
-      const [x, y] = this.screenFromMercator(p.mx, p.my);
+    for (let k = minWrap; k <= maxWrap; k++) for (const p of this.points) {
+      const [x, y] = this.screenFromMercator(p.mx + k, p.my);
 
       ctx.beginPath();
       ctx.arc(x, y, 12, 0, Math.PI * 2);
