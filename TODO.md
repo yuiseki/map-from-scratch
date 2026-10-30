@@ -392,7 +392,7 @@
 - [ ] `mapbox-015-add-image-stretchable` → `examples/mapbox/015-add-image-stretchable/` — [Add Image Stretchable](https://docs.mapbox.com/mapbox-gl-js/example/add-image-stretchable/)
 - [ ] `mapbox-016-add-terrain` → `examples/mapbox/016-add-terrain/` — [Add Terrain](https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/)
 - [ ] `mapbox-017-adjust-layer-opacity` → `examples/mapbox/017-adjust-layer-opacity/` — [Adjust Layer Opacity](https://docs.mapbox.com/mapbox-gl-js/example/adjust-layer-opacity/)
-- [ ] `mapbox-018-animate-a-line` → `examples/mapbox/018-animate-a-line/` — [Animate A Line](https://docs.mapbox.com/mapbox-gl-js/example/animate-a-line/)
+- [x] `mapbox-018-animate-a-line` → `examples/mapbox/018-animate-a-line/` — [Animate A Line](https://docs.mapbox.com/mapbox-gl-js/example/animate-a-line/)
 - [ ] `mapbox-019-animate-ant-path` → `examples/mapbox/019-animate-ant-path/` — [Animate Ant Path](https://docs.mapbox.com/mapbox-gl-js/example/animate-ant-path/)
 - [ ] `mapbox-020-animate-camera-around-point` → `examples/mapbox/020-animate-camera-around-point/` — [Animate Camera Around Point](https://docs.mapbox.com/mapbox-gl-js/example/animate-camera-around-point/)
 - [ ] `mapbox-021-animate-images` → `examples/mapbox/021-animate-images/` — [Animate Images](https://docs.mapbox.com/mapbox-gl-js/example/animate-images/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **34 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **35 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

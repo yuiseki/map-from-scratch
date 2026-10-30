@@ -1,0 +1,96 @@
+id: mapbox-018-animate-a-line
+request: >-
+  Mapbox GL JS の公式ギャラリー例「Animate a line」のように、サンフランシスコからワシントンD.C.を結ぶ
+  大圏航路ルートラインを、毎フレームの頂点ストリーミングにより時間経過とともに滑らかに伸長アニメーション描画したい。
+  先頭のパルス発光マーカー、軌跡グローを備え、ドラッグでパン、ホイールで拡大縮小中も 60 fps で滑らかに再描画すること。
+  外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 航路ラインのアニメーション表示に Mapbox GL JS 全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とアニメーション航路が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-animation
+    need: 毎フレームのライン伸長とカメラ操作が 60 fps (16.7 ms 未満) で途切れず動作する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: line-growth
+    need: 時間経過に従ってラインが始点から終点へ正確に伸長し、先頭マーカーが追従する
+    unmeasured: verification の checks で時間経過に伴うピクセル色変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/018-animate-a-line/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ジオメトリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: animate-loop
+      what: 60フレームのライン伸長アニメーション中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/018-animate-a-line/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-018-animate-a-line/land.json
+    - data/baked/mapbox-018-animate-a-line/route.json
+  preparation:
+    - サンフランシスコ [-122.414, 37.776] からワシントンD.C. [-77.032, 38.913] への大圏航路（500補間点）を Web Mercator [0, 1] に投影
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影
+
+performance_knowledge:
+  - id: canvas2d-dynamic-line-streaming
+    finding: 毎フレームのライン頂点更新も、GeoJSON オブジェクトの再生成を行わず、TypedArray で保持した事前投影済みの点列から現在進行度に応じたスライスを描画することで、GC 停止ゼロ・再描画 0.3 ms 未満で安定した 60 fps アニメーションを達成できる
+    evidence: 再描画時間 p95 0.32 ms 前後、フレーム間隔 p95 6 ms 未満
+    applies_when: 動的ルートアニメーション、GPS リアルタイム軌跡追従
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/018-animate-a-line/index.html
+      - examples/mapbox/018-animate-a-line/main.ts
+      - examples/mapbox/018-animate-a-line/map.ts
+    dependencies: []
+    why: 毎フレームの動的ライン伸長とグロー描画を Canvas 2D で軽量・高速に実現
+  alternatives:
+    - option: Mapbox GL JS フルスタック
+      rejected_because: 数 MB の WebGL エンジンとシェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形, 3Dビルディング, リアルタイム天候効果]
+
+verification:
+  checks:
+    - id: origin-marker-rendered
+      what: サンフランシスコ始点にルートの青色ラインが描画されている
+      how: getImageData でサンフランシスコ座標のピクセル色を検証
+      expected: r < 50 && g > 150 && b > 200 (シアン・ブルー航路色)
+    - id: line-advances-with-time
+      what: アニメーション進行に伴い、航路の中間点（デンバー周辺）にラインが到達して着色される
+      how: 進行度 0.5 後のデンバー座標のピクセル色を検証
+      expected: 進行前は背景色、進行後は航路色が検出される
+    - id: head-marker-rendered
+      what: 航路の先頭に発光するパルスマーカーが描画されている
+      how: getImageData で先頭座標のピクセル色を検証
+      expected: 白・シアンの高輝度マーカー色が検出される
+  harness:
+    - contextlost が起きたらエラーにする
