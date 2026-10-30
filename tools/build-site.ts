@@ -105,6 +105,8 @@ const galleries = [
   { id: 'leaflet', label: 'Leaflet' },
   { id: 'tangram', label: 'Tangram' },
   { id: 'forge3d', label: 'forge3d' },
+  { id: 'webgpu', label: 'WebGPU' },
+  { id: 'opfs', label: 'OPFS' },
   { id: 'legacy', label: '既存の例' },
 ] as const;
 const galleryOf = (dir: string) => galleries.find(({ id }) => dir.startsWith(`examples/${id}/`))?.id ?? 'legacy';
