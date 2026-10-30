@@ -34,3 +34,18 @@ test('links written from the site root are reached from any page', () => {
   assert.equal(toRoot('index.html'), '');
   assert.equal(toRoot('examples/maplibre/index.html'), '../../');
 });
+
+test('every gallery directory under examples/ is a known gallery', async () => {
+  const { readdirSync, existsSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const examples = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples');
+  const galleryDirs = readdirSync(examples).filter((d) => !existsSync(join(examples, d, 'spec.yaml')) && !/^\d/.test(d));
+  for (const d of galleryDirs) assert.notEqual(galleryOf(`examples/${d}/001-x`), 'legacy', `examples/${d}/ is missing from galleries`);
+});
+
+test('no gallery is listed twice', async () => {
+  const { galleries } = await import('../site-pages.ts');
+  const ids = galleries.map(({ id }) => id);
+  assert.equal(new Set(ids).size, ids.length);
+});
