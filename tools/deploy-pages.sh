@@ -18,7 +18,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$ROOT:$ROOT" -w "$ROOT" 
 if [[ "${1:-}" != --no-check ]]; then
   for id in $(bin/mfs list | grep -E '^[0-9a-z]' ); do
     site_dir=".cache/site/examples/$id"
-    for source in maplibre leaflet deckgl d3; do
+    for source in maplibre leaflet deckgl d3 mapbox cesium openglobus tangram; do
       [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
     done
     [[ -d "$site_dir" || -d ".cache/site/baselines/$id" ]] || continue

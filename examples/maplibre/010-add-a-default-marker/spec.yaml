@@ -1,0 +1,97 @@
+id: maplibre-010-add-a-default-marker
+request: >-
+  ワシントンD.C.（経度 -77.0369, 緯度 38.9072）に標準のマーカー（ピン）を1つ立てて、
+  ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1個のマーカーと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とマーカーが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: marker-accuracy
+    need: マーカーの先端が常に指定座標に固定され、移動や拡縮でもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/010-add-a-default-marker/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/010-add-a-default-marker/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-010-add-a-default-marker/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点6桁に量子化して軽量な JSON 配列としてベイク
+
+performance_knowledge:
+  - id: canvas2d-single-pin-sweetspot
+    finding: 単一マーカーと背景ポリゴンであれば、WebGL2 ではなく Canvas 2D を選択することでシェーダー初期化とコンテキスト生成のオーバーヘッドを完全に排除できる
+    evidence: Canvas 2D による初回描画は p50 15〜30 ms 前後、コードサイズは gzip 1.5 KB 未満
+    applies_when: 固定点のアノテーションと簡易背景のみのユースケース
+  - id: teardrop-path2d
+    finding: ベジェ曲線と円弧を組み合わせたティアドロップ形状を Path2D で直接描画することで、SVG 画像の非同期ロードやテクスチャ転送を待たずに即座に描画できる
+    evidence: 外部画像リクエスト 0 件、レイアウトシフトなしで初回フレームにマーカーが揃う
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/010-add-a-default-marker/index.html
+      - examples/maplibre/010-add-a-default-marker/main.ts
+      - examples/maplibre/010-add-a-default-marker/marker.ts
+    dependencies: []
+    why: 1点のマーカーピンと陸地ポリゴンを描画するだけであり、Canvas 2D の即時モード描画で十分かつ最小・最速
+  alternatives:
+    - option: WebGL2
+      rejected_because: ピン形状の三角形分割やテクスチャアトラスが必要になり、コード量・初回初期化時間ともに増大するため
+    - option: DOM マーカー (CSS / HTML overlay)
+      rejected_because: 地図キャンバスと DOM 要素の同期更新によるレイアウト再計算を避け、キャンバス内で一括描画する方がフレーム一貫性を保ちやすいため
+  not_doing: [3D地形, 地名ラベル, 複数マーカーのクラスタリング, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: marker-visible-at-target
+      what: ワシントンD.C.の画面位置にシアン色（#3FB1CE）のマーカー本体が描画されている
+      how: getImageData でマーカー位置のピクセル色を検証
+      expected: r < 100 && g > 130 && b > 160
+    - id: marker-moves-with-pan
+      what: 地図を (50px, 30px) パンしたとき、マーカーの描画位置が正確に (+50px, +30px) 移動する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先でシアン色ピクセルが検出される
+    - id: marker-anchors-on-zoom
+      what: ズームを変更してもマーカーの地理座標位置が画面中央に保持される
+      how: ズームレベル変更後のピクセル色を検証
+      expected: ズーム後もアンカー位置にマーカーが描画されている
+  harness:
+    - contextlost が起きたらエラーにする
