@@ -1,0 +1,116 @@
+id: maplibre-114-render-world-copies
+request: >-
+  MapLibre の "Render world copies" 例と同じく、日付変更線 [179, 0] を中心にズーム 0.01 で
+  世界を描き、同じ世界を左右に繰り返し表示するか 1 つだけ表示するかを切り替えたい。
+  切り替えは地図上のラジオボタンで行う。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 静的な陸地塗りと小さなラジオパネルだけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とパネルが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンが 60 fps で滑らかに追従する（世界の複製を描いても）
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: world-copies-toggle
+    need: 世界の繰り返し表示を On/Off で切り替えられ、On のとき隣の世界は同じ地理の複製になる
+    unmeasured: verification の checks で同じ経度の画素を 1 世界幅ずらして比較
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/114-render-world-copies/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から複製世界を含む初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/114-render-world-copies/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-114-render-world-copies/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - 初期中心 [179, 0]・ズーム 0.01 は元例の定数のまま（このリポジトリの 256 px 基準）
+
+performance_knowledge:
+  - id: wrap-loop-is-the-feature
+    finding: 世界の複製は専用の仕組みではなく、可視範囲のタイル座標を wrap して同じポリゴンを x 方向に平行移動して描くだけ。On/Off は wrap の範囲を [floor(left), floor(right)] にするか [0, 0] にするかの違い
+    evidence: copies-visible-by-default / copies-off-single-world が同じアフリカの点の画素を On で陸地、Off で海洋と判定
+  - id: verify-copies-by-periodicity
+    finding: 「複製が出ている」は、1 世界幅ずらした画素が同じ地理かどうかで検証できる。見た目で数えるより厳密で、Off にしたときに片方だけ消える退行も捕まえられる
+    evidence: copies-are-true-copies が赤道の 200 画素を 1 世界幅ずらして分類し、陸海の不一致が 10 以下
+  - id: sub-pixel-world
+    finding: ズーム 0.01 では 1 世界が約 257 px。大陸は 10 px 程度なので、陸海の判定は色で行い、輪郭の 1 px のずれは許容する必要がある
+    evidence: 複製の比較で不一致が許容内に収まり、パン後も同じ位置関係を保つ
+  - id: clamp-zoom-at-zero
+    finding: ズームは 0 未満にしない。MapLibre の minZoom 既定 0 と同じで、それ以下へはホイールで縮小しない
+    evidence: setZoom が 0..8 にクランプ
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/114-render-world-copies/index.html
+      - examples/maplibre/114-render-world-copies/main.ts
+      - examples/maplibre/114-render-world-copies/world-copies.ts
+    dependencies: []
+    why: 陸地塗りを wrap して複数回描くだけなら Canvas 2D が最小
+  alternatives:
+    - option: DOM のラジオボタン
+      rejected_because: 選択状態を画面ピクセルとして読み戻せない。Canvas に描けばラジオの色まで検証できる
+    - option: ラスタタイル
+      rejected_because: ズーム 0.01 でタイルを取得すると 1 枚で世界全体になり、複製の検証には不向き。陸地塗りで足りる
+  not_doing: [回転・ピッチ, ピンチズーム, 垂直方向の複製, ラベル, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: panel-visible
+      what: 地図上に On/Off のラジオパネルが描かれ、既定で On が選ばれている
+      how: 2 つのラジオ中心の画素を読み、On がアクセント色・Off が白であることを検証
+      expected: 'On が rgba(42,122,226,255)、Off が白'
+    - id: copies-visible-by-default
+      what: 同じ地理が 1 世界幅左にも描かれている
+      how: '[20,0] の投影座標と、そこから 1 世界幅左の画素を読み、両方が陸地色であることを検証'
+      expected: '両方とも陸地色'
+    - id: copies-are-true-copies
+      what: 複製は同じ地理の平行移動になっている
+      how: 赤道の 200 画素と 1 世界幅ずらした画素を陸海に分類し、不一致数を数える
+      expected: '不一致 10 以下 / 200'
+    - id: copies-off-single-world
+      what: Off にすると隣の世界は消え、元の世界は残る
+      how: Off ラジオをクリックし、ラジオ色と [20,0] およびその複製位置の画素を検証
+      expected: 'Off がアクセント色、元の世界は陸地、複製位置は海洋'
+    - id: copies-on-restored
+      what: On に戻すと複製が復活する
+      how: On ラジオをクリックし、複製位置の画素を検証
+      expected: 'copy 位置が陸地色'
+    - id: pan-keeps-copies
+      what: パンしても複製は 1 世界幅の位置関係を保つ
+      how: panBy(100,0) 後に元の点と複製位置の画素を検証
+      expected: '元の点が +100 px 移動して陸地、複製位置も陸地'
+  harness:
+    - contextlost が起きたらエラーにする

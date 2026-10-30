@@ -1,0 +1,122 @@
+id: mapbox-012-add-image-animated
+request: >-
+  Mapbox の "Add an image (animated)" 例と同じく、[0, 0] に脈打つドット（pulsing dot）を
+  置きたい。外側の輪が 1 秒かけて広がりながら薄くなり、内側の赤い円は常に同じ大きさで
+  描かれる。中心 [0, 0]・ズーム 2、ドットはズームしても 100 px の画面サイズを保つ。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ドットは毎フレーム 2 つの円を描くだけで、画像アセットも配信しない
+  - id: quick-start
+    need: ページを開いて即座に地図とドットが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-animation
+    need: 60 fps でドットの脈動が滑らかに続く
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: correct-pulse
+    need: 外輪の半径と不透明度がフェーズどおりに変化し、内側の赤円は常に同じで、ズームしても画面サイズが変わらない
+    unmeasured: verification の checks で環状の画素を背景との合成結果として読み戻して検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/012-add-image-animated/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: animation
+      what: ドットを脈動させ続けた 60 フレームの描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/012-add-image-animated/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-012-add-image-animated/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - ドットは StyleImageInterface を模して毎フレーム直接描く（元例と同じ 1 秒周期）
+    - 世界スケール（ズーム 2）なのでラスタタイルは使わず陸地塗りで足りる
+
+performance_knowledge:
+  - id: draw-the-ring-not-the-pixels
+    finding: 元例は 200×200 の ImageData を毎フレーム作り直すが、この描画器は Canvas に 2 つの円を直接描く。毎フレームの仕事は arc 2 回と fill 2 回だけで、200×200 の getImageData コピーが消える
+    evidence: パン・アニメーション中の redraw_ms p95 が 1 ms 未満
+  - id: ring-alpha-is-the-fade
+    finding: 外輪の不透明度を 1-t、半径を 15+35t（CSS px）にすると、1 周期で広がりながら消える。検証は背景の海洋色との合成式で期待値を独立に計算し、環の内側と外側の画素を同時に読む
+    evidence: ring-expands-with-phase が t=0.5 で半透明の合成色、ring-fades-with-phase が t=0.9 で赤成分が 20 以上低下
+  - id: phase-seam
+    finding: 位相を外部から固定できると、時間に依存する描画を決定的に検証できる。自由に走らせたまま検証するときは、位相の読み取りと画素の読み取りを同じ同期ブロックで行えばフレームの割り込みを受けない
+    evidence: animation-runs-live が 250 ms で位相が +0.25 進むことと、その位相の環半径の一致を確認
+  - id: screen-sized-dot
+    finding: symbol アイコン相当のドットは画面サイズで描く。ズーム 2 → 5 で周囲の地図は 8 倍に広がるが、環の半径は同じ
+    evidence: dot-keeps-screen-size-on-zoom が同じ位相で r=24 の画素が一致
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/012-add-image-animated/index.html
+      - examples/mapbox/012-add-image-animated/main.ts
+      - examples/mapbox/012-add-image-animated/pulsing-dot.ts
+    dependencies: []
+    why: 2 つの円を毎フレーム描くだけなら Canvas 2D が最小。ImageData を作り直す必要もない
+  alternatives:
+    - option: 200×200 の ImageData を毎フレーム生成する（元例どおり）
+      rejected_because: 1 フレームあたり 160 KB の書き込みと getImageData コピーが無駄。ベクタ描画なら同じ見た目を数 µs で出せる
+    - option: WebGL2
+      rejected_because: 2 つの円に初期化コストが見合わない
+  not_doing: [3D地形, 回転・ピッチ, 複数ドット, アイコンの衝突判定, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: map-rendered-at-target
+      what: ドットの周囲に世界地図が描かれている
+      how: 独立投影した [20,20]（サハラ）と [-30,30]（大西洋）のピクセル色を検証
+      expected: 'zoom 2、[20,20] が陸地色、[-30,30] が海洋色'
+    - id: dot-core
+      what: ドットの中心はどの位相でも不透明な赤
+      how: setPhase(0.4) で中心画素を読む
+      expected: 'rgba(255,100,100,255)'
+    - id: ring-expands-with-phase
+      what: 外輪は位相とともに広がる
+      how: 赤道の西側 24 px を t=0 と t=0.5 で読み、半径 40 px も読む
+      expected: 't=0 は海洋色、t=0.5 は rgba(212,205,211) ±2、r=40 は海洋色'
+    - id: ring-fades-with-phase
+      what: 外輪は位相とともに薄くなる
+      how: t=0.9 で r=40 の画素を読み、t=0.5 より赤成分が小さいこと、r=55 が海洋色であることを検証
+      expected: 'r=40 が rgba(178,210,221) ±2、赤成分が t=0.5 より 15 以上小さい'
+    - id: dot-follows-pan
+      what: ドットは [0,0] に固定され、パンで一緒に動く
+      how: setPhase(0.4) で panBy(120,60) し、中心の赤と旧位置の海洋色を検証
+      expected: '中心が +120, +60 px 移動、旧位置は海洋色'
+    - id: dot-keeps-screen-size-on-zoom
+      what: ドットはズームしても画面サイズが変わらない
+      how: 同じ位相のまま zoom 5 へ拡大し、r=24 の画素と地物のオフセット 8 倍を検証
+      expected: 'r=24 の画素が不変、地物のオフセットが 8 倍'
+    - id: animation-runs-live
+      what: アニメーションが自走し、描かれた環の半径が位相と一致する
+      how: 位相が 0.35〜0.6 のフレームで半径の内側と外側を読み、250 ms 後に位相が約 0.25 進むことを確認
+      expected: '内側は環の色、外側は海洋色、250 ms で位相 +0.25 ±0.15'
+  harness:
+    - contextlost が起きたらエラーにする

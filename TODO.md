@@ -133,7 +133,7 @@
 - [ ] `maplibre-111-offset-the-vanishing-point-using-padding` → `examples/maplibre/111-offset-the-vanishing-point-using-padding/` — [Offset the vanishing point using padding](https://maplibre.org/maplibre-gl-js/docs/examples/offset-the-vanishing-point-using-padding/)
 - [ ] `maplibre-112-pmtiles-source-and-protocol` → `examples/maplibre/112-pmtiles-source-and-protocol/` — [PMTiles source and protocol](https://maplibre.org/maplibre-gl-js/docs/examples/pmtiles-source-and-protocol/)
 - [ ] `maplibre-113-raycast-3d-tiles-using-threejs` → `examples/maplibre/113-raycast-3d-tiles-using-threejs/` — [Raycast 3D Tiles using Three.js](https://maplibre.org/maplibre-gl-js/docs/examples/raycast-3d-tiles-using-threejs/)
-- [ ] `maplibre-114-render-world-copies` → `examples/maplibre/114-render-world-copies/` — [Render world copies](https://maplibre.org/maplibre-gl-js/docs/examples/render-world-copies/)
+- [x] `maplibre-114-render-world-copies` → `examples/maplibre/114-render-world-copies/` — [Render world copies](https://maplibre.org/maplibre-gl-js/docs/examples/render-world-copies/)
 - [ ] `maplibre-115-restrict-map-panning-to-an-area` → `examples/maplibre/115-restrict-map-panning-to-an-area/` — [Restrict map panning to an area](https://maplibre.org/maplibre-gl-js/docs/examples/restrict-map-panning-to-an-area/)
 - [ ] `maplibre-116-select-features-with-boxzoomend-callback` → `examples/maplibre/116-select-features-with-boxzoomend-callback/` — [Select features with boxZoomEnd callback](https://maplibre.org/maplibre-gl-js/docs/examples/select-features-with-boxzoomend-callback/)
 - [ ] `maplibre-117-set-center-point-above-ground` → `examples/maplibre/117-set-center-point-above-ground/` — [Set center point above ground](https://maplibre.org/maplibre-gl-js/docs/examples/set-center-point-above-ground/)
@@ -386,7 +386,7 @@
 - [x] `mapbox-009-add-a-marker` → `examples/mapbox/009-add-a-marker/` — [Add A Marker](https://docs.mapbox.com/mapbox-gl-js/example/add-a-marker/)
 - [ ] `mapbox-010-add-fog` → `examples/mapbox/010-add-fog/` — [Add Fog](https://docs.mapbox.com/mapbox-gl-js/example/add-fog/)
 - [x] `mapbox-011-add-image` → `examples/mapbox/011-add-image/` — [Add Image](https://docs.mapbox.com/mapbox-gl-js/example/add-image/)
-- [ ] `mapbox-012-add-image-animated` → `examples/mapbox/012-add-image-animated/` — [Add Image Animated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-animated/)
+- [x] `mapbox-012-add-image-animated` → `examples/mapbox/012-add-image-animated/` — [Add Image Animated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-animated/)
 - [x] `mapbox-013-add-image-generated` → `examples/mapbox/013-add-image-generated/` — [Add Image Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-generated/)
 - [ ] `mapbox-014-add-image-missing-generated` → `examples/mapbox/014-add-image-missing-generated/` — [Add Image Missing Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-missing-generated/)
 - [ ] `mapbox-015-add-image-stretchable` → `examples/mapbox/015-add-image-stretchable/` — [Add Image Stretchable](https://docs.mapbox.com/mapbox-gl-js/example/add-image-stretchable/)
@@ -908,4 +908,4 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **80 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、128、mapbox-009、011、013、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **82 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、114、128、mapbox-009、011、012、013、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
