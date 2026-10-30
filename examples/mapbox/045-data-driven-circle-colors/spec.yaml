@@ -1,0 +1,124 @@
+id: mapbox-045-data-driven-circle-colors
+request: >-
+  Mapbox GL JS の "Data driven circle colors" 例と同じく、世界の地震を点として描き、
+  マグニチュードに応じて円の色と大きさを連続的に変えたい。ドラッグとホイールで
+  パン・ズームでき、6,000 点超でも 60 fps で動くこと。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 円と陸地だけに汎用地図エンジンを読み込む理由がない
+  - id: quick-start
+    need: ページを開いて即座に地震が現れる
+    rationale: 500 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms。6,000 点超の円を1ドローコールで描く
+  - id: data-driven-style
+    need: 色と大きさがマグニチュードから連続的に決まり、データと一致する
+    unmeasured: verification checks で画面ピクセルとストップ値の両方を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 120000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-start}
+    - {metric: cpu_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/045-data-driven-circle-colors/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震データと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan-zoom
+      what: 300フレームのパン・ズーム中の CPU 時間とフレーム時間
+      metrics: [cpu_ms, frame_ms]
+
+datasets:
+  bake: [node, examples/mapbox/045-data-driven-circle-colors/bake.ts]
+  sources:
+    - id: maplibre-cluster-earthquakes
+      origin: https://maplibre.org/maplibre-gl-js/docs/assets/earthquakes.geojson
+      license: USGS（米国政府の著作物、パブリックドメイン）
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-045-data-driven-circle-colors/quakes.bin
+    - data/baked/mapbox-045-data-driven-circle-colors/land.json
+  preparation:
+    - 地震 GeoJSON の点を Web Mercator の float32 (x, y, mag) 12 バイト固定長に変換
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: one-draw-call-for-thousands-of-circles
+    finding: 6,000 点超の円を Canvas 2D の arc で描くとソフトウェアラスタライザでは 60 Hz に届かない。各点を gl.POINTS のスプライトにすれば、色と半径を頂点シェーダーで計算しつつ 1 ドローコールで済む
+    evidence: 6,107 点のパン・ズーム 300 フレームで CPU p95 が 2 ms 未満、フレーム時間 p95 が 8.3 ms 未満
+    applies_when: 数千点以上の点をデータドリブンな色・大きさで描くとき
+  - id: style-expression-in-the-shader
+    finding: マグニチュードから色・半径を決める補間はベイク時に焼き込まず、頂点シェーダーの uniform ストップで評価すると、同じバッファのまま将来のスタイル変更 (ストップ値の差し替え) に追従できる
+    evidence: M1/M3/M6 のストップ色 (252,161,7) (46,83,255) (255,0,64) と半径 3/6/14 px が画面ピクセルと一致する
+    applies_when: データ属性から連続補間する色や大きさを GPU で決めるとき
+  - id: vector-land-on-a-second-canvas
+    finding: 陸地を GL のテクスチャに焼くとズームでぼやける。陸地だけを下の Canvas 2D レイヤに描き、透明な GL キャンバスを重ねれば、陸地はベクタのまま、点は 1 ドローコールのままになる
+    evidence: 127 ポリゴンの再描画込みで CPU p95 が 2 ms 未満
+    applies_when: 背景のベクタ地図と大量の GPU 点を重ねるとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 + Canvas 2D（陸地レイヤ）
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/mapbox/045-data-driven-circle-colors/index.html
+      - examples/mapbox/045-data-driven-circle-colors/main.ts
+      - examples/mapbox/045-data-driven-circle-colors/map.ts
+    dependencies: []
+    why: 6,000 点超の円をデータドリブンな色・大きさで 60 fps に保つにはインスタンス的な点スプライトが最小
+  alternatives:
+    - option: Canvas 2D の arc をバッチ描画
+      rejected_because: 円弧のテッセレーションで 60 Hz に届かない（deck.gl 016 で計測済み）
+    - option: 陸地も GL のテクスチャに焼く
+      rejected_because: ズーム時に海岸線がぼやける。ベクタを下のレイヤに描くほうが正確で安い
+  not_doing: [道路・地名などの詳細地図, クラスタリング, クリックでのポップアップ, スタイル切り替え UI]
+
+verification:
+  checks:
+    - id: quakes-loaded
+      what: 地震点が 5,000 件超、M1 未満から M7 超まで読まれる
+      how: map.count / points / magMin / magMax を検証
+      expected: count > 5000, M0.95–M8.1
+    - id: colour-ramp-matches-stops
+      what: 色と半径の補間が M1/M3/M6 のストップ値に一致する
+      how: colorForMag / radiusForMag を検証
+      expected: M1 (252,161,7) r3, M3 (46,83,255) r6, M6 (255,0,64) r14
+    - id: low-magnitude-circle-colour
+      what: M1 級の地震がアンバーで描かれる
+      how: 孤立した M0.95–1.2 の点を中心に寄せて中央ピクセルを検証
+      expected: r>200, g 100–210, b<90, a>200
+    - id: high-magnitude-circle-colour
+      what: M6 級の地震が赤系で描かれる
+      how: 孤立した M5.5 以上の点を中心に寄せて 0.5R のピクセルを検証
+      expected: r>200, g<90, b 20–140, a>200
+    - id: radius-follows-magnitude
+      what: 大きい地震の円が M1 の 3 倍超の半径で、縁の外は透明になる
+      how: R+8 px のピクセルの不透明度を検証
+      expected: 内側 a>200, 外側 a<60
+    - id: pan-moves-circles
+      what: 40x20 px のパンで円が同じだけ動き、色も残る
+      how: パン前後の画面座標差と中央ピクセルを検証
+      expected: dx=40, dy=20, 赤系
+    - id: zoom-keeps-circles
+      what: ズーム 7 でも同じ点が画面中央に残る
+      how: centerOn 後にズームして中央ピクセルを検証
+      expected: a>200, r>200
+  harness:
+    - webglcontextlost が起きたらエラーにする

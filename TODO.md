@@ -419,7 +419,7 @@
 - [ ] `mapbox-042-custom-style-id` → `examples/mapbox/042-custom-style-id/` — [Custom Style Id](https://docs.mapbox.com/mapbox-gl-js/example/custom-style-id/)
 - [ ] `mapbox-043-custom-style-layer` → `examples/mapbox/043-custom-style-layer/` — [Custom Style Layer](https://docs.mapbox.com/mapbox-gl-js/example/custom-style-layer/)
 - [ ] `mapbox-044-dancing-buildings` → `examples/mapbox/044-dancing-buildings/` — [Dancing Buildings](https://docs.mapbox.com/mapbox-gl-js/example/dancing-buildings/)
-- [ ] `mapbox-045-data-driven-circle-colors` → `examples/mapbox/045-data-driven-circle-colors/` — [Data Driven Circle Colors](https://docs.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/)
+- [x] `mapbox-045-data-driven-circle-colors` → `examples/mapbox/045-data-driven-circle-colors/` — [Data Driven Circle Colors](https://docs.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/)
 - [ ] `mapbox-046-data-driven-lines` → `examples/mapbox/046-data-driven-lines/` — [Data Driven Lines](https://docs.mapbox.com/mapbox-gl-js/example/data-driven-lines/)
 - [ ] `mapbox-047-data-join` → `examples/mapbox/047-data-join/` — [Data Join](https://docs.mapbox.com/mapbox-gl-js/example/data-join/)
 - [ ] `mapbox-048-disable-rotation` → `examples/mapbox/048-disable-rotation/` — [Disable Rotation](https://docs.mapbox.com/mapbox-gl-js/example/disable-rotation/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **40 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、006、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **41 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、006、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
