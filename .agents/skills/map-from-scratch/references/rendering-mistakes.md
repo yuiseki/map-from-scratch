@@ -165,6 +165,24 @@ of the screen; a popup on the far side of 180°.
 Marker anchoring itself (the tip on the coordinate) was right in every
 example checked (010, 009, 213, 244 not yet).
 
+### One class hidden under the other (deckgl 016)
+
+- Screen: Manhattan almost entirely orange; the blue class, 46% of the 13,987
+  points, showed only along the edges (6% of the coloured pixels).
+- Why, twice over: the points were batched into one path per colour and all
+  of weight 1 was filled before all of weight 2, so every overlap went to
+  orange; and the radius grew with the weight, so orange squares were also
+  larger. deck.gl's example gives every point a radius of 30 m
+  (`getRadius: 1`, `radiusScale: 30`) and draws in data order: the weight is a
+  class shown by colour only. Read the original's props before copying its
+  intent into REQUEST.md.
+- Fix: keep one path per colour but per chunk of 256 points in data order,
+  and size every point 30 m. Blue rose to 38% of the coloured pixels; redraw
+  p95 stayed at 1.5 ms.
+- Test: count the pixels of each class colour and compare with the class
+  shares in the data.
+
+
 ## Clustering
 
 **Not yet seen.** 056's clusters overlap heavily at zoom 3 (radius by count up
