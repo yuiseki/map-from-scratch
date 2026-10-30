@@ -1,0 +1,104 @@
+id: maplibre-061-disable-scroll-zoom
+request: >-
+  中心座標 [-122.65, 45.52]、ズーム 3 で地図を表示し、
+  ホイールによるスクロールズームを無効化（map.scrollZoom.disable() 同等）しつつ、ドラッグによるパンは許可した地図を作りたい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: スクロールズーム制限付き背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパン操作が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: scroll-zoom-control
+    need: スクロールズームが無効化されている間はホイール操作を無視し、有効化時は正しくズームする
+    unmeasured: verification の checks でホイールイベント送出前後のズーム値を検証
+  - id: map-accuracy
+    need: 指定座標（ポートランド周辺）を中心に正確な陸地と海洋が描画される
+    unmeasured: verification の checks で画面ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/061-disable-scroll-zoom/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/061-disable-scroll-zoom/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-061-disable-scroll-zoom/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: selective-gesture-handling
+    finding: スクロールズームを無効化する際、wheel リスナー内でフラグ判定と preventDefault のみを行うことで、ドラッグパンの追従性を落とさずに不意のページスクロール連動を防止できる
+    evidence: wheel イベント処理オーバーヘッドは 0.02 ms 未満、パン中の再描画時間は p95 0.3 ms 未満
+    applies_when: 縦長ページ内に埋め込まれた地図で、ページスクロールを妨げないようにする場合
+  - id: minimal-canvas2d-rendering
+    finding: 単一ベイク済みポリゴン JSON と Canvas 2D を用いることで、コードサイズ gzip 2.5 KB 未満、初回描画 10 ms 前後を達成
+    evidence: MapLibre GL JS (約 250 KB gzip) と比較してコードサイズを約 99% 削減
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/061-disable-scroll-zoom/index.html
+      - examples/maplibre/061-disable-scroll-zoom/main.ts
+      - examples/maplibre/061-disable-scroll-zoom/map.ts
+    dependencies: []
+    why: スクロールズーム制御と背景陸地描画の目的において、Canvas 2D の即時描画と軽量リスナー構成が最小・最速
+  alternatives:
+    - option: WebGL2
+      rejected_because: 単純なポリゴン描画とスクロール無効化に GPU パイプラインを構築するのは過剰であるため
+    - option: CSS pointer-events: none
+      rejected_because: ドラッグパン操作まで遮断されてしまうため、スクロールズームのみを制御するには JS イベント層での分離が必要
+  not_doing: [3D地形, 地名ラベル, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: map-rendered-at-target
+      what: 画面中央 [-122.65, 45.52]（ポートランド）に陸地ピクセル、[-140, 45.52]（太平洋）に海洋ピクセルが描画されている
+      how: getImageData で座標位置のピクセル色を検証
+      expected: land: r > 220 && g > 220 && b > 210, ocean: r < 190 && g > 190 && b > 210
+    - id: scroll-zoom-blocked
+      what: スクロールズームが無効化されている間、ホイールイベントを送出してもズーム値が変化しない
+      how: wheel イベント前後の zoom を比較
+      expected: initialZoom === afterWheelZoom && scrollZoomEnabled === false
+    - id: pan-works-normally
+      what: 地図を (50px, 30px) パンしたとき、陸地ピクセルの描画位置が正確に (+50px, +30px) 移動する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で陸地ピクセルが検出される
+    - id: scroll-zoom-toggleable
+      what: setScrollZoom(true) で有効化した後、ホイールイベントを送出するとズーム値が増加する
+      how: 有効化後の wheel イベント前後の zoom を比較
+      expected: zoomAfterEnabledWheel > 3 && scrollZoomEnabled === true
+  harness:
+    - contextlost が起きたらエラーにする

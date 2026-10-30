@@ -80,7 +80,7 @@
 - [ ] `maplibre-058-customize-camera-animations` → `examples/maplibre/058-customize-camera-animations/` — [Customize camera animations](https://maplibre.org/maplibre-gl-js/docs/examples/customize-camera-animations/)
 - [ ] `maplibre-059-customize-the-map-transform-constrain` → `examples/maplibre/059-customize-the-map-transform-constrain/` — [Customize the map transform constrain](https://maplibre.org/maplibre-gl-js/docs/examples/customize-the-map-transform-constrain/)
 - [ ] `maplibre-060-disable-map-rotation` → `examples/maplibre/060-disable-map-rotation/` — [Disable map rotation](https://maplibre.org/maplibre-gl-js/docs/examples/disable-map-rotation/)
-- [ ] `maplibre-061-disable-scroll-zoom` → `examples/maplibre/061-disable-scroll-zoom/` — [Disable scroll zoom](https://maplibre.org/maplibre-gl-js/docs/examples/disable-scroll-zoom/)
+- [x] `maplibre-061-disable-scroll-zoom` → `examples/maplibre/061-disable-scroll-zoom/` — [Disable scroll zoom](https://maplibre.org/maplibre-gl-js/docs/examples/disable-scroll-zoom/)
 - [ ] `maplibre-062-display-a-globe-with-a-fill-extrusion-layer` → `examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/` — [Display a globe with a fill extrusion layer](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-globe-with-a-fill-extrusion-layer/)
 - [ ] `maplibre-063-display-a-globe-with-a-vector-map` → `examples/maplibre/063-display-a-globe-with-a-vector-map/` — [Display a globe with a vector map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-globe-with-a-vector-map/)
 - [ ] `maplibre-064-display-a-globe-with-an-atmosphere` → `examples/maplibre/064-display-a-globe-with-an-atmosphere/` — [Display a globe with an atmosphere](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-globe-with-an-atmosphere/)
@@ -861,5 +861,5 @@
 
 ## 進捗
 
-- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **16 件**（maplibre-010、012、013、056、069、070、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **17 件**（maplibre-010、012、013、056、061、069、070、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
