@@ -49,3 +49,12 @@ test('no gallery is listed twice', async () => {
   const ids = galleries.map(({ id }) => id);
   assert.equal(new Set(ids).size, ids.length);
 });
+
+test('galleries are grouped into libraries, technologies and the rest', async () => {
+  const { galleryGroups } = await import('../site-pages.ts');
+  const ids = (key: string) => galleryGroups.find((g) => g.key === key)!.galleries.map(({ id }) => id);
+  assert.deepEqual(galleryGroups.map((g) => g.key), ['library', 'technology', 'other']);
+  assert.ok(ids('library').includes('maplibre') && ids('library').includes('luma'));
+  assert.deepEqual(ids('technology'), ['webgpu', 'opfs', 'wasm']);
+  assert.deepEqual(ids('other'), ['legacy']);
+});

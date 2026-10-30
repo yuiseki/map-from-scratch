@@ -1,24 +1,32 @@
 // Which index pages the Pages site has: the top page with every card, and
 // one page per original gallery at examples/<gallery>/ with only its cards.
 
+// group: a map library whose gallery is recreated, a browser technology the
+// examples try out, or neither.
 export const galleries = [
-  { id: 'maplibre', label: 'MapLibre GL JS' },
-  { id: 'mapbox', label: 'Mapbox GL JS' },
-  { id: 'cesium', label: 'CesiumJS' },
-  { id: 'openglobus', label: 'OpenGlobus' },
-  { id: 'deckgl', label: 'deck.gl' },
-  { id: 'd3', label: 'D3' },
-  { id: 'leaflet', label: 'Leaflet' },
-  { id: 'tangram', label: 'Tangram' },
-  { id: 'forge3d', label: 'forge3d' },
-  { id: 'kepler', label: 'kepler.gl' },
-  { id: 'luma', label: 'luma.gl' },
-  { id: 'webgpu', label: 'WebGPU' },
-  { id: 'opfs', label: 'OPFS' },
-  { id: 'wasm', label: 'WebAssembly' },
-  { id: 'legacy', label: '既存の例' },
+  { id: 'maplibre', label: 'MapLibre GL JS', group: 'library' },
+  { id: 'mapbox', label: 'Mapbox GL JS', group: 'library' },
+  { id: 'cesium', label: 'CesiumJS', group: 'library' },
+  { id: 'openglobus', label: 'OpenGlobus', group: 'library' },
+  { id: 'deckgl', label: 'deck.gl', group: 'library' },
+  { id: 'd3', label: 'D3', group: 'library' },
+  { id: 'leaflet', label: 'Leaflet', group: 'library' },
+  { id: 'tangram', label: 'Tangram', group: 'library' },
+  { id: 'forge3d', label: 'forge3d', group: 'library' },
+  { id: 'kepler', label: 'kepler.gl', group: 'library' },
+  { id: 'luma', label: 'luma.gl', group: 'library' },
+  { id: 'webgpu', label: 'WebGPU', group: 'technology' },
+  { id: 'opfs', label: 'OPFS', group: 'technology' },
+  { id: 'wasm', label: 'WebAssembly', group: 'technology' },
+  { id: 'legacy', label: '既存の例', group: 'other' },
 ] as const;
 export type GalleryId = typeof galleries[number]['id'];
+
+export const galleryGroups = [
+  { key: 'library', label: 'ライブラリ' },
+  { key: 'technology', label: '技術' },
+  { key: 'other', label: 'その他' },
+].map((g) => ({ ...g, galleries: galleries.filter(({ group }) => group === g.key) }));
 
 // The numbered examples (examples/01-*) and the baselines have no gallery
 // directory of their own; their page is examples/legacy/.

@@ -15,8 +15,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
-import { galleries, galleryOf, indexPages, toRoot } from './site-pages.ts';
-import type { IndexPage } from './site-pages.ts';
+import { galleries, galleryGroups, galleryOf, indexPages, toRoot } from './site-pages.ts';
+import type { GalleryId, IndexPage } from './site-pages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(root, process.argv[2] ?? '.cache/site');
@@ -106,9 +106,11 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
   const counts = new Map(galleries.map(({ id }) => [id, all.filter(({ dir }) => galleryOf(dir) === id).length]));
   const link = (href: string, label: string, count: number, current: boolean) =>
     `<a href="${up}${href}"${current ? ' aria-current="page"' : ''}>${label} <span>${count}</span></a>`;
-  const galleryLinks = galleries.map(({ id, label }) => counts.get(id)
+  const chip = (id: GalleryId, label: string) => counts.get(id)
     ? link(`examples/${id}/`, label, counts.get(id)!, page.gallery === id)
-    : `<span class="empty">${label} <span>0</span></span>`
+    : `<span class="empty">${label} <span>0</span></span>`;
+  const groupRows = galleryGroups.map((g) =>
+    `<div class="group"><span class="group-label">${g.label}</span><div class="chips">${g.galleries.map(({ id, label }) => chip(id, label)).join('\n')}</div></div>`
   ).join('\n');
   const label = galleries.find(({ id }) => id === page.gallery)?.label;
   const rows = page.rows;
@@ -156,7 +158,11 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
   body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
   h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
   .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
-  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
   .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
   .filters a:hover { border-color: var(--accent); }
   .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
@@ -181,8 +187,8 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
 <h1>${label ? `<a href="${up || './'}">map-from-scratch</a> / ${esc(label)}` : 'map-from-scratch'}</h1>
 <p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="${REPO_URL}/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="${REPO_URL}">GitHub</a></p>
 <nav class="filters" aria-label="元ギャラリー">
-${link('', 'すべて', all.length, page.gallery === null)}
-${galleryLinks}
+<div class="group"><span class="group-label"></span><div class="chips">${link('', 'すべて', all.length, page.gallery === null)}</div></div>
+${groupRows}
 </nav>
 <p class="visible-count">${rows.length} 件</p>
 <ul>
