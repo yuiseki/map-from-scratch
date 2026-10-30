@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>kepler.gl Custom Map Style</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0e111a; color: #a0a7b4; font-size: 12px; }
+    #app { display: flex; width: 100vw; height: 100vh; position: relative; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 320px;
+      height: 100%;
+      background: #1b1e28;
+      border-right: 1px solid #292d3d;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+    .side-header {
+      padding: 16px;
+      background: #242735;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #292d3d;
+    }
+    .side-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      background: #0084ff;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .side-content {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #717b8f;
+      margin-bottom: 10px;
+    }
+
+    /* Style Cards Grid */
+    .style-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .style-card {
+      background: #242735;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .style-card:hover {
+      border-color: #3b4259;
+      transform: translateY(-2px);
+    }
+    .style-card.active {
+      border-color: #0084ff;
+      background: #2a3045;
+    }
+    .style-thumb {
+      width: 100%;
+      height: 52px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .style-thumb.dark { background: #13171f; border: 1px solid #2a3040; }
+    .style-thumb.light { background: #ebeef2; border: 1px solid #ccd2dc; }
+    .style-thumb.navy { background: #0a192f; border: 1px solid #1e3a8a; }
+    .style-thumb.desert { background: #28201a; border: 1px solid #573a27; }
+
+    .style-thumb .swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .style-thumb.dark .swatch { background: #f33; }
+    .style-thumb.light .swatch { background: #2563eb; }
+    .style-thumb.navy .swatch { background: #06b6d4; }
+    .style-thumb.desert .swatch { background: #f59e0b; }
+
+    .style-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #d1d5db;
+    }
+
+    /* Layer Groups Toggle List */
+    .layer-group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .layer-group-item {
+      background: #242735;
+      padding: 10px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .layer-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 34px;
+      height: 18px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #3b4259;
+      transition: .2s;
+      border-radius: 18px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #0084ff; }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* Canvas Map Area */
+    #map-wrapper {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: #000;
+    }
+    #map-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Legend */
+    #legend {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(27, 30, 40, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid #292d3d;
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      z-index: 5;
+      min-width: 220px;
+    }
+    .legend-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .legend-gradient {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #fae037, #b81c70);
+      margin-bottom: 6px;
+    }
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #8f97a6;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <div class="side-header">
+        <div class="side-title">
+          <span>Base Map</span>
+          <span class="badge">PRO</span>
+        </div>
+      </div>
+      <div class="side-content">
+        <div class="section-title">Base Map Style</div>
+        <div class="style-grid" id="style-grid">
+          <div class="style-card active" data-style="dark">
+            <div class="style-thumb dark"><div class="swatch"></div></div>
+            <div class="style-label">Dark Matter</div>
+          </div>
+          <div class="style-card" data-style="light">
+            <div class="style-thumb light"><div class="swatch"></div></div>
+            <div class="style-label">Positron</div>
+          </div>
+          <div class="style-card" data-style="navy">
+            <div class="style-thumb navy"><div class="swatch"></div></div>
+            <div class="style-label">Muted Navy</div>
+          </div>
+          <div class="style-card" data-style="desert">
+            <div class="style-thumb desert"><div class="swatch"></div></div>
+            <div class="style-label">Desert Gold</div>
+          </div>
+        </div>
+
+        <div class="section-title">Base Map Layers</div>
+        <div class="layer-group-list">
+          <div class="layer-group-item">
+            <div class="layer-info">
+              <span>🌍</span>
+              <span>Land Polygons</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-land" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="layer-group-item">
+            <div class="layer-info">
+              <span>🗺️</span>
+              <span>Coastline & Borders</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-borders" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="layer-group-item">
+            <div class="layer-info">
+              <span>💥</span>
+              <span>Earthquake Overlay</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-points" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="map-wrapper">
+      <canvas id="map-canvas"></canvas>
+      <div id="legend">
+        <div class="legend-title">Earthquake Magnitude</div>
+        <div class="legend-gradient" id="legend-gradient"></div>
+        <div class="legend-labels">
+          <span>M 2.5</span>
+          <span>M 5.0</span>
+          <span>M 8.0+</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

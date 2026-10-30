@@ -1,0 +1,87 @@
+id: kepler-008-custom-map-style
+request: >-
+  kepler.gl の Custom map style サンプルと同じ意図で、カスタムベースマップスタイル
+  （配色テーマ・陸地/境界線パレット）の動的切り替えとレイヤーグループ表示制御を
+  外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox GL JS を排除し、CSS カスタムプロパティと WebGL2 uniform のみで完結させる
+    rationale: 依存ゼロにより、コード gzip を 12 KB 未満、データ gzip を 680 KB 未満に抑制
+  - id: quick-start
+    need: 初回マウントから地震点群の描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: custom-style-switching
+    need: カスタムスタイル選択カードのクリックにより、ベースマップ配色（陸地・海・境界線）が瞬時に切り替わる
+    unmeasured: verification checks でピクセル読み戻し（海・陸地の明度変化）を検証
+  - id: layer-group-toggling
+    need: ベースマップのレイヤーグループ（Land, Borders, Data）の表示/非表示を個別に切り替えられる
+    unmeasured: verification checks で表示トグル時のピクセル変化を検証
+  - id: smooth-interaction
+    need: 全スタイルにおいて 60 fps でのパン・ズーム操作を維持する
+    rationale: 再描画時間を 3 ms 以下、フレーム間隔を 20 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/008-custom-map-style/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/008-custom-map-style/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain (Natural Earth)
+
+performance_knowledge:
+  insights:
+    - 地図スタイルの切り替えは Mapbox/MapLibre ではスタイル JSON の再パースやタイルの再フェッチ、レイヤー再構築のオーバーヘッドを伴うが、専用 WebGL2 描画器では海色・陸地色・境界線色・ポイントシェーダーの Uniform を更新するだけで 0ms オーダーで切り替え可能。
+    - レヤーグループの可視性制御も GPU Uniform のブールフラグで描画パスをスキップするだけで済み、再バッファリングは一切発生しない。
+
+architecture_selection:
+  chosen:
+    tech: TypeScript + WebGL2
+    code:
+      - examples/kepler/008-custom-map-style/index.html
+      - examples/kepler/008-custom-map-style/main.ts
+      - examples/kepler/008-custom-map-style/map.ts
+    data:
+      - data/baked/kepler-008-custom-map-style/earthquakes.bin
+  not_doing:
+    - React, Redux, styled-components（ピュア CSS とプレーン DOM で kepler.gl の UI を完全再現）
+    - deck.gl, luma.gl, Mapbox GL JS（WebGL2 直接制御）
+    - 外部タイルサーバーへの動的リクエスト（Natural Earth 110m をベイク済み静的バイナリ化）
+
+verification:
+  checks:
+    - id: dom-elements-ready
+      title: サイドバーとカスタムスタイルカードが存在すること
+    - id: initial-dark-style-rendered
+      title: 初期 Dark スタイルで暗い背景色と地震点群が描画されること
+    - id: style-switch-light
+      title: Light スタイルに切り替えた際に背景と陸地の色が明色に更新されること
+    - id: toggle-land-layer
+      title: Land レイヤーグループを非表示にした際にピクセル変化が生じること
+    - id: smooth-pan
+      title: パン操作でピクセルが変化し描画エラーがないこと
