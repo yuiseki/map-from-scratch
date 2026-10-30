@@ -2,6 +2,29 @@ import { emit } from '../../../harness/page/bench.ts';
 import type { CircleMap } from './circle.ts';
 
 const CENTER: [number, number] = [-74.5, 40];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function waitForBase(map: CircleMap, want: number, ms = 15000): Promise<number> {
+  const until = performance.now() + ms;
+  while (map.baseReady() < want && performance.now() < until) await sleep(50);
+  return map.baseReady();
+}
+
+// Distinct 8-bit colours across the canvas, sampling every 4th pixel: a flat
+// land/ocean fill gives a handful, an OSM Carto tile gives hundreds.
+function distinctColours(map: CircleMap, step = 4): number {
+  const { ctx, canvas } = map;
+  const w = canvas.width, h = canvas.height;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const seen = new Set<number>();
+  for (let y = 0; y < h; y += step) {
+    for (let x = 0; x < w; x += step) {
+      const i = (y * w + x) * 4;
+      seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+    }
+  }
+  return seen.size;
+}
 
 export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
   const { canvas, ctx } = map;
@@ -15,6 +38,21 @@ export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
     ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const isCircle = (px: Uint8ClampedArray): boolean =>
     px[2] > 200 && px[2] - px[0] >= 60 && px[1] >= 150;
+
+  // Verification 0: the raster base map is drawn under the circle. The first
+  // frame shows the baked land polygons; the tiles then add roads and labels.
+  const ready = await waitForBase(map, 8);
+  const colours = distinctColours(map);
+  emit({
+    check: 'basemap-drawn',
+    pass: map.baseLoaded() && ready >= 8 && colours > 150,
+    detail: `${ready} tiles ready, ${colours} distinct colours in the frame`,
+  });
+
+  // The circle checks read exact RGB, so hide the base and keep the flat land:
+  // a road or label under the sampled point could otherwise pass for the fill.
+  map.setBaseVisible(false);
+  map.draw();
 
   emit({
     check: 'circle-data-loaded',
@@ -57,8 +95,10 @@ export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
     detail: `rgba(${zoomPx.join(',')}) at zoom 10`,
   });
 
-  map.setZoom(9);
-  map.panBy(-40, -20);
+  // Pan benchmark from the opening view, base map and circle both drawn.
+  map.setBaseVisible(true);
+  map.resetView();
+  await waitForBase(map, 8);
 
   const raf = () => new Promise<number>(requestAnimationFrame);
   const redrawTimes: number[] = [];
@@ -75,5 +115,8 @@ export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
   emit({ metric: 'redraw_ms', values: redrawTimes });
   emit({ metric: 'frame_interval_ms', values: frameIntervals });
 
+  // Leave the screenshot on the opening view with the base fully loaded.
+  map.resetView();
+  await waitForBase(map, 8);
   emit({ done: true });
 }

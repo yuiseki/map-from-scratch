@@ -9,12 +9,32 @@ export interface GeoJsonLineMap {
   panBy(dx: number, dy: number): void;
   setZoom(z: number): void;
   setLineStyle(color: string, width: number): void;
+  setBaseVisible(v: boolean): void;
+  setLineVisible(v: boolean): void;
+  baseReady(): number;
+  baseLoaded(): boolean;
+  resetView(): void;
   getScreenPos(lon: number, lat: number): [number, number];
   destroy(): void;
 }
 
 type Ring = [number, number][];
 type Polygon = Ring[];
+
+interface TileJSON {
+  tiles: string[];
+  minzoom: number;
+  maxzoom: number;
+}
+interface TileEntry {
+  state: 'loading' | 'ready' | 'error';
+  bitmap?: ImageBitmap;
+}
+
+// The same 512 px raster style as the raster-tile example. The baked land
+// polygons stand in until the tiles that cover the current view arrive.
+const TILE_STYLE = 'https://tile.yuiseki.net/styles/512/osm-carto.json';
+const MAX_IN_FLIGHT = 6;
 
 const SF_LNG = -122.486052;
 const SF_LAT = 37.830348;
@@ -34,6 +54,15 @@ export async function mount(
   const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
+
+  let tileJson: TileJSON | null = null;
+  const tiles = new Map<string, TileEntry>();
+  const queued = new Set<string>();
+  const queue: string[] = [];
+  let inFlight = 0;
+  let rafId = 0;
+  let baseVisible = true;
+  let lineVisible = true;
 
   const [routeRes, landRes] = await Promise.all([
     fetch(routeUrl),
@@ -72,6 +101,102 @@ export async function mount(
     const sx = width / 2 + (mx - centerMx) * scale;
     const sy = height / 2 + (my - centerMy) * scale;
     return [sx, sy];
+  }
+
+  // ---- raster base map -----------------------------------------------------
+  // One 512 px PNG per 256 CSS px tile at integer zoom: the tile is drawn at
+  // 256*2^(zoom-zi) CSS px, so a z tile covers exactly the same ground as a
+  // 256 px tile at the same z and is downscaled 2x at DPR 1 (sharp text).
+  interface BaseLayout {
+    zi: number; n: number; tile: number;
+    originX: number; originY: number;
+    x0: number; x1: number; y0: number; y1: number;
+  }
+
+  function baseLayout(): BaseLayout | null {
+    if (!tileJson) return null;
+    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom)));
+    const n = 1 << zi;
+    const tile = 256 * Math.pow(2, zoom - zi);
+    const scale = 256 * Math.pow(2, zoom);
+    const originX = width / 2 - centerMx * scale;
+    const originY = height / 2 - centerMy * scale;
+    return {
+      zi, n, tile, originX, originY,
+      x0: Math.floor(-originX / tile),
+      x1: Math.floor((width - originX) / tile),
+      y0: Math.max(0, Math.floor(-originY / tile)),
+      y1: Math.min(n - 1, Math.floor((height - originY) / tile)),
+    };
+  }
+
+  const wrapX = (x: number, n: number): number => ((x % n) + n) % n;
+  const tileKey = (z: number, x: number, y: number): string => `${z}/${x}/${y}`;
+
+  function requestTile(zi: number, wx: number, y: number): void {
+    const key = tileKey(zi, wx, y);
+    if (tiles.has(key) || queued.has(key)) return;
+    queued.add(key);
+    queue.push(key);
+    pump();
+  }
+
+  function pump(): void {
+    while (inFlight < MAX_IN_FLIGHT && queue.length > 0) {
+      const key = queue.shift() as string;
+      queued.delete(key);
+      const [z, x, y] = key.split('/');
+      const url = (tileJson as TileJSON).tiles[0]
+        .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+      const entry: TileEntry = { state: 'loading' };
+      tiles.set(key, entry);
+      inFlight++;
+      void (async () => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(String(res.status));
+          entry.bitmap = await createImageBitmap(await res.blob());
+          entry.state = 'ready';
+        } catch {
+          entry.state = 'error';
+        } finally {
+          inFlight--;
+          pump();
+          scheduleDraw();
+        }
+      })();
+    }
+  }
+
+  function scheduleDraw(): void {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      draw();
+    });
+  }
+
+  async function loadBase(): Promise<void> {
+    try {
+      const res = await fetch(TILE_STYLE);
+      if (!res.ok) return;
+      tileJson = (await res.json()) as TileJSON;
+      scheduleDraw();
+    } catch {
+      // Offline: the baked land polygons remain the background.
+    }
+  }
+
+  function readyTiles(): number {
+    const L = baseLayout();
+    if (!L) return 0;
+    let ready = 0;
+    for (let x = L.x0; x <= L.x1; x++) {
+      for (let y = L.y0; y <= L.y1; y++) {
+        if (tiles.get(tileKey(L.zi, wrapX(x, L.n), y))?.state === 'ready') ready++;
+      }
+    }
+    return ready;
   }
 
   function draw(): void {
@@ -113,8 +238,30 @@ export async function mount(
       }
     }
 
+    // Raster base map on top of the land placeholder.
+    const L = baseLayout();
+    if (baseVisible && L) {
+      for (let x = L.x0; x <= L.x1; x++) {
+        const X0 = Math.round(L.originX + x * L.tile);
+        const X1 = Math.round(L.originX + (x + 1) * L.tile);
+        for (let y = L.y0; y <= L.y1; y++) {
+          const Y0 = Math.round(L.originY + y * L.tile);
+          const Y1 = Math.round(L.originY + (y + 1) * L.tile);
+          const entry = tiles.get(tileKey(L.zi, wrapX(x, L.n), y));
+          if (entry?.state === 'ready' && entry.bitmap) {
+            ctx.drawImage(entry.bitmap, X0, Y0, X1 - X0, Y1 - Y0);
+          }
+        }
+      }
+    }
+    if (L) {
+      for (let x = L.x0; x <= L.x1; x++) {
+        for (let y = L.y0; y <= L.y1; y++) requestTile(L.zi, wrapX(x, L.n), y);
+      }
+    }
+
     // GeoJSON LineString
-    if (route.length > 1) {
+    if (lineVisible && route.length > 1) {
       ctx.beginPath();
       for (let i = 0; i < route.length; i++) {
         const sx = originX + route[i][0] * scale;
@@ -207,6 +354,7 @@ export async function mount(
   canvas.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('resize', resize);
 
+  void loadBase();
   resize();
 
   return {
@@ -228,6 +376,24 @@ export async function mount(
     panBy,
     setZoom,
     setLineStyle,
+    setBaseVisible(v: boolean): void {
+      baseVisible = v;
+      draw();
+    },
+    setLineVisible(v: boolean): void {
+      lineVisible = v;
+      draw();
+    },
+    baseReady: readyTiles,
+    baseLoaded(): boolean {
+      return tileJson !== null;
+    },
+    resetView(): void {
+      centerMx = defaultCenterMx;
+      centerMy = defaultCenterMy;
+      zoom = 15;
+      draw();
+    },
     getScreenPos,
     destroy(): void {
       canvas.removeEventListener('pointerdown', onPointerDown);

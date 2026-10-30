@@ -17,10 +17,13 @@ requirements:
   - id: line-accuracy
     need: ラインが指定されたスタイル（色・太さ・結合処理）で正確に描画され、操作時にずれない
     unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+  - id: background-map
+    need: ズーム 15 でも道路や地名が読める背景地図がラインの下にある
+    unmeasured: verification の basemap-drawn で表示範囲のタイル枚数と画面の色数を検証
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
     - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
@@ -35,7 +38,7 @@ benchmarks:
   iterations: 3
   scenarios:
     - id: first-frame
-      what: ルートデータと陸地データの取得から初回描画まで
+      what: ルートデータと陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
       metrics: [first_frame_ms]
     - id: pan
       what: 60フレームのパン操作中の再描画時間とフレーム間隔
@@ -47,12 +50,16 @@ datasets:
     - id: ne-110m-land
       origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
       license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
   outputs:
     - data/baked/maplibre-012-add-a-geojson-line/route.json
     - data/baked/maplibre-012-add-a-geojson-line/land.json
   preparation:
     - MapLibre 公式サンプルの LineString 座標（21点）を Web Mercator 座標に投影して量子化
-    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化（下地タイル到着までの代替）
+    - 実行時は OSM Carto の 512 px タイルを z=round(zoom) で表示範囲だけ取得し、256 CSS px に描く
 
 performance_knowledge:
   - id: canvas2d-native-stroke-sweetspot
@@ -62,6 +69,14 @@ performance_knowledge:
   - id: mercator-projection-at-bake
     finding: 経緯度から Web Mercator 座標への対数・三角関数演算をベイク時に済ませることで、毎フレームの描画処理を単純なスケール・平行移動加減算のみに圧縮できる
     evidence: 描画ループ内の Math.log / Math.tan 呼び出しを完全排除
+  - id: land-placeholder-until-tiles
+    finding: 都市ズームでは Natural Earth 110m の陸だけでは画面が一色になり背景地図として読めないため、ラスタタイルを非同期で重ね、到着までは陸ポリゴンを下地にする。初回フレームはタイルを待たないので 300 ms 予算に影響しない
+    evidence: 初回描画 p50 10.0 ms（下地タイル 52 リクエストは後から到着）。タイル到着後の再描画は p95 0.57 ms（z15 で約 20 枚の drawImage 込み）
+    applies_when: 常時接続前提で、都市ズームの背景地図を固定データなしで出したいとき
+  - id: base-hidden-for-pixel-checks
+    finding: 背景に道路・地名が入ると、グレーの線や半透明の塗りのピクセル検証が下地の偶然の色で通ってしまう。検証中だけ下地を隠し、下地自体は画面全体の色数で別チェックにする
+    evidence: 下地を隠した状態で線の色を読み、下地ありで 200 色超を確認（平坦な陸なら数色）
+    applies_when: 背景地図の上に置いた図形をピクセルで検証するとき
 
 architecture_selection:
   chosen:
@@ -74,19 +89,27 @@ architecture_selection:
       - examples/maplibre/012-add-a-geojson-line/main.ts
       - examples/maplibre/012-add-a-geojson-line/line.ts
     dependencies: []
-    why: 1本の GeoJSON ラインと背景陸地を描画する目的において、Canvas 2D のベジェ/パスストローク機能が最も軽量かつ高品質であるため
+    why: 1本の GeoJSON ラインを描画する目的において、Canvas 2D のパスストロークが最も軽量かつ高品質。背景は OSM Carto のラスタタイルを表示範囲だけ取得し、到着まではベイクした陸ポリゴンで埋める
   alternatives:
     - option: WebGL2 (押し出しポリライン)
       rejected_because: 幅付きポリラインの頂点押し出し・結合部（join/cap）のインデックス生成コードが必要になり、コードサイズが数倍に膨らむため
     - option: SVG Overlay
       rejected_because: ドラッグ移動時の DOM 再配置によるジャンクや再レンダリングコストを避け、Canvas 内でフレーム同期描画するため
+    - option: Natural Earth 110m の陸ポリゴンだけを背景にする
+      rejected_because: ズーム 15 では画面全体が一色のベージュになり、背景地図として読めない
+    - option: ベイク時にタイルを 1 枚の画像へ合成する
+      rejected_because: パン・ズームで合成範囲の外が空白になる。必要な範囲を広げるとデータ量が実行時取得を上回る
   not_doing: [3D地形, 地名ラベル, ダッシュパターン, 回転・ピッチ, ベクタータイルデコード]
 
 verification:
   checks:
+    - id: basemap-drawn
+      what: ラインの下にラスタの背景地図（道路・地名）が描かれている
+      how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: ready >= 8、異なる色 > 200（平坦な陸なら数色）
     - id: line-rendered-gray
       what: マリンヘッドランズのルート位置に初期設定のグレー（#888888）の線が描画されている
-      how: getImageData でルート座標位置のピクセル色を検証
+      how: 下地を隠した状態で getImageData によりルート座標位置のピクセル色を検証
       expected: Math.abs(r - 136) < 20 && Math.abs(g - 136) < 20 && Math.abs(b - 136) < 20
     - id: line-moves-with-pan
       what: 地図を (60px, 40px) パンしたとき、ラインの描画位置が正確に (+60px, +40px) 移動する

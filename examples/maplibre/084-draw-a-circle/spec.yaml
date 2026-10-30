@@ -17,10 +17,13 @@ requirements:
   - id: circle-on-map
     need: 円が指定した中心・半径で描かれ、地図の操作に正しく追従する
     unmeasured: verification checks で画面ピクセルを検証
+  - id: background-map
+    need: ズーム 9 でも道路・地名・海岸線が読める背景地図が円の下にある
+    unmeasured: verification の basemap-drawn で表示範囲のタイル枚数と画面の色数を検証
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
     - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
@@ -35,7 +38,7 @@ benchmarks:
   iterations: 3
   scenarios:
     - id: first-frame
-      what: 円データと陸地データの取得から初回描画まで
+      what: 円データと陸地データの取得から初回描画まで（下地タイルは非同期で後から重なる）
       metrics: [first_frame_ms]
     - id: pan
       what: 60フレームのパン操作中の再描画時間とフレーム間隔
@@ -47,12 +50,16 @@ datasets:
     - id: ne-110m-land
       origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
       license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json（実行時に表示範囲だけ取得する 512 px PNG タイル）
+      license: ODbL (© OpenStreetMap contributors, © OpenMapTiles)
   outputs:
     - data/baked/maplibre-084-draw-a-circle/circle.json
     - data/baked/maplibre-084-draw-a-circle/land.json
   preparation:
     - MapLibre 公式例の中心 [-74.5, 40]・半径 50 km の円を 128 分割のリングとしてベイク
-    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化（下地タイル到着までの代替）
+    - 実行時は OSM Carto の 512 px タイルを z=round(zoom) で表示範囲だけ取得し、256 CSS px に描く
 
 performance_knowledge:
   - id: circle-as-mercator-ring
@@ -63,6 +70,14 @@ performance_knowledge:
     finding: 半透明の塗りは背景の陸地色と混ざるため、検証は単色一致ではなく青成分の差で判定すると安定する
     evidence: 陸地 #f2efe9 上の 50% 青は rgba(121,184,244) になり、青 - 赤の差が 100 を超える
     applies_when: 透明度付きの塗りをピクセル検証するとき
+  - id: land-placeholder-until-tiles
+    finding: ズーム 9 では Natural Earth 110m の陸だけでは海岸線がブロック状になり背景地図として読めないため、ラスタタイルを非同期で重ね、到着までは陸ポリゴンを下地にする。初回フレームはタイルを待たない
+    evidence: 初回描画 p50 9.7 ms（タイル到着前の陸描画で完了）、タイル到着後の再描画 p95 0.82 ms、フレーム間隔 p95 13.5 ms
+    applies_when: 常時接続前提で、低ズームの背景地図を固定データなしで出したいとき
+  - id: base-hidden-for-pixel-checks
+    finding: 背景に道路・地名が入ると、半透明の塗りのピクセル検証が下地の偶然の色で通ってしまう。検証中だけ下地を隠し、下地自体は画面全体の色数で別チェックにする
+    evidence: 下地を隠した状態で円の内外を読み、下地ありで 150 色超を確認
+    applies_when: 背景地図の上に置いた図形をピクセルで検証するとき
 
 architecture_selection:
   chosen:
@@ -75,16 +90,24 @@ architecture_selection:
       - examples/maplibre/084-draw-a-circle/main.ts
       - examples/maplibre/084-draw-a-circle/circle.ts
     dependencies: []
-    why: 陸地と円1つを描くだけなら Canvas 2D のパス塗りが最小・最速
+    why: 陸地と円1つを描くだけなら Canvas 2D のパス塗りが最小・最速。背景は OSM Carto のラスタタイルを表示範囲だけ取得し、到着まではベイクした陸ポリゴンで埋める
   alternatives:
     - option: WebGL2
       rejected_because: 単一ポリゴンの塗りにシェーダーとバッファ管理は過剰
     - option: 円を解析的に (arc) 描く
       rejected_because: 投影後の円は真円ではないため、メルカトル座標のリングをそのまま塗るほうが単純で正確
+    - option: Natural Earth 110m の陸ポリゴンだけを背景にする
+      rejected_because: ズーム 9 では海岸線がブロック状の一色になり、背景地図として読めない
+    - option: ベイク時にタイルを 1 枚の画像へ合成する
+      rejected_because: パン・ズームで合成範囲の外が空白になる
   not_doing: [3D地形, 地名ラベル, 円のドラッグ編集, 半径の動的変更]
 
 verification:
   checks:
+    - id: basemap-drawn
+      what: 円の下にラスタの背景地図（道路・地名・海岸線）が描かれている
+      how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
+      expected: ready >= 8、異なる色 > 150（平坦な陸なら数色）
     - id: circle-data-loaded
       what: 半径 50,000 m と中心 [-74.5, 40] がベイク済みデータから読まれる
       how: map.radiusM と map.center を検証

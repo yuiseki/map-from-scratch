@@ -6,12 +6,31 @@ export interface CircleMap {
   draw(): void;
   panBy(dx: number, dy: number): void;
   setZoom(z: number): void;
+  setBaseVisible(v: boolean): void;
+  baseReady(): number;
+  baseLoaded(): boolean;
+  resetView(): void;
   getScreenPos(lng: number, lat: number): [number, number];
   destroy(): void;
 }
 
 type Ring = [number, number][];
 type Polygon = Ring[];
+
+interface TileJSON {
+  tiles: string[];
+  minzoom: number;
+  maxzoom: number;
+}
+interface TileEntry {
+  state: 'loading' | 'ready' | 'error';
+  bitmap?: ImageBitmap;
+}
+
+// The same 512 px raster style as the raster-tile example; the baked land
+// polygons stand in until the covering tiles arrive.
+const TILE_STYLE = 'https://tile.yuiseki.net/styles/512/osm-carto.json';
+const MAX_IN_FLIGHT = 6;
 
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
@@ -31,6 +50,14 @@ export async function mount(
   const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
+
+  let tileJson: TileJSON | null = null;
+  const tiles = new Map<string, TileEntry>();
+  const queued = new Set<string>();
+  const queue: string[] = [];
+  let inFlight = 0;
+  let rafId = 0;
+  let baseVisible = true;
 
   const [circleRes, landRes] = await Promise.all([fetch(circleUrl), fetch(landUrl)]);
   if (!circleRes.ok) throw new Error(`failed to fetch circle: ${circleRes.status}`);
@@ -63,6 +90,99 @@ export async function mount(
     ];
   }
 
+  // ---- raster base map -----------------------------------------------------
+  interface BaseLayout {
+    zi: number; n: number; tile: number;
+    originX: number; originY: number;
+    x0: number; x1: number; y0: number; y1: number;
+  }
+
+  function baseLayout(): BaseLayout | null {
+    if (!tileJson) return null;
+    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom)));
+    const n = 1 << zi;
+    const tile = 256 * Math.pow(2, zoom - zi);
+    const scale = 256 * Math.pow(2, zoom);
+    const originX = width / 2 - centerMx * scale;
+    const originY = height / 2 - centerMy * scale;
+    return {
+      zi, n, tile, originX, originY,
+      x0: Math.floor(-originX / tile),
+      x1: Math.floor((width - originX) / tile),
+      y0: Math.max(0, Math.floor(-originY / tile)),
+      y1: Math.min(n - 1, Math.floor((height - originY) / tile)),
+    };
+  }
+
+  const wrapX = (x: number, n: number): number => ((x % n) + n) % n;
+  const tileKey = (z: number, x: number, y: number): string => `${z}/${x}/${y}`;
+
+  function requestTile(zi: number, wx: number, y: number): void {
+    const key = tileKey(zi, wx, y);
+    if (tiles.has(key) || queued.has(key)) return;
+    queued.add(key);
+    queue.push(key);
+    pump();
+  }
+
+  function pump(): void {
+    while (inFlight < MAX_IN_FLIGHT && queue.length > 0) {
+      const key = queue.shift() as string;
+      queued.delete(key);
+      const [z, x, y] = key.split('/');
+      const url = (tileJson as TileJSON).tiles[0]
+        .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+      const entry: TileEntry = { state: 'loading' };
+      tiles.set(key, entry);
+      inFlight++;
+      void (async () => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(String(res.status));
+          entry.bitmap = await createImageBitmap(await res.blob());
+          entry.state = 'ready';
+        } catch {
+          entry.state = 'error';
+        } finally {
+          inFlight--;
+          pump();
+          scheduleDraw();
+        }
+      })();
+    }
+  }
+
+  function scheduleDraw(): void {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      draw();
+    });
+  }
+
+  async function loadBase(): Promise<void> {
+    try {
+      const res = await fetch(TILE_STYLE);
+      if (!res.ok) return;
+      tileJson = (await res.json()) as TileJSON;
+      scheduleDraw();
+    } catch {
+      // Offline: the baked land polygons remain the background.
+    }
+  }
+
+  function readyTiles(): number {
+    const L = baseLayout();
+    if (!L) return 0;
+    let ready = 0;
+    for (let x = L.x0; x <= L.x1; x++) {
+      for (let y = L.y0; y <= L.y1; y++) {
+        if (tiles.get(tileKey(L.zi, wrapX(x, L.n), y))?.state === 'ready') ready++;
+      }
+    }
+    return ready;
+  }
+
   function draw(): void {
     ctx.save();
     ctx.scale(dpr, dpr);
@@ -93,6 +213,28 @@ export async function mount(
         }
         ctx.fill();
         ctx.stroke();
+      }
+    }
+
+    // Raster base map on top of the land placeholder.
+    const L = baseLayout();
+    if (baseVisible && L) {
+      for (let x = L.x0; x <= L.x1; x++) {
+        const X0 = Math.round(L.originX + x * L.tile);
+        const X1 = Math.round(L.originX + (x + 1) * L.tile);
+        for (let y = L.y0; y <= L.y1; y++) {
+          const Y0 = Math.round(L.originY + y * L.tile);
+          const Y1 = Math.round(L.originY + (y + 1) * L.tile);
+          const entry = tiles.get(tileKey(L.zi, wrapX(x, L.n), y));
+          if (entry?.state === 'ready' && entry.bitmap) {
+            ctx.drawImage(entry.bitmap, X0, Y0, X1 - X0, Y1 - Y0);
+          }
+        }
+      }
+    }
+    if (L) {
+      for (let x = L.x0; x <= L.x1; x++) {
+        for (let y = L.y0; y <= L.y1; y++) requestTile(L.zi, wrapX(x, L.n), y);
       }
     }
 
@@ -173,6 +315,7 @@ export async function mount(
   }
 
   resize();
+  void loadBase();
 
   return {
     canvas,
@@ -184,6 +327,20 @@ export async function mount(
     draw,
     panBy,
     setZoom,
+    setBaseVisible(v: boolean): void {
+      baseVisible = v;
+      draw();
+    },
+    baseReady: readyTiles,
+    baseLoaded(): boolean {
+      return tileJson !== null;
+    },
+    resetView(): void {
+      centerMx = mercX(circle.center[0]);
+      centerMy = mercY(circle.center[1]);
+      zoom = 9;
+      draw();
+    },
     getScreenPos,
     destroy(): void {
       window.removeEventListener('resize', resize);
