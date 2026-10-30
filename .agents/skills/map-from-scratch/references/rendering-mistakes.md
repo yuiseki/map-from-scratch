@@ -345,7 +345,7 @@ each other, with values such as −370°. Choose the step from the pixel
 spacing (the smallest of 0.5, 1, 2, 5, 10, 30, 60° that is at least 60 px
 apart) and print longitudes normalised to −180..180.
 
-### Base data too coarse for the scale (tangram 004)
+### Base data too coarse for the scale (repeated: tangram 004 and 001)
 
 - Screen: no San Francisco Bay; coastal highways over the sea, at zoom 8 on
   Natural Earth 110m land.
@@ -357,8 +357,11 @@ apart) and print longitudes normalised to −180..180.
   Mercator units, which saved 6.3 KB, more than the 5.0 KB the detail cost.
 - Test: overlay the line data and look for lines over water.
 
-The template examples draw 110m land at their opening zooms too; 009
-(Copenhagen at zoom 8) shows the same mismatch on its coasts.
+tangram 001 was built on the same Bay Area data after 004 and repeated the
+mistake; it now carries the same 10m detail box (its land loop also lacked
+world copies, under the name `this.land`). The template examples draw 110m
+land at their opening zooms too; 009 (Copenhagen at zoom 8) and maplibre 084
+(New Jersey at zoom 8) show the same mismatch on their coasts, not fixed.
 
 ## Outside the twelve
 
