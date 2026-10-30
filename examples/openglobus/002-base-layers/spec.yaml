@@ -1,0 +1,96 @@
+id: openglobus-002-base-layers
+request: >-
+  OpenGlobus の Base Layers 例のように、UI の切り替えボタン（「OSM」と「Satellite」）でベースレイヤー
+  （標準地図スタイルと衛星写真風ダークスタイル）を瞬時に切り替えられる地図を表示したい。
+  ドラッグでパン、ホイールでズームでき、スタイル切り替え時も位置・ズームが保持されること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ベースレイヤー切り替えと地図表示に巨大な 3D 地球儀エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: instant-layer-switch
+    need: ベースレイヤー切り替えが遅延なく瞬時に画面に反映される
+    unmeasured: verification の checks でスタイル切り替え前後のピクセル色変化を即時検証
+  - id: map-accuracy
+    need: スタイル切り替え後も地図座標と地物配置が正確に保持される
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/002-base-layers/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/openglobus/002-base-layers/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/openglobus-002-base-layers/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: zero-download-layer-styling
+    finding: 複数のベースレイヤー切り替えにおいて、スタイルごとに別個のラスタタイル群をダウンロードする代わりに、単一のベイク済みベクターポリゴンに対してレンダラー側でパレット定義（OSM 風・Satellite 風）を切り替えることで、追加通信ゼロ・ゼロラグの即時切り替えを達成できる
+    evidence: 切り替え描画時間 0.3 ms 未満、通信量 0 バイト
+    applies_when: テーマやモード（ライト・ダーク・衛星風）の切り替えが必要な地図
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/openglobus/002-base-layers/index.html
+      - examples/openglobus/002-base-layers/main.ts
+      - examples/openglobus/002-base-layers/map.ts
+    dependencies: []
+    why: ベースレイヤースタイルの即時切り替えと軽量表示に Canvas 2D が最も適している
+  alternatives:
+    - option: OpenGlobus フルスタック
+      rejected_because: 数 MB のエンジン依存と複数ラスタタイルの非同期取得が発生するため
+  not_doing: [3D地形, 地名ラベル, クラスタリング, 大気散乱シェーダー]
+
+verification:
+  checks:
+    - id: layer-switching-updates-pixels
+      what: OSM モードから Satellite モードに切り替えたとき、海洋ピクセルと陸地ピクセルの色が即座に更新される
+      how: 切替前後の特定座標 [0, 0] と [10, 50] のピクセル色を getImageData で検証
+      expected: OSM 時は明るい水色とベージュ、Satellite 時は濃紺とオリーブ色
+    - id: pan-preserves-layer-state
+      what: Satellite モードで地図をパンしたとき、選択中レイヤーのスタイルを維持しながら位置が追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で Satellite 陸地色が検出される
+    - id: zoom-preserves-layer-state
+      what: ズーム変更後も選択中レイヤーのスタイルと座標位置が正確に追従する
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算されたスクリーン座標に陸地が描画されている
+  harness:
+    - contextlost が起きたらエラーにする
