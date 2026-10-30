@@ -72,6 +72,21 @@ range from the screen width, as above, never a constant.
 - Its `antimeridian-clean` check looked at Alaska and Chukotka only and
   passed with the wedges on screen; it now also needs land next to the pole.
 
+### The coast stroked along the 180° cut (repeated: maplibre 011, 027, 034, 041, 048, 071, 040, 072; mapbox 022, 049)
+
+Natural Earth splits land at ±180°. A template that fills each polygon and
+then strokes the same path draws that split as a 2 px line down Chukotka
+wherever the wrap is on screen. Stroke only the edges that are coast: skip
+an edge whose two ends both lie at Mercator x 0 or both at x 1.
+
+### Base map labels at half size (maplibre 012, 084, 027)
+
+512 px raster tiles (tile.yuiseki.net/styles/512) taken at z = round(zoom)
+and drawn into 256 CSS px are downscaled 2x: sharp at DPR 2, but at DPR 1
+every label is about 5 px. Take zi = round(zoom + log2(dpr) − 1) so the PNG
+lands near 512 device px, and count the tiles in view rather than
+expecting a fixed number in checks.
+
 ## Projection
 
 ### An axis factor applied twice (25)
@@ -100,7 +115,7 @@ range from the screen width, as above, never a constant.
 The staircase on its contour bands comes from `texelFetch` without
 interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
-### A fixed backing store stretched by CSS (opfs 001)
+### A fixed backing store stretched by CSS (repeated: opfs 001; webgpu 001, 002)
 
 - Screen: the world twice as wide as tall at 1920x1021; Antarctica a band
   across the bottom third.
@@ -113,6 +128,10 @@ interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
   than the bench viewport.
 - Fix: size the backing store from `clientWidth·dpr` on load and on resize,
   draw in CSS px under `setTransform(dpr, …)`.
+- WebGPU pages take the projection's aspect from `canvas.width/height`, so
+  a 1024x768 store under a 1920x1021 window drew every building 1.4 times
+  too wide (webgpu 001) and the road map 1.7 times too wide (webgpu 002).
+  Grep for `<canvas ... width="1024"` in new examples.
 ## Interaction
 
 ### Dragging moves the map the wrong way (deckgl 019)
