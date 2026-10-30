@@ -154,18 +154,21 @@ expect that record.
 fixing the extrusion sign fixed picking too. Prefer this to a separate CPU
 inverse.
 
-### Suspected, not confirmed: the nearest centre instead of the circle under the cursor (07)
+### Checked, not a mistake: the city on top wins (07)
 
-Hovering the middle of Tokyo's large circle reported Yokohama. If the pick
-takes the nearest centre within a radius rather than the largest circle
-containing the cursor, small neighbours win inside big circles. Check before
-relying on it.
+Hovering the middle of Tokyo's large circle reports Yokohama or Kawasaki. The
+pick returns the last city in draw order whose disc contains the cursor,
+and smaller cities are drawn over larger ones, so it reports the disc you
+see on top; REQUEST.md says so. A review should read REQUEST.md before
+calling a pick wrong.
 
 ## Popup
 
-**Not yet seen.** Look at: the anchor staying on its coordinate during pan and
-zoom (073, 127, leaflet 005 draw popups on the canvas); popups near the edge
-of the screen; a popup on the far side of 180°.
+**No mistake found** in maplibre 073, mapbox 127 (the same template) and
+leaflet 005: each draw projects the anchor again, so the tip stays on its
+coordinate through pans and zooms. Two differences from MapLibre remain:
+the popup is drawn on one world copy only, so it vanishes when that copy
+leaves the screen, and it never flips its anchor at the screen edge.
 
 ## Markers
 
@@ -379,6 +382,18 @@ land at their opening zooms too; 009 (Copenhagen at zoom 8) and maplibre 084
 (New Jersey at zoom 8) show the same mismatch on their coasts, not fixed.
 
 ## Outside the twelve
+
+### Reading both sides of a pair (deckgl 001)
+
+- Screen: all 200 migration arcs of Los Angeles in the in-flow colour,
+  although its own record has 449 in-flows and 892 out-flows.
+- Why: the selection took every record with the county as source or
+  target. The other counties' records about Los Angeles carry the sign from
+  their side, so an out-flow from Los Angeles arrived as a positive value and
+  was drawn as an in-flow, and each pair was counted twice, which also pushed
+  smaller flows (Hawaii, Puerto Rico) out of the top 200.
+- Fix: use only the selected county's own record, as deck.gl reads
+  `selected.properties.flows`.
 
 ### Range retries that defeat the CDN (10, 18, 24)
 
