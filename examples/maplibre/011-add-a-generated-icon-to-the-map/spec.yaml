@@ -1,0 +1,108 @@
+id: maplibre-011-add-a-generated-icon-to-the-map
+request: >-
+  経度0・緯度0の地点に、画像ファイルを読み込まずに Canvas で生成した赤→青のグラデーション
+  アイコン（赤チャンネルをアルファにコピーして下端を半透明にする）を描き、
+  ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 生成アイコン1枚と背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とアイコンが現れる
+    rationale: 画像リクエストなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: icon-accuracy
+    need: 生成したグラデーションと半透明が仕様どおりで、アイコンが [0, 0] に固定される
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/011-add-a-generated-icon-to-the-map/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得からアイコン描画のある初回フレームまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/011-add-a-generated-icon-to-the-map/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-011-add-a-generated-icon-to-the-map/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に量子化して軽量な JSON 配列としてベイク
+
+performance_knowledge:
+  - id: alpha-from-red-channel
+    finding: 元例は 200×200 の Canvas に赤→青の線形グラデーションを描き、getImageData で赤チャンネルをアルファへコピーして半透明の下端を作る。この処理は起動時に 1 回だけ行えばよく、実行時の画像リクエストもデコード待ちも発生しない
+    evidence: 画像リクエスト 0 件、初回描画はデータ取得込みで 40 ms 未満
+  - id: dpr-aware-sprite
+    finding: スプライトを devicePixelRatio 倍の解像度で作り直してから CSS サイズでブリットすると、DPR 2 の画面でもグラデーションが滲まない（resize 時に再生成）
+    evidence: DPR 1/2 のどちらでも同じ 100 CSS px で描画
+  - id: landing-on-ocean
+    finding: アイコンは [0, 0]（ギニア湾の海上）に置かれるため、色の検証は陸地の色ではなく海面 #aad3df との合成色で行う必要がある
+    evidence: 上端 25 px は r>150 かつ r>b+50、下端 25 px は b>200 かつ b>r+15
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/011-add-a-generated-icon-to-the-map/index.html
+      - examples/maplibre/011-add-a-generated-icon-to-the-map/main.ts
+      - examples/maplibre/011-add-a-generated-icon-to-the-map/icon.ts
+    dependencies: []
+    why: 生成アイコン1枚と陸地ポリゴンだけなら Canvas 2D の drawImage 1回が最小・最速
+  alternatives:
+    - option: WebGL2 の textured quad
+      rejected_because: テクスチャ転送とシェーダー初期化が加わり、1枚のアイコンには過剰
+    - option: DOM の <img> オーバーレイ
+      rejected_because: 画像リクエストと地図キャンバスとの同期更新が必要になり、フレーム一貫性を保ちにくい
+  not_doing: [3D地形, アイコンの回転・衝突判定, 複数アイコン, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: gradient-red-top
+      what: '生成アイコンの上端が赤寄りに描画されている'
+      how: getImageData でアイコン中心の 25 px 上のピクセル色を検証
+      expected: 'r > b + 50 かつ r > 150'
+    - id: gradient-blue-bottom
+      what: '生成アイコンの下端が半透明の青寄りに描画されている'
+      how: getImageData でアイコン中心の 25 px 下のピクセル色を検証
+      expected: 'b > r + 15 かつ b > 200'
+    - id: icon-moves-with-pan
+      what: 'パンでアイコンが地図と一緒に同じ量だけ動く'
+      how: setZoom(3) から panBy(60, 40) し、画面上の移動量と描画ピクセルを検証
+      expected: 'dx = 60, dy = 40 かつ赤寄りピクセルが検出される'
+    - id: icon-anchors-on-zoom
+      what: 'ズームしてもアイコンが [0, 0] に留まる'
+      how: setZoom(5) 後のアイコン位置のピクセル色を検証
+      expected: '赤寄りピクセルが検出される'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint でアイコン位置をアンカーに zoom 5→6 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

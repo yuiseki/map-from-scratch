@@ -1,0 +1,131 @@
+id: maplibre-027-add-custom-icons-with-markers
+request: >-
+  マンハッタン周辺の3地点に、画像ファイルを読み込まずに描いた緑・橙・紅のピンアイコンを置き、
+  OpenStreetMap のラスター地図を背景に、ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 3枚のピンと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と3本のピンが現れる
+    rationale: ピンは画像リクエストなし、背景タイルは非同期で届き 300 ms 以内に操作可能
+  - id: background-map
+    need: 都市スケールで Street 名や道路が読める背景地図を出す
+    rationale: 110m 陸地だけでは z10 のマンハッタンが単色の面になり、元例の背景と比べられない
+    unmeasured: verification の basemap-drawn でタイル数と画面上の色数を検証
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: marker-accuracy
+    need: 各ピンの先端が指定座標に固定され、パン・ズームでも互いの地理的間隔を保つ
+    unmeasured: verification の checks で画面ピクセル色・移動量・間隔比を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/027-add-custom-icons-with-markers/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から3本のピン描画のある初回フレームまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/027-add-custom-icons-with-markers/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: osm-carto-raster
+      origin: https://tile.yuiseki.net/styles/512/osm-carto.json
+      license: >-
+        OpenStreetMap データ © OpenStreetMap contributors (ODbL)、タイル © OpenMapTiles、
+        スタイル OSM Carto。実行時に z=round(zoom) のタイルを HTTP 取得する。
+  outputs: [data/baked/maplibre-027-add-custom-icons-with-markers/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に量子化して軽量な JSON 配列としてベイク
+    - 3地点の座標と色はコード内の定数（元例と同じマンハッタン周辺）
+    - 背景タイルはベイクせず、実行時に 512 px PNG を取得して ImageBitmap で保持
+
+performance_knowledge:
+  - id: three-pin-sprites
+    finding: ピンは色ごとに DPR 倍で1枚ずつオフスクリーン Canvas へ描いておき、毎フレームは drawImage を3回呼ぶだけで済む。パスを毎フレーム組み立てるより描画コストが低い
+    evidence: リドロー時間 p95 は 0.5 ms 未満、パン中も 60 fps
+  - id: tip-anchored
+    finding: ピンの先端を地理座標に合わせるため、スプライトは (sx - W/2, sy - H) に置く。中心合わせにするとズーム時にピンが北へずれて見える
+    evidence: 3本ともパン量 (40, 25) px に一致し、z10→z11 で間隔比 2.003
+  - id: spacing-as-geography-check
+    finding: ピクセル色だけでなく「2点間の画面距離がズームで2倍になる」ことを検査すると、描画はされているが座標に固定されていない実装を見逃さない
+    evidence: z10 と z11 のピン0-1間距離の比が 2 ± 0.05 に収まる
+  - id: pins-over-raster
+    finding: 背景タイルを陸地プレースホルダの上に描き、ピンは最後に描く順序にすると、タイル到着やパンでピンが隠れず、色の検証もタイルの内容に依存しない
+    evidence: z10 の16タイル取得後も各ピン頭部の RGB は指定色のまま
+  - id: land-placeholder-until-tiles
+    finding: タイルが届く前はベイク済みの陸地ポリゴンを表示するため、初回フレームから地図の形が見え、タイル取得失敗時も背景が残る
+    evidence: 初回フレーム p50 は 15 ms 前後で、タイル取得は後から追いつく
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/027-add-custom-icons-with-markers/index.html
+      - examples/maplibre/027-add-custom-icons-with-markers/main.ts
+      - examples/maplibre/027-add-custom-icons-with-markers/icons.ts
+    dependencies: []
+    why: 3枚のピンと背景タイルだけなら Canvas 2D の drawImage が最小・最速
+  alternatives:
+    - option: DOM の Marker 要素を3つ重ねる
+      rejected_because: 地図キャンバスとの同期更新が必要になり、フレーム一貫性を保ちにくい
+    - option: WebGL2 の instanced textured quad
+      rejected_because: 3枚ではシェーダー初期化のコストが上回る
+    - option: 110m 陸地のみを背景にする
+      rejected_because: z10 のマンハッタンでは単色の面になり、元例の街路が読める背景と比較できない
+  not_doing: [3D地形, ピンの衝突判定・クラスタリング, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: 'OSM Carto の背景タイルが実際に描画されている'
+      how: 画面全体のピクセルから 8 px 間隔で色を数え、取得済みタイル数と併せて検証
+      expected: '8枚以上のタイルが ready かつ異なる色が 200 種より多い'
+    - id: custom-icons-visible
+      what: '3本のピンがそれぞれ緑・橙・紅で描画されている'
+      how: 各ピンの先端から 32 px 上の頭部を 8 px 右にずらして getImageData で色を検証
+      expected: '各色の RGB との差がすべて 10 以内'
+    - id: markers-move-with-pan
+      what: 'パンで3本とも同じ画面量だけ動く'
+      how: panBy(40, 25) 前後の各ピン先端座標を比較
+      expected: '3本とも dx = 40, dy = 25'
+    - id: marker-spacing-scales
+      what: '2本のピンの画面距離がズーム1段で2倍になる（地理座標に固定されている）'
+      how: z10 と z11 でピン0-1間の距離を比較
+      expected: '比が 2 ± 0.05'
+    - id: markers-anchor-on-zoom
+      what: 'ズーム後も3本のピンが新しい位置に描画されている'
+      how: z11 で各頭部のピクセル色を再検証
+      expected: '3色すべてが再検出される'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下のピンが動かない'
+      how: zoomAtPoint でピン0をアンカーに z11→z12 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

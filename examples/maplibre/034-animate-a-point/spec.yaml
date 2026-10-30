@@ -1,0 +1,108 @@
+id: maplibre-034-animate-a-point
+request: >-
+  経度0・緯度0を中心とする半径20°の円周上を、青い点が毎秒60°で回り続ける地図を表示したい。
+  ドラッグでパン、ホイールで拡大縮小でき、点は常に地理座標に固定される。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 点1個のアニメーションと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と動く点が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-animation
+    need: 点の移動が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: orbit-accuracy
+    need: 点が指定した半径・角速度の軌道上にあり、パン・ズームでも地理座標からずれない
+    unmeasured: verification の checks で投影座標・移動量・ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/034-animate-a-point/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から点描画のある初回フレームまで
+      metrics: [first_frame_ms]
+    - id: animation
+      what: 60フレームのadvance+再描画のコストとフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/034-animate-a-point/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-034-animate-a-point/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に量子化して軽量な JSON 配列としてベイク
+    - 軌道の角度は実行時に経過時間から計算（データ化しない）
+
+performance_knowledge:
+  - id: timestamp-driven-orbit
+    finding: 点の位置をフレーム回数ではなく requestAnimationFrame のタイムスタンプから計算すると、タブの一時停止や低いフレームレートでも角速度が保たれる。描画は背景＋点1個の arc だけで済む
+    evidence: 再描画時間 p95 は 0.5 ms 未満
+  - id: mercator-orbit-is-not-a-circle
+    finding: 地理座標の円は Web Mercator では楕円になる。赤道での20°は 227.6 px、北緯20°での20°は約 232 px なので、検証は「画面上の半径一定」ではなく投影式から期待座標を計算して行う
+    evidence: z4 で東端 (739.6, 384)、北端 (512.0, 152) 付近に描画
+  - id: deterministic-advance
+    finding: ベンチ用に advance(ms) と resetAngle() を公開し、自動アニメーションを止めてから角度を進めることで、画素検証を実行タイミングに依存させない
+    evidence: 1.5 秒でちょうど 90° 進み、lng≈0・lat≈20 になる
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/034-animate-a-point/index.html
+      - examples/maplibre/034-animate-a-point/main.ts
+      - examples/maplibre/034-animate-a-point/orbit.ts
+    dependencies: []
+    why: 動く点1個と陸地ポリゴンだけなら Canvas 2D の arc 1回が最小・最速
+  alternatives:
+    - option: WebGL2 の point sprite
+      rejected_because: 1点のためにシェーダー初期化と毎フレームのバッファ更新が加わる
+    - option: DOM 要素を CSS アニメーションで動かす
+      rejected_because: 地図キャンバスとの同期や地理座標への固定が難しくなる
+  not_doing: [3D地形, 軌跡の描画, 複数点, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: point-starts-east
+      what: '開始時の点が [20°, 0°]（[0,0] の東）に描画されている'
+      how: 投影式から期待スクリーン座標を計算し、そのピクセル色と lnglat を検証
+      expected: 'lng≈20, lat≈0、座標差 < 1.5 px、青い点の色'
+    - id: point-orbits-north
+      what: '1.5秒後に点が [0°, 20°]（北）へ移動している'
+      how: advance(1500) 後の lnglat・期待座標・移動距離・ピクセル色を検証
+      expected: 'lng≈0, lat≈20、移動 > 200 px、青い点の色'
+    - id: point-moves-with-pan
+      what: 'パンで点が地図と一緒に同じ量だけ動く'
+      how: panBy(50, 30) 前後のスクリーン座標とピクセル色を検証
+      expected: 'dx = 50, dy = 30'
+    - id: point-anchors-on-zoom
+      what: 'ズーム後も点が投影座標どおりの位置に描画されている'
+      how: setZoom(4.5) 後に投影式の期待座標とピクセル色を検証
+      expected: '座標差 < 1.5 px、青い点の色'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint で点をアンカーに z4.5→4.75 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

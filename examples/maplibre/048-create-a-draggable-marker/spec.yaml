@@ -1,0 +1,111 @@
+id: maplibre-048-create-a-draggable-marker
+request: >-
+  経度0・緯度0に置いたピンをマウスでつかんで地図上の任意の位置へ動かせる地図を表示したい。
+  ピン以外の場所をドラッグしたときは地図がパンし、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: ピン1本のドラッグと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とピンが現れる
+    rationale: 画像リクエストなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグ（ピン・地図とも）が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: drag-accuracy
+    need: ピンがポインタの位置に正確に付き、ドラッグ中の緯度経度が投影と一致する
+    unmeasured: verification の checks で画面座標・緯度経度・地図中心の不変を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/048-create-a-draggable-marker/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得からピン描画のある初回フレームまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/048-create-a-draggable-marker/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-048-create-a-draggable-marker/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点5桁に量子化して軽量な JSON 配列としてベイク
+
+performance_knowledge:
+  - id: rect-hit-test-on-sprite
+    finding: ピンの当たり判定はスプライトの矩形（先端を基準に幅32×高さ44 px）で行えば十分で、DOM の Marker 要素やピクセル単位のヒットテストは不要
+    evidence: 合成 PointerEvent で頭部をつかみ、地図中心を 0 のままピンだけを 80×50 px 動かせた
+  - id: drag-vs-pan
+    finding: pointerdown の位置がピン矩形に入っているかだけで「ピンを動かす」か「地図をパンする」かを分岐すると、状態機械を持たずに済む
+    evidence: ピン上のドラッグで中心不変、余白のドラッグで中心が (-30/2048, -20/2048) 変化
+  - id: inverse-mercator-on-drag
+    finding: ドラッグ中の緯度経度は pointermove のたびに逆メルカトルで求める。描画はピン1枚の drawImage だけなので、変換コストは問題にならない
+    evidence: 画面 +80 px が経度 +14.06°、+50 px が緯度 -8.79° と一致
+  - id: keep-grab-offset-during-drag
+    finding: つかんだ地点とピン先端のずれを pointerdown 時に保持しないと、ドラッグ開始でピンがポインタ位置へ跳ぶ。ずれを保つと 80×50 px の移動がそのままピンの移動になる
+    evidence: ずれを保持しない実装ではポインタを +50 px 動かしてもピンは +18 px しか動かず check が落ちた
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/048-create-a-draggable-marker/index.html
+      - examples/maplibre/048-create-a-draggable-marker/main.ts
+      - examples/maplibre/048-create-a-draggable-marker/marker.ts
+    dependencies: []
+    why: ピン1本のドラッグと陸地ポリゴンだけなら Canvas 2D の drawImage 1回が最小・最速
+  alternatives:
+    - option: DOM の Marker 要素を CSS transform で動かす
+      rejected_because: 地図キャンバスとの同期更新が必要になり、ドラッグ中のフレーム一貫性を保ちにくい
+    - option: ピクセル単位のヒットテスト
+      rejected_because: getImageData の読み戻しが毎 pointerdown で必要になり、矩形判定で足りる用途には過剰
+  not_doing: [3D地形, 複数マーカー, タッチのピンチ操作, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: draggable-marker-visible
+      what: 'ピンが [0, 0] に描画されている'
+      how: getImageData でピン頭部の色と getMarkerLngLat を検証
+      expected: '青いピンの色、lnglat≈(0, 0)'
+    - id: marker-drags-to-pointer
+      what: 'ピンをつかんで 80×50 px 動かすと、ピンも同じ量だけ動き緯度経度が更新される'
+      how: PointerEvent を dispatch して drag し、画面座標・逆メルカトルの期待値・ピクセル色を検証
+      expected: 'dx = 80, dy = 50、lnglat が期待値と 0.05° 以内'
+    - id: marker-drag-does-not-pan
+      what: 'ピンのドラッグ中は地図がパンしない'
+      how: ドラッグ後の地図中心を検証
+      expected: '中心が (0.5, 0.5) のまま'
+    - id: map-pans-away-from-marker
+      what: 'ピン以外をドラッグすると地図がパンし、ピンは地図と一緒に動く'
+      how: 余白から 30×20 px ドラッグし、地図中心とピン位置を検証
+      expected: '中心が (-30/2048, -20/2048) 変化し、ピンも (+30, +20) px 動く'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下のピンが動かない'
+      how: zoomAtPoint でピンをアンカーに z3→3.5 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

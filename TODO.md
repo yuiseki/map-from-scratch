@@ -30,7 +30,7 @@
 - [ ] `maplibre-008-add-a-custom-layer-with-tiles-to-a-globe` → `examples/maplibre/008-add-a-custom-layer-with-tiles-to-a-globe/` — [Add a custom layer with tiles to a globe](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-custom-layer-with-tiles-to-a-globe/)
 - [ ] `maplibre-009-add-a-custom-style-layer` → `examples/maplibre/009-add-a-custom-style-layer/` — [Add a custom style layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-custom-style-layer/)
 - [x] `maplibre-010-add-a-default-marker` → `examples/maplibre/010-add-a-default-marker/` — [Add a default marker](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-default-marker/)
-- [ ] `maplibre-011-add-a-generated-icon-to-the-map` → `examples/maplibre/011-add-a-generated-icon-to-the-map/` — [Add a generated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-generated-icon-to-the-map/)
+- [x] `maplibre-011-add-a-generated-icon-to-the-map` → `examples/maplibre/011-add-a-generated-icon-to-the-map/` — [Add a generated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-generated-icon-to-the-map/)
 - [x] `maplibre-012-add-a-geojson-line` → `examples/maplibre/012-add-a-geojson-line/` — [Add a GeoJSON line](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-line/)
 - [x] `maplibre-013-add-a-geojson-polygon` → `examples/maplibre/013-add-a-geojson-polygon/` — [Add a GeoJSON polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-polygon/)
 - [ ] `maplibre-014-add-a-hillshade-layer` → `examples/maplibre/014-add-a-hillshade-layer/` — [Add a hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-hillshade-layer/)
@@ -46,14 +46,14 @@
 - [ ] `maplibre-024-add-an-animated-icon-to-the-map` → `examples/maplibre/024-add-an-animated-icon-to-the-map/` — [Add an animated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-an-animated-icon-to-the-map/)
 - [x] `maplibre-025-add-an-icon-to-the-map` → `examples/maplibre/025-add-an-icon-to-the-map/` — [Add an icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-an-icon-to-the-map/)
 - [ ] `maplibre-026-add-contour-lines` → `examples/maplibre/026-add-contour-lines/` — [Add Contour Lines](https://maplibre.org/maplibre-gl-js/docs/examples/add-contour-lines/)
-- [ ] `maplibre-027-add-custom-icons-with-markers` → `examples/maplibre/027-add-custom-icons-with-markers/` — [Add custom icons with Markers](https://maplibre.org/maplibre-gl-js/docs/examples/add-custom-icons-with-markers/)
+- [x] `maplibre-027-add-custom-icons-with-markers` → `examples/maplibre/027-add-custom-icons-with-markers/` — [Add custom icons with Markers](https://maplibre.org/maplibre-gl-js/docs/examples/add-custom-icons-with-markers/)
 - [ ] `maplibre-028-add-custom-layers-that-follow-the-terrain` → `examples/maplibre/028-add-custom-layers-that-follow-the-terrain/` — [Add custom layers that follow the terrain](https://maplibre.org/maplibre-gl-js/docs/examples/add-custom-layers-that-follow-the-terrain/)
 - [ ] `maplibre-029-add-live-realtime-data` → `examples/maplibre/029-add-live-realtime-data/` — [Add live realtime data](https://maplibre.org/maplibre-gl-js/docs/examples/add-live-realtime-data/)
 - [ ] `maplibre-030-add-multiple-geometries-from-one-geojson-source` → `examples/maplibre/030-add-multiple-geometries-from-one-geojson-source/` — [Add multiple geometries from one GeoJSON source](https://maplibre.org/maplibre-gl-js/docs/examples/add-multiple-geometries-from-one-geojson-source/)
 - [ ] `maplibre-031-animate-a-line` → `examples/maplibre/031-animate-a-line/` — [Animate a line](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-line/)
 - [ ] `maplibre-032-animate-a-marker` → `examples/maplibre/032-animate-a-marker/` — [Animate a marker](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-marker/)
 - [ ] `maplibre-033-animate-a-point-along-a-route` → `examples/maplibre/033-animate-a-point-along-a-route/` — [Animate a point along a route](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point-along-a-route/)
-- [ ] `maplibre-034-animate-a-point` → `examples/maplibre/034-animate-a-point/` — [Animate a point](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point/)
+- [x] `maplibre-034-animate-a-point` → `examples/maplibre/034-animate-a-point/` — [Animate a point](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point/)
 - [ ] `maplibre-035-animate-a-series-of-images` → `examples/maplibre/035-animate-a-series-of-images/` — [Animate a series of images](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-series-of-images/)
 - [ ] `maplibre-036-animate-an-icon-on-the-gpu` → `examples/maplibre/036-animate-an-icon-on-the-gpu/` — [Animate an icon on the GPU](https://maplibre.org/maplibre-gl-js/docs/examples/animate-an-icon-on-the-gpu/)
 - [ ] `maplibre-037-animate-map-camera-around-a-point` → `examples/maplibre/037-animate-map-camera-around-a-point/` — [Animate map camera around a point](https://maplibre.org/maplibre-gl-js/docs/examples/animate-map-camera-around-a-point/)
@@ -67,7 +67,7 @@
 - [ ] `maplibre-045-change-the-default-position-for-attribution` → `examples/maplibre/045-change-the-default-position-for-attribution/` — [Change the default position for attribution](https://maplibre.org/maplibre-gl-js/docs/examples/change-the-default-position-for-attribution/)
 - [ ] `maplibre-046-check-if-webgl-is-supported` → `examples/maplibre/046-check-if-webgl-is-supported/` — [Check if WebGL is supported](https://maplibre.org/maplibre-gl-js/docs/examples/check-if-webgl-is-supported/)
 - [ ] `maplibre-047-cooperative-gestures` → `examples/maplibre/047-cooperative-gestures/` — [Cooperative gestures](https://maplibre.org/maplibre-gl-js/docs/examples/cooperative-gestures/)
-- [ ] `maplibre-048-create-a-draggable-marker` → `examples/maplibre/048-create-a-draggable-marker/` — [Create a draggable Marker](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-marker/)
+- [x] `maplibre-048-create-a-draggable-marker` → `examples/maplibre/048-create-a-draggable-marker/` — [Create a draggable Marker](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-marker/)
 - [ ] `maplibre-049-create-a-draggable-point` → `examples/maplibre/049-create-a-draggable-point/` — [Create a draggable point](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-point/)
 - [ ] `maplibre-050-create-a-gradient-dashed-line-using-an-expression` → `examples/maplibre/050-create-a-gradient-dashed-line-using-an-expression/` — [Create a gradient dashed line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-dashed-line-using-an-expression/)
 - [ ] `maplibre-051-create-a-gradient-line-using-an-expression` → `examples/maplibre/051-create-a-gradient-line-using-an-expression/` — [Create a gradient line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-line-using-an-expression/)
@@ -908,5 +908,5 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **55 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **59 件**（maplibre-010、011、012、013、018、025、027、034、048、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
