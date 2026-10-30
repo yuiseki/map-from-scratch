@@ -1,0 +1,122 @@
+id: openglobus-050-point-popup
+request: >-
+  世界地図上に東京・ニューヨーク・ロンドンの3つの点を色分けして表示し、
+  クリックした点の名前をポップアップで出したい。ドラッグでパン、ホイールで拡大縮小でき、
+  外部ライブラリなし・Canvas 2D で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 3点のマーカーと背景地図に OpenGlobus 全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と点が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パンやズームが 60 fps (20 ms 未満) で途切れず動作する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: points-and-popups
+    need: 各点が正しい色で描かれ、クリックで正しい名前のポップアップが出る
+    unmeasured: verification の checks で画面ピクセル色とポップアップ内容を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/050-point-popup/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地と点データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/openglobus/050-point-popup/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/openglobus-050-point-popup/land.json
+    - data/baked/openglobus-050-point-popup/points.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 東京・ニューヨーク・ロンドンの緯度経度を Mercator [0, 1] に事前投影して点データに同梱
+
+performance_knowledge:
+  - id: analytic-point-hit-test
+    finding: 3点程度なら空間インデックスを張らず、画面座標とのユークリッド距離（半径13 px）だけでクリック判定できる
+    evidence: クリック判定は計測限界以下、各点のポップアップ check が通る
+  - id: zero-dom-popup
+    finding: ポップアップを Canvas 内に描くと、パン・ズームと1フレームも狂わず、DOM 再配置のレイアウトスラッシングもない
+    evidence: リドロー時間 p95 は 0.6 ms 未満
+  - id: labelled-points-in-one-pass
+    finding: 点のハロー・塗り・白コア・ラベルを1回のパスで描くと、点ごとの状態切替が減りパン中のコストが安定する
+    evidence: 60フレームのパンで frame_interval_ms p95 が 5 ms 未満
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/openglobus/050-point-popup/index.html
+      - examples/openglobus/050-point-popup/main.ts
+      - examples/openglobus/050-point-popup/map.ts
+    dependencies: []
+    why: 3点の色付きマーカーとポップアップだけなら Canvas 2D が最小・最速で、DOM 同期も不要
+  alternatives:
+    - option: OpenGlobus (WebGL の point/billboard レイヤー)
+      rejected_because: 元例の比較対象。3点のためにエンジン全体とシェーダー初期化を読み込む必要がある
+    - option: DOM のマーカーとポップアップ
+      rejected_because: 地図キャンバスと DOM の同期更新が必要で、パン中に1フレーム遅れることがある
+  not_doing: [3D地球儀, 点のクラスタリング, アイコン画像, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: tokyo-point-visible
+      what: '東京に水色の点が描画されている'
+      how: 点中心から4px右のピクセル色を検証（白コアを避ける）
+      expected: '水色ピクセル（r < 100, g > 150, b > 200）'
+    - id: new-york-point-visible
+      what: 'ニューヨークに橙色の点が描画されている'
+      how: 点中心から4px右のピクセル色を検証
+      expected: '橙色ピクセル（r > 200, 100 < g < 200, b < 80）'
+    - id: london-point-visible
+      what: 'ロンドンに紫の点が描画されている'
+      how: 点中心から4px右のピクセル色を検証
+      expected: '紫色ピクセル（r > 120, g > 100, b > 200）'
+    - id: click-tokyo-shows-popup
+      what: '東京をクリックすると "Tokyo, Japan" のポップアップが出る'
+      how: clickAtScreen で東京をクリックし、activePopup を照合
+      expected: 'Tokyo, Japan'
+    - id: click-new-york-shows-popup
+      what: 'ニューヨークをクリックすると "New York, USA" のポップアップが出る'
+      how: clickAtScreen でニューヨークをクリックし、activePopup を照合
+      expected: 'New York, USA'
+    - id: click-london-shows-popup
+      what: 'ロンドンをクリックすると "London, UK" のポップアップが出る'
+      how: clickAtScreen でロンドンをクリックし、activePopup を照合
+      expected: 'London, UK'
+    - id: popup-painted-in-canvas
+      what: 'ポップアップの吹き出しが Canvas 上に白で描かれている'
+      how: 東京クリック後の吹き出し本体のピクセル色を検証
+      expected: '白色ピクセル（r,g,b > 240）'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAt でロンドンをアンカーに zoom 2→3 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

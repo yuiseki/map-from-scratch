@@ -334,7 +334,7 @@
 - [ ] `openglobus-047-multiple-viewports` → `examples/openglobus/047-multiple-viewports/` — [Multiple Globuses](https://sandbox.openglobus.org/examples/multipleViewports/multipleViewports.html)
 - [ ] `openglobus-048-shared-globuses-navigation` → `examples/openglobus/048-shared-globuses-navigation/` — [Shared Globuses Navigation](https://sandbox.openglobus.org/examples/sharedGlobusesNavigation/sharedGlobusesNavigation.html)
 - [ ] `openglobus-049-path-times` → `examples/openglobus/049-path-times/` — [Path Times](https://sandbox.openglobus.org/examples/pathTimes/pathTimes.html)
-- [ ] `openglobus-050-point-popup` → `examples/openglobus/050-point-popup/` — [Popup](https://sandbox.openglobus.org/examples/pointPopup/pointPopup.html)
+- [x] `openglobus-050-point-popup` → `examples/openglobus/050-point-popup/` — [Popup](https://sandbox.openglobus.org/examples/pointPopup/pointPopup.html)
 - [ ] `openglobus-051-polyline-on-the-ground` → `examples/openglobus/051-polyline-on-the-ground/` — [Ground Polyline(clampToGround)](https://sandbox.openglobus.org/examples/polylineOnTheGround/polylineOnTheGround.html)
 - [ ] `openglobus-052-polylines` → `examples/openglobus/052-polylines/` — [Polyline Entities](https://sandbox.openglobus.org/examples/polylines/polylines.html)
 - [ ] `openglobus-053-polylines-color-animation` → `examples/openglobus/053-polylines-color-animation/` — [Polyline Color Animation](https://sandbox.openglobus.org/examples/polylinesColorAnimation/polylinesColorAnimation.html)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **48 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **49 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
