@@ -8,6 +8,7 @@ export interface CircleMap {
   setZoom(z: number): void;
   setBaseVisible(v: boolean): void;
   baseReady(): number;
+  baseVisible(): number;
   baseLoaded(): boolean;
   resetView(): void;
   getScreenPos(lng: number, lat: number): [number, number];
@@ -91,6 +92,8 @@ export async function mount(
   }
 
   // ---- raster base map -----------------------------------------------------
+  // The 512 px PNGs land near 512 device px: zi = round(zoom) at DPR 2, one
+  // level lower at DPR 1 (round(zoom) drew the labels at half size there).
   interface BaseLayout {
     zi: number; n: number; tile: number;
     originX: number; originY: number;
@@ -99,7 +102,7 @@ export async function mount(
 
   function baseLayout(): BaseLayout | null {
     if (!tileJson) return null;
-    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom)));
+    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom + Math.log2(devicePixelRatio || 1) - 1)));
     const n = 1 << zi;
     const tile = 256 * Math.pow(2, zoom - zi);
     const scale = 256 * Math.pow(2, zoom);
@@ -332,6 +335,10 @@ export async function mount(
       draw();
     },
     baseReady: readyTiles,
+    baseVisible(): number {
+      const L = baseLayout();
+      return L ? (L.x1 - L.x0 + 1) * (L.y1 - L.y0 + 1) : 0;
+    },
     baseLoaded(): boolean {
       return tileJson !== null;
     },

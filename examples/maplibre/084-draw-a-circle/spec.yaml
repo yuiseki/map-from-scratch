@@ -107,7 +107,7 @@ verification:
     - id: basemap-drawn
       what: 円の下にラスタの背景地図（道路・地名・海岸線）が描かれている
       how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
-      expected: ready >= 8、異なる色 > 150（平坦な陸なら数色）
+      expected: 表示範囲のタイルがすべて ready（2 枚以上）、異なる色 > 150（平坦な陸なら数色）
     - id: circle-data-loaded
       what: 半径 50,000 m と中心 [-74.5, 40] がベイク済みデータから読まれる
       how: map.radiusM と map.center を検証

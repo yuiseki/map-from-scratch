@@ -41,12 +41,16 @@ export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
 
   // Verification 0: the raster base map is drawn under the circle. The first
   // frame shows the baked land polygons; the tiles then add roads and labels.
-  const ready = await waitForBase(map, 8);
+  // Every tile in view, however many the view needs (512 px tiles drawn at
+  // native size: 4 to 6 at 1024x768, not a fixed 8).
+  for (let t = 0; t < 300 && !map.baseLoaded(); t++) await sleep(50);
+  const visible = map.baseVisible();
+  const ready = await waitForBase(map, visible);
   const colours = distinctColours(map);
   emit({
     check: 'basemap-drawn',
-    pass: map.baseLoaded() && ready >= 8 && colours > 150,
-    detail: `${ready} tiles ready, ${colours} distinct colours in the frame`,
+    pass: map.baseLoaded() && visible >= 2 && ready === visible && colours > 150,
+    detail: `${ready}/${visible} tiles ready, ${colours} distinct colours in the frame`,
   });
 
   // The circle checks read exact RGB, so hide the base and keep the flat land:

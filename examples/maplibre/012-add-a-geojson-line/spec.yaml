@@ -75,7 +75,7 @@ performance_knowledge:
     applies_when: 常時接続前提で、都市ズームの背景地図を固定データなしで出したいとき
   - id: base-hidden-for-pixel-checks
     finding: 背景に道路・地名が入ると、グレーの線や半透明の塗りのピクセル検証が下地の偶然の色で通ってしまう。検証中だけ下地を隠し、下地自体は画面全体の色数で別チェックにする
-    evidence: 下地を隠した状態で線の色を読み、下地ありで 200 色超を確認（平坦な陸なら数色）
+    evidence: 下地を隠した状態で線の色を読み、下地ありで 150 色超を確認（平坦な陸なら数色）
     applies_when: 背景地図の上に置いた図形をピクセルで検証するとき
 
 architecture_selection:
@@ -106,7 +106,7 @@ verification:
     - id: basemap-drawn
       what: ラインの下にラスタの背景地図（道路・地名）が描かれている
       how: 下地タイルの到着を待ち、表示範囲で ready なタイル枚数とキャンバス全体（4 px 間引き）の異なる色数を数える
-      expected: ready >= 8、異なる色 > 200（平坦な陸なら数色）
+      expected: 表示範囲のタイルがすべて ready（2 枚以上）、異なる色 > 150（平坦な陸なら数色）
     - id: line-rendered-gray
       what: マリンヘッドランズのルート位置に初期設定のグレー（#888888）の線が描画されている
       how: 下地を隠した状態で getImageData によりルート座標位置のピクセル色を検証

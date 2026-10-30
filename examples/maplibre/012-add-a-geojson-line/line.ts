@@ -12,6 +12,7 @@ export interface GeoJsonLineMap {
   setBaseVisible(v: boolean): void;
   setLineVisible(v: boolean): void;
   baseReady(): number;
+  baseVisible(): number;
   baseLoaded(): boolean;
   resetView(): void;
   getScreenPos(lon: number, lat: number): [number, number];
@@ -104,9 +105,10 @@ export async function mount(
   }
 
   // ---- raster base map -----------------------------------------------------
-  // One 512 px PNG per 256 CSS px tile at integer zoom: the tile is drawn at
-  // 256*2^(zoom-zi) CSS px, so a z tile covers exactly the same ground as a
-  // 256 px tile at the same z and is downscaled 2x at DPR 1 (sharp text).
+  // A 512 px PNG drawn at 256*2^(zoom-zi) CSS px covers the same ground as a
+  // 256 px tile at zi. zi is chosen so the PNG lands near 512 device px: at
+  // DPR 2 that is z = round(zoom), at DPR 1 one level lower. (z = round(zoom)
+  // at DPR 1 drew the labels at half size, about 5 px, too small to read.)
   interface BaseLayout {
     zi: number; n: number; tile: number;
     originX: number; originY: number;
@@ -115,7 +117,7 @@ export async function mount(
 
   function baseLayout(): BaseLayout | null {
     if (!tileJson) return null;
-    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom)));
+    const zi = Math.max(tileJson.minzoom, Math.min(tileJson.maxzoom, Math.round(zoom + Math.log2(devicePixelRatio || 1) - 1)));
     const n = 1 << zi;
     const tile = 256 * Math.pow(2, zoom - zi);
     const scale = 256 * Math.pow(2, zoom);
@@ -385,6 +387,10 @@ export async function mount(
       draw();
     },
     baseReady: readyTiles,
+    baseVisible(): number {
+      const L = baseLayout();
+      return L ? (L.x1 - L.x0 + 1) * (L.y1 - L.y0 + 1) : 0;
+    },
     baseLoaded(): boolean {
       return tileJson !== null;
     },
