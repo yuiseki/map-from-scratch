@@ -64,8 +64,10 @@ export async function run(map: CustomIconsMap, firstFrameMs: number): Promise<vo
     detail: `activePopup="${map.activePopup?.text}"`,
   });
 
-  // Popups are painted into the canvas, not as DOM nodes.
-  const bubble = rgba(px, py - 56);
+  // Popups are painted into the canvas, not as DOM nodes. Read the bubble
+  // 66 px left of the pin (it is at least 140 px wide, text starts 12 px in):
+  // its centre lies on the text, and a glyph covers it with some fonts.
+  const bubble = rgba(px - 66, py - 56);
   emit({
     check: 'popup-painted-in-canvas',
     pass: bubble[0] > 240 && bubble[1] > 240 && bubble[2] > 240,

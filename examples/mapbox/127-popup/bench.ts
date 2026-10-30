@@ -11,9 +11,11 @@ export async function run(map: PopupMap, firstFrameMs: number): Promise<void> {
 
   const dpr = window.devicePixelRatio || 1;
 
-  // Verification 1: Popup visible at target [-96, 37.8]
+  // Verification 1: Popup visible at target [-96, 37.8]. The bubble is read
+  // 6 px inside its left edge: its centre lies on the text, and whether a
+  // glyph covers that pixel depends on the font (it did on macOS).
   const b0 = map.getPopupBounds();
-  const testX0 = Math.round((b0.x + b0.width / 2) * dpr);
+  const testX0 = Math.round((b0.x + 6) * dpr);
   const testY0 = Math.round((b0.y + b0.height / 2) * dpr);
   const px0 = ctx.getImageData(testX0, testY0, 1, 1).data;
   const isWhite0 = px0[0] > 250 && px0[1] > 250 && px0[2] > 250;
@@ -47,7 +49,7 @@ export async function run(map: PopupMap, firstFrameMs: number): Promise<void> {
   const baseBounds = map.getPopupBounds();
   map.panBy(50, 30);
   const pannedBounds = map.getPopupBounds();
-  const pannedTestX = Math.round((pannedBounds.x + pannedBounds.width / 2) * dpr);
+  const pannedTestX = Math.round((pannedBounds.x + 6) * dpr);
   const pannedTestY = Math.round((pannedBounds.y + pannedBounds.height / 2) * dpr);
   const pxPanned = ctx.getImageData(pannedTestX, pannedTestY, 1, 1).data;
   const isWhitePanned = pxPanned[0] > 250 && pxPanned[1] > 250 && pxPanned[2] > 250;
@@ -79,7 +81,7 @@ export async function run(map: PopupMap, firstFrameMs: number): Promise<void> {
   // Verification 4: Popup anchors under zoom
   map.setZoom(4);
   const zoomBounds = map.getPopupBounds();
-  const zoomTestX = Math.round((zoomBounds.x + zoomBounds.width / 2) * dpr);
+  const zoomTestX = Math.round((zoomBounds.x + 6) * dpr);
   const zoomTestY = Math.round((zoomBounds.y + zoomBounds.height / 2) * dpr);
   const pxZoom = ctx.getImageData(zoomTestX, zoomTestY, 1, 1).data;
   const isWhiteZoom = pxZoom[0] > 250 && pxZoom[1] > 250 && pxZoom[2] > 250;

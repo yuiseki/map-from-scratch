@@ -93,7 +93,7 @@ verification:
     - id: tokyo-circle-fill
       what: 東京の円の半径の半分の位置が半透明のシアンで塗られている
       how: 中心から左へ 0.5R の画面座標でピクセル色を検証
-      expected: b > 75, b - r > 50, g > 55
+      expected: b > 75, b - r > 50, g > 45（日本海の上なので g は 55〜60、海は約 18）
     - id: new-york-circle-fill
       what: ニューヨークの円の半径の半分の位置が半透明のアンバーで塗られている
       how: 中心から左へ 0.5R の画面座標でピクセル色を検証

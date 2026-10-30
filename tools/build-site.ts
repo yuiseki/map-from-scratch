@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync, existsSyn
 import { join, dirname, relative, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripTypeScriptTypes } from 'node:module';
+import { isLocal, rewriteSpecifiers, toJs } from './specifiers.ts';
 import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
@@ -23,14 +24,11 @@ const out = resolve(root, process.argv[2] ?? '.cache/site');
 const MAX_FILE = 100 * 1024 * 1024;
 const REPO_URL = 'https://github.com/yuiseki/map-from-scratch';
 
-// Module specifiers in a source file: static imports, re-exports, dynamic
-// imports with a string literal, and <script src> in HTML.
-const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])([^'"]+)\1/g;
+// Module specifiers in source files are in tools/specifiers.ts; here, the
+// <script src> and <link href> of HTML.
 const SCRIPT_SRC = /<script\b[^>]*\bsrc=(['"])([^'"]+)\1/g;
 const LINK_HREF = /<link\b[^>]*\bhref=(['"])([^'"]+)\1/g;
 
-const toJs = (p: string) => p.replace(/\.ts$/, '.js');
-const isLocal = (s: string) => s.startsWith('./') || s.startsWith('../');
 
 function writeOut(srcAbs: string, body: Buffer | string): void {
   const dst = join(out, toJs(relative(root, srcAbs)));
@@ -43,13 +41,9 @@ function copyModule(abs: string): void {
   if (copied.has(abs)) return;
   copied.add(abs);
   if (!existsSync(abs)) throw new Error(`missing module ${relative(root, abs)}`);
-  let src = readFileSync(abs, 'utf8');
-  const deps: string[] = [];
-  src = src.replace(SPECIFIER, (m, q: string, spec: string) => {
-    if (!isLocal(spec)) return m;
-    deps.push(resolve(dirname(abs), spec));
-    return m.replace(`${q}${spec}${q}`, `${q}${toJs(spec)}${q}`);
-  });
+  const rewritten = rewriteSpecifiers(readFileSync(abs, 'utf8'));
+  let src = rewritten.src;
+  const deps = rewritten.specs.map((spec) => resolve(dirname(abs), spec));
   if (abs.endsWith('.ts')) src = stripTypeScriptTypes(src, { mode: 'transform' });
   writeOut(abs, src);
   for (const d of deps) copyModule(d);

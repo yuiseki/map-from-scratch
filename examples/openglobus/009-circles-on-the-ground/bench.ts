@@ -38,7 +38,9 @@ export async function run(map: CirclesMap, firstFrameMs: number): Promise<void> 
   const tokyo = tintAt(139.69, 35.69, -tokyoR / 2, 0);
   emit({
     check: 'tokyo-circle-fill',
-    pass: tokyo[2] > 75 && tokyo[2] - tokyo[0] > 50 && tokyo[1] > 55,
+    // Over the Sea of Japan (ocean g about 18) the cyan tint reads g 55 to 60
+    // depending on the GPU's blending: g > 45 is the tint, not the ocean.
+    pass: tokyo[2] > 75 && tokyo[2] - tokyo[0] > 50 && tokyo[1] > 45,
     detail: `${rgba(tokyo)} at 0.5R, R=${tokyoR.toFixed(1)}px`,
   });
 
