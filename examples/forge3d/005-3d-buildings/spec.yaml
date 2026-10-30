@@ -1,0 +1,115 @@
+id: forge3d-005-3d-buildings
+request: >-
+  forge3d の例「3D Buildings」のように、オランダの 3D 建物データ (3DBAG の CityJSON タイル 1 枚、デン・ハーグ中心部の
+  277 棟) を三角形のメッシュにして立体で見たい。地面に 100 m の格子を引き、ドラッグで回り、ホイールで寄れて、
+  建物をクリックするとその建物の BAG の番号、建築年、高さ、屋根の形を出す。外部ライブラリなしで、最速・最小に。
+
+requirements:
+  - id: buildings-true-to-data
+    need: 建物が CityJSON の LoD 2.2 の形と高さで立ち、屋根と壁が見分けられる
+    unmeasured: verification の checks (buildings-stand-up, roof-colour-from-above) で確かめる
+  - id: click-to-inspect
+    need: クリックした建物を正しく当て、その属性を出す
+  - id: smooth-interaction
+    need: 回転とズームが滑らか
+  - id: quick-start
+    need: 開いてすぐ街が出る
+  - id: light-footprint
+    need: 外部依存ゼロで、コードとデータが小さい
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 560000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+    - {metric: pick_ms, stat: p95, max: 16, unit: ms, requirement: click-to-inspect}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/005-3d-buildings/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: buildings.bin と buildings.json の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pick
+      what: 画面の 20 点で建物を当てる (画面外のフレームバッファに建物の番号を描き、1 画素読む)
+      metrics: [pick_ms]
+    - id: orbit
+      what: 120 フレームのオービット (方位 1°/フレーム)
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/005-3d-buildings/bake.ts]
+  sources:
+    - id: forge3d-3dbag-10-270-592
+      origin: 3DBAG v2025.09.03 のタイル 10-270-592 (CityJSON 2.0、RD New / NAP)。forge3d の assets/geojson/10-270-592.city.json を commit 3715935 に固定 (tools/sources.ts)。元の例と同じファイル
+      license: CC BY 4.0 (3DBAG)
+  outputs:
+    - data/baked/forge3d-005-3d-buildings/buildings.bin
+    - data/baked/forge3d-005-3d-buildings/buildings.json
+  preparation:
+    - 279 の BuildingPart の LoD 2.2 の立体を、面ごとに主な平面へ投影して earcut で三角形に分ける (穴あり 119 面)。面積 0 の 10 面は三角形にならない
+    - 頂点は CityJSON の頂点と建物の組ごとに 1 つにまとめる (同じ建物の面は角を共有し、隣の建物とは共有しない)。38,962 頂点、76,824 三角形で 16 bit のインデックスに収まる
+    - 頂点は位置を 16 bit に量子化 (約 9 mm) した 3 つと建物の番号の、計 8 バイト。法線は持たない
+    - クリックで出す属性 (BAG の番号、建築年、地面と屋根の高さ、屋根の形、体積) を建物ごとに 1 行で書く
+
+performance_knowledge:
+  - id: normals-from-derivatives
+    finding: 平らな面だけの建物は、法線を頂点に持たずに、フラグメントシェーダで世界座標の dFdx/dFdy の外積から面の法線を取れる。その向きで屋根と壁も分けられ、頂点は位置と建物の番号の 8 バイトで済む
+    evidence: buildings.bin 755 KB、gzip 471 KB (38,962 頂点、76,824 三角形)
+    applies_when: LoD 1〜2 の建物のように面ごとに平らなメッシュを平らに陰影付けするとき
+  - id: share-corners-within-a-building
+    finding: 面ごとに頂点を作ると 12.4 万頂点になるが、CityJSON の頂点と建物の組でまとめると 3.9 万頂点になり、16 bit のインデックスに収まる。建物をまたいでは共有しないので、頂点の建物番号でクリックを当てられる
+    evidence: ベイクの出力 (面ごと 124,146 頂点 1,870 KB → まとめて 38,962 頂点 755 KB)
+    applies_when: 面を共有する多面体のメッシュに、物ごとの番号を頂点で持たせたいとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/forge3d/005-3d-buildings/index.html
+      - examples/forge3d/005-3d-buildings/main.ts
+      - examples/forge3d/005-3d-buildings/camera.ts
+      - examples/forge3d/005-3d-buildings/gl.ts
+    dependencies: []
+    why: 街全体を 1 本のインデックスバッファで 1 ドローコール。クリックはクリックしたときだけ、画面外に建物の番号を描いて 1 画素読む
+  alternatives:
+    - option: クリックを CPU のレイと三角形の交差で当てる
+      rejected_because: 比べていない。7.7 万三角形を総当たりすると、空間索引を作らない限り数 ms かかると見込んだ。GPU なら描画 1 回で、見えている建物だけが当たる
+    - option: 頂点に法線を持たせる
+      rejected_because: 1 頂点 6 バイト増え、面の境で頂点を分ける必要が出る。dFdx/dFdy で足りる
+  not_doing: [テクスチャ, 影, LoD の切り替え, 複数タイルの読み込み]
+
+verification:
+  checks:
+    - id: pick-finds-the-building
+      what: クリックした位置の建物を正しく当て、建物のない所では何も当てない
+      how: 真上から、体積の大きい 5 棟それぞれの最も高い頂点を投影して当てる。画面の隅 (地面の外) も当てる
+      expected: 5 棟とも自分を当て、隅は 0
+    - id: click-selects-a-building
+      what: クリックで建物が選ばれ、属性が出て、色が変わる
+      how: 既定の視点で最大の建物の最高点に pointerdown と pointerup を送り、パネルの文字と画素を読む
+      expected: 選ばれた番号が一致、パネルに BAG の番号と建築年、画素の青と赤の比が屋根の色 (0.3 超) からハイライトの橙 (0.15 未満) に変わる
+    - id: buildings-stand-up
+      what: 建物がデータの高さで立っている
+      how: 最も高い建物の最高点と、その真下の地面を、仰角 12° から投影して画面上の高さを比べる
+      expected: 高さ 20 m 超の建物が 20 px より高く描かれる
+    - id: roof-colour-from-above
+      what: 屋根は屋根の色 (赤みのある茶) で描かれる
+      how: 真上から最も高い屋根の画素を読む
+      expected: alpha 255、R - B > 40
+    - id: orbit-and-zoom
+      what: 回すと建物が動き、寄ると広がる
+      how: 最大の建物の最高点の位置を方位 45° の前後で比べ、5 棟の広がりを半径 900 m と 450 m で比べる
+      expected: 30 px より大きく動き、広がりの比 > 1.6
+  harness:
+    - contextlost が起きたらエラーにする

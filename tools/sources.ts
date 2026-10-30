@@ -181,6 +181,15 @@ const SOURCES: Record<string, Source> = {
     remote: '/vsicurl/https://raw.githubusercontent.com/milos-agathon/forge3d/37159353f618f76e6020f6221b2a475e7969013a/assets/gpkg/Mount_Fuji_places.gpkg',
     ogr: ['-select', 'osm_id,name,name.en,ele,place,tourism'],
   },
+  // forge3d's 3D buildings tile: 3DBAG v2025.09.03 tile 10-270-592 (central
+  // The Hague, 277 buildings, CityJSON 2.0 in RD New). CC BY 4.0. The
+  // repository's copy pinned to a commit.
+  'forge3d-3dbag-10-270-592': {
+    out: 'forge3d_3dbag_10-270-592.city.json',
+    local: 'ref-repos/milos-agathon__forge3d/assets/geojson/10-270-592.city.json',
+    remote: 'https://raw.githubusercontent.com/milos-agathon/forge3d/37159353f618f76e6020f6221b2a475e7969013a/assets/geojson/10-270-592.city.json',
+    copy: true,
+  },
   // OpenStreetMap motorway, trunk and primary roads (and their links) in the
   // Tokyo 23 wards box, as Overpass JSON with geometry. ODbL. Asked of the
   // self-hosted Overpass, never a public one; its data stops at

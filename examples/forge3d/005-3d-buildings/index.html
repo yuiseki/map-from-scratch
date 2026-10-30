@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>forge3d: 3D buildings</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none;
+      background: radial-gradient(ellipse at 50% 60%, #ffffff 0%, #eef0f2 100%); }
+    #map:active { cursor: grabbing; }
+    .panel { position: absolute; top: 12px; left: 12px; max-width: calc(100% - 52px); background: rgba(15, 23, 42, 0.85); color: #e2e8f0;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.6; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+    .panel .title b { color: #fbbf24; }
+    .panel .sub { font-size: 11px; color: #94a3b8; }
+    #info { margin-top: 6px; font-size: 12px; color: #f8fafc; }
+    #info b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #fbbf24; }
+    .attr { position: absolute; right: 6px; bottom: 4px; background: rgba(15,23,42,0.72); color: #cbd5e1; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .error { position: absolute; bottom: 30px; left: 8px; color: #b91c1c; font-size: 12px; max-width: 70%; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div class="title"><b>forge3d 005</b>: 3D buildings · 3DBAG 10-270-592 (デン・ハーグ)</div>
+    <div class="sub">277 棟、7.7 万三角形 (LoD 2.2) · ドラッグで回転、ホイールで拡大縮小、クリックで建物を選ぶ</div>
+    <div id="info">クリックした建物の情報をここに出します</div>
+  </div>
+  <div class="attr">Buildings: 3DBAG v2025.09.03 (CC BY 4.0), via forge3d</div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
