@@ -170,7 +170,7 @@
 - [ ] `leaflet-002-mobile` → `examples/leaflet/002-mobile/` — [Leaflet on Mobile](https://leafletjs.com/examples/mobile/)
 - [ ] `leaflet-003-custom-icons` → `examples/leaflet/003-custom-icons/` — [Markers with Custom Icons](https://leafletjs.com/examples/custom-icons/)
 - [ ] `leaflet-004-accessibility` → `examples/leaflet/004-accessibility/` — [Accessible maps](https://leafletjs.com/examples/accessibility/)
-- [ ] `leaflet-005-geojson` → `examples/leaflet/005-geojson/` — [Using GeoJSON with Leaflet](https://leafletjs.com/examples/geojson/)
+- [x] `leaflet-005-geojson` → `examples/leaflet/005-geojson/` — [Using GeoJSON with Leaflet](https://leafletjs.com/examples/geojson/)
 - [ ] `leaflet-006-choropleth` → `examples/leaflet/006-choropleth/` — [Interactive Choropleth Map](https://leafletjs.com/examples/choropleth/)
 - [ ] `leaflet-007-layers-control` → `examples/leaflet/007-layers-control/` — [Layer Groups and Layers Control](https://leafletjs.com/examples/layers-control/)
 - [ ] `leaflet-008-zoom-levels` → `examples/leaflet/008-zoom-levels/` — [Zoom levels](https://leafletjs.com/examples/zoom-levels/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **29 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **30 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

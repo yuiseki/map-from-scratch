@@ -1,0 +1,113 @@
+id: leaflet-005-geojson
+request: >-
+  Leaflet の GeoJSON チュートリアルと同じ意図で、名前を持つポイント・ルート・地域ポリゴンを
+  1つの GeoJSON として読み込み、クリックした地物の名前をポップアップに出したい。
+  パン・ズームでき、外部ライブラリなしで軽量に。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリなしで配布サイズを最小限にする
+    rationale: Leaflet 本体（約 40 KB gzip）を使わず数 KB に収める
+  - id: quick-start
+    need: ページを開いて即座に地図と地物が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: geojson-features
+    need: ポイント・ライン・ポリゴンをそれぞれの色と太さで描き、クリックで各 features の名前をポップアップ表示する
+    unmeasured: verification checks で画面ピクセルとポップアップ内容を検証
+  - id: smooth-interaction
+    need: パンやズーム操作が滑らかに動作する
+    rationale: 60 fps 追従（frame_interval_ms <= 20 ms）
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/leaflet/005-geojson/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地と GeoJSON の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/leaflet/005-geojson/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/leaflet-005-geojson/land.json
+    - data/baked/leaflet-005-geojson/features.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 5つの実在都市のポイント、ロンドン-パリ-ベルリンを結ぶ例示ルート、中央ヨーロッパの矩形ポリゴンを1つの FeatureCollection にまとめる
+
+performance_knowledge:
+  - id: geojson-drawn-directly
+    finding: GeoJSON のポイント・ライン・ポリゴンは、L.geoJSON のレイヤー生成や DOM 要素の配置をせず、投影済み座標を Canvas 2D のパスに流すだけで描ける
+    evidence: 再描画 p95 は 2 ms 未満で、パン中のフレーム間隔は 60 Hz を保った
+    applies_when: 数十から数百の地物を持つ静的な GeoJSON レイヤー
+  - id: analytic-hit-order
+    finding: ポイント・ライン・ポリゴンのクリック判定は、点が最優先、次に線分距離、最後にレイキャスティングの順にすれば、重なった地物でも意図した方が選ばれる
+    evidence: ポリゴン内の点クリックでポイントが、地物のない地域クリックでポリゴンが選ばれた
+    applies_when: 地物数が少なく空間インデックスを要しないレイヤー
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/leaflet/005-geojson/index.html
+      - examples/leaflet/005-geojson/main.ts
+      - examples/leaflet/005-geojson/map.ts
+    dependencies: []
+    why: 数十の GeoJSON 地物とポップアップは Canvas 2D の直接描画が最小で、DOM レイヤーの再配置も不要
+  alternatives:
+    - option: SVG (Leaflet の既定のベクターレイヤー)
+      rejected_because: 地物ごとに DOM ノードを作るとパン・ズームのたびに再配置が走る
+    - option: WebGL2
+      rejected_because: 地物数が少なく、シェーダーの準備コストだけが増える
+  not_doing: [ベクタータイル, 空間インデックス, ラベル配置, 3D]
+
+verification:
+  checks:
+    - id: point-marker-visible
+      what: ロンドンの位置に青（#2a81cb）の円マーカーが描かれている
+      how: getImageData でマーカー中心のピクセル色を検証
+      expected: b > 150 かつ b - r > 80
+    - id: route-line-visible
+      what: ロンドン-パリ間の中点にオレンジ（#ff7f2a）の線が描かれている
+      how: 画面座標の中点でピクセル色を検証
+      expected: r > 200, 80 < g < 190, b < 100
+    - id: polygon-fill-visible
+      what: ポリゴン内部（6E 52N）が青色の半透明塗りで覆われている
+      how: 陸地色に対する青の増加を検証
+      expected: b - r > 12
+    - id: click-point-shows-popup
+      what: ロンドンのマーカーをクリックすると名前 "London" がポップアップに出る
+      how: clickAtScreen 後の activePopup.text を検証
+      expected: "London"
+    - id: click-polygon-shows-popup
+      what: ポリゴン内部をクリックすると "Central Europe" がポップアップに出る
+      how: clickAtScreen 後の activePopup.text を検証
+      expected: "Central Europe"
+    - id: pan-keeps-features
+      what: 40x20 px のパンでマーカーも同じだけ動き、描画が崩れない
+      how: パン前後の画面座標差と、移動先のピクセル色を検証
+      expected: dx=40, dy=20, 移動先も青
+  harness:
+    - contextlost が起きたらエラーにする
