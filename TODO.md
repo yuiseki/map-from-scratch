@@ -265,7 +265,7 @@
 
 出典: [Tangram Demo Repositories](https://github.com/tangrams?utf8=%E2%9C%93&q=demo&type=&language=)。Mapzen によるシェーダー駆動・YAML スタイル定義の 2D/3D WebGL 地図エンジン。15個の公式デモリポジトリが示す各目的・技術的挑戦（シェーダーアニメーション、道路フィルタ、カメラ/照明、標高シェーディング等）を独立描画器で再現する。
 
-- [ ] `tangram-001-filters-demo` → `examples/tangram/001-filters-demo/` — [Filtering data in Tangram](https://github.com/tangrams/filters-demo)
+- [x] `tangram-001-filters-demo` → `examples/tangram/001-filters-demo/` — [Filtering data in Tangram](https://github.com/tangrams/filters-demo)
 - [ ] `tangram-002-generic-demo` → `examples/tangram/002-generic-demo/` — [Generic Tangram setup for Mapzen maps](https://github.com/tangrams/generic-demo)
 - [ ] `tangram-003-gui-demo` → `examples/tangram/003-gui-demo/` — [GUI style editor demo](https://github.com/tangrams/gui-demo)
 - [x] `tangram-004-highways-demo` → `examples/tangram/004-highways-demo/` — [Zoom-dependent road styling](https://github.com/tangrams/highways-demo)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **35 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **36 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、tangram-001、004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

@@ -1,0 +1,114 @@
+id: tangram-001-filters-demo
+request: >-
+  Tangram の filters-demo と同じく、サンフランシスコ湾岸の道路データを道路種別で
+  絞り込みながら地図に表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 道路721セグメントと陸地だけの表示に汎用エンジンは不要
+  - id: quick-start
+    need: ページを開いて即座に道路が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: パン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: class-filter
+    need: 州道・US国道・州間高速の表示を種別ごとに切り替えられ、切り替えが即座に反映される
+    unmeasured: verification checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 200000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/tangram/001-filters-demo/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地と道路データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/tangram/001-filters-demo/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+    - id: deckgl-highway-roads
+      origin: https://raw.githubusercontent.com/visgl/deck.gl-data/1cce5f323fb2d7f8a93fd1443cf83076d5daae40/examples/highway/roads.json
+      license: deck.gl-data（MIT リポジトリ。元データの出典表記に従う）
+  outputs:
+    - data/baked/tangram-001-filters-demo/land.json
+    - data/baked/tangram-001-filters-demo/roads.json
+  preparation:
+    - deck.gl-data の米国道路データからベイエリア（-123.5〜-121.0E、37.0〜38.8N）を切り出す
+    - 道路種別 SR（州道）/ US（国道）/ I（州間高速）ごとにグループ化し、Web Mercator 座標へ投影
+    - 種別ごとに、開いた画面内で他種別から最も遠い頂点を検証用プローブとして記録する
+
+performance_knowledge:
+  - id: filter-at-draw-not-parse
+    finding: 種別フィルタは描画時のグループ単位の有無で切り替えるだけでよい。フィーチャごとの条件判定を毎フレーム回すより、種別ごとに1本のパスへまとめたほうが速い
+    evidence: 道路をセグメント単位で種別3パスにまとめ、再描画 p95 は 2 ms 未満
+    applies_when: 属性でレイヤーを切り替えるフィルタ UI
+  - id: probe-far-from-other-classes
+    finding: 「隠した種別が消えた」ことをピクセルで検証するには、他種別の道路が近くを通らない頂点をプローブに選ぶ必要がある
+    evidence: ベイク時に他種別との最短距離が最大の頂点を選び、非表示前後の色判定が安定した
+    applies_when: フィルタやレイヤー表示の画面検証
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/tangram/001-filters-demo/index.html
+      - examples/tangram/001-filters-demo/main.ts
+      - examples/tangram/001-filters-demo/map.ts
+    dependencies: []
+    why: 道路721セグメントと陸地だけなら Canvas 2D のパスストロークが最小・最速
+  alternatives:
+    - option: WebGL2（Tangram と同様のシェーダーフィルタ）
+      rejected_because: 種別フィルタは CPU 側のグループ切り替えで足り、シェーダーは不要
+  not_doing: [3D地形, 地名ラベル, 名称による絞り込み, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: classes-loaded
+      what: 道路が種別ごとに読み込まれる（SR 50本超、I 5本超、US 1本以上）
+      how: map.groups の本数を検証
+      expected: SR>50, I>5, US>=1
+    - id: state-routes-visible
+      what: 州道のプローブ位置にオレンジの線が描かれている
+      how: プローブ周辺 7x7 px の色を検証
+      expected: r>200, 80<g<180, b<110
+    - id: interstates-visible
+      what: 州間高速のプローブ位置に青の線が描かれている
+      how: プローブ周辺の色を検証
+      expected: r<110, g<160, b>170
+    - id: filter-hides-state
+      what: 州道を非表示にすると州道だけが消え、州間高速は残る
+      how: 非表示後のプローブ色を検証
+      expected: 州道プローブにオレンジなし、州間高速プローブに青あり
+    - id: filter-restores-state
+      what: 州道を再表示すると州道が戻る
+      how: 再表示後のプローブ色を検証
+      expected: オレンジ
+    - id: us-highways-drawn
+      what: US国道のプローブ位置に緑の線が描かれている
+      how: プローブ周辺の色を検証
+      expected: r<120, g>120, b<140
+  harness:
+    - contextlost が起きたらエラーにする
