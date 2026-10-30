@@ -168,12 +168,13 @@ canvas.addEventListener('wheel', (event) => {
   const rect = canvas.getBoundingClientRect();
   zoomAt(Math.exp(-event.deltaY * 0.0014), event.clientX - rect.left, event.clientY - rect.top);
 }, { passive: false });
-let drag: { id: number; x: number; y: number; moved: boolean } | null = null;
-canvas.addEventListener('pointerdown', (event) => { canvas.setPointerCapture(event.pointerId); drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false }; });
+// sx, sy: where the press started; a click survives 3 px of movement from it.
+let drag: { id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
+canvas.addEventListener('pointerdown', (event) => { canvas.setPointerCapture(event.pointerId); drag = { id: event.pointerId, x: event.clientX, y: event.clientY, sx: event.clientX, sy: event.clientY, moved: false }; });
 canvas.addEventListener('pointermove', (event) => {
   if (drag?.id !== event.pointerId) return;
   const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-  if (Math.abs(dx) + Math.abs(dy) > 1) drag.moved = true;
+  if (Math.hypot(event.clientX - drag.sx, event.clientY - drag.sy) > 3) drag.moved = true;
   ox += dx; oy += dy; drag.x = event.clientX; drag.y = event.clientY;
   draw();
 });

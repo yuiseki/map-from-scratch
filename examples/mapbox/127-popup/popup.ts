@@ -243,7 +243,21 @@ export async function mount(
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
     const dz = e.deltaY < 0 ? 0.25 : -0.25;
-    setZoom(zoom + dz);
+    zoomAt(e, zoom + dz);
+  }
+
+  // Zoom keeping the point under the pointer still (MapLibre, Leaflet do).
+  function zoomAt(e: WheelEvent, z: number): void {
+    const r = canvas.getBoundingClientRect();
+    const ox = e.clientX - r.left - r.width / 2, oy = e.clientY - r.top - r.height / 2;
+    const before = 256 * Math.pow(2, zoom);
+    centerMx += ox / before;
+    centerMy += oy / before;
+    setZoom(z);
+    const after = 256 * Math.pow(2, zoom);
+    centerMx -= ox / after;
+    centerMy -= oy / after;
+    draw();
   }
 
   function panBy(dx: number, dy: number): void {

@@ -233,15 +233,17 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     pending = true;
     requestAnimationFrame(() => { pending = false; draw(); });
   };
-  let drag: { x: number; y: number; moved: boolean } | null = null;
+  // sx, sy: where the press started; a click survives 3 CSS px of movement from it.
+  let drag: { x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
   canvas.addEventListener('pointerdown', (e) => {
-    drag = { ...eventPixel(e), moved: false }; canvas.setPointerCapture(e.pointerId);
+    const p0 = eventPixel(e);
+    drag = { ...p0, sx: p0.x, sy: p0.y, moved: false }; canvas.setPointerCapture(e.pointerId);
     document.getElementById('popup')!.style.display = 'none';
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const p = eventPixel(e), dx = p.x - drag.x, dy = p.y - drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+    if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 3 * devicePixelRatio) drag.moved = true;
     cam.x -= dx / worldPx(); cam.y -= dy / worldPx();
     drag.x = p.x; drag.y = p.y; requestDraw();
   });

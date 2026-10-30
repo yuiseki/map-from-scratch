@@ -82,7 +82,13 @@ export class TangramMap {
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const zoomDelta = -e.deltaY * 0.002;
+      // Keep the point under the pointer still: move it to the centre, zoom,
+      // then move it back to the pointer at the new scale.
+      const r = this.canvas.getBoundingClientRect();
+      const ox = e.clientX - r.left - r.width / 2, oy = e.clientY - r.top - r.height / 2;
+      this.panBy(-ox, -oy);
       this.setZoom(Math.max(1, Math.min(10, this.zoom + zoomDelta)));
+      this.panBy(ox, oy);
     }, { passive: false });
   }
 

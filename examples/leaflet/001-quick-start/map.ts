@@ -228,12 +228,15 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   let lastX = 0;
   let lastY = 0;
   let moved = false;
+  // A click survives 3 px of movement from the press (not per move event).
+  let downX = 0;
+  let downY = 0;
 
   function onPointerDown(e: PointerEvent): void {
     dragging = true;
     moved = false;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    lastX = downX = e.clientX;
+    lastY = downY = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   }
 
@@ -241,7 +244,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     if (!dragging) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 3) moved = true;
     lastX = e.clientX;
     lastY = e.clientY;
     panBy(dx, dy);
@@ -299,7 +302,21 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
     const delta = -e.deltaY * 0.002;
-    setZoom(zoom + delta);
+    zoomAt(e, zoom + delta);
+  }
+
+  // Zoom keeping the point under the pointer still (MapLibre, Leaflet do).
+  function zoomAt(e: WheelEvent, z: number): void {
+    const r = canvas.getBoundingClientRect();
+    const ox = e.clientX - r.left - r.width / 2, oy = e.clientY - r.top - r.height / 2;
+    const before = 256 * Math.pow(2, zoom);
+    centerMx += ox / before;
+    centerMy += oy / before;
+    setZoom(z);
+    const after = 256 * Math.pow(2, zoom);
+    centerMx -= ox / after;
+    centerMy -= oy / after;
+    draw();
   }
 
   function panBy(dx: number, dy: number): void {

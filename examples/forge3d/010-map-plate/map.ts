@@ -160,7 +160,14 @@ export class MapPlate {
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const zoomDelta = -e.deltaY * 0.002;
-      this.setZoom(Math.max(0.6, Math.min(3.0, this.zoom + zoomDelta)));
+      const z = Math.max(0.6, Math.min(3.0, this.zoom + zoomDelta));
+      // Keep the relief point under the pointer still (the plate is centred).
+      const r = this.canvas.getBoundingClientRect();
+      const ox = e.clientX - r.left - r.width / 2, oy = e.clientY - r.top - r.height / 2;
+      const k = z / this.zoom;
+      this.panOffset.x = ox - (ox - this.panOffset.x) * k;
+      this.panOffset.y = oy - (oy - this.panOffset.y) * k;
+      this.setZoom(z);
     }, { passive: false });
   }
 
