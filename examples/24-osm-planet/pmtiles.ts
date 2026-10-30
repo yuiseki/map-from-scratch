@@ -9,8 +9,9 @@ const T = [0, 1, 5, 21, 85, 341, 1365, 5461, 21845, 87381, 349525, 1398101, 5592
 export const rangeStats = { requests: 0, bytes: 0, retried200: 0 };
 export async function readRange(start: number, length: number, fetcher: typeof fetch = fetch): Promise<Uint8Array> {
   for (let attempt = 0; attempt < 4; attempt++) {
-    const url = attempt ? `${URL}?retry=${attempt}` : URL;
-    const response = await fetcher(url, { headers: { Range: `bytes=${start}-${start + length - 1}` }, cache: 'no-store' });
+    // Same URL every time: Cloudflare answers only the first request for a
+    // URL with 200, so a new query string would just repeat the 200.
+    const response = await fetcher(URL, { headers: { Range: `bytes=${start}-${start + length - 1}` }, cache: 'no-store' });
     if (response.status === 200) {
       // Cloudflare occasionally ignores Range. Never consume an 83 GB body.
       rangeStats.retried200++;

@@ -9,7 +9,7 @@ requirements:
     unmeasured: water、transportation、place だけを復号し、Canvas 2D の固定スタイルで描く。
   - id: safe-range
     need: Range 要求で 200 OK が混じっても巨大ファイルを全量取得しない
-    unmeasured: HTTP 200 の本文を直ちにキャンセルし、最大4回まで Range を再試行する。
+    unmeasured: HTTP 200 の本文を直ちにキャンセルし、同じ URL で最大4回まで Range を再試行する（Cloudflare は URL ごとの最初の要求にだけ 200 を返す）。
   - id: attribution
     need: データの出典を示す
     unmeasured: OpenStreetMap と OpenMapTiles への帰属リンクを表示する。

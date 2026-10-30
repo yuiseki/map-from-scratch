@@ -9,7 +9,7 @@ requirements:
     unmeasured: 17 のカメラと LOD を引き継ぐ。操作の自動検証は未実施。
   - id: no-photo-copy
     need: 写真の巨大な PMTiles を GitHub Pages に複製しない
-    unmeasured: 写真36枚を z.yuiseki.net から Range で読む。HTTP 200 は本文を破棄して最大4回再試行する。通信量の計測は未実施。
+    unmeasured: 写真36枚を z.yuiseki.net から Range で読む。HTTP 200 は本文を破棄して同じ URL で最大4回再試行する（Cloudflare は URL ごとの最初の要求にだけ 200 を返す）。通信量の計測は未実施。
 evaluation:
   budgets: []
 benchmarks:

@@ -8,7 +8,7 @@ requirements:
     unmeasured: 画面上で操作できる。自動検証は未実施。
   - id: range-only
     need: 巨大な PMTiles を丸ごとダウンロードしない
-    unmeasured: HTTP 200 は本文を破棄して最大4回再試行し、206 の長さと Content-Range を確認する。通信量の計測は未実施。
+    unmeasured: HTTP 200 は本文を破棄して同じ URL で最大4回再試行し（Cloudflare は URL ごとの最初の要求にだけ 200 を返す）、206 の長さと Content-Range を確認する。通信量の計測は未実施。
   - id: attribution
     need: 写真の出典と利用上の注意を確認できる
     unmeasured: 画面上に国土地理院の出典・説明・注意へのリンクを表示する。
