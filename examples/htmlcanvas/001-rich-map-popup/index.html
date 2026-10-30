@@ -58,6 +58,20 @@
       color: #2563eb;
       text-decoration: none;
     }
+    #attribution {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      max-width: max-content;
+      padding: 6px 10px;
+      border-radius: 4px;
+      background: rgba(20, 38, 51, 0.9);
+      font-size: 11px;
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 10;
+    }
+    #attribution a { color: #d7f0ff; }
   </style>
 </head>
 <body>
@@ -87,6 +101,10 @@
     <div>Anchor: <span class="val" id="hud-anchor">東京タワー</span></div>
     <div>Bookmarked: <span class="val" id="hud-bookmark">No</span></div>
     <div class="sub">Click points to open • Drag to pan • Scroll to zoom • Click button in canvas</div>
+  </div>
+
+  <div id="attribution">
+    出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院「全国最新写真（シームレス）」</a>（データ配信: <a href="https://z.yuiseki.net/static/gsi/seamlessphoto/" target="_blank" rel="noopener">z.yuiseki.net</a>）
   </div>
 
   <script type="module" src="./main.ts"></script>

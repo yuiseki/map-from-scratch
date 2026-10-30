@@ -71,6 +71,15 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
     detail: `Uploads after label content update: ${uploadsAfterUpdate} (expected ${uploadsAfter + 1})`,
   });
 
+  // Check 7: GSI Seamlessphoto aerial tiles loaded and rendered on WebGPU
+  const hasTiles = await map.waitForTile(4000);
+  await map.render();
+  emit({
+    check: 'aerial-tile-rendered',
+    pass: hasTiles,
+    detail: `GSI Seamlessphoto PMTiles loaded on WebGPU: ${hasTiles}`,
+  });
+
   // Measure frame interval
   let lastTime = performance.now();
   for (let i = 0; i < 15; i++) {

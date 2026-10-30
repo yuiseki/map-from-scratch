@@ -90,6 +90,21 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    #attribution {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      max-width: max-content;
+      padding: 6px 10px;
+      border-radius: 4px;
+      background: rgba(11, 17, 32, 0.9);
+      font-size: 11px;
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 10;
+    }
+    #attribution a { color: #38bdf8; text-decoration: none; }
+    #attribution a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -152,6 +167,10 @@
     <div class="row">Frame HTML Re-layouts: <span class="val" id="hud-relayouts">0</span></div>
     <button id="btn-update">Update Label Content</button>
     <div class="sub">Drag to pan • Wheel to zoom • Labels transformed by GPU vertex shader</div>
+  </div>
+
+  <div id="attribution">
+    出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院「全国最新写真（シームレス）」</a>（データ配信: <a href="https://z.yuiseki.net/static/gsi/seamlessphoto/" target="_blank" rel="noopener">z.yuiseki.net</a>）
   </div>
 
   <script type="module" src="./main.ts"></script>

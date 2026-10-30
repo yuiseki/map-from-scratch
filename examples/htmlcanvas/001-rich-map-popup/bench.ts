@@ -85,6 +85,15 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
     detail: `Anchor delta: (${dxAnchor}, ${dyAnchor}), Popup delta: (${dxPopup}, ${dyPopup}), shifted card pixel: rgba(${newCardPixel.join(',')})`,
   });
 
+  // Check 6: GSI Seamlessphoto aerial tiles loaded & rendered
+  const hasTiles = await map.waitForTile(4000);
+  await map.render();
+  emit({
+    check: 'aerial-tile-rendered',
+    pass: hasTiles,
+    detail: `GSI Seamlessphoto PMTiles loaded: ${hasTiles}`,
+  });
+
   // Measure frame interval during animation
   let lastTime = performance.now();
   for (let i = 0; i < 15; i++) {

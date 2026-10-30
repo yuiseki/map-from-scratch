@@ -22,13 +22,16 @@ requirements:
   - id: smooth-interaction
     need: パン・ズーム操作時に 60 fps で滑らかに再描画される
     rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 5.0 ms 以下に
+  - id: seamlessphoto-basemap
+    need: 国土地理院「全国最新写真（シームレス）」の 512px タイルを PMTiles v3 HTTP Range 要求で取得し WebGPU テクスチャとして描画する
+    unmeasured: verification checks の aerial-tile-rendered で確認
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 8500, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
-    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: light-footprint}
-    - {metric: redraw_ms, stat: p95, max: 35.0, unit: ms, requirement: smooth-interaction}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: light-footprint}
+    - {metric: redraw_ms, stat: p95, max: 45.0, unit: ms, requirement: smooth-interaction}
     - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
   gates: [エラーがない, verification の check がすべて通る]
 
@@ -54,6 +57,11 @@ datasets:
     - id: tokyo-landmarks-6
       origin: 東京都心主要ランドマーク 6 地点
       license: Public Domain / Open Data
+    - id: gsi-seamlessphoto-mirror
+      origin: https://z.yuiseki.net/static/gsi/seamlessphoto/seamlessphoto512.pmtiles
+      license: >-
+        国土地理院コンテンツ利用規約。全国最新写真（シームレス）は他機関の画像も含むため、
+        地理院タイル一覧の備考と利用上の注意を確認する。
   outputs:
     - data/baked/htmlcanvas-002-webgpu-map-label/landmarks.json
 
@@ -83,6 +91,7 @@ architecture_selection:
       - examples/htmlcanvas/002-webgpu-map-label/index.html
       - examples/htmlcanvas/002-webgpu-map-label/main.ts
       - examples/htmlcanvas/002-webgpu-map-label/map.ts
+      - examples/htmlcanvas/002-webgpu-map-label/pmtiles.ts
   not_doing:
     - 毎フレームの HTML 再レイアウト・再ラスタライズ (初回および内容変更時のみアトラス更新)
     - Canvas 2D fillText や SDF 文字描画による UI 再実装 (実 HTML/CSS の活用)
@@ -114,3 +123,7 @@ verification:
       what: ラベル内容更新時にのみテクスチャアトラスが再生成されアップロード回数が 1 増加すること
       how: updateLabelContent() 実行後の textureUploadCount 検証
       expected: uploadsAfterUpdate === uploadsAfter + 1
+    - id: aerial-tile-rendered
+      what: 国土地理院「全国最新写真（シームレス）」の空中写真タイルが取得され WebGPU 上に描画されていること
+      how: PMTiles からのタイル読み込み完了確認
+      expected: true

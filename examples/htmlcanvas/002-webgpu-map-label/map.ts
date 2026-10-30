@@ -1,10 +1,13 @@
-// WebGPU Map Label Renderer via HTML-in-Canvas
+// WebGPU Map Label Renderer via HTML-in-Canvas with GSI Seamlessphoto Aerial Tiles
 //
 // Demonstrates rendering rich HTML elements (with CSS badges, Japanese typography, shadows)
-// into a WebGPU texture atlas using WICG HTML-in-Canvas (drawElementImage).
-// The WebGPU render pass composites the map and instanced label quads.
+// into a WebGPU texture atlas using WICG HTML-in-Canvas (drawElementImage) over
+// 国土地理院「全国最新写真（シームレス）」PMTiles aerial raster tiles.
+// The WebGPU render pass composites the aerial map tiles, pins, and instanced label quads.
 // During pan and zoom, only camera uniforms update on the GPU; no HTML re-layout or texture
 // uploads occur per frame.
+
+import { openArchive } from './pmtiles.ts';
 
 export interface MapLabelItem {
   id: string;
@@ -63,6 +66,8 @@ export interface WebGpuLabelMap {
   updateLabelContent: (index: number, title: string, badge: string, rating: string) => Promise<void>;
   getLabelScreenPos: (index: number) => { x: number; y: number; width: number; height: number };
   readPixel: (x: number, y: number) => Promise<Uint8Array>;
+  waitForTile: (timeoutMs?: number) => Promise<boolean>;
+  hasAerialTiles: () => boolean;
 }
 
 export async function mount(
@@ -84,7 +89,8 @@ export async function mount(
     throw new Error('WebGPU is not supported in this browser/environment');
   }
 
-  const adapter = await navigator.gpu.requestAdapter();
+  const adapter = (await navigator.gpu.requestAdapter()) ||
+                  (await navigator.gpu.requestAdapter({ forceFallbackAdapter: true }));
   if (!adapter) throw new Error('No WebGPU adapter found');
 
   const adapterInfo = (adapter as any).info ?? {};
@@ -104,8 +110,6 @@ export async function mount(
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
   if (isSwiftShader) {
-    // In headless SwiftShader, swapchain binding causes SharedImageStub error in Chromium.
-    // Use Canvas 2D for onscreen presentation of offscreen WebGPU readback.
     onscreen2dCtx = canvas.getContext('2d');
   } else {
     webgpuCtx = canvas.getContext('webgpu') as GPUCanvasContext;
@@ -155,7 +159,6 @@ export async function mount(
 
   // Render HTML elements into canvasHtml and upload to WebGPU texture atlas
   async function updateLabelTextureAtlas(): Promise<void> {
-    // Trigger layout and paint record update
     if (typeof (canvasHtml as any).requestPaint === 'function') {
       await new Promise<void>((resolve) => {
         canvasHtml.addEventListener('paint', () => resolve(), { once: true });
@@ -165,10 +168,8 @@ export async function mount(
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
     }
 
-    // Clear atlas
     ctxHtml.clearRect(0, 0, atlasWidth, atlasHeight);
 
-    // Draw each HTML label card element at its slot
     for (let i = 0; i < landmarks.length; i++) {
       const el = document.getElementById(`label-${i}`);
       if (!el) continue;
@@ -178,7 +179,6 @@ export async function mount(
       if (hasDrawElementImage) {
         ctxHtml.drawElementImage(el, slotX, slotY);
       } else {
-        // Fallback drawing if drawElementImage is absent
         ctxHtml.fillStyle = '#ffffff';
         ctxHtml.fillRect(slotX, slotY, labelCardWidth, labelCardHeight);
         ctxHtml.fillStyle = '#0f172a';
@@ -187,13 +187,79 @@ export async function mount(
       }
     }
 
-    // Upload canvasHtml image to WebGPU texture
     device.queue.copyExternalImageToTexture(
       { source: canvasHtml },
       { texture: labelTexture },
       [atlasWidth, atlasHeight],
     );
     textureUploadCount++;
+  }
+
+  // GSI Seamlessphoto Tile Atlas (2048x2048, 4x4 grid of 512x512 tiles = 16 tiles)
+  const tileAtlasWidth = 2048;
+  const tileAtlasHeight = 2048;
+  const maxTiles = 16;
+
+  const tileTexture = device.createTexture({
+    size: [tileAtlasWidth, tileAtlasHeight, 1],
+    format: 'rgba8unorm',
+    usage:
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
+  const tileSampler = device.createSampler({
+    magFilter: 'linear',
+    minFilter: 'linear',
+  });
+
+  const tileSlots = new Map<string, number>();
+  const tilePending = new Set<string>();
+  let archive: Awaited<ReturnType<typeof openArchive>> | null = null;
+
+  async function uploadTile(key: string, image: ImageBitmap): Promise<void> {
+    let slot: number;
+    if (tileSlots.has(key)) {
+      slot = tileSlots.get(key)!;
+    } else {
+      if (tileSlots.size < maxTiles) {
+        slot = tileSlots.size;
+      } else {
+        const oldestKey = tileSlots.keys().next().value!;
+        slot = tileSlots.get(oldestKey)!;
+        tileSlots.delete(oldestKey);
+      }
+      tileSlots.set(key, slot);
+    }
+
+    const col = slot % 4;
+    const row = Math.floor(slot / 4);
+    device.queue.copyExternalImageToTexture(
+      { source: image },
+      { texture: tileTexture, origin: [col * 512, row * 512, 0] },
+      [512, 512],
+    );
+    image.close();
+    await render();
+  }
+
+  function requestTile(z: number, x: number, y: number): void {
+    if (!archive) return;
+    const key = `${z}/${x}/${y}`;
+    if (tileSlots.has(key) || tilePending.has(key) || tilePending.size >= 8) return;
+    tilePending.add(key);
+    archive.tile(z, x, y)
+      .then((bytes) => (bytes ? createImageBitmap(new Blob([Uint8Array.from(bytes)], { type: 'image/jpeg' })) : null))
+      .then((image) => {
+        if (image) return uploadTile(key, image);
+      })
+      .catch((err) => {
+        console.warn('Seamlessphoto tile request error:', err);
+      })
+      .finally(() => {
+        tilePending.delete(key);
+      });
   }
 
   // Camera uniform buffer
@@ -252,7 +318,14 @@ export async function mount(
 
   updateInstancesData();
 
-  // WGSL Shader for Basemap & Pins & Labels
+  // Tile instance storage buffer (up to 16 tiles)
+  const tileInstanceBufferSize = maxTiles * 32;
+  const tileInstanceBuffer = device.createBuffer({
+    size: tileInstanceBufferSize,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+  });
+
+  // WGSL Shader for Tiles, Pins, and Labels
   const shaderModule = device.createShaderModule({
     code: `
       struct Camera {
@@ -273,11 +346,49 @@ export async function mount(
         uvRect: vec4f,
       };
       @group(0) @binding(3) var<storage, read> instances: array<Instance>;
+      @group(0) @binding(4) var tileSampler: sampler;
+      @group(0) @binding(5) var tileTexture: texture_2d<f32>;
+      @group(0) @binding(6) var<storage, read> tileInstances: array<Instance>;
 
       struct VertexOutput {
         @builtin(position) position: vec4f,
         @location(0) uv: vec2f,
       };
+
+      // Draw aerial map raster tiles
+      @vertex
+      fn vs_tiles(
+        @builtin(vertex_index) vIdx: u32,
+        @builtin(instance_index) instIdx: u32
+      ) -> VertexOutput {
+        let inst = tileInstances[instIdx];
+        var qPos = vec2f(0.0);
+        var uvBase = vec2f(0.0);
+        switch (vIdx) {
+          case 0u: { qPos = vec2f(0.0, 0.0); uvBase = vec2f(0.0, 0.0); }
+          case 1u: { qPos = vec2f(1.0, 0.0); uvBase = vec2f(1.0, 0.0); }
+          case 2u: { qPos = vec2f(1.0, 1.0); uvBase = vec2f(1.0, 1.0); }
+          case 3u: { qPos = vec2f(0.0, 0.0); uvBase = vec2f(0.0, 0.0); }
+          case 4u: { qPos = vec2f(1.0, 1.0); uvBase = vec2f(1.0, 1.0); }
+          default: { qPos = vec2f(0.0, 1.0); uvBase = vec2f(0.0, 1.0); }
+        }
+
+        let mercatorPos = inst.pos + qPos * inst.size;
+        let screenPx = (mercatorPos - camera.center) * camera.scale;
+
+        let ndcX = (screenPx.x / (camera.viewport.x * 0.5));
+        let ndcY = -(screenPx.y / (camera.viewport.y * 0.5));
+
+        var out: VertexOutput;
+        out.position = vec4f(ndcX, ndcY, 0.0, 1.0);
+        out.uv = mix(inst.uvRect.xy, inst.uvRect.zw, uvBase);
+        return out;
+      }
+
+      @fragment
+      fn fs_tiles(in: VertexOutput) -> @location(0) vec4f {
+        return textureSample(tileTexture, tileSampler, in.uv);
+      }
 
       // Draw instanced labels (6 vertices per quad, instanced)
       @vertex
@@ -371,6 +482,9 @@ export async function mount(
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
       { binding: 3, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+      { binding: 4, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+      { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+      { binding: 6, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
     ],
   });
 
@@ -381,11 +495,34 @@ export async function mount(
       { binding: 1, resource: labelSampler },
       { binding: 2, resource: labelTexture.createView() },
       { binding: 3, resource: { buffer: instanceBuffer } },
+      { binding: 4, resource: tileSampler },
+      { binding: 5, resource: tileTexture.createView() },
+      { binding: 6, resource: { buffer: tileInstanceBuffer } },
     ],
   });
 
   const pipelineLayout = device.createPipelineLayout({
     bindGroupLayouts: [bindGroupLayout],
+  });
+
+  const tilePipeline = device.createRenderPipeline({
+    layout: pipelineLayout,
+    vertex: {
+      module: shaderModule,
+      entryPoint: 'vs_tiles',
+    },
+    fragment: {
+      module: shaderModule,
+      entryPoint: 'fs_tiles',
+      targets: [
+        {
+          format: isSwiftShader ? 'rgba8unorm' : presentationFormat,
+        },
+      ],
+    },
+    primitive: {
+      topology: 'triangle-list',
+    },
   });
 
   const labelPipeline = device.createRenderPipeline({
@@ -466,39 +603,79 @@ export async function mount(
     return offscreenTexture;
   }
 
-  function getLabelScreenPos(index: number): { x: number; y: number; width: number; height: number } {
-    const lm = landmarks[index];
-    const scale = getScale();
-    const anchorX = canvas.width / 2 + (lm.mx - centerMx) * scale;
-    const anchorY = canvas.height / 2 + (lm.my - centerMy) * scale;
-
-    const left = anchorX - labelCardWidth / 2;
-    const top = anchorY - labelCardHeight - 12;
-    return { x: left, y: top, width: labelCardWidth, height: labelCardHeight };
-  }
-
+  // WebGPU render pass
   async function render(): Promise<void> {
     renderCount++;
     updateCameraUniform();
 
+    // Calculate visible aerial tiles and update tileInstanceBuffer
+    let visibleTileCount = 0;
+    const tileData = new Float32Array(maxTiles * 8);
+
+    if (archive) {
+      const tileZ = Math.min(17, Math.max(10, Math.round(zoom)));
+      const n = 2 ** tileZ;
+      const tileSize = 1 / n;
+      const scale = getScale();
+      const halfW = (canvas.width / 2) / scale;
+      const halfH = (canvas.height / 2) / scale;
+      const minMx = centerMx - halfW;
+      const maxMx = centerMx + halfW;
+      const minMy = centerMy - halfH;
+      const maxMy = centerMy + halfH;
+      const x0 = Math.max(0, Math.floor(minMx * n));
+      const x1 = Math.min(n - 1, Math.floor(maxMx * n));
+      const y0 = Math.max(0, Math.floor(minMy * n));
+      const y1 = Math.min(n - 1, Math.floor(maxMy * n));
+
+      for (let ty = y0; ty <= y1 && visibleTileCount < maxTiles; ty++) {
+        for (let tx = x0; tx <= x1 && visibleTileCount < maxTiles; tx++) {
+          const key = `${tileZ}/${tx}/${ty}`;
+          if (tileSlots.has(key)) {
+            const slot = tileSlots.get(key)!;
+            const col = slot % 4;
+            const row = Math.floor(slot / 4);
+            const u0 = col * 0.25;
+            const v0 = row * 0.25;
+            const u1 = u0 + 0.25;
+            const v1 = v0 + 0.25;
+
+            const offset = visibleTileCount * 8;
+            tileData[offset + 0] = tx * tileSize;
+            tileData[offset + 1] = ty * tileSize;
+            tileData[offset + 2] = tileSize;
+            tileData[offset + 3] = tileSize;
+            tileData[offset + 4] = u0;
+            tileData[offset + 5] = v0;
+            tileData[offset + 6] = u1;
+            tileData[offset + 7] = v1;
+            visibleTileCount++;
+          } else if (!tilePending.has(key)) {
+            requestTile(tileZ, tx, ty);
+          }
+        }
+      }
+    }
+    device.queue.writeBuffer(tileInstanceBuffer, 0, tileData);
+
     const commandEncoder = device.createCommandEncoder();
 
-    let renderView: GPUTextureView;
+    let targetView: GPUTextureView;
     let targetTexture: GPUTexture | null = null;
 
     if (isSwiftShader) {
       targetTexture = ensureOffscreenTexture();
-      renderView = targetTexture.createView();
+      targetView = targetTexture.createView();
     } else {
-      renderView = webgpuCtx!.getCurrentTexture().createView();
+      if (!webgpuCtx) return;
+      targetView = webgpuCtx.getCurrentTexture().createView();
     }
 
-    // Basemap background color #0b1120
     const pass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
-          view: renderView,
-          clearValue: { r: 11 / 255, g: 17 / 255, b: 32 / 255, a: 1.0 },
+          view: targetView,
+          clearValue: { r: 0.04, g: 0.07, b: 0.13, a: 1.0 },
           loadOp: 'clear',
           storeOp: 'store',
         },
@@ -507,17 +684,23 @@ export async function mount(
 
     pass.setBindGroup(0, bindGroup);
 
-    // 1. Draw pins under labels
+    // 1. Draw GSI seamlessphoto aerial tiles
+    if (visibleTileCount > 0) {
+      pass.setPipeline(tilePipeline);
+      pass.draw(6, visibleTileCount, 0, 0);
+    }
+
+    // 2. Draw pins under labels
     pass.setPipeline(pinPipeline);
     pass.draw(6, landmarks.length, 0, 0);
 
-    // 2. Draw instanced HTML labels
+    // 3. Draw instanced HTML labels
     pass.setPipeline(labelPipeline);
     pass.draw(6, landmarks.length, 0, 0);
 
     pass.end();
 
-    // In SwiftShader, transfer pixels to onscreen Canvas 2D for visual feedback and screenshot
+    // In SwiftShader, transfer pixels to onscreen Canvas 2D
     if (isSwiftShader && onscreen2dCtx && targetTexture) {
       const w = canvas.width;
       const h = canvas.height;
@@ -561,128 +744,164 @@ export async function mount(
     await render();
   }
 
+  function getLabelScreenPos(index: number): { x: number; y: number; width: number; height: number } {
+    const lm = landmarks[index];
+    const scale = getScale();
+    const screenX = canvas.width / 2 + (lm.mx - centerMx) * scale;
+    const screenY = canvas.height / 2 + (lm.my - centerMy) * scale;
+    const px = Math.round(screenX - labelCardWidth / 2);
+    const py = Math.round(screenY - labelCardHeight - 12);
+    return { x: px, y: py, width: labelCardWidth, height: labelCardHeight };
+  }
+
   async function updateLabelContent(
     index: number,
     title: string,
     badge: string,
     rating: string,
   ): Promise<void> {
-    const card = document.getElementById(`label-${index}`);
-    if (!card) return;
-    const badgeEl = card.querySelector('.label-badge');
-    const ratingEl = card.querySelector('.label-rating');
-    const titleEl = card.querySelector('.label-title');
-    if (badgeEl) badgeEl.textContent = badge;
-    if (ratingEl) ratingEl.textContent = rating;
-    if (titleEl) titleEl.textContent = title;
-
     landmarks[index].name = title;
     landmarks[index].category = badge;
     landmarks[index].rating = rating;
+
+    const el = document.getElementById(`label-${index}`);
+    if (el) {
+      const titleEl = el.querySelector('.label-title');
+      const badgeEl = el.querySelector('.label-badge');
+      const ratingEl = el.querySelector('.label-rating');
+      if (titleEl) titleEl.textContent = title;
+      if (badgeEl) badgeEl.textContent = badge;
+      if (ratingEl) ratingEl.textContent = rating;
+    }
 
     await updateLabelTextureAtlas();
     await render();
   }
 
   async function readPixel(x: number, y: number): Promise<Uint8Array> {
-    const px = Math.max(0, Math.min(canvas.width - 1, Math.round(x)));
-    const py = Math.max(0, Math.min(canvas.height - 1, Math.round(y)));
+    const rx = Math.max(0, Math.min(canvas.width - 1, Math.round(x)));
+    const ry = Math.max(0, Math.min(canvas.height - 1, Math.round(y)));
 
-    device.pushErrorScope('validation');
-    updateCameraUniform();
-    const texture = isSwiftShader ? ensureOffscreenTexture() : (webgpuCtx ? webgpuCtx.getCurrentTexture() : ensureOffscreenTexture());
-    const commandEncoder = device.createCommandEncoder();
-
-    // Render pass and copy in the same command buffer before presentation
-    const pass = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: texture.createView(),
-          clearValue: { r: 11 / 255, g: 17 / 255, b: 32 / 255, a: 1.0 },
-          loadOp: 'clear',
-          storeOp: 'store',
-        },
-      ],
-    });
-    pass.setBindGroup(0, bindGroup);
-    pass.setPipeline(pinPipeline);
-    pass.draw(6, landmarks.length, 0, 0);
-    pass.setPipeline(labelPipeline);
-    pass.draw(6, landmarks.length, 0, 0);
-    pass.end();
+    if (isSwiftShader && onscreen2dCtx) {
+      const data = onscreen2dCtx.getImageData(rx, ry, 1, 1).data;
+      return new Uint8Array(data);
+    }
 
     const readBuffer = device.createBuffer({
       size: 256,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
-
+    const commandEncoder = device.createCommandEncoder();
     commandEncoder.copyTextureToBuffer(
-      { texture, origin: { x: px, y: py } },
-      { buffer: readBuffer, bytesPerRow: 256, rowsPerImage: 1 },
+      { texture: ensureOffscreenTexture(), origin: [rx, ry, 0] },
+      { buffer: readBuffer, bytesPerRow: 256 },
       [1, 1, 1],
     );
-
     device.queue.submit([commandEncoder.finish()]);
-    const err = await device.popErrorScope();
-    if (err) {
-      console.error('READPIXEL GPU ERROR:', err.message);
-    }
     await readBuffer.mapAsync(GPUMapMode.READ);
-    const pixel = new Uint8Array(readBuffer.getMappedRange().slice(0, 4));
+    const mapped = new Uint8Array(readBuffer.getMappedRange());
+    const pixel = new Uint8Array(mapped.slice(0, 4));
     readBuffer.unmap();
     readBuffer.destroy();
     // The preferred canvas format is bgra8unorm on macOS: return RGBA.
-    if (texture.format === 'bgra8unorm') [pixel[0], pixel[2]] = [pixel[2], pixel[0]];
+    if (presentationFormat === 'bgra8unorm') [pixel[0], pixel[2]] = [pixel[2], pixel[0]];
     return pixel;
   }
 
-  // Initial Atlas generation
-  await updateLabelTextureAtlas();
-  await render();
-
-  // Pointer event listeners
+  // Pointer interactions
   let isDragging = false;
-  let lastX = 0;
-  let lastY = 0;
+  let dragStartX = 0;
+  let dragStartY = 0;
 
-  canvas.addEventListener('pointerdown', (e) => {
+  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     isDragging = true;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
 
-  canvas.addEventListener('pointermove', async (e) => {
+  canvas.addEventListener('pointermove', (e: PointerEvent) => {
     if (!isDragging) return;
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    await panBy(dx, dy);
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+
+    const scale = getScale();
+    centerMx -= dx / scale;
+    centerMy -= dy / scale;
+    render();
   });
 
-  canvas.addEventListener('pointerup', () => {
-    isDragging = false;
-  });
+  const stopDrag = (e: PointerEvent) => {
+    if (isDragging) {
+      isDragging = false;
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
-  canvas.addEventListener('wheel', async (e) => {
+  canvas.addEventListener('pointerup', stopDrag);
+  canvas.addEventListener('pointercancel', stopDrag);
+
+  canvas.addEventListener('wheel', (e: WheelEvent) => {
     e.preventDefault();
-    const delta = -Math.sign(e.deltaY) * 0.2;
-    await zoomBy(delta);
+    const delta = e.deltaY < 0 ? 0.2 : -0.2;
+    zoom = Math.max(9, Math.min(18, zoom + delta));
+    render();
   }, { passive: false });
+
+  async function waitForTile(timeoutMs = 6000): Promise<boolean> {
+    const start = performance.now();
+    while (performance.now() - start < timeoutMs) {
+      if (tileSlots.size > 0) return true;
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    return false;
+  }
+
+  function hasAerialTiles(): boolean {
+    return tileSlots.size > 0;
+  }
+
+  // Initial setup: upload HTML labels to WebGPU texture atlas
+  await updateLabelTextureAtlas();
+
+  // Open PMTiles archive & fetch center tile
+  try {
+    archive = await openArchive();
+    const tileZ = Math.round(zoom);
+    const n = 2 ** tileZ;
+    const cx = Math.floor(centerMx * n);
+    const cy = Math.floor(centerMy * n);
+    requestTile(tileZ, cx, cy);
+  } catch (err) {
+    console.warn('Seamlessphoto PMTiles error:', err);
+  }
+
+  await render();
 
   return {
     canvas,
     landmarks,
     gpuName,
     hasDrawElementImage,
-    get textureUploadCount() { return textureUploadCount; },
-    get renderCount() { return renderCount; },
+    get textureUploadCount() {
+      return textureUploadCount;
+    },
+    get renderCount() {
+      return renderCount;
+    },
     render,
     panBy,
     zoomBy,
     updateLabelContent,
     getLabelScreenPos,
     readPixel,
+    waitForTile,
+    hasAerialTiles,
   };
 }

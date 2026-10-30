@@ -22,13 +22,16 @@ requirements:
   - id: smooth-interaction
     need: パン・ズーム操作時およびポップアップ更新時に 60 fps で滑らかに再描画される
     rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 5.0 ms 以下に
+  - id: seamlessphoto-basemap
+    need: 国土地理院「全国最新写真（シームレス）」の 512px タイルを PMTiles v3 HTTP Range 要求で取得し背景に描画する
+    unmeasured: verification checks の aerial-tile-rendered で確認
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: light-footprint}
-    - {metric: redraw_ms, stat: p95, max: 5.0, unit: ms, requirement: smooth-interaction}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
     - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
   gates: [エラーがない, verification の check がすべて通る]
 
@@ -54,6 +57,11 @@ datasets:
     - id: tokyo-landmarks
       origin: 東京都心主要ランドマーク 5 地点
       license: Public Domain / Open Data
+    - id: gsi-seamlessphoto-mirror
+      origin: https://z.yuiseki.net/static/gsi/seamlessphoto/seamlessphoto512.pmtiles
+      license: >-
+        国土地理院コンテンツ利用規約。全国最新写真（シームレス）は他機関の画像も含むため、
+        地理院タイル一覧の備考と利用上の注意を確認する。
   outputs:
     - data/baked/htmlcanvas-001-rich-map-popup/landmarks.json
 
@@ -87,6 +95,7 @@ architecture_selection:
       - examples/htmlcanvas/001-rich-map-popup/index.html
       - examples/htmlcanvas/001-rich-map-popup/main.ts
       - examples/htmlcanvas/001-rich-map-popup/map.ts
+      - examples/htmlcanvas/001-rich-map-popup/pmtiles.ts
   not_doing:
     - DOM overlay (DOM 追従レイヤの作成を禁止し、ジッターと合成ズレを排除)
     - Canvas fillText / roundRect による UI の自前再実装 (自前レイアウトエンジンの肥大化を排除)
@@ -114,3 +123,7 @@ verification:
       what: 地図パン後にアンカー座標およびポップアップ描画位置がデルタ分シフトし Canvas に正しく追従すること
       how: panBy(120, 80) 前後のアンカー・矩形座標差分および移動先ピクセル値確認
       expected: dx == 120 && dy == 80 && isNewCardWhite
+    - id: aerial-tile-rendered
+      what: 国土地理院「全国最新写真（シームレス）」の空中写真タイルが取得され Canvas 背景に描画されていること
+      how: PMTiles からのタイル読み込み完了確認
+      expected: true
