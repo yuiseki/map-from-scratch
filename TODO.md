@@ -868,7 +868,7 @@
 - [ ] `forge3d-003-swiss-landcover` → `examples/forge3d/003-swiss-landcover/` — [Swiss land-cover](https://milos-agathon.github.io/forge3d/gallery/03-swiss-landcover.html)
 - [x] `forge3d-004-luxembourg-rail-network` → `examples/forge3d/004-luxembourg-rail-network/` — [Luxembourg rail network](https://milos-agathon.github.io/forge3d/gallery/04-luxembourg-rail-network.html)
 - [ ] `forge3d-005-3d-buildings` → `examples/forge3d/005-3d-buildings/` — [3D buildings](https://milos-agathon.github.io/forge3d/gallery/05-3d-buildings.html)
-- [ ] `forge3d-006-point-cloud` → `examples/forge3d/006-point-cloud/` — [Point cloud](https://milos-agathon.github.io/forge3d/gallery/06-point-cloud.html)
+- [x] `forge3d-006-point-cloud` → `examples/forge3d/006-point-cloud/` — [Point cloud](https://milos-agathon.github.io/forge3d/gallery/06-point-cloud.html)
 - [ ] `forge3d-007-camera-flyover` → `examples/forge3d/007-camera-flyover/` — [Camera flyover](https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html)
 - [x] `forge3d-008-vector-export` → `examples/forge3d/008-vector-export/` — [Vector export](https://milos-agathon.github.io/forge3d/gallery/08-vector-export.html)
 - [ ] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **39 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **40 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、006、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

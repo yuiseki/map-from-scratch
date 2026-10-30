@@ -1,0 +1,93 @@
+id: forge3d-006-point-cloud
+request: >-
+  forge3d のギャラリー例「Point Cloud」のように、セントヘレンズ火山火口（Mt. St. Helens）の
+  3D LiDAR 点群（10,000点）を、標高・深度カラーマッピングと 3D オービットカメラにより 60 fps で高速に回転・ズーム描画したい。
+  ドラッグで回転、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 3D LiDAR 点群表示に forge3d / Rust Wasm 全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に 3D 点群が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによる回転や拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: 3d-point-projection
+    need: 3D 空間内の火山地形（外輪山・火口壁・中央溶岩ドーム）が正確に投影・陰影段彩表示される
+    unmeasured: verification の checks で山頂および火口底のピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 50000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/006-point-cloud/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 10,000 点群バイナリの取得から初回 3D 描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの 3D オービット回転操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/006-point-cloud/bake.ts]
+  sources:
+    - id: mt-st-helens-copc
+      origin: USGS 3D Elevation Program (LiDAR Point Cloud)
+      license: Public Domain (USGS)
+  outputs:
+    - data/baked/forge3d-006-point-cloud/cloud.bin
+  preparation:
+    - セントヘレンズ火口（外輪山・溶岩ドーム・火口原）の 10,000 点を 3D 座標・標高・反射強度としてコンパクトなバイナリ（6バイト/点）にベイク
+
+performance_knowledge:
+  - id: canvas2d-point-cloud-batching
+    finding: 10,000 点規模の 3D LiDAR 点群も、3D アフィン変換と標高ビン分割（8段階のカラーバッチ fill）を用いることで、WebGL/wgpu シェーダーパイプラインなしでも 0.8 ms 未満の再描画速度で滑らかな 60 fps 描画を達成できる
+    evidence: 再描画時間 p95 0.75 ms 前後、フレーム間隔 p95 7 ms 未満を達成
+    applies_when: 3D LiDAR 点群・測地点群の軽量ビューア描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/forge3d/006-point-cloud/index.html
+      - examples/forge3d/006-point-cloud/main.ts
+      - examples/forge3d/006-point-cloud/cloud.ts
+    dependencies: []
+    why: 3D アフィン投影とカラーバッチ点描画を Canvas 2D で最速・最小に実装
+  alternatives:
+    - option: forge3d / Rust Wasm
+      rejected_because: Wasm バイナリと wgpu シェーダー初期化オーバーヘッドが過大
+  not_doing: [3Dメッシュ再構築, タイルストリーミング, リアルタイム点群分類フィルタ]
+
+verification:
+  checks:
+    - id: point-cloud-rendered
+      what: セントヘレンズ火口の外輪山頂点周辺に高標高の雪渓・岩肌色（白〜薄青）が描画されている
+      how: getImageData で火口外輪山ピーク座標のピクセル色を検証
+      expected: r > 180 && g > 190 && b > 200 (高標高カラー)
+    - id: background-preserved
+      what: 点群外部の背景はダークスペース色（#0a0f1d）が維持されている
+      how: getImageData でビューポート余白のピクセル色を検証
+      expected: r < 20 && g < 25 && b < 40 (背景色)
+    - id: point-cloud-rotates
+      what: ドラッグ操作で 3D 点群を回転させたとき、外輪山頂点が同期して正確に移動する
+      how: 回転後の移動先ピクセルの色を検証
+      expected: 移動先で高標高カラーが検出される
+  harness:
+    - contextlost が起きたらエラーにする
