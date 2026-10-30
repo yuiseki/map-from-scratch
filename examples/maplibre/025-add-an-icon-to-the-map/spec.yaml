@@ -1,0 +1,107 @@
+id: maplibre-025-add-an-icon-to-the-map
+request: >-
+  経度0・緯度0の地点に、画像ファイルを読み込まずに生成した猫のアイコンスプライトを描き、
+  ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: アイコン1枚と背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とアイコンが現れる
+    rationale: 画像リクエストなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: icon-accuracy
+    need: アイコンの中心が常に [0, 0] に固定され、パンや拡縮でもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/025-add-an-icon-to-the-map/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得からアイコン描画のある初回フレームまで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/025-add-an-icon-to-the-map/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs: [data/baked/maplibre-025-add-an-icon-to-the-map/land.json]
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+    - 座標を小数点6桁に量子化して軽量な JSON 配列としてベイク
+
+performance_knowledge:
+  - id: procedural-sprite-atlas
+    finding: 元例は cat.png を loadImage するが、48×48 のスプライトを起動時にオフスクリーン Canvas へ一度だけ描けば、画像リクエスト・デコード待ち・CORS の考慮がすべて不要になり、初回フレームにアイコンが揃う
+    evidence: 画像リクエスト 0 件、初回描画はデータ取得込みで 40 ms 未満
+  - id: drawimage-per-frame
+    finding: アイコンはスプライトを drawImage で1回ブリットするだけで、パスを毎フレーム組み立てるより描画コストが低い
+    evidence: リドロー時間 p95 は 0.5 ms 未満、パン中も 60 fps
+  - id: dpr-aware-sprite
+    finding: スプライトを devicePixelRatio 倍の解像度で作り直してから CSS サイズでブリットすると、DPR 2 の画面でもアイコンが滲まない（resize 時に再生成）
+    evidence: DPR 1/2 のどちらでも同じ 48 CSS px で描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/025-add-an-icon-to-the-map/index.html
+      - examples/maplibre/025-add-an-icon-to-the-map/main.ts
+      - examples/maplibre/025-add-an-icon-to-the-map/icon.ts
+    dependencies: []
+    why: アイコン1枚と陸地ポリゴンだけなら Canvas 2D の drawImage 1回が最小・最速
+  alternatives:
+    - option: WebGL2 の textured quad
+      rejected_because: テクスチャ転送とシェーダー初期化が加わり、1枚のアイコンには過剰
+    - option: DOM の <img> オーバーレイ
+      rejected_because: 画像リクエストと地図キャンバスとの同期更新が必要になり、フレーム一貫性を保ちにくい
+  not_doing: [3D地形, アイコンの回転・衝突判定, 複数アイコン, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: icon-sprite-visible
+      what: 'スプライトの顔（橙色 #F5A623）が [0, 0] に描画されている'
+      how: getImageData でアイコン中心から右12pxのピクセル色を検証
+      expected: '橙色ピクセル（r > 200, 120 < g < 200, b < 90）が検出される'
+    - id: icon-sprite-details-visible
+      what: 'スプライトの目（濃色）まで描画されている'
+      how: 左目の中心のピクセル色を検証
+      expected: '暗色ピクセル（r,g,b < 70）が検出される'
+    - id: icon-moves-with-pan
+      what: 'パンでアイコンが地図と一緒に同じ量だけ動く'
+      how: setZoom(3) から panBy(60, 40) し、画面上の移動量と描画ピクセルを検証
+      expected: 'dx = 60, dy = 40 かつ橙色ピクセルが検出される'
+    - id: icon-anchors-on-zoom
+      what: 'ズームしてもアイコンが [0, 0] に留まる'
+      how: setZoom(5) 後のアイコン位置のピクセル色を検証
+      expected: '橙色ピクセルが検出される'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint でアイコン位置をアンカーに zoom 5→6 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

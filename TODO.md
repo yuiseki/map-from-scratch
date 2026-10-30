@@ -44,7 +44,7 @@
 - [ ] `maplibre-022-add-a-video` → `examples/maplibre/022-add-a-video/` — [Add a video](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-video/)
 - [ ] `maplibre-023-add-a-wms-source` → `examples/maplibre/023-add-a-wms-source/` — [Add a WMS source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-wms-source/)
 - [ ] `maplibre-024-add-an-animated-icon-to-the-map` → `examples/maplibre/024-add-an-animated-icon-to-the-map/` — [Add an animated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-an-animated-icon-to-the-map/)
-- [ ] `maplibre-025-add-an-icon-to-the-map` → `examples/maplibre/025-add-an-icon-to-the-map/` — [Add an icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-an-icon-to-the-map/)
+- [x] `maplibre-025-add-an-icon-to-the-map` → `examples/maplibre/025-add-an-icon-to-the-map/` — [Add an icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-an-icon-to-the-map/)
 - [ ] `maplibre-026-add-contour-lines` → `examples/maplibre/026-add-contour-lines/` — [Add Contour Lines](https://maplibre.org/maplibre-gl-js/docs/examples/add-contour-lines/)
 - [ ] `maplibre-027-add-custom-icons-with-markers` → `examples/maplibre/027-add-custom-icons-with-markers/` — [Add custom icons with Markers](https://maplibre.org/maplibre-gl-js/docs/examples/add-custom-icons-with-markers/)
 - [ ] `maplibre-028-add-custom-layers-that-follow-the-terrain` → `examples/maplibre/028-add-custom-layers-that-follow-the-terrain/` — [Add custom layers that follow the terrain](https://maplibre.org/maplibre-gl-js/docs/examples/add-custom-layers-that-follow-the-terrain/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **46 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **47 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
