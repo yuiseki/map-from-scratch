@@ -209,11 +209,12 @@ example checked (010, 009, 213, 244 not yet).
 
 ## Clustering
 
-**Not yet seen.** 056's clusters overlap heavily at zoom 3 (radius by count up
-to 40 px with a 50 px cluster radius); MapLibre's own example overlaps as
-well, so it was not judged a bug. Look at: counts that add up to the number of
-points, clusters splitting when zooming in, a cluster's position against its
-members.
+Only maplibre 056 clusters. Its counts add up (`all-earthquakes-accounted`)
+and a click expands a cluster, both checked by its bench. What went wrong
+was elsewhere: the clusters, their labels and hit testing sat on one world
+copy (see World wrapping), and a 1 px move turned a click into a drag (see
+Interaction). Its circles overlap heavily at zoom 3; MapLibre's own example
+overlaps as well, so it was not judged a mistake.
 
 ## KDE / heatmap
 
