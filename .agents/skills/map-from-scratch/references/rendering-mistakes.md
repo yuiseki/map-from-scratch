@@ -28,7 +28,20 @@ what went wrong.
   The stroke along the 180° cut stays as a faint seam; leave it out of the
   stroke where it matters.
 - Lesson: when a fix lands in one example, grep for the template's loop in
-  the others (`originX + ring` found all seven).
+  the others. `originX + ring` found seven; a second pass on 2026-10-30 that
+  listed every renderer drawing `polygons` without any wrap found seven more
+  written differently (`w / 2 + (ring[i][0] - centerMx) * scale`, or a
+  `Path2D` under `setTransform`): mapbox 009 and 018 (Alaska cut in the
+  opening view of 018), leaflet 001 and 005, tangram 004, deckgl 006,
+  maplibre 056. Search for the absence of the fix, not for one spelling of
+  the bug.
+
+### Data layers drawn once while the land repeats (maplibre 056)
+
+With the land repeated, the clusters still sat on one copy at zoom 0. Draw
+every layer that has map positions per copy (for a WebGL layer, one draw per
+copy with the centre shifted by whole worlds), and offset labels and hit
+testing the same way.
 
 ### A fixed number of copies (maplibre 053)
 
@@ -324,6 +337,13 @@ cut in an 800 px window. Fit the opening view to the data's bounds at load.
   fit the margin.
 - Test: convert a known feature's pixel back to coordinates; zoom and check
   that the scale bar's distance changes.
+
+### A graticule step fixed by zoom band (maplibre 056)
+
+At zoom 0 the 10° lines were 14 px apart and the longitude labels ran into
+each other, with values such as −370°. Choose the step from the pixel
+spacing (the smallest of 0.5, 1, 2, 5, 10, 30, 60° that is at least 60 px
+apart) and print longitudes normalised to −180..180.
 
 ### Base data too coarse for the scale (tangram 004)
 
