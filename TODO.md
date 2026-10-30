@@ -288,7 +288,7 @@
 - [ ] `openglobus-001-ar` → `examples/openglobus/001-ar/` — [Augmented Reality](https://sandbox.openglobus.org/examples/ar/ar.html)
 - [x] `openglobus-002-base-layers` → `examples/openglobus/002-base-layers/` — [Base Layers](https://sandbox.openglobus.org/examples/baseLayers/baseLayers.html)
 - [ ] `openglobus-003-basic-time-zone` → `examples/openglobus/003-basic-time-zone/` — [Basic Time Zone](https://sandbox.openglobus.org/examples/basicTimeZone/basicTimeZone.html)
-- [ ] `openglobus-004-billboards` → `examples/openglobus/004-billboards/` — [Billboards](https://sandbox.openglobus.org/examples/billboards/billboards.html)
+- [x] `openglobus-004-billboards` → `examples/openglobus/004-billboards/` — [Billboards](https://sandbox.openglobus.org/examples/billboards/billboards.html)
 - [ ] `openglobus-005-billboards-dragging` → `examples/openglobus/005-billboards-dragging/` — [Billboards/Labels Dragging](https://sandbox.openglobus.org/examples/billboardsDragging/billboardsDragging.html)
 - [ ] `openglobus-006-billboards-on-the-ground` → `examples/openglobus/006-billboards-on-the-ground/` — [Ground Billboards](https://sandbox.openglobus.org/examples/billboardsOnTheGround/billboardsOnTheGround.html)
 - [ ] `openglobus-007-camera-fly` → `examples/openglobus/007-camera-fly/` — [Fly Camera](https://sandbox.openglobus.org/examples/cameraFly/cameraFly.html)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **25 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **26 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

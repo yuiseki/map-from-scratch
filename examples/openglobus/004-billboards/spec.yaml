@@ -1,0 +1,95 @@
+id: openglobus-004-billboards
+request: >-
+  OpenGlobus の「Billboards」例のように、世界主要都市（パリ、東京、ニューヨーク、シドニー、カイロ）に
+  ビルボードマーカー（アイコンバッジ）を配置した地図を表示したい。
+  ドラッグでパン、ホイールで拡大縮小でき、マーカーが地理座標に固定されて追従すること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 複数都市のビルボードアイコンと背景地図の表示に巨大な 3D 地球儀エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とビルボードが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: billboard-accuracy
+    need: ビルボードマーカーが指定座標に正確に固定され、ズームやパンでもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/004-billboards/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データおよびビルボード定義の取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/openglobus/004-billboards/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/openglobus-004-billboards/land.json
+    - data/baked/openglobus-004-billboards/billboards.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - 世界5主要都市のビルボードマーカー定義を JSON に格納
+
+performance_knowledge:
+  - id: canvas-procedural-billboards
+    finding: テクスチャ画像や DOM 要素を使わず、Canvas 2D の円弧・パスプリミティブでビルボードバッジをプロシージャル描画することで、非同期画像ロードの遅延や DOM 同期オーバーヘッドを完全に回避できる
+    evidence: 再描画時間は p95 0.3 ms 未満で安定
+    applies_when: 多数のアイコン・ビルボードの軽量リアルタイム表示
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/openglobus/004-billboards/index.html
+      - examples/openglobus/004-billboards/main.ts
+      - examples/openglobus/004-billboards/map.ts
+    dependencies: []
+    why: 複数都市のビルボードバッジと背景陸地を Canvas 2D で高速・軽量に直接描画
+  alternatives:
+    - option: OpenGlobus フルスタック
+      rejected_because: 数 MB の WebGL 3D エンジン全体の読み込みが不要
+  not_doing: [3D地形, 地名ラベル自動配置, クラスタリング, 大気散乱シェーダー]
+
+verification:
+  checks:
+    - id: billboards-rendered
+      what: 初期画面中央のカイロ付近にマゼンタ色ビルボードバッジが描画されている
+      how: getImageData でビルボード位置のピクセル色を検証
+      expected: r > 200 && g < 50 && b > 80 (マゼンタ/ピンク #e91e63)
+    - id: billboards-move-with-pan
+      what: 地図をパンしたとき、ビルボードのスクリーン座標が正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先でビルボード色が検出される
+    - id: billboards-anchor-on-zoom
+      what: ズーム変更後もビルボードが指定地理座標に正確にアンカーされている
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算位置にビルボードが描画されている
+  harness:
+    - contextlost が起きたらエラーにする
