@@ -63,8 +63,28 @@ datasets:
 performance_knowledge:
   - id: same-input-as-04
     finding: 比べる 2 つの差を数え方だけにするため、データ、点の並び (128 本のストライド)、カメラの式、色、画面の大きさ、経路を 04 と同じにした
-    evidence: counts-match-cpu で、6 倍の表示の全ピクセルの数が CPU の数え直しと一致する
+    evidence: 2 枚のスクリーンショットの画素の平均差は 0.41 / 255 (注記の文字の違いを含む)
     applies_when: 描画 API を比べるとき
+  - id: compute-beats-blend
+    finding: 同じ点を同じ画面で数えると、compute の atomicAdd は加算ブレンドより GPU 時間が 4〜5 倍短い
+    evidence: gpu_ms p50 は経路 0.19 ms (04 は 0.82)、全体表示 0.51 ms (2.64)、256 倍表示 0.19 ms (0.77)。RTX 3060、交互に 2 回ずつ測って同じ値
+    applies_when: 大量の点を画素やビンごとに数えるとき
+  - id: bandwidth-floor
+    finding: 全点が範囲外でも全点を読むので、GPU 時間には点の量で決まる床がある
+    evidence: 256 倍表示は点の並びによらず 0.19 ms。38.6 MB を約 200 GB/s で読んでいる (RTX 3060 のメモリ帯域は 360 GB/s)
+    applies_when: 表示範囲によらず全点を走査する compute
+  - id: order-matters-less-for-atomics
+    finding: 同じピクセルへの競合は、加算ブレンドより atomicAdd のほうが点の並びに鈍い
+    evidence: 全体表示の gpu_ms はストライド 1 で 0.96 ms、16 と 128 で 0.51、1024 で 0.63 ms (04 のブレンドは 1 で 11.7、128 で 2.6 ms)
+    applies_when: 空間順に並んだ点を atomicAdd で数えるとき
+  - id: completion-wait-floor
+    finding: WebGPU で完了を JS が受け取るまでには、GPU の仕事と関係なく約 2.3 ms かかる。frame_ms は経路の p50 で WebGL2 (readPixels で待つ) より長くなる
+    evidence: gpu_ms 0.19 ms に対して frame_ms 2.30 ms。04 は frame_ms 1.06 ms
+    applies_when: 毎フレーム GPU の完了を待つ処理 (読み戻しや計測)
+  - id: inexact-wgsl-math
+    finding: WGSL は割り算の誤差と FMA を許すので、ピクセルの境目ぎりぎりの点は CPU と違うピクセルに入ることがある
+    evidence: 6 倍の表示で 102 万ピクセル中 186 ピクセルが CPU の厳密な数え直しと違った。境目から 1e-3 px 以内の点はどちらに入ってもよいとすると全ピクセルが一致する
+    applies_when: GPU の結果を CPU と画素単位で照合するとき
 
 architecture_selection:
   chosen:
@@ -87,9 +107,9 @@ verification:
       how: 0.9 倍の表示で数え、カウントのバッファを読み戻して合計する
       expected: 9,658,062
     - id: counts-match-cpu
-      what: ピクセルごとの数が、同じ点を CPU で同じ規則 (f32 の演算) で数えた値と全ピクセルで一致する
-      how: 渋谷駅を中心に 6 倍で数え、カウントのバッファと CPU の数え直しを比べる
-      expected: 違うピクセルが 0
+      what: ピクセルごとの数が、同じ点を CPU で同じ規則 (f32 の演算) で数えた値と一致する。点を落として別の場所に作っても合計は変わらないので、合計の検査だけでは足りない
+      how: 0.9 倍の全体表示と、渋谷駅を中心にした 6 倍で数え、カウントのバッファと CPU の数え直しを比べる。ピクセルの境目から 1e-3 px 以内の点はどちらに入ってもよい
+      expected: 範囲外のピクセルが 0
     - id: shibuya-not-empty
       what: 画面に出た色で、渋谷駅の位置が「点なし」の色でない
       how: 同じ画面を描き、キャンバスの全ピクセルを読み戻して中央を見る
