@@ -393,7 +393,7 @@
 - [ ] `mapbox-016-add-terrain` → `examples/mapbox/016-add-terrain/` — [Add Terrain](https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/)
 - [ ] `mapbox-017-adjust-layer-opacity` → `examples/mapbox/017-adjust-layer-opacity/` — [Adjust Layer Opacity](https://docs.mapbox.com/mapbox-gl-js/example/adjust-layer-opacity/)
 - [x] `mapbox-018-animate-a-line` → `examples/mapbox/018-animate-a-line/` — [Animate A Line](https://docs.mapbox.com/mapbox-gl-js/example/animate-a-line/)
-- [ ] `mapbox-019-animate-ant-path` → `examples/mapbox/019-animate-ant-path/` — [Animate Ant Path](https://docs.mapbox.com/mapbox-gl-js/example/animate-ant-path/)
+- [x] `mapbox-019-animate-ant-path` → `examples/mapbox/019-animate-ant-path/` — [Animate Ant Path](https://docs.mapbox.com/mapbox-gl-js/example/animate-ant-path/)
 - [ ] `mapbox-020-animate-camera-around-point` → `examples/mapbox/020-animate-camera-around-point/` — [Animate Camera Around Point](https://docs.mapbox.com/mapbox-gl-js/example/animate-camera-around-point/)
 - [ ] `mapbox-021-animate-images` → `examples/mapbox/021-animate-images/` — [Animate Images](https://docs.mapbox.com/mapbox-gl-js/example/animate-images/)
 - [ ] `mapbox-022-animate-marker` → `examples/mapbox/022-animate-marker/` — [Animate Marker](https://docs.mapbox.com/mapbox-gl-js/example/animate-marker/)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **47 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **48 件**（maplibre-010、012、013、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、015、016、018、025、d3-005、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

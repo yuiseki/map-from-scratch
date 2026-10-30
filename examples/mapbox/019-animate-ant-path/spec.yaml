@@ -1,0 +1,110 @@
+id: mapbox-019-animate-ant-path
+request: >-
+  サンフランシスコからワシントンD.C.へのルートを、破線のダッシュ（アリの行進）が流れ続ける
+  「ant path」としてアニメーション表示したい。ドラッグでパン、ホイールで拡大縮小でき、
+  外部ライブラリなし・Canvas 2D で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1本のルートアニメーションに Mapbox GL JS 全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とルートが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-animation
+    need: ダッシュの流れとカメラ操作が 60 fps (20 ms 未満) で途切れず動作する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: ant-motion
+    need: ダッシュパターンがルートに沿って連続的に流れ、止まって見えない
+    unmeasured: verification の checks で描画ピクセルの時間変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/019-animate-ant-path/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ジオメトリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: animate-loop
+      what: 60フレームのダッシュ流動アニメーション中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/019-animate-ant-path/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-019-animate-ant-path/land.json
+    - data/baked/mapbox-019-animate-ant-path/route.json
+  preparation:
+    - サンフランシスコ [-122.414, 37.776] からワシントンD.C. [-77.032, 38.913] への大圏航路（500補間点）を Web Mercator [0, 1] に投影
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影
+
+performance_knowledge:
+  - id: setlinedash-marching-ants
+    finding: 破線アニメーションは線分を毎フレーム作り直さず、1本のパスを setLineDash + lineDashOffset で描き直すだけで済む。ダッシュの位相を進めるコストは数値代入のみ
+    evidence: リドロー時間 p95 は 0.5 ms 未満、60 fps を維持
+  - id: solid-base-under-dashes
+    finding: 破線だけだと隙間でルートが途切れて見えるため、同経路に太い実線のベースを先に描くと、ダッシュが流れてもルートの連続性が保たれる
+    evidence: route-line-visible はベース線とダッシュのどちらの位相でも通る
+  - id: procedural-endpoint-markers
+    finding: 始点・終点のマーカーも Canvas の円で描けば、外部画像も DOM も不要でルートと完全同期する
+    evidence: origin/destination のピクセル色チェックが通る
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/019-animate-ant-path/index.html
+      - examples/mapbox/019-animate-ant-path/main.ts
+      - examples/mapbox/019-animate-ant-path/map.ts
+    dependencies: []
+    why: 1本のルートと背景ポリゴンだけなら Canvas 2D の setLineDash が最小・最速
+  alternatives:
+    - option: SVG の stroke-dashoffset アニメーション
+      rejected_because: 元例の手法。地図キャンバスとの合成レイヤーが増え、パン中の同期が崩れやすい
+    - option: WebGL2 のラインストローク
+      rejected_because: 破線のための距離属性とシェーダーが必要になり、1本のルートには過剰
+  not_doing: [3D地形, 複数ルート, 曲線のベジェ補間, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: route-line-visible
+      what: 'ルート中点に青いベース線または白いダッシュが描画されている'
+      how: ルート中点のピクセル色を検証（ベース #1d4ed8 / ダッシュ #e2e8f0）
+      expected: '青（r < 80, g < 140, b > 140）または白（r,g,b > 200）'
+    - id: ants-march
+      what: 'ダッシュ位相を動かすとルート上のピクセルが変化する（アリが進む）'
+      how: dashOffset 0 と 13 で中点周辺 36×36 px を読み比べ、変化ピクセル数を数える
+      expected: '30 px 超が変化する'
+    - id: origin-marker-visible
+      what: 'サンフランシスコの始点に緑のマーカーが描画されている'
+      how: 始点のピクセル色を検証
+      expected: '緑色ピクセル（g > 150, r < 120）'
+    - id: destination-marker-visible
+      what: 'ワシントンD.C.の終点に赤のマーカーが描画されている'
+      how: 終点のピクセル色を検証
+      expected: '赤色ピクセル（r > 180, g < 110）'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint でルート中点をアンカーに zoom 3.5→4.5 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする
