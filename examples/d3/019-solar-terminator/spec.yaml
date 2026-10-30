@@ -1,0 +1,128 @@
+id: d3-019-solar-terminator
+request: >-
+  D3 の "Solar terminator" と同じく、世界地図の上に太陽直下点と昼夜の境界（明暗境界線）を
+  描き、UTC 時刻を動かすと夜の範囲が動くようにしたい。2026-10-30 の日付で、
+  外部ライブラリなしで最速・最小に。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 陸地と昼夜のマスクだけに d3-geo を読み込む理由がない
+  - id: quick-start
+    need: ページを開いて即座に地図と夜の範囲が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-interaction
+    need: 時刻スライダーとパン・ズームが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: solar-accuracy
+    need: 太陽直下点と昼夜の境界が実際の天文位置と一致する
+    unmeasured: verification checks で地理的な事実（直下点・反対点・極の昼夜）を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/d3/019-solar-terminator/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: hour-animation
+      what: 60フレームの時刻変化中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/d3/019-solar-terminator/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/d3-019-solar-terminator/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+    - 日付は 2026-10-30 に固定し、太陽位置は NOAA の近似式で実行時に計算
+
+performance_knowledge:
+  - id: row-wise-night-mask
+    finding: 夜の範囲を投影した円ポリゴンで塗ると、極を含む側の閉じ方と 180 度線の分割が必要になる。画面の行ごとに「夜になる経度の幅」を acos(-tan(lat)tan(dec)) で求め、1px の矩形をまとめて1回の fill にすれば、ポリゴンの閉じ方も極も 180 度線も扱わずに済む
+    evidence: 768 行のマスクを含む再描画が p95 2 ms 未満
+    applies_when: 昼夜や視野など、緯度ごとに経度区間が決まる全球マスクを描くとき
+  - id: solar-position-at-run-time
+    finding: 太陽直下点は日付と時刻だけの関数なので、ベイクせず NOAA の近似式（均時差と赤緯）を数十行で計算できる
+    evidence: 2026-10-30 12:00 UTC の直下点が経度 -4.1 度・緯度 -13.3 度になり、反対点が夜、北極が夜、南極が昼になる
+    applies_when: 日時から太陽位置や昼夜境界を出したいとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/d3/019-solar-terminator/index.html
+      - examples/d3/019-solar-terminator/main.ts
+      - examples/d3/019-solar-terminator/map.ts
+    dependencies: []
+    why: 陸地と夜マスクを1枚の Canvas に描くのが最小。夜は行ごとの矩形で十分
+  alternatives:
+    - option: 夜を投影円のポリゴンとして塗る（d3-geo と同じ）
+      rejected_because: 極側の閉じ方と 180 度線の分割が必要で、バグりやすい（cesium 180/213/244 で実例あり）
+    - option: WebGL2 で昼夜をシェーダ計算
+      rejected_because: 1 枚のマスクにシェーダとバッファは過剰
+  not_doing: [都市の現地時刻, 月や惑星の位置, 雲や大気の表現, 年をまたぐ日付切替]
+
+verification:
+  checks:
+    - id: land-loaded
+      what: 陸地ポリゴンが 100 件超読まれる
+      how: map.polygons.length を検証
+      expected: >100
+    - id: subsolar-position
+      what: 2026-10-30 12:00 UTC の太陽直下点が経度 -4 度前後・緯度 -13 度前後になる
+      how: map.subsolar() を検証
+      expected: lon -4±3, lat -13±2（均時差 +16 分）
+    - id: day-near-subsolar-point
+      what: 直下点の近くは昼の明るい色になる
+      how: 直下点の 40 px 東の画面ピクセルを検証
+      expected: 最大成分 > 170
+    - id: night-at-antisolar-point
+      what: 反対点は夜の暗い色になる
+      how: 直下点の反対側の画面ピクセルを検証
+      expected: 最大成分 < 150
+    - id: night-over-north-pole-in-october
+      what: 10 月末は北緯 80 度が夜になる
+      how: 直下点と同じ経度の北緯 80 度のピクセルを検証
+      expected: 最大成分 < 150
+    - id: day-over-south-pole-in-october
+      what: 10 月末は南緯 80 度が昼になる
+      how: 直下点と同じ経度の南緯 80 度のピクセルを検証
+      expected: 最大成分 > 170
+    - id: night-at-76n-west-of-noon
+      what: 北極圏の内側（北緯 76 度）では正午の 90 度西でも夜になる
+      how: 直下点の 90 度西・北緯 76 度のピクセルを検証（北緯 76 度の昼は正午の経度の ±16 度だけ）
+      expected: 最大成分 < 150
+    - id: hour-moves-terminator
+      what: 0 時 UTC と 12 時 UTC で経度 0 度・緯度 0 度の昼夜が入れ替わる
+      how: 2つの時刻で同じ地点のピクセルを検証
+      expected: 0 時は夜、12 時は昼
+    - id: pan-moves-sun-marker
+      what: 40x20 px のパンで太陽直下点のマーカーが同じだけ動く
+      how: パン前後の画面座標差とマーカーの黄色を検証
+      expected: dx=40, dy=20
+    - id: zoom-keeps-sun-marker
+      what: ズーム 2 でもマーカーは直下点に残る
+      how: ズーム後の画面座標のピクセルを検証
+      expected: 黄色
+  harness:
+    - contextlost が起きたらエラーにする

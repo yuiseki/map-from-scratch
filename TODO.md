@@ -247,7 +247,7 @@
 - [x] `d3-016-geotiff-contours-ii` → `examples/d3/016-geotiff-contours-ii/` — [GeoTIFF contours](https://observablehq.com/@d3/geotiff-contours-ii)
 - [ ] `d3-017-us-airports-voronoi` → `examples/d3/017-us-airports-voronoi/` — [U.S. airports voronoi](https://observablehq.com/@d3/us-airports-voronoi)
 - [ ] `d3-018-world-airports-voronoi` → `examples/d3/018-world-airports-voronoi/` — [World airports voronoi](https://observablehq.com/@d3/world-airports-voronoi)
-- [ ] `d3-019-solar-terminator` → `examples/d3/019-solar-terminator/` — [Solar terminator](https://observablehq.com/@d3/solar-terminator)
+- [x] `d3-019-solar-terminator` → `examples/d3/019-solar-terminator/` — [Solar terminator](https://observablehq.com/@d3/solar-terminator)
 - [ ] `d3-020-solar-path` → `examples/d3/020-solar-path/` — [Solar path](https://observablehq.com/@d3/solar-path)
 - [ ] `d3-021-star-map` → `examples/d3/021-star-map/` — [Star map](https://observablehq.com/@d3/star-map)
 - [ ] `d3-022-non-contiguous-cartogram` → `examples/d3/022-non-contiguous-cartogram/` — [Non-contiguous cartogram](https://observablehq.com/@d3/non-contiguous-cartogram)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **41 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、006、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **42 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、045、127、cesium-180、213、244、openglobus-002、004、009、062、tangram-001、004、010、forge3d-004、006、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、019、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
