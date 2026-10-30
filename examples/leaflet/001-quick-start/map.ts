@@ -113,19 +113,23 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     ctx.strokeStyle = '#d9d4c7';
     ctx.lineWidth = 1;
 
-    for (const poly of polygons) {
-      if (poly.length === 0) continue;
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const rx = originX + ring[i][0] * scale;
-          const ry = originY + ring[i][1] * scale;
-          if (i === 0) ctx.moveTo(rx, ry);
-          else ctx.lineTo(rx, ry);
+    // One copy of the land per world the screen spans, or it ends at 180°.
+    const wrapMin = Math.floor(centerMx - width / 2 / scale), wrapMax = Math.floor(centerMx + width / 2 / scale);
+    for (let wrap = wrapMin; wrap <= wrapMax; wrap++) {
+      for (const poly of polygons) {
+        if (poly.length === 0) continue;
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 0; i < ring.length; i++) {
+            const rx = originX + ring[i][0] * scale + wrap * scale;
+            const ry = originY + ring[i][1] * scale;
+            if (i === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
         }
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fill();
-      ctx.stroke();
     }
 
     // 1. Circle (500m at [51.508, -0.11])

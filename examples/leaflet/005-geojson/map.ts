@@ -84,18 +84,22 @@ export async function mount(
     ctx.fillStyle = '#f2efe9';
     ctx.strokeStyle = '#d9d4c7';
     ctx.lineWidth = 1;
-    for (const poly of polygons) {
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const x = originX + ring[i][0] * scale;
-          const y = originY + ring[i][1] * scale;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+    // One copy of the land per world the screen spans, or it ends at 180°.
+    const wrapMin = Math.floor(centerMx - width / 2 / scale), wrapMax = Math.floor(centerMx + width / 2 / scale);
+    for (let wrap = wrapMin; wrap <= wrapMax; wrap++) {
+      for (const poly of polygons) {
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 0; i < ring.length; i++) {
+            const x = originX + ring[i][0] * scale + wrap * scale;
+            const y = originY + ring[i][1] * scale;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
         }
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fill();
-      ctx.stroke();
     }
 
     // Polygon features

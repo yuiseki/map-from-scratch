@@ -116,6 +116,12 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
   const worldPx = () => 512 * 2 ** cam.zoom;
   const levelOf = () => Math.max(0, Math.min(15, Math.floor(cam.zoom)));
   const toScreen = (p: { x: number; y: number }) => ({ x: canvas.width / 2 + (p.x - cam.x) * worldPx(), y: canvas.height / 2 + (p.y - cam.y) * worldPx() });
+  // The world copies the screen spans: k shifts a world x by whole worlds.
+  const copies = (): number[] => {
+    const half = canvas.width / 2 / worldPx(), out: number[] = [];
+    for (let k = Math.floor(cam.x - half); k <= Math.floor(cam.x + half); k++) out.push(k);
+    return out;
+  };
   const fromScreen = (x: number, y: number) => ({ x: cam.x + (x - canvas.width / 2) / worldPx(), y: cam.y + (y - canvas.height / 2) / worldPx() });
   function upload() {
     const z = levelOf();
@@ -138,15 +144,18 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     ctx.clearRect(0, 0, labels.width, labels.height);
     ctx.strokeStyle = '#8fb0be39'; ctx.lineWidth = devicePixelRatio;
     ctx.fillStyle = '#b7cfda99'; ctx.font = `${11 * devicePixelRatio}px system-ui`;
-    const step = cam.zoom < 4 ? 10 : cam.zoom < 7 ? 2 : 0.5;
+    // The step that keeps lines and labels at least 60 px apart (a fixed 10 deg
+    // below zoom 4 put labels on top of each other at zoom 0).
+    const step = [0.5, 1, 2, 5, 10, 30, 60].find((d) => (d / 360) * worldPx() >= 60 * devicePixelRatio) ?? 90;
     const minX = cam.x - canvas.width / 2 / worldPx(), maxX = cam.x + canvas.width / 2 / worldPx();
     const minY = cam.y - canvas.height / 2 / worldPx(), maxY = cam.y + canvas.height / 2 / worldPx();
     for (let lon = Math.ceil((minX * 360 - 180) / step) * step; lon <= maxX * 360 - 180; lon += step) {
       const x = toScreen({ x: mercX(lon), y: cam.y }).x;
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, labels.height); ctx.stroke();
-      ctx.fillText(`${lon.toFixed(step < 1 ? 1 : 0)}°`, x + 3, labels.height - 12 * devicePixelRatio);
+      const label = ((((lon + 180) % 360) + 360) % 360) - 180;   // -370 is 350 W of the next world: say -10
+      ctx.fillText(`${label.toFixed(step < 1 ? 1 : 0)}°`, x + 3, labels.height - 12 * devicePixelRatio);
     }
-    for (let lat = -80; lat <= 80; lat += step) {
+    for (let lat = -Math.floor(80 / step) * step; lat <= 80; lat += step) {
       const yWorld = mercY(lat);
       if (yWorld < minY || yWorld > maxY) continue;
       const y = toScreen({ x: cam.x, y: yWorld }).y;
@@ -158,13 +167,17 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     landCtx.setTransform(1, 0, 0, 1, 0, 0);
     landCtx.clearRect(0, 0, land.width, land.height);
     const scale = worldPx();
-    landCtx.setTransform(scale, 0, 0, scale, land.width / 2 - cam.x * scale, land.height / 2 - cam.y * scale);
     landCtx.fillStyle = '#1c3c4b';
     landCtx.strokeStyle = '#698999';
     landCtx.lineWidth = devicePixelRatio / scale;
-    for (const path of landPaths) {
-      landCtx.fill(path, 'evenodd');
-      landCtx.stroke(path);
+    // One copy per world the screen spans, or the land ends at 180°.
+    const half = land.width / 2 / scale;
+    for (let k = Math.floor(cam.x - half); k <= Math.floor(cam.x + half); k++) {
+      landCtx.setTransform(scale, 0, 0, scale, land.width / 2 - (cam.x - k) * scale, land.height / 2 - cam.y * scale);
+      for (const path of landPaths) {
+        landCtx.fill(path, 'evenodd');
+        landCtx.stroke(path);
+      }
     }
     landCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
@@ -186,14 +199,17 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     gl.uniform1f(uniform('u_world_px'), worldPx());
     gl.uniform1f(uniform('u_dpr'), devicePixelRatio);
     gl.bindVertexArray(vao);
-    gl.drawArrays(gl.POINTS, 0, current.length);
+    for (const k of copies()) {
+      gl.uniform2f(uniform('u_center'), cam.x - k, cam.y);
+      gl.drawArrays(gl.POINTS, 0, current.length);
+    }
     drawGraticule();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `600 ${12 * devicePixelRatio}px system-ui`;
     ctx.fillStyle = '#132b39';
     const occupied: { x: number; y: number }[] = [];
-    for (const c of labelOrder) {
-      const p = toScreen(c), r = radius(c.count) * devicePixelRatio;
+    for (const k of copies()) for (const c of labelOrder) {
+      const p = toScreen({ x: c.x + k, y: c.y }), r = radius(c.count) * devicePixelRatio;
       if (p.x < -r || p.x > canvas.width + r || p.y < -r || p.y > canvas.height + r) continue;
       if (occupied.some((q) => Math.abs(q.x - p.x) < 24 * devicePixelRatio && Math.abs(q.y - p.y) < 15 * devicePixelRatio)) continue;
       ctx.fillText(c.count >= 1000 ? `${(c.count / 1000).toFixed(1)}k` : String(c.count), p.x, p.y);
@@ -213,8 +229,8 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
   };
   const hit = (x: number, y: number): Cluster | undefined => {
     let best: Cluster | undefined, distance = Infinity;
-    for (const c of current) {
-      const p = toScreen(c), d = Math.hypot(p.x - x, p.y - y);
+    for (const k of copies()) for (const c of current) {
+      const p = toScreen({ x: c.x + k, y: c.y }), d = Math.hypot(p.x - x, p.y - y);
       if (d <= radius(c.count) * devicePixelRatio + 2 && d < distance) { best = c; distance = d; }
     }
     return best;

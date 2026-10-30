@@ -160,18 +160,22 @@ export class MapboxAnimatedLineMap {
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1;
 
-    for (const poly of this.polygons) {
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const rx = w / 2 + (ring[i][0] - centerMx) * scale;
-          const ry = h / 2 + (ring[i][1] - centerMy) * scale;
-          if (i === 0) ctx.moveTo(rx, ry);
-          else ctx.lineTo(rx, ry);
+    // One copy of the land per world the screen spans, or it ends at 180°.
+    const wrapMin = Math.floor(centerMx - w / 2 / scale), wrapMax = Math.floor(centerMx + w / 2 / scale);
+    for (let wrap = wrapMin; wrap <= wrapMax; wrap++) {
+      for (const poly of this.polygons) {
+        ctx.beginPath();
+        for (const ring of poly) {
+          for (let i = 0; i < ring.length; i++) {
+            const rx = w / 2 + (ring[i][0] - centerMx) * scale + wrap * scale;
+            const ry = h / 2 + (ring[i][1] - centerMy) * scale;
+            if (i === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
         }
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fill();
-      ctx.stroke();
     }
 
     // 2. Draw Full Ghost Route Path (dashed faint path)

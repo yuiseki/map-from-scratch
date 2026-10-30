@@ -143,10 +143,14 @@ export async function mount(canvas: HTMLCanvasElement, land: HTMLCanvasElement, 
     landCtx.setTransform(1, 0, 0, 1, 0, 0);
     landCtx.clearRect(0, 0, land.width, land.height);
     const scale = worldPx();
-    landCtx.setTransform(scale, 0, 0, scale, land.width / 2 - cam.x * scale, land.height / 2 - cam.y * scale);
     landCtx.fillStyle = '#173849'; landCtx.strokeStyle = '#6a8a99';
     landCtx.lineWidth = devicePixelRatio / scale;
-    for (const path of landPaths) { landCtx.fill(path, 'evenodd'); landCtx.stroke(path); }
+    // One copy per world the screen spans, or the land ends at 180°.
+    const half = land.width / 2 / scale;
+    for (let k = Math.floor(cam.x - half); k <= Math.floor(cam.x + half); k++) {
+      landCtx.setTransform(scale, 0, 0, scale, land.width / 2 - (cam.x - k) * scale, land.height / 2 - cam.y * scale);
+      for (const path of landPaths) { landCtx.fill(path, 'evenodd'); landCtx.stroke(path); }
+    }
     landCtx.setTransform(1, 0, 0, 1, 0, 0);
   }
   function draw() {
