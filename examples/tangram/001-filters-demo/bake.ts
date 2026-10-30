@@ -71,8 +71,46 @@ for (const type of Object.keys(groups)) {
   probes[type] = best;
 }
 
+// 1b. The 110m coast misses San Francisco Bay and puts the coastal highways
+// in the sea. Natural Earth 10m countries, cut to the area of the opening
+// view (DETAIL plus a margin the renderer clips away), is drawn over it.
+const DETAIL = { w: -128, s: 35, e: -116.5, n: 40.6 };
+const M = 0.5;
+type Pt = [number, number];
+// Sutherland-Hodgman against one axis-aligned edge.
+const cut = (ring: Pt[], keep: (p: Pt) => boolean, at: (a: Pt, b: Pt) => Pt): Pt[] => {
+  const out: Pt[] = [];
+  ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length];
+    if (keep(p)) out.push(p);
+    if (keep(p) !== keep(q)) out.push(at(p, q));
+  });
+  return out;
+};
+const lerpX = (x: number) => (a: Pt, b: Pt): Pt => [x, a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0])];
+const lerpY = (y: number) => (a: Pt, b: Pt): Pt => [a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]), y];
+const clipRing = (ring: Pt[]): Pt[] => {
+  let r = cut(ring, (p) => p[0] >= DETAIL.w - M, lerpX(DETAIL.w - M));
+  r = cut(r, (p) => p[0] <= DETAIL.e + M, lerpX(DETAIL.e + M));
+  r = cut(r, (p) => p[1] >= DETAIL.s - M, lerpY(DETAIL.s - M));
+  return cut(r, (p) => p[1] <= DETAIL.n + M, lerpY(DETAIL.n + M));
+};
+const countries = JSON.parse(readFileSync(source('ne-countries'), 'utf8')) as { features: LandFeature[] };
+const detail: number[][][][] = [];
+for (const feature of countries.features) {
+  const shapes = feature.geometry.type === 'Polygon'
+    ? [feature.geometry.coordinates as Ring[]]
+    : feature.geometry.coordinates as Ring[][];
+  for (const shape of shapes) {
+    const rings = shape.map((ring) => clipRing(ring.slice(0, -1) as Pt[])).filter((r) => r.length >= 3);
+    if (rings.length) detail.push(rings.map((ring) => ring.map(([lon, lat]) => [Number(mercX(lon).toFixed(6)), Number(mercY(lat).toFixed(6))])));
+  }
+}
+const coast = { bbox: [mercX(DETAIL.w), mercY(DETAIL.n), mercX(DETAIL.e), mercY(DETAIL.s)].map((v) => Number(v.toFixed(6))), polygons: detail };
+
 const dir = 'data/baked/tangram-001-filters-demo';
 mkdirSync(dir, { recursive: true });
+writeFileSync(`${dir}/coast.json`, JSON.stringify(coast));
 writeFileSync(`${dir}/land.json`, JSON.stringify(polygons));
 writeFileSync(`${dir}/roads.json`, JSON.stringify({ groups, probes }));
 console.log(

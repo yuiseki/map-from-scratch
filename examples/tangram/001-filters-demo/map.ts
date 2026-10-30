@@ -17,6 +17,8 @@ export class FiltersMap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   land: Polygon[] = [];
+  // 10m land for the area of the opening view, drawn over the 110m land.
+  coast: { bbox: number[]; polygons: Polygon[] } = { bbox: [0, 0, 0, 0], polygons: [] };
   groups: Record<RoadType, Line[]> = { SR: [], US: [], I: [] };
   probes: Record<RoadType, [number, number]> = { SR: [0, 0], US: [0, 0], I: [0, 0] };
   visible: Record<RoadType, boolean> = { SR: true, US: true, I: true };
@@ -41,10 +43,12 @@ export class FiltersMap {
   }
 
   async load(baseDir = '../../..'): Promise<void> {
-    const [landRes, roadRes] = await Promise.all([
+    const [landRes, roadRes, coastRes] = await Promise.all([
       fetch(`${baseDir}/data/baked/tangram-001-filters-demo/land.json`),
       fetch(`${baseDir}/data/baked/tangram-001-filters-demo/roads.json`),
+      fetch(`${baseDir}/data/baked/tangram-001-filters-demo/coast.json`),
     ]);
+    this.coast = (await coastRes.json()) as typeof this.coast;
     this.land = (await landRes.json()) as Polygon[];
     const roads = (await roadRes.json()) as { groups: Record<RoadType, Line[]>; probes: Record<RoadType, [number, number]> };
     this.groups = roads.groups;
@@ -141,19 +145,38 @@ export class FiltersMap {
     ctx.fillStyle = '#f2efe9';
     ctx.strokeStyle = '#dad7d0';
     ctx.lineWidth = 1;
-    for (const poly of this.land) {
-      ctx.beginPath();
-      for (const ring of poly) {
-        for (let i = 0; i < ring.length; i++) {
-          const x = originX + ring[i][0] * scale;
-          const y = originY + ring[i][1] * scale;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+    const drawLand = (polygons: Polygon[]): void => {
+      // One copy per world the screen spans, or the land ends at 180°.
+      for (let k = Math.floor(centerMx - w / 2 / scale); k <= Math.floor(centerMx + w / 2 / scale); k++) {
+        for (const poly of polygons) {
+          ctx.beginPath();
+          for (const ring of poly) {
+            for (let i = 0; i < ring.length; i++) {
+              const x = originX + (ring[i][0] + k) * scale;
+              const y = originY + ring[i][1] * scale;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+          }
+          ctx.fill();
+          ctx.stroke();
         }
       }
-      ctx.fill();
-      ctx.stroke();
-    }
+    };
+    drawLand(this.land);
+
+    // The 110m coast has no San Francisco Bay and puts coastal roads in the
+    // sea: inside the detail box, sea first and then the 10m land (as 004).
+    const [x0, y0, x1, y1] = this.coast.bbox.map((v, i) => (i % 2 ? originY : originX) + v * scale);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, y0, x1 - x0, y1 - y0);
+    ctx.clip();
+    ctx.fillStyle = '#b8d6e8';
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillStyle = '#f2efe9';
+    drawLand(this.coast.polygons);
+    ctx.restore();
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
