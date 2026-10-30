@@ -209,6 +209,49 @@ const SOURCES: Record<string, Source> = {
     local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23-260831.osm.pbf',
     copy: true,
   },
+  // kepler.gl demo datasets (commit 49c3101)
+  'kepler-earthquakes': {
+    out: 'kepler_earthquakes.csv',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/earthquakes.csv',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv',
+    copy: true,
+  },
+  'kepler-nyctrips': {
+    out: 'kepler_nyctrips.csv',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/nyctrips.csv',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/nyctrips/data.csv',
+    copy: true,
+  },
+  'kepler-sfcontour': {
+    out: 'kepler_sfcontour.json',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/sfcontour.json',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/sfcontour/data.json',
+    copy: true,
+  },
+  'kepler-movement-pittsburgh': {
+    out: 'kepler_movement_pittsburgh.csv',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/movement_pittsburgh.csv',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/movement_pittsburgh/data.csv',
+    copy: true,
+  },
+  'kepler-nyc-census': {
+    out: 'kepler_nyc_census.json',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/nyc_census.json',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/nyc_census/data.json',
+    copy: true,
+  },
+  'kepler-sftrees': {
+    out: 'kepler_sftrees.csv',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/sftrees.csv',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/sftrees/data.csv',
+    copy: true,
+  },
+  'kepler-ukcommute': {
+    out: 'kepler_ukcommute.csv',
+    local: '/sata_hdd_24tb/hf_data/kepler-data/ukcommute.csv',
+    remote: 'https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/ukcommute/data.csv',
+    copy: true,
+  },
 };
 
 export function source(name: string): string {

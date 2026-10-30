@@ -878,7 +878,7 @@
 
 001〜008 の出典: [kepler.gl Examples](https://docs.kepler.gl/examples)。掲載されている8件をすべて対象とする。どれも kepler.gl をアプリに組み込む例（単一ページアプリ、モーダル、reducer・テーマ・UI 部品の差し替え、UMD、Node/Express、Mapbox 以外の背景地図）なので、deck.gl の Integrations と同じく、組み込みの仕組みそのものではなく、元例の画面で利用者が見る地図と操作を独立描画器で再現する。
 
-- [ ] `kepler-001-demo-app` → `examples/kepler/001-demo-app/` — [Demo App](https://docs.kepler.gl/examples/demo-app)
+- [x] `kepler-001-demo-app` → `examples/kepler/001-demo-app/` — [Demo App](https://docs.kepler.gl/examples/demo-app)
 - [ ] `kepler-002-open-modal` → `examples/kepler/002-open-modal/` — [Open Modal](https://docs.kepler.gl/examples/open-modal)
 - [ ] `kepler-003-custom-reducer` → `examples/kepler/003-custom-reducer/` — [Custom Reducer](https://docs.kepler.gl/examples/custom-reducer)
 - [ ] `kepler-004-umd-client` → `examples/kepler/004-umd-client/` — [umd client](https://docs.kepler.gl/examples/umd-client)

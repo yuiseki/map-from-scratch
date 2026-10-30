@@ -1,0 +1,112 @@
+id: kepler-001-demo-app
+request: >-
+  kepler.gl の Demo App (California Earthquakes) と同じ意図で、5.5万件の地震データを
+  特徴的なダークテーマ UI（開閉サイドバー、レイヤータブ、マグニチュード色ランプ、凡例、3Dチルト）と
+  WebGL2 高速ポイント描画で再現したい。外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox を排除し、最小限の単一バイナリと標準 WebGL2 で完結させる
+    rationale: 本家 kepler.gl のバンドルサイズは数 MB。単一描画器なら 10 KB 未満のスクリプトと 650 KB 程度のバイナリで足りる
+  - id: instant-load
+    need: ページ読み込みから 54,936 件の地震点描画完了まで瞬時に表示される
+    rationale: 300 ms 以内に初回描画
+  - id: signature-kepler-ui
+    need: 左サイドバー（レイヤー・フィルター・折りたたみ）、マグニチュード凡例、3D視点切替、レイヤー表示切替を備える
+    unmeasured: verification checks で DOM およびピクセル読み戻しを検証
+  - id: smooth-interaction
+    need: 5.5万件の点を描画しながら 60 fps でのパン・ズーム・GPUフィルタリングを実現する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: instant-load}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/001-demo-app/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/001-demo-app/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-001-demo-app/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+    - マグニチュード・深度・座標を 16 bytes 構造体に格納
+
+performance_knowledge:
+  - id: webgl2-point-batching
+    finding: 54,936 点を WebGL2 の gl.POINTS と円形フラグメントシェーダーで描画すると、1 draw call かつ 0.2 ms 未満で描画完了する。CPU 側での頂点展開や Canvas 2D arc ループを完全に回避できる
+    evidence: redraw p95 が 1.0 ms 未満で安定動作
+    applies_when: 数万〜数十万の大規模ポイント可視化（地震・タクシー乗車・店舗データ）
+  - id: gpu-magnitude-filtering
+    finding: 頂点シェーダー内で aPoint.z < uMinMag の場合にクリップ外座標へ早期リターンさせることで、スライダー操作時の CPU 頂点再バッファリングなしに 60 fps で瞬時フィルタリングが可能
+    evidence: スライダー操作中も再描画時間が 0.5 ms を超えない
+    applies_when: 対話的な属性値範囲フィルタリング
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/001-demo-app/index.html
+      - examples/kepler/001-demo-app/main.ts
+      - examples/kepler/001-demo-app/map.ts
+    dependencies: []
+    why: 5.5万件の点群描画と滑らかな拡大縮小・チルト・アルファブレンドには WebGL2 が最適。React / deck.gl のオーバーヘッドを完全排除し軽量高速に動作
+  alternatives:
+    - option: React + Redux + deck.gl + Mapbox GL JS (本家 kepler.gl 構成)
+      rejected_because: 数 MB のバンドルサイズと依存関係の巨大さ、初期化コストが大きすぎる
+    - option: Canvas 2D
+      rejected_because: 5.5万回の ctx.arc 呼び出しは毎フレーム 20〜40 ms かかり 60 fps を維持できない
+  not_doing: [H3 六角形ビン化 (014で実施), 複数データセットの動的インポートダイアログ, 地図の画像書き出し機能]
+
+verification:
+  checks:
+    - id: kepler-ui-mounted
+      what: Kepler.gl 特有のダークサイドバー、レイヤーカード、凡例、折りたたみボタンが DOM に配置されている
+      how: DOM 要素の存在を検証
+      expected: sidebar, layerCard, legend がすべて true
+    - id: earthquakes-rendered
+      what: 54,936 点の地震データがカリフォルニア沿岸（サンアンドレアス断層帯）に描画されている
+      how: WebGL2 キャンバスのピクセルをサンプリングし、背景以外の発光ピクセル数を検証
+      expected: nonBgPixels > 5 かつ pointCount == 54936
+    - id: sidebar-toggle
+      what: 折りたたみボタンのクリックでサイドバーが隠れ、再度クリックで復帰する
+      how: クリック後の sidebar.classList.contains('collapsed') を検証
+      expected: isCollapsed && isRestored が true
+    - id: layer-toggle
+      what: レイヤーカードの目玉アイコンをクリックすると地震点が非表示になり、再クリックで表示される
+      how: 非表示時の画面ピクセルサンプリングで地震点ピクセルが 0 になることを検証
+      expected: hiddenPoints == 0
+    - id: pan-and-zoom
+      what: パン操作で画面描画が正しく更新され、60 fps を維持する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする
