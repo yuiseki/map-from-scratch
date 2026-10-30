@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MapLibre: Add a GeoJSON line</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #b8d6e8; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+    .panel b { color: #1f3a52; font-size: 14px; }
+    .btn-group { display: flex; gap: 6px; align-items: center; }
+    .btn-group button {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-group button:hover { background: #e0e0e0; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div><b>MapLibre 012</b>: Add a GeoJSON line (Marin Headlands)</div>
+    <div class="btn-group">
+      <span>Color:</span>
+      <button data-color="#888888" style="border-left: 4px solid #888888;">Gray</button>
+      <button data-color="#3887be" style="border-left: 4px solid #3887be;">Blue</button>
+      <button data-color="#e55e5e" style="border-left: 4px solid #e55e5e;">Red</button>
+    </div>
+    <div class="btn-group">
+      <span>Width:</span>
+      <button data-width="4">4px</button>
+      <button data-width="8">8px</button>
+      <button data-width="14">14px</button>
+      <button id="reset-btn" style="margin-left: 6px;">Reset</button>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

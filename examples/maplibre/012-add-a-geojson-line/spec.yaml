@@ -1,0 +1,104 @@
+id: maplibre-012-add-a-geojson-line
+request: >-
+  サンフランシスコ・ゴールデンゲート北側のトレイルルート（GeoJSON LineString）を、
+  太さ8pxのグレー線（round cap/join）として背景地図上に描画し、
+  ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1本のラインストリングと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とラインが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: line-accuracy
+    need: ラインが指定されたスタイル（色・太さ・結合処理）で正確に描画され、操作時にずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/012-add-a-geojson-line/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ルートデータと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/012-add-a-geojson-line/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-012-add-a-geojson-line/route.json
+    - data/baked/maplibre-012-add-a-geojson-line/land.json
+  preparation:
+    - MapLibre 公式サンプルの LineString 座標（21点）を Web Mercator 座標に投影して量子化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: canvas2d-native-stroke-sweetspot
+    finding: 単一あるいは少数のポリライン描画であれば、GPU 三角形分割（earcut や押し出しメッシュ生成）を行わずに Canvas 2D のネイティブ stroke を用いることで、頂点バッファ構築オーバーヘッドとアンチエイリアス処理の複雑さをゼロにできる
+    evidence: Canvas 2D のネイティブ stroke による再描画時間は p95 0.3 ms 未満、round cap/join もサブピクセル精度で描画可能
+    applies_when: 固定幅またはスクリーン空間幅のポリラインを即時描画するユースケース
+  - id: mercator-projection-at-bake
+    finding: 経緯度から Web Mercator 座標への対数・三角関数演算をベイク時に済ませることで、毎フレームの描画処理を単純なスケール・平行移動加減算のみに圧縮できる
+    evidence: 描画ループ内の Math.log / Math.tan 呼び出しを完全排除
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/012-add-a-geojson-line/index.html
+      - examples/maplibre/012-add-a-geojson-line/main.ts
+      - examples/maplibre/012-add-a-geojson-line/line.ts
+    dependencies: []
+    why: 1本の GeoJSON ラインと背景陸地を描画する目的において、Canvas 2D のベジェ/パスストローク機能が最も軽量かつ高品質であるため
+  alternatives:
+    - option: WebGL2 (押し出しポリライン)
+      rejected_because: 幅付きポリラインの頂点押し出し・結合部（join/cap）のインデックス生成コードが必要になり、コードサイズが数倍に膨らむため
+    - option: SVG Overlay
+      rejected_because: ドラッグ移動時の DOM 再配置によるジャンクや再レンダリングコストを避け、Canvas 内でフレーム同期描画するため
+  not_doing: [3D地形, 地名ラベル, ダッシュパターン, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: line-rendered-gray
+      what: マリンヘッドランズのルート位置に初期設定のグレー（#888888）の線が描画されている
+      how: getImageData でルート座標位置のピクセル色を検証
+      expected: Math.abs(r - 136) < 20 && Math.abs(g - 136) < 20 && Math.abs(b - 136) < 20
+    - id: line-moves-with-pan
+      what: 地図を (60px, 40px) パンしたとき、ラインの描画位置が正確に (+60px, +40px) 移動する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先でグレーピクセルが検出される
+    - id: line-restyled
+      what: setLineStyle で色を青（#3887be）、太さを12pxに変更したとき、描画結果が即座に反映される
+      how: スタイル変更後のピクセル色を検証
+      expected: r < 80 && g > 110 && b > 170
+    - id: line-anchors-on-zoom
+      what: ズームを16に変更してもラインの地理座標位置が正確に追従する
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算されたスクリーン座標に青色ラインが描画されている
+  harness:
+    - contextlost が起きたらエラーにする
