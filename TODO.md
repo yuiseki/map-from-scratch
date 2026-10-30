@@ -201,7 +201,7 @@
 - [ ] `deckgl-013-icon-layer` → `examples/deckgl/013-icon-layer/` — [IconLayer](https://deck.gl/examples/icon-layer)
 - [ ] `deckgl-014-line-layer` → `examples/deckgl/014-line-layer/` — [LineLayer](https://deck.gl/examples/line-layer)
 - [x] `deckgl-015-point-cloud-layer` → `examples/deckgl/015-point-cloud-layer/` — [PointCloudLayer](https://deck.gl/examples/point-cloud-layer)
-- [ ] `deckgl-016-scatterplot-layer` → `examples/deckgl/016-scatterplot-layer/` — [ScatterplotLayer](https://deck.gl/examples/scatterplot-layer)
+- [x] `deckgl-016-scatterplot-layer` → `examples/deckgl/016-scatterplot-layer/` — [ScatterplotLayer](https://deck.gl/examples/scatterplot-layer)
 - [ ] `deckgl-017-scenegraph-layer` → `examples/deckgl/017-scenegraph-layer/` — [ScenegraphLayer](https://deck.gl/examples/scenegraph-layer)
 - [x] `deckgl-018-screen-grid-layer` → `examples/deckgl/018-screen-grid-layer/` — [ScreenGridLayer](https://deck.gl/examples/screen-grid-layer)
 - [ ] `deckgl-019-terrain-layer` → `examples/deckgl/019-terrain-layer/` — [TerrainLayer](https://deck.gl/examples/terrain-layer)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **31 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **32 件**（maplibre-010、012、013、053、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

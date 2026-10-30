@@ -1,0 +1,103 @@
+id: deckgl-016-scatterplot-layer
+request: >-
+  deck.gl の ScatterplotLayer と同じ意図で、マンハッタンの 13,987 点を重みに応じた
+  半径と色の点で描き、パン・ズームで追従させたい。WebGL を使わず外部ライブラリなしで。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリなしで配布サイズを最小限にする
+    rationale: deck.gl + luma.gl は数百 KB。1万4千点の散布図には Canvas 2D で足りる
+  - id: quick-start
+    need: ページを開いて即座に点が現れる
+    rationale: 300 ms 以内に初回描画
+  - id: points-rendered
+    need: 全点が重みに応じた色（1: 青、2: 橙）で描かれ、パン・ズームで正しく追従する
+    unmeasured: verification checks で画面ピクセルを検証
+  - id: smooth-interaction
+    need: 1万4千点の再描画でも 60 fps を保つ
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画を 8.3 ms 以下に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 260000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/016-scatterplot-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 点データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/deckgl/016-scatterplot-layer/bake.ts]
+  sources:
+    - id: deckgl-scatterplot-manhattan
+      origin: https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/scatterplot/manhattan.json
+      license: deck.gl-data (MIT リポジトリ。データの出典表記は元リポジトリに従う)
+  outputs:
+    - data/baked/deckgl-016-scatterplot-layer/points.bin
+  preparation:
+    - deck.gl の ScatterplotLayer ドキュメント例の Manhattan 点位データ [lng, lat, weight] 13,987 件を読み込む
+    - Web Mercator 座標と重みを Float32 の 16 bytes/点に詰める
+
+performance_knowledge:
+  - id: canvas2d-scatter-budget
+    finding: 1万4千点の散布図は Canvas 2D でも毎フレーム描き直して 60 fps に収まるが、点を円弧で描くと収まらない。重みごとに1パスへまとめ、正方形をピクセルにスナップすると収まる
+    evidence: 円弧のバッチ描画で frame_interval p95 29 ms、ピクセルスナップした正方形で 17.3 ms。点が画面外なら座標比較だけで捨てられる
+    applies_when: 1万点規模までの散布図・ドット表現
+  - id: bucket-by-weight
+    finding: 色を重みで塗り分けるとき、点ごとに fillStyle を切り替えず、重みの少ないバケットから順に2パスで描くと状態変更が減り、重い点が上に残る
+    evidence: 重み1の青と重み2の橙が、重なっても橙として読める
+    applies_when: 離散的な重み・カテゴリで色分けする散布図
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/deckgl/016-scatterplot-layer/index.html
+      - examples/deckgl/016-scatterplot-layer/main.ts
+      - examples/deckgl/016-scatterplot-layer/map.ts
+    dependencies: []
+    why: 1万4千点の散布図は Canvas 2D のパス描画で十分速く、WebGL の準備コストを払う必要がない
+  alternatives:
+    - option: WebGL2
+      rejected_because: 点のインスタンシングは速いが、この点数ではシェーダーとバッファ管理のコードが増える分が見合わない
+    - option: ラスタタイルのベースマップを敷く
+      rejected_because: 元例の比較対象を点データに絞るため、背景地図を省いた
+  not_doing: [背景地図, ホバー/クリックのピッキング, 集計, 3D]
+
+verification:
+  checks:
+    - id: all-points-loaded
+      what: 点データは 13,987 件すべて読み込まれる
+      how: map.pointCount を検証
+      expected: 13987
+    - id: points-visible
+      what: 重み2の点が橙（#ffb340）で描かれている
+      how: 先頭点の画面座標でピクセル色を検証
+      expected: r > 200, g > 120, b < 110
+    - id: pan-moves-points
+      what: 40x20 px のパンで点が同じだけ動き、移動先でも橙のまま
+      how: パン前後の画面座標差とピクセル色を検証
+      expected: dx=40, dy=20
+    - id: zoom-keeps-points
+      what: ズーム13に変えても点が再投影され、橙のまま描かれる
+      how: ズーム後の投影位置でピクセル色を検証
+      expected: 橙
+  harness:
+    - contextlost が起きたらエラーにする

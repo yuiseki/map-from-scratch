@@ -13,6 +13,13 @@ const NE = '/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile';
 interface Source { out: string; local: string; remote?: string; ogr?: string[]; copy?: boolean }
 
 const SOURCES: Record<string, Source> = {
+  // deck.gl ScatterplotLayer docs: Manhattan points [lng, lat, weight].
+  'deckgl-scatterplot-manhattan': {
+    out: 'deckgl_scatterplot_manhattan.json',
+    local: '/sata_hdd_24tb/hf_data/deckgl-scatterplot/manhattan.json',
+    remote: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/scatterplot/manhattan.json',
+    copy: true,
+  },
   // Kaarta indoor point cloud, fixed copy from deck.gl-data.
   'deckgl-indoor-point-cloud': {
     out: 'deckgl_indoor_point_cloud.laz',
