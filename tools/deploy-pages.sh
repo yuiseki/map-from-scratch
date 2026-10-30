@@ -22,6 +22,10 @@ if [[ "${1:-}" != --no-check ]]; then
       [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
     done
     [[ -d "$site_dir" || -d ".cache/site/baselines/$id" ]] || continue
+    # An example with no bench scenarios never reports done, so it can only
+    # time out here (08-10, 18-24).
+    spec=$(grep -l "^id: $id\$" examples/*/spec.yaml examples/*/*/spec.yaml baselines/*/spec.yaml 2>/dev/null | head -1)
+    [[ -n "$spec" ]] && grep -q '^  scenarios: \[\]' "$spec" && { echo "site check skipped (no bench scenarios): $id"; continue; }
     bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 || { cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1; }
   done
 fi
