@@ -874,6 +874,12 @@
 - [ ] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
 - [x] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
 
+## WebGPU / 先端ウェブアーキテクチャ
+
+先端 GPU / ブラウザ標準機能を用いた GPU-driven 地図描画の検証。
+
+- [x] `webgpu-001-gpu-driven-culling` → `examples/webgpu/001-gpu-driven-culling/` — PLATEAU 3,992 棟の WebGPU Compute Frustum Culling + drawIndexedIndirect 一括描画
+
 ## 進捗
 
 - 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **52 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-004、006、008、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。

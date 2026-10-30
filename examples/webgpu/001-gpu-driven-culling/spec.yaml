@@ -1,0 +1,98 @@
+id: webgpu-001-gpu-driven-culling
+request: >-
+  PLATEAU 東京駅周辺 3,992 棟の 3D 建築物モデルに対し、WebGPU の Compute Shader で視錐台カリングを行い、
+  生存した建物を drawIndexedIndirect で一括描画する GPU-driven レンダラーを作りたい。
+  CPU 側からの個別 draw call 発行とカリング判定を完全に剥がし、ドラッグで視点周回できるようにする。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: Three.js や Babylon.js 等の巨大 3D エンジンを使わず、生の WebGPU API のみで実装
+  - id: quick-start
+    need: ページを開いて即座に 3D 都市が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるオービット回転操作が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画を 3.0 ms 以下に
+  - id: gpu-driven-culling
+    need: 視錐台判定と描画引数決定がすべて GPU 上の Compute Shader と Indirect Buffer で完結する
+    unmeasured: verification checks で生存インスタンス数と画面描画を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 45000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/001-gpu-driven-culling/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 建物バイナリデータの取得から初回 WebGPU 描画まで
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 60フレームの視点回転中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/webgpu/001-gpu-driven-culling/bake.ts]
+  sources:
+    - id: plateau-tokyo-2km
+      origin: Project PLATEAU 3D 都市モデル（東京都千代田区・中央区）
+      license: 政府標準利用規約 2.0 (PDL 1.0)
+  outputs:
+    - data/baked/webgpu-001-gpu-driven-culling/buildings.bin
+  preparation:
+    - 東京駅周辺 3,992 棟の重心座標 [x, y]、高さ、推定外接球半径、階層分類を 32 bytes 構造体に格納
+    - 単位直方体プロトタイプメッシュ（法線付き 24 頂点・36 索引）を同梱
+
+performance_knowledge:
+  - id: gpu-driven-culling-indirect
+    finding: Compute Shader による視錐台カリングと drawIndexedIndirect() の組み合わせにより、CPU から地物ごとの描画判定と draw コールを完全に剥がし、数千棟の 3D 建築物を 0.5 ms 未満で一括描画できる
+    evidence: toji/webgpu-bundle-culling の設計を検証
+    applies_when: 大規模 3D 都市モデル・点群・インスタンス群のリアルタイム表示
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/webgpu/001-gpu-driven-culling/index.html
+      - examples/webgpu/001-gpu-driven-culling/main.ts
+      - examples/webgpu/001-gpu-driven-culling/map.ts
+    dependencies: []
+    why: WGSL Compute Shader と Indirect Buffer による完全な GPU-driven レンダリングパイプラインの実現
+  alternatives:
+    - option: CPU Frustum Culling + WebGL2 Instancing
+      rejected_because: 毎フレーム CPU で数千回の行列計算とバウンディングボックステストが発生し、CPU-GPU 転送がボトルネックになる
+  not_doing: [LOD3/4 テクスチャマッピング, 地名ラベル, 影の深度マップレンダリング]
+
+verification:
+  checks:
+    - id: buildings-loaded
+      what: 東京駅周辺の建物 3,992 棟がすべてロードされる
+      how: map.buildingCount を検証
+      expected: 3992
+    - id: gpu-compute-culling
+      what: 視錐台の外部にある建物が GPU 上で自動的にカリングされ、生存インスタンス数が全数より少なくなる
+      how: GPU indirectBuffer から読み戻した instanceCount を検証
+      expected: 0 < visibleCount < 3992
+    - id: buildings-rendered
+      what: 画面中央部に陰影のついた 3D 建築物が描画されている
+      how: 画面中央付近のピクセル色を検証
+      expected: 背景色と異なる建物色
+    - id: camera-orbit-updates-count
+      what: カメラ視点を回転したとき、GPU 上の生存インスタンス数が動的に変化する
+      how: 回転前後の visibleCount を検証
+      expected: 回転前後で count が更新される
+  harness:
+    - contextlost が起きたらエラーにする
