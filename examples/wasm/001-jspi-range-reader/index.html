@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wasm JSPI Range Reader (PMTiles v3)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #f1f5f9;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+    #hud h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #38bdf8;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .stat-val {
+      font-weight: 600;
+      color: #38bdf8;
+      font-variant-numeric: tabular-nums;
+    }
+    .help {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid #334155;
+      padding-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="1024" height="768"></canvas>
+  <div id="hud">
+    <h1>Wasm JSPI Range Reader</h1>
+    <div class="stat-row">
+      <span>C Reader I/O:</span>
+      <span class="stat-val" style="color: #4ade80;">Synchronous C (-sJSPI)</span>
+    </div>
+    <div class="stat-row">
+      <span>HTTP Range Reads:</span>
+      <span class="stat-val" id="reads-val">--</span>
+    </div>
+    <div class="stat-row">
+      <span>Range Bytes Fetched:</span>
+      <span class="stat-val" id="bytes-val">--</span>
+    </div>
+    <div class="stat-row">
+      <span>Tiles in Memory:</span>
+      <span class="stat-val" id="tiles-val">--</span>
+    </div>
+    <div class="help">Drag to pan &bull; Scroll to zoom</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+id: wasm-001-jspi-range-reader
+request: >-
+  C/C++ で書かれた PMTiles リーダーを WebAssembly 化し、ASYNCIFY のコード肥大化を避けて
+  JSPI（JavaScript Promise Integration）により同期 C コードのまま HTTP Range リクエストを実行して
+  ベクトルタイルを取得・描画したい。
+
+requirements:
+  - id: light-footprint
+    need: ASYNCIFY のインストルメンテーションによる肥大化を避け、軽量な Wasm 配布サイズを維持する
+    rationale: -sJSPI により Wasm エンジンネイティブの一時停止を活用し、コードサイズを最小化
+  - id: sync-c-api
+    need: C コード側がコールバックや非同期ステートマシンに依存せず、同期関数のまま記述されていること
+    unmeasured: verification checks でヘッダー・タイルの同期取得を検証
+  - id: quick-start
+    need: ヘッダーと初期タイルの Range 読み込みを行い速やかに初回描画を完了する
+    rationale: 初回描画時間を 1,500 ms 以内に
+  - id: smooth-interaction
+    need: 地図のパン・ズーム操作時に滑らかに再描画できること
+    rationale: 再描画時間を 3.0 ms 以内、フレーム間隔 35 ms 以内に
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 35000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 90000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/wasm/001-jspi-range-reader/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: Wasm 初期化から JSPI によるヘッダー・初期タイルの HTTP Range 取得と初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームの地図パン中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/wasm/001-jspi-range-reader/bake.ts]
+  sources:
+    - id: natural-earth-110m-land
+      origin: Natural Earth ne_110m_land.json (Public Domain)
+      license: public-domain
+  outputs:
+    - data/baked/wasm-001-jspi-range-reader/world.pmtiles
+  preparation:
+    - 世界陸地ポリゴンをズーム 0〜2 のタイルにクリップし、PMTiles v3（無圧縮 varint ディレクトリ、非圧縮タイル）としてベイク
+
+performance_knowledge:
+  - id: jspi-zero-instrumentation
+    finding: WebAssembly JSPI（-sJSPI）を用いると、従来の Emscripten ASYNCIFY に比べて Wasm バイナリサイズと命令オーバーヘッドが大幅に削減され、C の同期的 I/O ロジック（fread/read_range）をそのままブラウザの async fetch に接続できる
+    evidence: V8 / Chromium 156 の WebAssembly.Suspending ネイティブ統合
+    applies_when: C/Rust 製の空間データフォーマット（PMTiles, COG, GeoParquet, FlatGeobuf）をブラウザで Range 読み出しする際
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebAssembly + JSPI + Canvas 2D
+    language: C11 + TypeScript (型ストリップ配信)
+    gpu: none
+    toolchain: emscripten
+    build:
+      - emcc
+      - -O2
+      - -sJSPI
+      - -sJSPI_EXPORTS=init_reader,get_tile
+      - -sEXPORTED_FUNCTIONS=_init_reader,_get_tile,_get_tile_size,_get_header_info,_free_tile,_malloc,_free
+      - -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,HEAPU8
+      - examples/wasm/001-jspi-range-reader/reader.c
+      - -o
+      - examples/wasm/001-jspi-range-reader/reader.js
+    code:
+      - examples/wasm/001-jspi-range-reader/index.html
+      - examples/wasm/001-jspi-range-reader/main.ts
+      - examples/wasm/001-jspi-range-reader/map.ts
+      - examples/wasm/001-jspi-range-reader/reader.js
+      - examples/wasm/001-jspi-range-reader/reader.wasm
+    dependencies: []
+    why: C11 の同期 PMTiles パーサーを書き換えずに JSPI で非同期 HTTP Range を直接呼出
+  alternatives:
+    - option: Emscripten ASYNCIFY
+      rejected_because: すべての関数呼び出しにスタック退避・復元コードが挿入され、Wasm バイナリサイズが 2〜4 倍に膨らみ、実行性能が劣化する
+    - option: 純粋 TypeScript / JS 再実装
+      rejected_because: 既存の C/Rust 空間パーサー資産（GDAL、PROJ、libpmtiles）を再利用できない
+  not_doing: [Leaf directory traversal, MVT full protobuf parsing, 3D terrain]
+
+verification:
+  checks:
+    - id: pmtiles-header-synced
+      what: C 言語リーダーが同期呼び出しで PMTiles v3 の 127 バイトヘッダーを読み込み、バージョンとメタデータを確認する
+      how: reader_get_header_info() で取得したバージョン・タイル数・ズーム範囲を検証
+      expected: version === 3, maxZoom === 2, tileCount > 0
+    - id: jspi-range-reads
+      what: JSPI スタック一時停止により、C 側から同期的に発行された HTTP Range リクエストが成功する
+      how: C 側の読取成功バイト数および HTTP 206 レスポンスの取得を検証
+      expected: readBytes > 0
+    - id: world-land-rendered
+      what: Wasm から同期取得されたタイルデータが Canvas 2D に描画され、陸地ピクセルが存在する
+      how: 画面上の中央ピクセル（陸地）の色が背景（海洋色）と異なることを検証
+      expected: 陸地ピクセル色 != 海洋色
+    - id: pan-triggers-jspi-tiles
+      what: 地図をパンしたとき、新しいビューポートのタイルが JSPI 経由でオンデマンド同期取得される
+      how: パン操作後のタイル取得数と画面描画の更新を検証
+      expected: 新規タイルが取得され画面が更新される
+  harness:
+    - contextlost が起きたらエラーにする

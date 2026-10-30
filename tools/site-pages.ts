@@ -15,6 +15,7 @@ export const galleries = [
   { id: 'luma', label: 'luma.gl' },
   { id: 'webgpu', label: 'WebGPU' },
   { id: 'opfs', label: 'OPFS' },
+  { id: 'wasm', label: 'WebAssembly' },
   { id: 'legacy', label: '既存の例' },
 ] as const;
 export type GalleryId = typeof galleries[number]['id'];

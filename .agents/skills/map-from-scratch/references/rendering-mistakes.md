@@ -513,3 +513,15 @@ pass.
 - Guard against zero-length segments: In OSM, consecutive duplicate nodes produce $P_B - P_A = (0, 0)$.
   Normalizing a zero vector in WGSL yields `NaN`, which poisons miter vectors and drops entire quads.
   Always guard with `let safeLen = max(0.0001, length(delta))` before division.
+
+### JSPI with Emscripten: missing JSPI_EXPORTS throws SuspendError (wasm-001)
+
+- Screen: page aborted immediately on load; `SuspendError: trying to suspend without WebAssembly.promising`.
+- Why: In Emscripten with `-sJSPI`, only `main` is wrapped with `WebAssembly.promising()` by default.
+  When custom exported C functions (e.g. `_init_reader`, `_get_tile`) call an async import (`EM_ASYNC_JS`),
+  the Wasm call stack attempts to suspend without an outer promising wrapper, throwing a runtime `SuspendError`.
+- Fix: Pass `-sJSPI_EXPORTS=init_reader,get_tile` in the `emcc` build flags. Emscripten's JS runtime
+  will wrap the exported functions using `Asyncify.makeAsyncFunction()` so that calling them from JS returns
+  a Promise that resolves upon Wasm stack resumption.
+- Memory views: Ensure `-sEXPORTED_RUNTIME_METHODS=...,HEAPU8` is passed if accessing `Module.HEAPU8.buffer`
+  from outside the module; otherwise `Module.HEAPU8` is `undefined`.

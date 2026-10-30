@@ -237,6 +237,13 @@ skill [75]; this skill does not repeat it.
   with suffix and open-ended ranges, 416 with the size, and a global OPTIONS
   answer were enough for GDAL `/vsicurl/` and PMTiles clients in
   reearth-papers [27].
+- WebAssembly JSPI for synchronous C/Rust readers: Existing C/Rust spatial parsers
+  (GDAL, libpmtiles, libgeotiff) use synchronous I/O. In the browser, compiling with
+  `-sJSPI` allows C to call an asynchronous JS `fetch(url, { headers: { Range: ... } })`
+  using `EM_ASYNC_JS` as a normal synchronous function, suspending the Wasm call stack
+  via `WebAssembly.Suspending` without the 2-5x code bloat of ASYNCIFY (`wasm-001-jspi-range-reader`).
+  Exported Wasm functions calling async imports must be listed in `-sJSPI_EXPORTS=fn1,fn2`
+  to be automatically wrapped with `WebAssembly.promising()`.
 - What to write in `performance_knowledge`: bytes and requests for the first
   view and a pan, round trips before the first frame under the emulated
   network, and the same numbers for fetching the file whole.

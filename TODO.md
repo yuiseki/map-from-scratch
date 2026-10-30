@@ -901,6 +901,7 @@
 - [x] `webgpu-001-gpu-driven-culling` → `examples/webgpu/001-gpu-driven-culling/` — [WebGPU Bundle Culling](https://github.com/toji/webgpu-bundle-culling)
 - [x] `webgpu-002-vertex-pulled-roads` → `examples/webgpu/002-vertex-pulled-roads/` — [pygfx Line Shader](https://github.com/pygfx/pygfx)
 - [x] `opfs-001-offline-pmtiles` → `examples/opfs/001-offline-pmtiles/` — [OPFS SyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle)
+- [x] `wasm-001-jspi-range-reader` → `examples/wasm/001-jspi-range-reader/` — [V8 JSPI (JavaScript Promise Integration)](https://v8.dev/blog/jspi)
 
 ## 進捗
 
