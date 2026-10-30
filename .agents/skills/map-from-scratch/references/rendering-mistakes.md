@@ -30,6 +30,22 @@ what went wrong.
 - Lesson: when a fix lands in one example, grep for the template's loop in
   the others (`originX + ring` found all seven).
 
+### A ring around a pole cut at 180° (d3 005)
+
+- Screen: Antarctica as two long wedges with sea between them and the bottom
+  edge of an equirectangular map.
+- Why: the bake unwrapped each ring's longitudes and cut it at every
+  multiple of 360°. Antarctica's ring goes once around the pole, so unwrapped
+  it ends 360° from where it starts; nothing closed it along the pole. And
+  the last piece of a ring, which continues into the first, was kept as a
+  separate ring: both closed with chords.
+- Fix: rotate the ring to start at its jump across 180° (or the seam lands
+  where the data happens to start, 59° W here), add the two pole vertices
+  when the unwrapped ring ends 360° away, and join the last piece to the
+  first when they fall in the same copy of the world.
+- Its `antimeridian-clean` check looked at Alaska and Chukotka only and
+  passed with the wedges on screen; it now also needs land next to the pole.
+
 ## Projection
 
 ### An axis factor applied twice (25)
