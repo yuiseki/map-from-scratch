@@ -1,0 +1,124 @@
+id: forge3d-002-mount-fuji-labels
+request: >-
+  forge3d の例「Mount Fuji Labels」のように、富士山の地形を 3D で表示し、山頂と登山道の五合目・各合目・
+  麓の地名をラベルで載せたい。ドラッグで回り、ホイールで寄れるようにし、山の向こう側に隠れた地名や、
+  重なってしまう地名は出さない。外部ライブラリなしで、最速・最小に。
+
+requirements:
+  - id: labels-readable
+    need: ラベルが重ならず、山に隠れた地名は出ない。同じ視点なら毎回同じラベルが同じ場所に出る
+    unmeasured: verification の checks (labels-do-not-overlap, far-side-occluded, plan-is-deterministic) で確かめる
+  - id: labels-on-terrain
+    need: ラベルが地形上の地点に付き、回したり寄ったりしても付いてくる
+    unmeasured: verification の checks (summit-label-on-summit, labels-follow-orbit) で確かめる
+  - id: smooth-interaction
+    need: 回転とズームが滑らかで、ラベルの選び直しも毎フレーム間に合う
+  - id: quick-start
+    need: 開いてすぐ山とラベルが出る
+  - id: light-footprint
+    need: 外部依存ゼロで、コードとデータが小さい
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 650000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
+    - {metric: label_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/002-mount-fuji-labels/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: fuji.bin と labels.json の取得から、地形とラベルの初回描画まで
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 120 フレームのオービット (方位 1°/フレーム)。毎フレーム地形を描き、ラベルを選び直して描く
+      metrics: [redraw_ms, label_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/002-mount-fuji-labels/bake.ts]
+  sources:
+    - id: mapzen-terrarium-z11
+      origin: AWS Open Data Terrain Tiles (Mapzen terrarium), z11 x1812-1813 y808-809
+      license: 出典表示のうえ自由に利用可 (日本は SRTM などの公開データから作られている)
+    - id: forge3d-mount-fuji-places
+      origin: forge3d の assets/gpkg/Mount_Fuji_places.gpkg (OpenStreetMap の 39 地点、commit 3715935 に固定。tools/sources.ts)
+      license: ODbL (© OpenStreetMap contributors)
+  outputs:
+    - data/baked/forge3d-002-mount-fuji-labels/fuji.bin
+    - data/baked/forge3d-002-mount-fuji-labels/labels.json
+  preparation:
+    - z11 の terrarium 4 タイルを 512x512 に接続し、山頂を中心に 384x384 (約 24 km、62 m/px) を切り出す。地名 39 地点がすべて入る
+    - forge3d-001 と同じく、16 bit の標高グリッドと、太陽 315°/35° の陰影を焼いた RGB グリッドを 1 ファイルに並べる
+    - 地名をグリッド上の (u, v) にし、優先順 (山頂、五合目、登山道の各合目を高い順、その他の地点、地区) に並べて 1 行 1 件で書く。山頂のラベルは forge3d の例と同じく地名データにはなく、DEM の最高点に置く
+
+performance_knowledge:
+  - id: label-plan-on-the-cpu
+    finding: 40 件のラベルなら、毎フレーム CPU で投影、地形による遮蔽 (視線上の高さを DEM で引く)、4 方向の衝突回避、Canvas 2D への描画をし直しても 0.5 ms 以内に収まる
+    evidence: label_ms p50 0.21 ms、p95 0.49 ms (120 フレームのオービット x 3 回、RTX 3060)
+    applies_when: ラベルが数十件で、地形が CPU 側にも高さ配列として残っているとき
+  - id: text-on-a-2d-overlay
+    finding: ラベルの文字は WebGL に載せず、上に重ねた Canvas 2D に描くと、グリフのアトラスもシェーダも要らず、日本語もブラウザのフォントでそのまま出る
+    evidence: コード gzip 7,849 B (forge3d-001 は 5,774 B)。WebGL 側は forge3d-001 と同じ 1 ドローコール
+    applies_when: ラベルが数十件程度で、地形の前後関係を文字に反映しなくてよいとき (隠れるかどうかは CPU で決める)
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 (地形) と Canvas 2D (ラベル)
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/forge3d/002-mount-fuji-labels/index.html
+      - examples/forge3d/002-mount-fuji-labels/main.ts
+      - examples/forge3d/002-mount-fuji-labels/terrain.ts
+      - examples/forge3d/002-mount-fuji-labels/gl.ts
+      - examples/forge3d/002-mount-fuji-labels/labels.ts
+    dependencies: []
+    why: 地形は forge3d-001 と同じ 1 ドローコール。ラベルは数十件なので CPU で選び、Canvas 2D に描けば文字の描画を自前で持たずに済む
+  alternatives:
+    - option: ラベルを WebGL の SDF テキストで地形と同じパスに描く
+      rejected_because: 比べていない。日本語のグリフアトラスを作って配ると、データとコードが大きくなると見込んだ
+    - option: 遮蔽を深度バッファの読み戻しで判定する
+      rejected_because: 比べていない。readPixels は GPU との同期で毎フレームの待ちになると見込み、CPU の視線判定にした
+  not_doing: [ラベルの文字の回転, ラベルのフェード, タイルストリーミング, LOD]
+
+verification:
+  checks:
+    - id: terrain-fills-view
+      what: 画面上端は空、画面中央は地形
+      how: WebGL の readPixels で上端中央と 60% 高さの中央を読む
+      expected: 空の alpha < 10、地形の alpha > 200
+    - id: every-label-accounted
+      what: 40 件すべてが、置かれたか、理由付きで外されたかのどちらか。最初の視点で読める数が置かれている
+      how: ラベルの計画の placed と rejected の件数
+      expected: 合計 40、placed 10 以上
+    - id: summit-label-on-summit
+      what: 山頂のラベルが山頂に付いている
+      how: 山頂のラベルの点と、DEM の最高点 (+20 m) の投影位置を比べ、ラベル用キャンバスのその画素を読む
+      expected: 差 0.5 px 未満、点の画素が赤 (alpha > 200, R > 150, G < 80)
+    - id: labels-do-not-overlap
+      what: 置かれたラベルどうしが重ならず、どれも実際に描かれている
+      how: 置いた箱を総当たりで比べ、各箱の中の不透明な画素を数える
+      expected: 重なり 0 組、どの箱にも不透明な画素が 20 以上
+    - id: far-side-occluded
+      what: 山の向こう側の地名は出さない
+      how: 南斜面の富士宮口五合目を、北から低く見たときと南から見たときで比べる
+      expected: 北からは occluded、南からは occluded でない
+    - id: plan-is-deterministic
+      what: 同じ視点なら同じ計画になる
+      how: 既定の視点で計画を取り、90° 回してから戻して取り直す
+      expected: 置いたラベル、向き、位置 (0.01 px) が一致
+    - id: labels-follow-orbit
+      what: 回すとラベルが地形と一緒に動き、移った先に描かれる
+      how: 須走五合目の点の位置を、方位を 40° 回す前後で比べ、移った先のラベル用キャンバスの画素を読む
+      expected: 30 px 以上動き、移った先の点の alpha > 200
+  harness:
+    - contextlost が起きたらエラーにする

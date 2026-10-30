@@ -172,6 +172,15 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/akita-kumadas-wildlife-sighting/resolve/main/raw/2026-10-26/kumadas.csv',
     copy: true,
   },
+  // forge3d's Mount Fuji placenames (39 OpenStreetMap points: stations on
+  // the trails, craters and villages; ODbL). The repository's copy pinned to
+  // a commit, read with the fields the labels use.
+  'forge3d-mount-fuji-places': {
+    out: 'forge3d_mount_fuji_places.geojson',
+    local: 'ref-repos/milos-agathon__forge3d/assets/gpkg/Mount_Fuji_places.gpkg',
+    remote: '/vsicurl/https://raw.githubusercontent.com/milos-agathon/forge3d/37159353f618f76e6020f6221b2a475e7969013a/assets/gpkg/Mount_Fuji_places.gpkg',
+    ogr: ['-select', 'osm_id,name,name.en,ele,place,tourism'],
+  },
   // OpenStreetMap motorway, trunk and primary roads (and their links) in the
   // Tokyo 23 wards box, as Overpass JSON with geometry. ODbL. Asked of the
   // self-hosted Overpass, never a public one; its data stops at
