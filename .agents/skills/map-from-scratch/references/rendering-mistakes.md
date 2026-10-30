@@ -30,6 +30,12 @@ what went wrong.
 - Lesson: when a fix lands in one example, grep for the template's loop in
   the others (`originX + ring` found all seven).
 
+### A fixed number of copies (maplibre 053)
+
+Land and heat were repeated for copies −1, 0 and 1 only. At its minimum zoom
+of 1 one world is 512 px, so a 1920 px screen needs four. Compute the copy
+range from the screen width, as above, never a constant.
+
 ### A ring around a pole cut at 180° (d3 005)
 
 - Screen: Antarctica as two long wedges with sea between them and the bottom
@@ -89,6 +95,28 @@ interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
 Seen once so far.
 
+### Wheel zoom about the screen centre (repeated: about 30 flat 2D examples)
+
+- Screen: the place under the pointer slides away while zooming; MapLibre,
+  Leaflet and Mapbox keep it under the pointer.
+- Why: the Canvas 2D templates call `setZoom(zoom ± d)` without the pointer
+  position. Of the flat-map examples, the maplibre, mapbox, leaflet, tangram,
+  openglobus and forge3d families all do this; 07, 10, 19, 20, 24 and most
+  deckgl examples keep the point under the pointer.
+- Fix: convert the pointer to world coordinates before the zoom change and
+  move the centre so it maps back to the same pixel afterwards.
+- Orbit cameras on a globe or a 3D scene may zoom to the target instead; say
+  which in `REQUEST.md`.
+
+### No click tolerance (leaflet 005, 19)
+
+A move of one pixel between `pointerdown` and `pointerup` turned a click into
+a drag, so popups and selections need a perfectly still hand (and fail on
+touch). Leaflet uses 3 px. Measure the distance from the `pointerdown`
+position, not the last move: 056, 20 and leaflet 001 compare each move event
+alone, so a slow drag of 1 px per event still counts as a click. 02 does it
+right (8 px times the device pixel ratio from the down position).
+
 ## Picking
 
 ### The inverse shares the forward mistake (25)
@@ -139,10 +167,27 @@ members.
 
 ## KDE / heatmap
 
-**Not yet seen.** 011 and maplibre 053 were not reviewed for this. Look at:
-the kernel radius in screen pixels versus metres when zooming, intensity
-saturating to one colour in dense areas, the colour ramp's zero being
-transparent.
+### A world-sized density canvas (maplibre 053)
+
+- Screen: from zoom 7 the heat vanished; at zoom 2.5 the field was cut by a
+  straight line at 180° (Aleutians, Tonga).
+- Why: the kernels were accumulated into one canvas the size of the world at
+  the current zoom, 256 · 2^zoom px wide: 16,384 px square (about 1 GB) at
+  zoom 6, past the browser's canvas limit at zoom 7. Kernels at the world's
+  edge were clipped by the canvas, and the copies placed side by side showed
+  the cut.
+- Fix: accumulate for the screen plus half a screen on each side, for every
+  world copy that reaches it; rebuild on zoom and when a pan leaves the
+  margin. Pans stayed at about 1 ms.
+- Test: zoom to the maximum the controls allow, and look at 180°.
+
+### Colours added instead of density mapped (maplibre 053, not fixed)
+
+The kernels are coloured sprites added with `lighter`, so dense areas add up
+to white over much of the Pacific rim; MapLibre accumulates a scalar density
+and maps it through the ramp, so only the densest cores reach the top
+colour. Accumulate density in one channel (or alpha) and colour it in a
+second pass. 011 was not reviewed for this.
 
 ## Terrain
 
