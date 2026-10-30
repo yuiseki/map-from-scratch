@@ -33,10 +33,11 @@ vec2 transformPos(vec2 pos) {
   vec2 p = vec2(norm.x - 0.5, norm.y - 0.5);
   p.x *= ${GEO_ASPECT};
   float screenAspect = u_vp.x / u_vp.y;
+  // p.x already carries GEO_ASPECT: only the screen aspect is left to undo.
   if (screenAspect > ${GEO_ASPECT}) {
-    return vec2(p.x * 2.15 / (screenAspect / ${GEO_ASPECT}), p.y * 2.15);
+    return vec2(p.x * 2.15 / screenAspect, p.y * 2.15);
   } else {
-    return vec2(p.x * 2.15, p.y * 2.15 * (screenAspect / ${GEO_ASPECT}));
+    return vec2(p.x * 2.15 / ${GEO_ASPECT}, p.y * 2.15 * (screenAspect / ${GEO_ASPECT}));
   }
 }
 
@@ -80,10 +81,11 @@ vec2 transformPos(vec2 pos) {
   vec2 p = vec2(norm.x - 0.5, norm.y - 0.5);
   p.x *= ${GEO_ASPECT};
   float screenAspect = u_vp.x / u_vp.y;
+  // p.x already carries GEO_ASPECT: only the screen aspect is left to undo.
   if (screenAspect > ${GEO_ASPECT}) {
-    return vec2(p.x * 2.15 / (screenAspect / ${GEO_ASPECT}), p.y * 2.15);
+    return vec2(p.x * 2.15 / screenAspect, p.y * 2.15);
   } else {
-    return vec2(p.x * 2.15, p.y * 2.15 * (screenAspect / ${GEO_ASPECT}));
+    return vec2(p.x * 2.15 / ${GEO_ASPECT}, p.y * 2.15 * (screenAspect / ${GEO_ASPECT}));
   }
 }
 
@@ -423,8 +425,9 @@ export async function init() {
     let px = clipX / 2.15;
     let py = clipY / 2.15;
     if (screenAspect > GEO_ASPECT) {
-      px *= (screenAspect / GEO_ASPECT);
+      px *= screenAspect;
     } else {
+      px *= GEO_ASPECT;
       py /= (screenAspect / GEO_ASPECT);
     }
     px /= GEO_ASPECT;

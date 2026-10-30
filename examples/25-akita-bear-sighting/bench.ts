@@ -19,11 +19,11 @@ export async function runBench(api: any): Promise<void> {
   });
 
   // Verification checks:
-  // 1. Autumn 2023 peak bear sighting in Akita city (clipX: -0.0329, clipY: 0.0407)
+  // 1. Autumn 2023 peak bear sighting in Akita city (clipX: -0.0513, clipY: 0.0407)
   setDay(555); // October 2023
   setFilter(true, true, true, true);
   render();
-  const bearPixel = readPixel(-0.03288, 0.04073);
+  const bearPixel = readPixel(-0.05128, 0.04073);
 
   const passBear = bearPixel[0] > 180 && bearPixel[0] > bearPixel[2] + 40;
   emit({
@@ -35,7 +35,7 @@ export async function runBench(api: any): Promise<void> {
   // 2. Filter bear OFF -> pixel reverts to land background
   setFilter(false, true, true, true);
   render();
-  const noBearPixel = readPixel(-0.03288, 0.04073);
+  const noBearPixel = readPixel(-0.05128, 0.04073);
   const passNoBear = noBearPixel[0] < 120 || Math.abs(noBearPixel[0] - noBearPixel[1]) < 30;
   emit({
     check: 'filter-bear-off',
@@ -44,11 +44,11 @@ export async function runBench(api: any): Promise<void> {
   });
 
   // 3. Land background vs Sea background
-  // Land: Akita inland (-0.01, 0.0) vs Sea: Japan Sea (-0.35, 0.0)
+  // Land: Akita inland (-0.0156, 0.0) vs Sea: Japan Sea (-0.546, 0.0)
   setFilter(true, true, true, true);
   render();
-  const landPixel = readPixel(-0.01, 0.0);
-  const seaPixel = readPixel(-0.35, 0.0);
+  const landPixel = readPixel(-0.0156, 0.0);
+  const seaPixel = readPixel(-0.546, 0.0);
   const passLandSea = (landPixel[0] !== seaPixel[0] || landPixel[1] !== seaPixel[1] || landPixel[2] !== seaPixel[2])
     && seaPixel[2] > seaPixel[0]; // Sea has higher blue than red
   emit({
