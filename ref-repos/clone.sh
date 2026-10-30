@@ -135,6 +135,21 @@ milos-agathon/forge3d                   rust-webgpu-3d    MIT
 pygfx/pygfx                              python-webgpu     BSD-2-Clause
 openstreetmap/id-tagging-schema          osm-schema        ISC
 osmlab/name-suggestion-index             osm-catalog       BSD-3-Clause
+visgl/tangram.gl                          webgpu-map        see LICENSE
+CesiumGS/cesium-native                    native-3d-tiles   Apache-2.0
+NASA-AMMOS/3DTilesRendererJS              web-3d-tiles      Apache-2.0
+potree/potree                             web-point-cloud   see LICENSE
+geotiffjs/geotiff.js                      web-raster-io     MIT
+mapbox/martini                            terrain-mesh      ISC
+mapbox/geojson-vt                         geojson-tiler     see LICENSE
+mourner/flatbush                          spatial-index     ISC
+mourner/rbush                             spatial-index     see LICENSE
+mourner/kdbush                            spatial-index     ISC
+mapbox/polylabel                          label-placement   see LICENSE
+mapbox/tiny-sdf                           text-rendering    BSD-2-Clause
+linebender/vello                          vector-renderer   Apache-2.0/MIT
+georust/geo                               rust-geometry     Apache-2.0/MIT
+reearth/ezu                               cpu-map-renderer  Apache-2.0/MIT
 EOF
 )
 
