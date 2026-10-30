@@ -1,0 +1,120 @@
+id: deckgl-014-line-layer
+request: >-
+  米国の郡（county）間の人口移動（ネットの東西方向）上位1,500組を、直線の LineLayer として地図上に描きたい。
+  東向きと西向きで色を分け、ドラッグでパン、ホイールで拡大縮小できるようにする。
+  外部ライブラリなし・Canvas 2D で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1,500本の線と背景地図に deck.gl / WebGL エンジンの読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とフローが現れる
+    rationale: バイナリ1本の取得だけで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: 1,500本の線を保ったままパン・ズームが 60 fps (20 ms 未満) で動く
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: binary-decoding
+    need: 座標をベイク時に量子化し、実行時は 1 回の ArrayBuffer 読み込みだけで済ませる
+    rationale: データ量と JSON パースのコストを抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 55000, unit: B, requirement: binary-decoding}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/014-line-layer/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地 JSON と lines.bin の取得・デコードから初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/deckgl/014-line-layer/bake.ts]
+  sources:
+    - id: deckgl-arc-counties
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/arc
+      license: deck.gl-data (MIT)
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/deckgl-014-line-layer/lines.bin
+    - data/baked/deckgl-014-line-layer/land.json
+  preparation:
+    - 全米3,220郡のセントロイドを Mercator [0, 1] に事前投影
+    - 原データは郡ペアごとに flows[t][s] === -flows[s][t] の二重格納なので、s < t の1件に畳む
+    - 各ペアを西→東に固定し、符号を「東向きネット移動」の向きに揃える
+    - ネット移動量 |v| の大きい順に1,500組へ絞り、始点・終点を uint16（1/65535 単位）に量子化して 12 バイト/本で格納
+    - Natural Earth 110m 陸地境界ポリゴンを背景用に同梱
+
+performance_knowledge:
+  - id: duplicate-direction-records
+    finding: 元データは郡ペアの両方向を flows[t][s] === -flows[s][t] で重複格納している。全件を描くと各線分が必ず2回・逆色で描かれ、後から描いた橙色が常に上に残って水色が消える（実測: 画面のほぼ全部が橙/黄、正方向の色検出ゼロ）。s < t の1件に畳むと重複が消え、色が本来の意味どおりに出る
+    evidence: 214,820ペアすべてが完全な反対称（onlyOne=0, mismatch=0）。畳む前は正方向チェックが失敗
+  - id: segment-budget-vs-frame-pacing
+    finding: CPU backed canvas では 5,000 本（二重格納で実質 5,000 線分、うち 2,500 が同一点の重複）の stroke で frame_interval_ms p95 が 31.6 ms になり予算 20 ms を超えた。2,000 本でも p95 18.8 ms と余裕がなく、1,500 本で p95 15.5 ms / p50 11.6 ms まで下がった。redraw_ms は Canvas コマンド発行しか測っていないため 1 ms 未満でも、実際のラスタライズはフレーム後半に効いてくる
+    evidence: frame_interval_ms p95 は 3,000本 35.6 ms / 2,000本 18.8 ms / 1,500本 15.5 ms
+  - id: one-path2d-per-direction
+    finding: 1,500本を毎フレーム moveTo/lineTo で組み立てるのではなく、ワールド座標の Path2D を読み込み時に1回だけ作り、毎フレームは stroke を2回（東向き・西向き）呼ぶだけにすると、線形の JS ループがフレームから消える
+    evidence: 60フレームのパンで redraw_ms p95 は 2 ms 未満
+  - id: quantised-binary
+    finding: 座標を uint16 に量子化すると、1/65535 ワールド（赤道で約 600 m）の精度を保ちながら1本12バイトで済み、JSON の数分の1になる
+    evidence: 1,500本で lines.bin は約 18 KB
+  - id: transformed-stroke
+    finding: 画面座標に変換した線分を毎フレーム作る代わりに、CTM にスケールと平行移動を掛けてワールド座標の Path2D をそのまま stroke でき、線幅は 1.5/scale で一定の CSS px に保てる
+    evidence: パン・ズーム中も線幅が一定で、線が地図からずれない
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/deckgl/014-line-layer/index.html
+      - examples/deckgl/014-line-layer/main.ts
+      - examples/deckgl/014-line-layer/map.ts
+    dependencies: []
+    why: 直線1,500本は Path2D を2本 stroke するだけで描け、WebGL の頂点バッファとシェーダーを持ち込む必要がない
+  alternatives:
+    - option: deck.gl LineLayer (WebGL2)
+      rejected_because: 元例の比較対象。エンジン全体とシェーダー初期化が必要で、この規模では過剰
+    - option: 毎フレームの線形ループで moveTo/lineTo
+      rejected_because: 1,500本×2回の JS 呼び出しがフレーム予算を圧迫する
+    - option: 全 429,640 レコードを描画
+      rejected_because: 反対称の重複で同じ線分を2色が奪い合ううえ、ラスタライズで 60 fps に届かない
+  not_doing: [3D, 曲線（ArcLayer）, 線幅のデータ駆動, ピッキング, 回転・ピッチ]
+
+verification:
+  checks:
+    - id: flow-directions-visible
+      what: '東向き（水色）と西向き（橙色）の両方が画面に実面積で描かれている'
+      how: 画面全体を読み戻し、水色・橙色それぞれのピクセル数を数える
+      expected: 'どちらもサンプル数の 1% 超'
+    - id: line-layer-visible
+      what: '東西それぞれ最長の線の中点に、その向きの色の線が描画されている'
+      how: 長い順に最大25本を走査し、中点の 9×9 px に自色ピクセルがある線を探す
+      expected: '水色ピクセル（r < 110, g > 110, b > 150）と橙色ピクセル（r > 150, 80 < g < 200, b < 90）がそれぞれ1本以上見つかる'
+    - id: lines-move-with-pan
+      what: 'パンで線が地図と同じ量だけ動く'
+      how: panBy(50, 30) 前後で、目視確認できた線の中点の画面座標と色を検証
+      expected: 'dx = 50, dy = 30 かつ同じ色のピクセルが検出される'
+    - id: wheel-zoom-keeps-point
+      what: 'ホイールズームでカーソル下の点が動かない'
+      how: zoomAtPoint で線の中点をアンカーに zoom 3.4→4.2 し、画面上のずれを計測
+      expected: 'ずれ < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする
