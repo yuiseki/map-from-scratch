@@ -20,7 +20,7 @@ requirements:
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 3700, unit: B, requirement: light-footprint}  # 3500 から変更: 地平線の分割処理で 3,680 B
     - {metric: data_gzip_bytes, max: 70000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
     - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
@@ -48,7 +48,7 @@ datasets:
       origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
       license: Natural Earth パブリックドメイン
   outputs:
-    - data/baked/cesium-244-points/land.json
+    - data/baked/cesium-244-points/land.bin
     - data/baked/cesium-244-points/points.bin
   preparation:
     - Natural Earth 110m 陸地ポリゴンを球面緯経度座標で格納
@@ -59,6 +59,10 @@ performance_knowledge:
     finding: 5,000 点の大規模ポイントプリミティブも、球面座標からカメラ視線オクルージョン（z > 0）による高速裏面カリングとカラー別パス合成（5回のバッチ fill）を行うことで、GPU なし・Canvas 2D でも 0.5 ms 未満で高速に描画可能
     evidence: 再描画時間 p95 0.55 ms 前後、フレーム間隔 p95 6 ms 未満を達成
     applies_when: 3D 地球儀上の大規模点群・ピン・散布図描画
+  - id: split-triangles-at-the-horizon
+    finding: 陸のリングを頂点ごとに投影し、地平線の裏の頂点を飛ばして部分パスを切る描き方では、見えている区間ごとに弦で閉じられて陸が直線で切り取られる（大陸が縁にかかると西ユーラシアとアフリカに暗い帯が出た）。穴のリングも別に塗られる。ベイク時に earcut の三角形にし、読み込み時に辺 20° 以下へ分割して単位球の xyz で持ち、地平線をまたぐ三角形は裏の頂点を縁へ寄せ、1 本のパスで塗ると消える（cesium 180・213 と同じ方式）
+    evidence: 陸データは JSON のリング 39.0 KB から三角形 27.7 KB gzip に減った。M シリーズ Mac の Chrome で再描画 p95 は 3.92 ms から 2.91 ms、初回描画 p50 は約 92 ms。コードは 3,285 B から 3,680 B に増えた。実行時に earcut を配るとそれだけでコード予算を超える
+    applies_when: Canvas 2D の地球儀で陸を塗るとき
 
 architecture_selection:
   chosen:

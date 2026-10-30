@@ -1,14 +1,17 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { source } from '../../../tools/sources.ts';
+import earcut from '../../../vendor/earcut/earcut.js';
 
 const OUT_DIR = 'data/baked/cesium-244-points';
 mkdirSync(OUT_DIR, { recursive: true });
 
-// 1. Bake Natural Earth Land (Spherical lon/lat)
+// 1. Bake Natural Earth Land as earcut triangles (lon, lat x 100, Int16).
+// Rings clipped at the horizon by dropping hidden vertices close with chords
+// that cut the land; triangles can be split and pinned to the rim instead.
 type Ring = [number, number][];
 type LandFeature = { geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: Ring[] | Ring[][] } };
 const land = JSON.parse(readFileSync(source('ne-110m-land'), 'utf8')) as { features: LandFeature[] };
-const polygons: [number, number][][][] = [];
+const verts: number[] = [];
 
 for (const feature of land.features) {
   const shapes =
@@ -17,19 +20,18 @@ for (const feature of land.features) {
       : (feature.geometry.coordinates as Ring[][]);
 
   for (const shape of shapes) {
-    polygons.push(
-      shape.map((ring) =>
-        ring.map(([lon, lat]) => [
-          Number(lon.toFixed(4)),
-          Number(lat.toFixed(4)),
-        ])
-      )
-    );
+    const flat: number[] = [];
+    const holes: number[] = [];
+    shape.forEach((ring, r) => {
+      if (r > 0) holes.push(flat.length / 2);
+      for (const [lon, lat] of ring) flat.push(lon, lat);
+    });
+    for (const i of earcut(flat, holes)) verts.push(Math.round(flat[i * 2] * 100), Math.round(flat[i * 2 + 1] * 100));
   }
 }
 
-writeFileSync(`${OUT_DIR}/land.json`, JSON.stringify(polygons));
-console.log(`Baked ${polygons.length} land polygons -> ${OUT_DIR}/land.json`);
+writeFileSync(`${OUT_DIR}/land.bin`, Buffer.from(new Int16Array(verts).buffer));
+console.log(`Baked ${verts.length / 6} land triangles -> ${OUT_DIR}/land.bin`);
 
 // 2. Bake 5,000 Global Points (Fibonacci sphere distribution + key anchors)
 const count = 5000;
