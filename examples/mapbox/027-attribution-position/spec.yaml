@@ -1,0 +1,107 @@
+id: mapbox-027-attribution-position
+request: >-
+  地図右下に出典表示（attribution）を置き、ボタンで四隅のどこへでも移動できるようにしたい。
+  地図をパン・ズームしても出典表示は画面の同じ位置に留まる。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 静的な写真なしの地図と小さな出典表示だけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と出典表示が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: corner-placement
+    need: 出典表示が四隅のどれへでも移動し、常に余白 12 px で画面端に揃う
+    unmeasured: verification の checks でボタンクリック後の矩形とピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/027-attribution-position/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から出典表示を含む初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/027-attribution-position/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-027-attribution-position/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: screen-anchored-chrome
+    finding: 出典表示は地理座標ではなく画面座標で描く。地図のカメラ更新とは独立した矩形1個なので、パン・ズームで再計算するものがない
+    evidence: attribution-fixed-on-pan / attribution-fixed-on-zoom が 120×90 px パンと z4.5 の後も矩形の完全一致
+  - id: one-rect-function
+    finding: 隅の名前（left/right, top/bottom）から矩形を求める関数1個に集約すると、描画・当たり判定・検証が同じ定義を共有できる。検証側はビューポートから独立に期待値を計算して突き合わせる
+    evidence: 4 隅すべてで getAttributionRect と独立計算の座標が 0.5 px 以内
+  - id: text-readback
+    finding: 白い箱だけでなく暗い文字ピクセル数を数えると、箱はあるが文字が描かれていない退行を検出できる
+    evidence: 各隅で BOX_W×BOX_H 内の暗色ピクセルが 20 個超
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/027-attribution-position/index.html
+      - examples/mapbox/027-attribution-position/main.ts
+      - examples/mapbox/027-attribution-position/attribution.ts
+    dependencies: []
+    why: 陸地塗りと 1 枚の出典表示だけなら Canvas 2D が最小。文字も fillText で完結する
+  alternatives:
+    - option: DOM の div を隅に配置する
+      rejected_because: CSS だけで済むが、この例は同じ Canvas への描画・読み戻し検証を一貫させたい
+    - option: WebGL2
+      rejected_because: 静的な陸地と文字に初期化コストが見合わない
+  not_doing: [3D地形, 地名ラベル, 回転・ピッチ, ピンチズーム, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: attribution-visible-bottom-left
+      what: 初期状態で出典表示が左下に余白 12 px で出て、暗い文字が読める
+      how: ビューポートから独立に矩形を計算し、箱の内側の白ピクセルと暗色ピクセル数を数える
+      expected: 'rect (12, 728, 222, 28)、箱が白、暗色ピクセル > 20'
+    - id: attribution-moves-to-top-right
+      what: TR ボタンで右上に移り、左下は地図に戻る
+      how: '#pos-top-right をクリックし、右上の矩形・箱・文字と、旧位置が白箱でないことを検証'
+      expected: 'rect (790, 12, 222, 28)、旧位置のピクセルは白箱でない'
+    - id: attribution-moves-to-bottom-right
+      what: BR ボタンで右下に移り、右上は地図に戻る
+      how: '#pos-bottom-right をクリックし、右下の矩形・箱・文字と、旧位置を検証'
+      expected: 'rect (790, 728, 222, 28)、旧位置のピクセルは白箱でない'
+    - id: attribution-fixed-on-pan
+      what: 地図を 120×90 px パンしても出典表示は動かない
+      how: panBy(120, 90) 前後で矩形と、地物の画面位置が +120, +90 px 動くことを比較
+      expected: '矩形が完全一致、地物は 120, 90 px 移動'
+    - id: attribution-fixed-on-zoom
+      what: zoom 4.5 にしても出典表示は動かない
+      how: setZoom(4.5) 前後で矩形と箱・文字を比較
+      expected: 'zoom 4.5、矩形が完全一致、箱と文字が残る'
+  harness:
+    - contextlost が起きたらエラーにする

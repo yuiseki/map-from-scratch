@@ -1,0 +1,110 @@
+id: mapbox-038-color-switcher
+request: >-
+  海・陸・強調ポリゴンをまとめて配色し直すカラースイッチャー付きの地図を表示したい。
+  Blue / Dark / Sunset の 3 つのスウォッチで即座に塗り色が切り替わり、パン・ズームしても
+  色と地理的な位置関係が保たれる。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 陸地塗りと 1 ポリゴン、3 個のボタンに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: palette-switch
+    need: スウォッチのクリックで海・陸・強調ポリゴンの 3 色が同時に切り替わる
+    unmeasured: verification の checks で DOM クリック後の 3 点のピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4800, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.5, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/038-color-switcher/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ポリゴンと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/038-color-switcher/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-038-color-switcher/box.json
+    - data/baked/mapbox-038-color-switcher/land.json
+  preparation:
+    - ブラジル周辺の矩形（経度 -70–-50、緯度 -20–5、5点）を Web Mercator 座標に投影
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: palette-is-three-colours
+    finding: 配色切り替えは状態変数 1 個（パレット ID）と 3 色の差し替えだけで済む。スタイル層や式評価器は不要で、描画ループは色をテーブルから引くだけになる
+    evidence: dark / sunset のクリック直後に海・陸・強調の 3 点が期待 RGB と差 2 以内
+  - id: opaque-three-points
+    finding: 検証は海・陸・強調の 3 点を不透明色で塗って読み戻すのが最小。色ごとに 1 点で判定でき、アンチエイリアスのかからない内側を選ぶ
+    evidence: 3 パレット × 3 点 = 9 画素がすべて一致
+  - id: colour-independent-of-camera
+    finding: 配色はカメラと直交する状態なので、パン・ズーム後も同じ色のまま地理座標に固定される。検証側はカメラから投影し直して同じ座標を読む
+    evidence: palette-persists-on-pan と palette-anchors-on-zoom が z3.5 でも一致
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/038-color-switcher/index.html
+      - examples/mapbox/038-color-switcher/main.ts
+      - examples/mapbox/038-color-switcher/palette.ts
+    dependencies: []
+    why: 陸地塗り・1 ポリゴン・色テーブルだけなら Canvas 2D の fill が最小・最速
+  alternatives:
+    - option: WebGL2 で uniform の 3 色を差し替える
+      rejected_because: シェーダー初期化とバッファ転送が加わり、この規模では過剰
+    - option: CSS フィルタで画面全体の色相を回す
+      rejected_because: パレットごとに正確な RGB を作れず、ピクセル検証もできない
+  not_doing: [3D地形, 地名ラベル, 凡例の自動生成, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: default-palette-blue
+      what: 初期状態が Blue パレット（海・陸・強調）で描かれている
+      how: 地理座標から画面位置を独立に投影し、3 点のピクセルを期待 RGB と比較
+      expected: '海 (170,211,223)、陸 (240,238,232)、強調 (0,136,136) と差 2 以内'
+    - id: dark-palette-applied
+      what: Dark スウォッチで 3 色が同時に暗色系へ変わる
+      how: '#palette-dark をクリックし、同じ 3 点を読み戻す'
+      expected: '海 (20,35,46)、陸 (65,80,92)、強調 (232,89,12) と差 2 以内'
+    - id: sunset-palette-applied
+      what: Sunset スウォッチで 3 色が暖色系へ変わる
+      how: '#palette-sunset をクリックし、同じ 3 点を読み戻す'
+      expected: '海 (247,217,184)、陸 (255,243,226)、強調 (179,18,92) と差 2 以内'
+    - id: palette-persists-on-pan
+      what: パン後も選んだパレットのまま、地理座標に色が固定される
+      how: 60×40 px パンし、新しいカメラから 3 点を投影し直して比較
+      expected: 'パレット sunset、3 点が期待色と一致'
+    - id: palette-anchors-on-zoom
+      what: zoom 3.5 でも 3 色が地理座標どおりに描かれる
+      how: setZoom(3.5) 後に 3 点を投影し直して比較
+      expected: 'zoom 3.5、パレット sunset、3 点が期待色と一致'
+  harness:
+    - contextlost が起きたらエラーにする

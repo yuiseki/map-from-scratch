@@ -36,7 +36,7 @@
 - [ ] `maplibre-014-add-a-hillshade-layer` → `examples/maplibre/014-add-a-hillshade-layer/` — [Add a hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-hillshade-layer/)
 - [ ] `maplibre-015-add-a-multidirectional-hillshade-layer` → `examples/maplibre/015-add-a-multidirectional-hillshade-layer/` — [Add a multidirectional hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-multidirectional-hillshade-layer/)
 - [ ] `maplibre-016-add-a-new-layer-below-labels` → `examples/maplibre/016-add-a-new-layer-below-labels/` — [Add a new layer below labels](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-new-layer-below-labels/)
-- [ ] `maplibre-017-add-a-pattern-to-a-polygon` → `examples/maplibre/017-add-a-pattern-to-a-polygon/` — [Add a pattern to a polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-pattern-to-a-polygon/)
+- [x] `maplibre-017-add-a-pattern-to-a-polygon` → `examples/maplibre/017-add-a-pattern-to-a-polygon/` — [Add a pattern to a polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-pattern-to-a-polygon/)
 - [x] `maplibre-018-add-a-raster-tile-source` → `examples/maplibre/018-add-a-raster-tile-source/` — [Add a raster tile source](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-raster-tile-source/)
 - [ ] `maplibre-019-add-a-simple-custom-layer-on-a-globe` → `examples/maplibre/019-add-a-simple-custom-layer-on-a-globe/` — [Add a simple custom layer on a globe](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-simple-custom-layer-on-a-globe/)
 - [ ] `maplibre-020-add-a-stretchable-image-to-the-map` → `examples/maplibre/020-add-a-stretchable-image-to-the-map/` — [Add a stretchable image to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-stretchable-image-to-the-map/)
@@ -68,7 +68,7 @@
 - [ ] `maplibre-046-check-if-webgl-is-supported` → `examples/maplibre/046-check-if-webgl-is-supported/` — [Check if WebGL is supported](https://maplibre.org/maplibre-gl-js/docs/examples/check-if-webgl-is-supported/)
 - [ ] `maplibre-047-cooperative-gestures` → `examples/maplibre/047-cooperative-gestures/` — [Cooperative gestures](https://maplibre.org/maplibre-gl-js/docs/examples/cooperative-gestures/)
 - [x] `maplibre-048-create-a-draggable-marker` → `examples/maplibre/048-create-a-draggable-marker/` — [Create a draggable Marker](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-marker/)
-- [ ] `maplibre-049-create-a-draggable-point` → `examples/maplibre/049-create-a-draggable-point/` — [Create a draggable point](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-point/)
+- [x] `maplibre-049-create-a-draggable-point` → `examples/maplibre/049-create-a-draggable-point/` — [Create a draggable point](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-draggable-point/)
 - [ ] `maplibre-050-create-a-gradient-dashed-line-using-an-expression` → `examples/maplibre/050-create-a-gradient-dashed-line-using-an-expression/` — [Create a gradient dashed line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-dashed-line-using-an-expression/)
 - [ ] `maplibre-051-create-a-gradient-line-using-an-expression` → `examples/maplibre/051-create-a-gradient-line-using-an-expression/` — [Create a gradient line using an expression](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-gradient-line-using-an-expression/)
 - [ ] `maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation` → `examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/` — [Create a Heatmap layer on a globe with terrain elevation](https://maplibre.org/maplibre-gl-js/docs/examples/create-a-heatmap-layer-on-a-globe-with-terrain-elevation/)
@@ -401,7 +401,7 @@
 - [ ] `mapbox-024-animate-point-along-line` → `examples/mapbox/024-animate-point-along-line/` — [Animate Point Along Line](https://docs.mapbox.com/mapbox-gl-js/example/animate-point-along-line/)
 - [ ] `mapbox-025-animate-point-along-route` → `examples/mapbox/025-animate-point-along-route/` — [Animate Point Along Route](https://docs.mapbox.com/mapbox-gl-js/example/animate-point-along-route/)
 - [ ] `mapbox-026-appearances` → `examples/mapbox/026-appearances/` — [Appearances](https://docs.mapbox.com/mapbox-gl-js/example/appearances/)
-- [ ] `mapbox-027-attribution-position` → `examples/mapbox/027-attribution-position/` — [Attribution Position](https://docs.mapbox.com/mapbox-gl-js/example/attribution-position/)
+- [x] `mapbox-027-attribution-position` → `examples/mapbox/027-attribution-position/` — [Attribution Position](https://docs.mapbox.com/mapbox-gl-js/example/attribution-position/)
 - [ ] `mapbox-028-camera-animation` → `examples/mapbox/028-camera-animation/` — [Camera Animation](https://docs.mapbox.com/mapbox-gl-js/example/camera-animation/)
 - [ ] `mapbox-029-canvas-source` → `examples/mapbox/029-canvas-source/` — [Canvas Source](https://docs.mapbox.com/mapbox-gl-js/example/canvas-source/)
 - [ ] `mapbox-030-center-on-feature` → `examples/mapbox/030-center-on-feature/` — [Center On Feature](https://docs.mapbox.com/mapbox-gl-js/example/center-on-feature/)
@@ -412,7 +412,7 @@
 - [ ] `mapbox-035-clip-layer-building` → `examples/mapbox/035-clip-layer-building/` — [Clip Layer Building](https://docs.mapbox.com/mapbox-gl-js/example/clip-layer-building/)
 - [ ] `mapbox-036-cluster` → `examples/mapbox/036-cluster/` — [Cluster](https://docs.mapbox.com/mapbox-gl-js/example/cluster/)
 - [ ] `mapbox-037-cluster-html` → `examples/mapbox/037-cluster-html/` — [Cluster Html](https://docs.mapbox.com/mapbox-gl-js/example/cluster-html/)
-- [ ] `mapbox-038-color-switcher` → `examples/mapbox/038-color-switcher/` — [Color Switcher](https://docs.mapbox.com/mapbox-gl-js/example/color-switcher/)
+- [x] `mapbox-038-color-switcher` → `examples/mapbox/038-color-switcher/` — [Color Switcher](https://docs.mapbox.com/mapbox-gl-js/example/color-switcher/)
 - [ ] `mapbox-039-cooperative-gestures` → `examples/mapbox/039-cooperative-gestures/` — [Cooperative Gestures](https://docs.mapbox.com/mapbox-gl-js/example/cooperative-gestures/)
 - [ ] `mapbox-040-custom-colorized-vector-icons` → `examples/mapbox/040-custom-colorized-vector-icons/` — [Custom Colorized Vector Icons](https://docs.mapbox.com/mapbox-gl-js/example/custom-colorized-vector-icons/)
 - [ ] `mapbox-041-custom-marker-icons` → `examples/mapbox/041-custom-marker-icons/` — [Custom Marker Icons](https://docs.mapbox.com/mapbox-gl-js/example/custom-marker-icons/)
@@ -908,5 +908,5 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **65 件**（maplibre-010、011、012、013、018、025、027、034、040、041、048、053、056、061、069、070、071、072、073、084、mapbox-009、018、019、022、045、049、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **69 件**（maplibre-010、011、012、013、017、018、025、027、034、040、041、048、049、053、056、061、069、070、071、072、073、084、mapbox-009、018、019、022、027、038、045、049、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

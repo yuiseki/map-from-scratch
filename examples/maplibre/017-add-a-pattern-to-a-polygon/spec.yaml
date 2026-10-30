@@ -1,0 +1,119 @@
+id: maplibre-017-add-a-pattern-to-a-polygon
+request: >-
+  コロラド州を覆うポリゴンを、画像ファイルではなく生成したチェッカーパターンで塗った
+  地図を表示したい。パターンは画面に固定されたままポリゴンに沿ってクリップされ、
+  ドラッグでパン、ホイールで拡大縮小できる。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: パターンは起動時に生成し、画像の取得・デコードを持ち込まない
+  - id: quick-start
+    need: ページを開いて即座に地図とパターンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: pattern-clipping
+    need: パターンがポリゴンの輪郭で正確にクリップされ、画面座標に固定される
+    unmeasured: verification の checks でパターンの周期・内外のピクセルを検証
+  - id: real-basemap
+    need: 地域スケール（zoom 6）で平坦な陸地塗りだけにならず、実際の道路・地名が背景に出る
+    unmeasured: verification の basemap-drawn でタイル取得後の色数とタイル枚数を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5600, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/017-add-a-pattern-to-a-polygon/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/017-add-a-pattern-to-a-polygon/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-017-add-a-pattern-to-a-polygon/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - コロラドの矩形（経度 -109–-102、緯度 37–41）は描画器内の定数
+
+performance_knowledge:
+  - id: canvas-pattern-is-the-whole-feature
+    finding: 2色のチェッカーを 24×24 のオフスクリーンに一度描いて `createPattern(tile, 'repeat')` を作れば、ポリゴンは通常の fill 1 回でパターン塗りになる。画像の取得もデコードもタイルのループ描画も不要
+    evidence: pattern-fill-visible が 21×21 のサンプルで両色を検出、再描画 p95 は 1 ms 未満
+  - id: checker-avoids-antialiasing
+    finding: 斜めストライプはタイル境界でアンチエイリアスの継ぎ目が出るが、12 px のチェッカーは矩形だけで構成されるため、タイル境界でも画素値が完全一致し、周期検証を厳密等号で行える
+    evidence: pattern-is-periodic が +24 px で同一色、+12 px で別色を厳密比較
+  - id: screen-anchored-pattern
+    finding: CanvasPattern は塗り時の変換で画面座標に固定される。地図をパンするとポリゴンは動くがパターンの位相は動かない。これは MapLibre の fill-pattern が画面空間に固定されるのと同じ挙動
+    evidence: pattern-follows-polygon-on-pan が移動後の輪郭内でパターン色、外で背景色
+  - id: flat-fill-is-not-a-basemap
+    finding: zoom 6 のコロラドは Natural Earth 110m 陸地の内側なので、陸地塗りだけでは画面が一面ベージュになり地図に見えない。OSM Carto のラスタタイルを重ね、陸地はタイル到着までのプレースホルダにする
+    evidence: basemap-drawn が可視タイル 4/4 ready で 40 色超（平坦塗りは 3 色程度）
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/017-add-a-pattern-to-a-polygon/index.html
+      - examples/maplibre/017-add-a-pattern-to-a-polygon/main.ts
+      - examples/maplibre/017-add-a-pattern-to-a-polygon/pattern.ts
+    dependencies: []
+    why: 単一ポリゴンのパターン塗りは CanvasPattern が最小。画像リソースも追加コードも要らない
+  alternatives:
+    - option: 画像を読み込んで createPattern する
+      rejected_because: 取得・デコード・CORS の考慮が増え、初回フレームに間に合わないことがある
+    - option: WebGL2 でテクスチャを repeat する
+      rejected_because: 1ポリゴンにテクスチャユニットとシェーダーを用意する利点がない
+  not_doing: [3D地形, 地名ラベル, 複数パターン, パターンのズーム追従, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: basemap-drawn
+      what: タイル到着後に地域スケールの背景地図が描かれている
+      how: 可視タイルがすべて ready になるまで待ち、画面全体の異なる色数を数える
+      expected: 'baseLoaded、可視タイル >= 2 がすべて ready、異なる色 > 40'
+    - id: pattern-fill-visible
+      what: ポリゴン内部が2色のチェッカーで塗られている
+      how: 内部 40×40 px を 2 px 間隔で走査し、2色それぞれの画素数を数える
+      expected: '黄と青がそれぞれ 50 サンプル以上'
+    - id: pattern-is-periodic
+      what: パターンは 12 px で色が入れ替わり 24 px で同じ色に戻る
+      how: 同一行の +0 / +12 / +24 px と +12 px 下のピクセルを厳密比較
+      expected: '+24 px は同一色、+12 px は別色'
+    - id: pattern-follows-polygon-on-pan
+      what: パン後もパターンはポリゴンの新しい輪郭内だけに現れる
+      how: 24×6 px パン後の左辺から 6 px 内側と 4 px 外側を比較
+      expected: '左辺が +24 px、内側はパターン色、外側はパターン色でない'
+    - id: pattern-anchors-on-zoom
+      what: ズームしてもポリゴンの輪郭が地理座標に固定される
+      how: zoom 7 の左辺の内側 6 px と外側 4 px を比較
+      expected: '内側はパターン色、外側はパターン色でない'
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでカーソル下の点が動かない
+      how: ポリゴン中心を zoomAtPoint(…, 7.5) し前後の画面位置を比較
+      expected: '移動 < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする

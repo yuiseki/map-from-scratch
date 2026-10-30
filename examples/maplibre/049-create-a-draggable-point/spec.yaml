@@ -1,0 +1,108 @@
+id: maplibre-049-create-a-draggable-point
+request: >-
+  経度0・緯度0に青い点を1つ置き、その点をドラッグして好きな地理座標へ動かせる
+  地図を表示したい。点以外をドラッグすると地図がパンし、ホイールで拡大縮小できる。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 点1個のドラッグに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と点が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: 点のドラッグと地図のパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: drag-accuracy
+    need: 点を掴んだ位置のオフセットを保ったまま、ポインタの地理座標へ正確に動く
+    unmeasured: verification の checks でドラッグ後の画面位置と緯度経度を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/049-create-a-draggable-point/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/049-create-a-draggable-point/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-049-create-a-draggable-point/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: grab-offset-must-be-kept
+    finding: ドラッグ開始時に「点の中心 - ポインタ」を保存しないと、点がポインタ位置へ飛ぶ。掴んだ位置のオフセットを足して地理座標へ逆投影する
+    evidence: point-drags-to-pointer が 80×50 px の移動後に緯度経度も期待値一致
+  - id: hit-first-then-pan
+    finding: pointerdown で点との距離 14 px を先に判定し、当たらなければパンに回す。1 つのリスナーで 2 つの操作を競合なく分けられる
+    evidence: point-drag-does-not-pan と map-pans-away-from-point が同時に PASS
+  - id: point-sprite-is-a-blit
+    finding: 点は DPR 倍のオフスクリーンに一度だけ描き、毎フレーム drawImage でブリットする。図形のパス生成はリサイズ時だけ
+    evidence: redraw_ms p95 が 1 ms 未満
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/049-create-a-draggable-point/index.html
+      - examples/maplibre/049-create-a-draggable-point/main.ts
+      - examples/maplibre/049-create-a-draggable-point/point.ts
+    dependencies: []
+    why: 点1個のドラッグは Canvas 2D のパス描画と距離判定だけで足りる
+  alternatives:
+    - option: DOM の Marker 要素
+      rejected_because: ドラッグ中の translate 同期とヒット判定が DOM とキャンバスに分裂するため
+    - option: WebGL2 のポイントスプライト
+      rejected_because: 1点には初期化コストが見合わない
+  not_doing: [3D地形, 地名ラベル, 複数の点, タッチのピンチ, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: draggable-point-visible
+      what: 経度0・緯度0に青い点が描かれている
+      how: 点の中心から 3 px のピクセルと緯度経度を検証
+      expected: '青 (r<70, 80<g<150, b>170)、lnglat ≈ (0,0)'
+    - id: point-drags-to-pointer
+      what: 80×50 px のドラッグで点が同じ量だけ動き、緯度経度も一致する
+      how: 点の中心から pointerdown/move/up を送り、画面位置と逆投影値を比較
+      expected: 'dx=80, dy=50、lnglat が期待値と差 0.05 以内'
+    - id: point-drag-does-not-pan
+      what: 点のドラッグでは地図がパンしない
+      how: ドラッグ後の中心座標を検証
+      expected: '中心が (0.5, 0.5) のまま'
+    - id: map-pans-away-from-point
+      what: 点以外のドラッグで地図がパンし、点は地図に追従する
+      how: (200,200)→(230,220) のドラッグ後の中心と点の位置を検証
+      expected: '中心が (-30/scale, -20/scale)、点が +30, +20 px'
+    - id: wheel-zoom-keeps-point
+      what: ホイールズームでカーソル下の点が動かない
+      how: 点の位置を zoomAtPoint(…, 3.5) し前後を比較
+      expected: '移動 < 1.5 px'
+  harness:
+    - contextlost が起きたらエラーにする
