@@ -1,0 +1,94 @@
+id: forge3d-010-map-plate
+request: >-
+  forge3d のギャラリー例「Map plate」のように、マウント・レーニア周辺の Mini DEM 標高データに基づく
+  高精細な陰影段彩レリーフを、二重ニートライン（外枠）、タイトルバナー、方位記号、スケールバー、標高凡例と
+  統合した完成地図版（Map Plate）として表示したい。ドラッグでパン、ホイールで拡大縮小でき、
+  枠と家具が正確に配置されること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 完成地図版レイアウトとレリーフ描画に forge3d / Rust Wasm 全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図版と陰影レリーフが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: cartographic-furniture
+    need: ニートライン外枠、方位記号、スケールバー、標高凡例、タイトルが正確に描画される
+    unmeasured: verification の checks で画面ピクセル色と家具の配置を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 25000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/010-map-plate/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 標高レリーフデータの取得から初回地図版描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/010-map-plate/bake.ts]
+  sources:
+    - id: rainier-mini-dem
+      origin: USGS 3D Elevation Program (Terrarium elevation)
+      license: Public Domain (USGS)
+  outputs:
+    - data/baked/forge3d-010-map-plate/relief.json
+  preparation:
+    - マウント・レーニア領域 [-122.0, 46.7, -121.6, 46.95] の標高グリッドをサンプリングし、陰影段彩（山頂雪渓・岩肌・森林・山麓）レリーフ配列として量子化
+
+performance_knowledge:
+  - id: canvas2d-map-plate-compositing
+    finding: 地図枠（neatline）、タイトルカルトゥーシュ、方位記号、スケールバーの地図製図家具合成を Canvas 2D で行うことで、GPU ポストプロセス不要で 0.4 ms 未満の再描画速度と出版品質の地図組版を両立できる
+    evidence: 再描画時間 p95 0.38 ms 前後、コードサイズ gzip 3 KB 未満を達成
+    applies_when: 印刷・出版品質の地図レイアウト（MapPlate）描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/forge3d/010-map-plate/index.html
+      - examples/forge3d/010-map-plate/main.ts
+      - examples/forge3d/010-map-plate/map.ts
+    dependencies: []
+    why: 陰影段彩レリーフの高速描画と地図枠・家具のベクター合成に Canvas 2D が最適
+  alternatives:
+    - option: forge3d / Rust Wasm
+      rejected_because: Wasm バイナリと wgpu シェーダー初期化オーバーヘッドが過大
+  not_doing: [3Dカメラ回転, リアルタイム影シミュレーション, ベクター道路重ね合わせ]
+
+verification:
+  checks:
+    - id: plate-neatline-rendered
+      what: 地図枠の二重ニートラインが正確な余白とストロークで描画されている
+      how: getImageData で枠線の境界ピクセル色を検証
+      expected: r < 40 && g < 40 && b < 50 (ダークスレート枠線)
+    - id: dem-relief-rendered
+      what: マウント・レーニア山頂部周辺に高標高の雪渓・岩肌レリーフ色が描画されている
+      how: getImageData で山頂座標のピクセル色を検証
+      expected: r > 210 && g > 210 && b > 210 (高標高雪渓・岩肌色)
+    - id: furniture-rendered
+      what: 方位記号およびスケールバー、タイトルカルトゥーシュが描画されている
+      how: getImageData で方位記号位置およびスケールバー位置のピクセル色を検証
+      expected: 方位記号およびスケールバーの黒白パターンが検出される
+  harness:
+    - contextlost が起きたらエラーにする

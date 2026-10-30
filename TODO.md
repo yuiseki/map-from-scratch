@@ -872,9 +872,9 @@
 - [ ] `forge3d-007-camera-flyover` → `examples/forge3d/007-camera-flyover/` — [Camera flyover](https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html)
 - [ ] `forge3d-008-vector-export` → `examples/forge3d/008-vector-export/` — [Vector export](https://milos-agathon.github.io/forge3d/gallery/08-vector-export.html)
 - [ ] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
-- [ ] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
+- [x] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **27 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **28 件**（maplibre-010、012、013、056、061、069、070、073、mapbox-009、127、cesium-180、213、openglobus-002、004、tangram-004、010、forge3d-004、010、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
