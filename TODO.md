@@ -874,6 +874,26 @@
 - [x] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
 - [x] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
 
+## kepler.gl: 8 件
+
+出典: [kepler.gl Examples](https://docs.kepler.gl/examples)。掲載されている8件をすべて対象とする。どれも kepler.gl をアプリに組み込む例（単一ページアプリ、モーダル、reducer・テーマ・UI 部品の差し替え、UMD、Node/Express、Mapbox 以外の背景地図）なので、deck.gl の Integrations と同じく、組み込みの仕組みそのものではなく、元例の画面で利用者が見る地図と操作を独立描画器で再現する。
+
+- [ ] `kepler-001-demo-app` → `examples/kepler/001-demo-app/` — [Demo App](https://docs.kepler.gl/examples/demo-app)
+- [ ] `kepler-002-open-modal` → `examples/kepler/002-open-modal/` — [Open Modal](https://docs.kepler.gl/examples/open-modal)
+- [ ] `kepler-003-custom-reducer` → `examples/kepler/003-custom-reducer/` — [Custom Reducer](https://docs.kepler.gl/examples/custom-reducer)
+- [ ] `kepler-004-umd-client` → `examples/kepler/004-umd-client/` — [umd client](https://docs.kepler.gl/examples/umd-client)
+- [ ] `kepler-005-replace-component` → `examples/kepler/005-replace-component/` — [Replace UI Component](https://docs.kepler.gl/examples/replace-component)
+- [ ] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)
+- [ ] `kepler-007-node-app` → `examples/kepler/007-node-app/` — [Node App](https://docs.kepler.gl/examples/node-app)
+- [ ] `kepler-008-custom-map-style` → `examples/kepler/008-custom-map-style/` — [Custom map style](https://github.com/keplergl/kepler.gl/tree/14c35fc048a745faab0c6770cab7a4625ccedda3/examples/custom-map-style/README.md)
+
+## luma.gl: 2 件
+
+出典: [luma.gl Examples](https://luma.gl/examples)。2026-10-30 時点で掲載されている55件のうち、地図系の2件（地球儀の [Globe](https://luma.gl/examples/showcase/globe) と、MapLibre の WebGL2 コンテキストに重ねて描く External WebGL Context）を対象とする。API・チュートリアル・エフェクト・GPGPU・シミュレーションなど地図ではない53件は含めない。
+
+- [ ] `luma-001-globe` → `examples/luma/001-globe/` — [Globe](https://luma.gl/examples/showcase/globe)
+- [ ] `luma-002-external-context` → `examples/luma/002-external-context/` — [External WebGL Context](https://luma.gl/examples/integrations/external-context)
+
 ## WebGPU / 先端ウェブアーキテクチャ
 
 先端 GPU / ブラウザ標準機能を用いた GPU-driven 地図描画の検証。
@@ -884,5 +904,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **55 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **55 件**（maplibre-010、012、013、018、025、053、056、061、069、070、073、084、mapbox-009、018、019、045、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
