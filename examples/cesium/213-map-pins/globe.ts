@@ -8,7 +8,7 @@ export interface MapPin {
 export class CesiumPinsGlobe {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
-  verts: Int16Array = new Int16Array(0);
+  sphere: Float32Array = new Float32Array(0);
   pins: MapPin[] = [];
 
   yaw = 0.0;
@@ -41,7 +41,7 @@ export class CesiumPinsGlobe {
       fetch(`${baseDir}/data/baked/cesium-213-map-pins/pins.json`),
     ]);
     const ab = await landRes.arrayBuffer();
-    this.verts = new Int16Array(ab);
+    this.sphere = toSphere(new Int16Array(ab));
     this.pins = (await pinRes.json()) as MapPin[];
     this.draw();
   }
@@ -98,17 +98,15 @@ export class CesiumPinsGlobe {
     const baseRadius = Math.min(w, h) * 0.38;
     const radius = baseRadius * this.zoomScale;
 
-    const lon = (lonDeg * Math.PI) / 180 - this.yaw;
-    const lat = (latDeg * Math.PI) / 180;
-    const cosLat = Math.cos(lat);
-    const x = cosLat * Math.sin(lon);
-    const y0 = Math.sin(lat);
-    const z0 = cosLat * Math.cos(lon);
-
+    const [X, Y, Z] = xyz(lonDeg, latDeg);
     const cosP = Math.cos(this.pitch);
     const sinP = Math.sin(this.pitch);
-    const y = y0 * cosP - z0 * sinP;
-    const z = y0 * sinP + z0 * cosP;
+    const cosY = Math.cos(this.yaw);
+    const sinY = Math.sin(this.yaw);
+    const zr = Z * cosY + X * sinY;
+    const x = X * cosY - Z * sinY;
+    const y = Y * cosP - zr * sinP;
+    const z = Y * sinP + zr * cosP;
 
     return {
       x: cx + x * radius,
@@ -166,49 +164,40 @@ export class CesiumPinsGlobe {
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3. Land polygons
+    // 3. Land: one path for every front-facing triangle, filled once
     const cosP = Math.cos(this.pitch);
     const sinP = Math.sin(this.pitch);
+    const cosY = Math.cos(this.yaw);
+    const sinY = Math.sin(this.yaw);
+    const s = this.sphere;
+    const px = [0, 0, 0], py = [0, 0, 0], pz = [0, 0, 0];
 
     ctx.fillStyle = '#3e7d43';
-    ctx.strokeStyle = '#3e7d43';
-    ctx.lineWidth = 0.5;
-
-    const verts = this.verts;
-    const totalVerts = verts.length / 2;
-
-    for (let i = 0; i < totalVerts; i += 3) {
-      const lon0 = (verts[i * 2] / 100) * (Math.PI / 180) - this.yaw;
-      const lat0 = (verts[i * 2 + 1] / 100) * (Math.PI / 180);
-      const cosLat0 = Math.cos(lat0);
-      const x0 = cosLat0 * Math.sin(lon0);
-      const y0 = Math.sin(lat0) * cosP - cosLat0 * Math.cos(lon0) * sinP;
-      const z0 = Math.sin(lat0) * sinP + cosLat0 * Math.cos(lon0) * cosP;
-
-      const lon1 = (verts[(i + 1) * 2] / 100) * (Math.PI / 180) - this.yaw;
-      const lat1 = (verts[(i + 1) * 2 + 1] / 100) * (Math.PI / 180);
-      const cosLat1 = Math.cos(lat1);
-      const x1 = cosLat1 * Math.sin(lon1);
-      const y1 = Math.sin(lat1) * cosP - cosLat1 * Math.cos(lon1) * sinP;
-      const z1 = Math.sin(lat1) * sinP + cosLat1 * Math.cos(lon1) * cosP;
-
-      const lon2 = (verts[(i + 2) * 2] / 100) * (Math.PI / 180) - this.yaw;
-      const lat2 = (verts[(i + 2) * 2 + 1] / 100) * (Math.PI / 180);
-      const cosLat2 = Math.cos(lat2);
-      const x2 = cosLat2 * Math.sin(lon2);
-      const y2 = Math.sin(lat2) * cosP - cosLat2 * Math.cos(lon2) * sinP;
-      const z2 = Math.sin(lat2) * sinP + cosLat2 * Math.cos(lon2) * cosP;
-
-      if (z0 + z1 + z2 <= 0) continue;
-
-      ctx.beginPath();
-      ctx.moveTo(cx + x0 * radius, cy - y0 * radius);
-      ctx.lineTo(cx + x1 * radius, cy - y1 * radius);
-      ctx.lineTo(cx + x2 * radius, cy - y2 * radius);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i < s.length; i += 9) {
+      let front = 0;
+      for (let k = 0; k < 3; k++) {
+        const X = s[i + k * 3], Y = s[i + k * 3 + 1], Z = s[i + k * 3 + 2];
+        const zr = Z * cosY + X * sinY;
+        px[k] = X * cosY - Z * sinY;
+        py[k] = Y * cosP - zr * sinP;
+        pz[k] = Y * sinP + zr * cosP;
+        if (pz[k] > 0) front++;
+      }
+      if (front === 0) continue;
+      // Across the horizon: put the far corners on the rim.
+      if (front < 3) {
+        for (let k = 0; k < 3; k++) {
+          if (pz[k] > 0) continue;
+          const n = Math.hypot(px[k], py[k]) || 1;
+          px[k] /= n; py[k] /= n;
+        }
+      }
+      ctx.moveTo(cx + px[0] * radius, cy - py[0] * radius);
+      ctx.lineTo(cx + px[1] * radius, cy - py[1] * radius);
+      ctx.lineTo(cx + px[2] * radius, cy - py[2] * radius);
     }
+    ctx.fill();
 
     // 4. Spherical shading
     const shadeGrad = ctx.createRadialGradient(
@@ -284,4 +273,30 @@ export class CesiumPinsGlobe {
 
     ctx.restore();
   }
+}
+
+// Split earcut triangles (lon, lat x 100) to edges <= MAX_EDGE deg as unit xyz:
+// big flat ones crossing the horizon folded over the ocean.
+const MAX_EDGE = 20;
+type LL = [number, number];
+function xyz(lon: number, lat: number): number[] {
+  const l = lon * Math.PI / 180, p = lat * Math.PI / 180;
+  return [Math.cos(p) * Math.sin(l), Math.sin(p), Math.cos(p) * Math.cos(l)];
+}
+function toSphere(v: Int16Array): Float32Array {
+  const out: number[] = [];
+  const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  const split = (a: LL, b: LL, c: LL): void => {
+    if (d(b, c) > d(a, b) && d(b, c) >= d(c, a)) return split(b, c, a);
+    if (d(c, a) > d(a, b)) return split(c, a, b);
+    if (d(a, b) > MAX_EDGE) {
+      const h: LL = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      split(a, h, c);
+      return split(h, b, c);
+    }
+    for (const [l, p] of [a, b, c]) out.push(...xyz(l, p));
+  };
+  const at = (i: number): LL => [v[i] / 100, v[i + 1] / 100];
+  for (let i = 0; i + 5 < v.length; i += 6) split(at(i), at(i + 2), at(i + 4));
+  return new Float32Array(out);
 }

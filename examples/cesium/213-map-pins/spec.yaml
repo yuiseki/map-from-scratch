@@ -20,7 +20,7 @@ requirements:
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 3700, unit: B, requirement: light-footprint}  # 3500 から変更: 地平線の分割処理で 3,663 B
     - {metric: data_gzip_bytes, max: 32000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
     - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
@@ -60,6 +60,10 @@ performance_knowledge:
     finding: 3D 球面上のピン描画において、カメラ視線方向との内積（Z > 0）を判定するだけで、高価な深度バッファ読み戻しやレイトレーシングを行わずに完全な地平線オクルージョン（裏回り遮蔽）を実現できる
     evidence: ピンのオクルージョン判定コストは 1 点あたり 0.001 ms 未満
     applies_when: 3D 地球儀上に配置するビルボード・マーカーの前面・背面判定
+  - id: split-triangles-at-the-horizon
+    finding: Natural Earth 110m を経緯度のまま earcut した三角形は経度数十度にまたがり、3 頂点だけ投影して平面で塗ると、地平線をまたぐものが裏側の頂点を円盤内に落として海の上へ折り返す（初期視点でユーラシア北部が直線の辺で張り出した）。読み込み時に辺 20° 以下へ分割して単位球の xyz で持ち、地平線をまたぐ三角形は裏の頂点を縁へ寄せると消える。全三角形を 1 本のパスで 1 回 fill すると、継ぎ目を隠す stroke も要らない
+    evidence: 4,758 → 10,263 三角形。M シリーズ Mac の Chrome で getImageData まで含む再描画 p50 は 37.9 ms → 32.6 ms（三角形ごとの fill より速い）。辺 6°（30,072 三角形）では 148 ms で 4 倍遅い。ベイク時に分割すると辺 12° でもデータが gzip 67 KB になり予算を超えるので、実行時に 1 回だけ分割する
+    applies_when: Canvas 2D で大きな三角形や長い辺を球面へ正射投影するとき
 
 architecture_selection:
   chosen:

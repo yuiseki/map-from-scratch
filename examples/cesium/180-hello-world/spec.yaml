@@ -60,6 +60,10 @@ performance_knowledge:
   - id: spherical-clip-gradient-depth
     finding: 球面外周への clip() と太陽光・大気層・球面減光のラジアルグラデーションを組み合わせることで、3D シェーダーと同等の立体感と大気光を Canvas 2D だけで表現できる
     evidence: 描画コール数数十回でリアルな 3D 地球儀の外観を実現
+  - id: split-triangles-at-the-horizon
+    finding: Natural Earth 110m を経緯度のまま earcut した三角形は経度数十度にまたがり、3 頂点だけ投影して平面で塗ると、地平線をまたぐものが裏側の頂点を円盤内に落として海の上へ折り返す（初期視点でユーラシア北部が直線の辺で張り出した）。読み込み時に辺 20° 以下へ分割して単位球の xyz で持ち、地平線をまたぐ三角形は裏の頂点を縁へ寄せると消える。全三角形を 1 本のパスで 1 回 fill すると、継ぎ目を隠す stroke も要らない
+    evidence: 4,758 → 10,263 三角形。M シリーズ Mac の Chrome で getImageData まで含む再描画 p50 は 37.9 ms → 32.6 ms（三角形ごとの fill より速い）。辺 6°（30,072 三角形）では 148 ms で 4 倍遅い。ベイク時に分割すると辺 12° でもデータが gzip 67 KB になり予算を超えるので、実行時に 1 回だけ分割する
+    applies_when: Canvas 2D で大きな三角形や長い辺を球面へ正射投影するとき
 
 architecture_selection:
   chosen:
