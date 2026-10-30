@@ -95,14 +95,16 @@ interpolation, and REQUEST.md says so. Read REQUEST.md before reporting.
 
 Seen once so far.
 
-### Wheel zoom about the screen centre (repeated: about 30 flat 2D examples)
+### Wheel zoom about the screen centre (repeated: 26 flat 2D examples)
 
 - Screen: the place under the pointer slides away while zooming; MapLibre,
   Leaflet and Mapbox keep it under the pointer.
 - Why: the Canvas 2D templates call `setZoom(zoom ± d)` without the pointer
-  position. Of the flat-map examples, the maplibre, mapbox, leaflet, tangram,
-  openglobus and forge3d families all do this; 07, 10, 19, 20, 24 and most
-  deckgl examples keep the point under the pointer.
+  position. Counted from the wheel handlers that never read the pointer
+  (2026-10-30): 04, 26, deckgl 016, forge3d 004, 008 and 010, leaflet 001
+  and 005, mapbox 009, 018 and 127, all nine maplibre examples, openglobus
+  002, 004 and 009, tangram 001, 004 and 010. 07, 10, 19, 20, 24 and the
+  other deckgl examples keep the point under the pointer.
 - Fix: convert the pointer to world coordinates before the zoom change and
   move the centre so it maps back to the same pixel afterwards.
 - Orbit cameras on a globe or a 3D scene may zoom to the target instead; say
