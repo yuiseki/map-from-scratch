@@ -1,0 +1,101 @@
+id: kepler-005-replace-component
+request: >-
+  kepler.gl の Replace UI Component サンプルと同じ意図で、内部 UI 部品
+  （ヘッダー、追加統計パネル）をカスタム実装に動的に差し替え、地図描画器の状態を
+  損なわずに共存させられることを、外部ライブラリ（React, Redux, deck.gl, Mapbox）なしで再現したい。
+
+requirements:
+  - id: zero-dependency-footprint
+    need: React / Redux / deck.gl / Mapbox を排除し、軽量な単一バイナリと標準 WebGL2 で完結させる
+    rationale: 複雑なコンポーネントインジェクションフレームワークを用いず、スロット方式のコンポーネント置換で軽量化
+  - id: quick-start
+    need: 初回マウントから地震点群の描画まで瞬時に完了する
+    rationale: 900 ms 以内に初回描画
+  - id: component-hot-swapping
+    need: ヘッダーやサイドバーウィジェットを動的に差し替えても WebGL2 地図コンテキストと状態が維持される
+    unmeasured: verification checks でスワップ前後の DOM とキャンバス描画を検証
+  - id: smooth-interaction
+    need: コンポーネント差し替え後も 60 fps でのパン・ズーム操作を維持する
+    rationale: 60 Hz の1フレームは 16.7 ms。再描画時間を 3 ms 以下に抑える
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: data_gzip_bytes, max: 680000, unit: B, requirement: zero-dependency-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 900, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/005-replace-component/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地震バイナリデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/kepler/005-replace-component/bake.ts]
+  sources:
+    - id: kepler-earthquakes
+      origin: https://raw.githubusercontent.com/keplergl/kepler.gl-data/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes/data.csv
+      license: Public Domain (USGS)
+    - id: ne-110m-land
+      origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
+      license: Public Domain
+  outputs:
+    - data/baked/kepler-005-replace-component/earthquakes.bin
+  preparation:
+    - USGS 54,936 件の地震座標を Mercator [0, 1] に事前投影し、y座標順にソートして gzip エントロピーを圧縮
+    - Natural Earth 110m 陸地境界ポリゴンを earcut でベイク時に三角形分割し、背景メッシュとして同梱
+
+performance_knowledge:
+  - id: slot-based-component-replacement
+    finding: 地図キャンバスを含むレイアウトと UI スロット（ヘッダー、追加パネル）を疎結合に保つことで、UI スロットの DOM 再構築時にも WebGL コンテキストやバッファへの悪影響（context lost や再バッファリング）を一切生じさせずに瞬時差し替えが可能
+    evidence: コンポーネント差し替え後も再描画時間は 0.05 ms 前後で安定動作
+    applies_when: ダッシュボード組み込みやホワイトラベル製品向けの UI カスタマイズ
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/kepler/005-replace-component/index.html
+      - examples/kepler/005-replace-component/main.ts
+      - examples/kepler/005-replace-component/map.ts
+    dependencies: []
+    why: 高速な WebGL2 地図描画と軽量スロット機構を組み合わせ、React DI システムのオーバーヘッドを完全排除
+  alternatives:
+    - option: React injectComponents (kepler.gl 本家構成)
+      rejected_because: React 高階コンポーネント（HOC）や React.cloneElement によるランタイムオーバーヘッドが大きいため
+  not_doing: [ネストされたサブコンポーネントの動的ファクトリ注入]
+
+verification:
+  checks:
+    - id: default-component-rendered
+      what: 初期状態でデフォルトヘッダーが描画され追加パネルが存在しない
+      how: headerSlot と extraSlot の DOM を検証
+      expected: defaultHeader && noExtra
+    - id: swap-to-custom-component
+      what: 切り替えボタンによりカスタムヘッダーとカスタム地震統計パネルが注入される
+      how: customHeader と customMetrics の DOM 存在を検証
+      expected: customHeader && customMetrics
+    - id: earthquakes-intact-across-swap
+      what: コンポーネント差し替え後も WebGL2 キャンバスの点群描画が正常に維持されている
+      how: キャンバスピクセル読み戻しで発光ピクセル数を検証
+      expected: nonBgPixels > 5 && pointCount == 54936
+    - id: pan-and-zoom
+      what: パン操作が滑らかに動作する
+      how: 60フレームのパン操作中の redraw_ms を計測
+      expected: p95Redraw < 16.0
+  harness:
+    - contextlost が起きたらエラーにする

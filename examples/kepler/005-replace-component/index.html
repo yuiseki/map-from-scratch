@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Replace UI Component Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #131519; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d3d8e2; }
+    #app { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    /* Top Control Bar */
+    #top-bar {
+      height: 44px;
+      background: #191c23;
+      border-bottom: 1px solid #282f3c;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 20;
+    }
+    .bar-info { font-size: 12px; color: #838d9d; }
+    #toggle-components-btn {
+      padding: 6px 14px;
+      background: #00d1b2;
+      color: #131519;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    #toggle-components-btn:hover { opacity: 0.9; }
+
+    /* Main Container */
+    #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 300px;
+      min-width: 300px;
+      height: 100%;
+      background: #242730;
+      border-right: 1px solid #1f2227;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Replaceable Header Slots */
+    .default-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #1f2227;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .custom-header {
+      padding: 12px 16px;
+      background: linear-gradient(90deg, #1f2838 0%, #151b26 100%);
+      border-bottom: 2px solid #00d1b2;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .custom-header-title { font-size: 13px; font-weight: 800; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .custom-header-sub { font-size: 10px; color: #00d1b2; text-transform: uppercase; font-weight: 700; }
+
+    /* Sidebar Body */
+    .sidebar-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .layer-card { background: #2c313d; border: 1px solid #394250; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .layer-card-title { font-size: 12px; font-weight: 600; color: #fff; display: flex; justify-content: space-between; }
+    .color-ramp { height: 6px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+
+    /* Custom Injected Metrics Component */
+    .custom-metrics-panel {
+      background: #1b212c;
+      border: 1px solid #00d1b244;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .metrics-title { font-size: 11px; font-weight: 700; color: #00d1b2; text-transform: uppercase; }
+    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric-cell { background: #131821; padding: 6px 8px; border-radius: 3px; }
+    .metric-cell-label { font-size: 9px; color: #7b8494; text-transform: uppercase; }
+    .metric-cell-val { font-size: 13px; font-weight: 700; color: #fff; font-family: monospace; }
+
+    /* Map Area */
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map-canvas { width: 100%; height: 100%; display: block; }
+    #legend {
+      position: absolute; bottom: 16px; right: 16px; width: 180px; background: #242730; border: 1px solid #3a414e; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: #8c96a5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Top Control Bar -->
+    <div id="top-bar">
+      <span class="bar-info">kepler.gl injectComponents pattern</span>
+      <button id="toggle-components-btn">Swap to Custom Components</button>
+    </div>
+
+    <div id="main-container">
+      <div id="sidebar">
+        <!-- Replaced header slot -->
+        <div id="header-slot">
+          <div class="default-header">
+            <span style="color: #00d1b2; font-weight: 900;">K</span> kepler.gl Default Header
+          </div>
+        </div>
+
+        <div class="sidebar-body">
+          <div class="layer-card">
+            <div class="layer-card-title">
+              <span>earthquakes</span>
+              <span style="font-size: 10px; color: #8c96a5;">Point</span>
+            </div>
+            <div class="color-ramp"></div>
+            <div style="font-size: 11px; color: #838d9d; display: flex; justify-content: space-between;">
+              <span>Mag 2.5 - 7.2</span>
+              <span>54,936 pts</span>
+            </div>
+          </div>
+
+          <!-- Replaced extra component slot -->
+          <div id="extra-slot"></div>
+        </div>
+      </div>
+
+      <div id="map-container">
+        <canvas id="map-canvas"></canvas>
+        <div id="legend">
+          <span class="legend-title">Magnitude</span>
+          <div class="legend-gradient"></div>
+          <div class="legend-ticks">
+            <span>2.5</span>
+            <span>4.5</span>
+            <span>6.5+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
