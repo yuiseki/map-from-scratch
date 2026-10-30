@@ -15,6 +15,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
+import { galleries, galleryOf, indexPages, toRoot } from './site-pages.ts';
+import type { IndexPage } from './site-pages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(root, process.argv[2] ?? '.cache/site');
@@ -95,30 +97,21 @@ for (const match of inventory.matchAll(/^- \[[ x]\] `([a-z0-9]+-\d{3}-[^`]+)`/gm
   if (!originalUrls.has(match[1])) throw new Error(`${match[1]}: original gallery URL missing in TODO.md`);
 }
 
-const galleries = [
-  { id: 'maplibre', label: 'MapLibre GL JS' },
-  { id: 'mapbox', label: 'Mapbox GL JS' },
-  { id: 'cesium', label: 'CesiumJS' },
-  { id: 'openglobus', label: 'OpenGlobus' },
-  { id: 'deckgl', label: 'deck.gl' },
-  { id: 'd3', label: 'D3' },
-  { id: 'leaflet', label: 'Leaflet' },
-  { id: 'tangram', label: 'Tangram' },
-  { id: 'forge3d', label: 'forge3d' },
-  { id: 'kepler', label: 'kepler.gl' },
-  { id: 'luma', label: 'luma.gl' },
-  { id: 'webgpu', label: 'WebGPU' },
-  { id: 'opfs', label: 'OPFS' },
-  { id: 'legacy', label: '既存の例' },
-] as const;
-const galleryOf = (dir: string) => galleries.find(({ id }) => dir.startsWith(`examples/${id}/`))?.id ?? 'legacy';
+type Row = { id: string; dir: string; spec: Spec };
 
 // The examples, from spec.yaml, with their latest measurements when present.
-function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
-  const counts = new Map(galleries.map(({ id }) => [id, rows.filter(({ dir }) => galleryOf(dir) === id).length]));
-  const filterButtons = galleries.map(({ id, label }) =>
-    `<button type="button" data-filter="${id}" aria-pressed="false"${counts.get(id) ? '' : ' disabled'}>${label} <span>${counts.get(id)}</span></button>`
+// all: every card, for the counts in the gallery links.
+function indexPage(page: IndexPage<Row>, all: Row[]): string {
+  const up = toRoot(page.path);
+  const counts = new Map(galleries.map(({ id }) => [id, all.filter(({ dir }) => galleryOf(dir) === id).length]));
+  const link = (href: string, label: string, count: number, current: boolean) =>
+    `<a href="${up}${href}"${current ? ' aria-current="page"' : ''}>${label} <span>${count}</span></a>`;
+  const galleryLinks = galleries.map(({ id, label }) => counts.get(id)
+    ? link(`examples/${id}/`, label, counts.get(id)!, page.gallery === id)
+    : `<span class="empty">${label} <span>0</span></span>`
   ).join('\n');
+  const label = galleries.find(({ id }) => id === page.gallery)?.label;
+  const rows = page.rows;
   const items = rows.map(({ id, dir, spec }) => {
     const d = spec.definition!;
     const chosen = d.architecture_selection.chosen;
@@ -136,7 +129,7 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
     }
     const tag = spec.baseline ? ' <span class="tag">比較用</span>' : '';
     const runtimeTag = spec.runtime === 'native' ? ' <span class="tag">ソース・計測結果</span>' : '';
-    const href = spec.runtime === 'browser' ? `${esc(dir)}/` : `${REPO_URL}/tree/main/${esc(dir)}`;
+    const href = spec.runtime === 'browser' ? `${up}${esc(dir)}/` : `${REPO_URL}/tree/main/${esc(dir)}`;
     const action = spec.runtime === 'browser' ? '操作する ↗' : '実装を見る ↗';
     const requestLink = existsSync(join(root, dir, 'REQUEST.md'))
       ? ` ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/REQUEST.md">設計と計測</a>`
@@ -155,7 +148,7 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
 <html lang="ja">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>map-from-scratch</title>
+<title>${label ? `${esc(label)} | ` : ''}map-from-scratch</title>
 <style>
   :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
   @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
@@ -164,10 +157,12 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
   h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
   .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-  .filters button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
-  .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
-  .filters button:disabled { opacity: 0.45; cursor: default; }
-  .filters button span { font-size: 0.85em; opacity: 0.75; }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
   .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
   ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
   li[hidden] { display: none; }
@@ -183,36 +178,22 @@ function indexPage(rows: { id: string; dir: string; spec: Spec }[]): string {
   .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
   a { color: var(--accent); }
 </style>
-<h1>map-from-scratch</h1>
+<h1>${label ? `<a href="${up || './'}">map-from-scratch</a> / ${esc(label)}` : 'map-from-scratch'}</h1>
 <p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="${REPO_URL}/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="${REPO_URL}">GitHub</a></p>
-<nav class="filters" aria-label="元ギャラリーで絞り込み">
-<button type="button" data-filter="all" aria-pressed="true">すべて <span>${rows.length}</span></button>
-${filterButtons}
+<nav class="filters" aria-label="元ギャラリー">
+${link('', 'すべて', all.length, page.gallery === null)}
+${galleryLinks}
 </nav>
-<p class="visible-count" id="visible-count">${rows.length} 件を表示</p>
+<p class="visible-count">${rows.length} 件</p>
 <ul>
 ${items}
 </ul>
-<script>
-  const buttons = [...document.querySelectorAll('[data-filter]')];
-  const cards = [...document.querySelectorAll('li[data-gallery]')];
-  buttons.forEach((button) => button.addEventListener('click', () => {
-    const selected = button.dataset.filter;
-    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-    let visible = 0;
-    cards.forEach((card) => {
-      card.hidden = selected !== 'all' && card.dataset.gallery !== selected;
-      if (!card.hidden) visible++;
-    });
-    document.getElementById('visible-count').textContent = visible + ' 件を表示';
-  }));
-</script>
 `;
 }
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-const rows: { id: string; dir: string; spec: Spec }[] = [];
+const rows: Row[] = [];
 for (const base of ['examples', 'baselines']) {
   for (const name of readdirSync(join(root, base)).sort()) {
     const parent = join(root, base, name);
@@ -231,9 +212,12 @@ for (const base of ['examples', 'baselines']) {
     }
   }
 }
-writeFileSync(join(out, 'index.html'), indexPage(rows));
+for (const page of indexPages(rows)) {
+  mkdirSync(dirname(join(out, page.path)), { recursive: true });
+  writeFileSync(join(out, page.path), indexPage(page, rows));
+}
 writeFileSync(join(out, '.nojekyll'), '');   // serve dot directories (.cache) as they are
 let total = 0;
 const walk = (d: string): void => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else total += statSync(p).size; } };
 walk(out);
-console.log(`site: ${rows.length} cards, ${copied.size} files, ${(total / 2 ** 20).toFixed(1)} MB in ${relative(root, out)}`);
+console.log(`site: ${rows.length} cards on ${indexPages(rows).length} index pages, ${copied.size} files, ${(total / 2 ** 20).toFixed(1)} MB in ${relative(root, out)}`);
