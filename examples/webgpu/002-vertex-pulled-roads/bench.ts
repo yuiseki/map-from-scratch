@@ -54,15 +54,25 @@ export async function runBench(map: RoadMap, firstFrameMs: number): Promise<void
     detail: sampleColor || `no road pixels found (tested ${testCoords.length} points)`,
   });
 
-  // Verification 4: Pan updates road positions
-  const beforePan = await map.readPixel(515, 384);
+  // Verification 4: the roads move with the pointer. Road pixels found
+  // before panBy(50, 30) must be road pixels 50 px right and 30 px down
+  // after it (the vertical pan once ran the wrong way, and this check
+  // passed whenever any road was drawn).
+  const dpr = window.devicePixelRatio || 1;
+  const isRoad = (p: Uint8Array): boolean => p[0] > 35 || p[1] > 35 || p[2] > 40;
+  const found: [number, number][] = [];
+  for (let y = 300; y < 460 && found.length < 8; y += 9) {
+    for (let x = 380; x < 640 && found.length < 8; x += 9) {
+      if (isRoad(await map.readPixel(x * dpr, y * dpr))) found.push([x, y]);
+    }
+  }
   map.panBy(50, 30);
-  const afterPan = await map.readPixel(515, 384);
-  const panPass = beforePan[0] !== afterPan[0] || beforePan[1] !== afterPan[1] || renderedRoadPixels > 0;
+  let moved = 0;
+  for (const [x, y] of found) if (isRoad(await map.readPixel((x + 50) * dpr, (y + 30) * dpr))) moved++;
   emit({
     check: 'pan-updates-road-positions',
-    pass: panPass,
-    detail: `pixel change on pan: before=[${Array.from(beforePan).join(',')}], after=[${Array.from(afterPan).join(',')}]`,
+    pass: found.length === 8 && moved >= 7,
+    detail: `${moved}/${found.length} road pixels found again 50 px right, 30 px down after panBy(50, 30)`,
   });
 
   // Reset view for pan bench

@@ -86,6 +86,16 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
+  // The backing store follows the element's CSS size: a fixed 1024x768
+  // stretched over the window made the map 1.7 times too wide at 1920x843.
+  const fit = (): void => {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round((canvas.clientWidth || 1024) * dpr);
+    canvas.height = Math.round((canvas.clientHeight || 768) * dpr);
+  };
+  fit();
+  window.addEventListener('resize', () => { fit(); render(); });
+
   const isSwiftShader = gpuDesc.toLowerCase().includes('swiftshader');
   let webgpuCtx: any = null;
   let colorTexture: any = null;
@@ -395,17 +405,9 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
 
   canvas.addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-    const w = canvas.width || 1024;
-    const h = canvas.height || 768;
-    const aspect = w / h;
-
-    cx -= (dx / (w / 2)) * (aspect / scale);
-    cy += (dy / (h / 2)) * (1.0 / scale);
+    panBy(e.clientX - lastX, e.clientY - lastY);
     lastX = e.clientX;
     lastY = e.clientY;
-    render();
   });
 
   const stopDrag = (e: PointerEvent) => {
@@ -417,11 +419,30 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   canvas.addEventListener('pointerup', stopDrag);
   canvas.addEventListener('pointercancel', stopDrag);
 
+  // Pan by CSS px. Data y grows south and screen y down, so dragging down
+  // moves cy north (it moved the map up, against the pointer).
+  function panBy(dx: number, dy: number): void {
+    const k = 2 / ((canvas.clientHeight || 768) * scale);
+    cx -= dx * k;
+    cy -= dy * k;
+    render();
+  }
+
+  // Zoom keeping the ground under (x, y) in CSS px still.
+  function zoomAt(factor: number, x: number, y: number): void {
+    const ox = x - (canvas.clientWidth || 1024) / 2, oy = y - (canvas.clientHeight || 768) / 2;
+    const h = canvas.clientHeight || 768;
+    const before = scale;
+    scale = Math.max(0.5, Math.min(20.0, scale * factor));
+    cx += (ox * 2) / h * (1 / before - 1 / scale);
+    cy += (oy * 2) / h * (1 / before - 1 / scale);
+    render();
+  }
+
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    scale = Math.max(0.5, Math.min(20.0, scale * factor));
-    render();
+    const r = canvas.getBoundingClientRect();
+    zoomAt(e.deltaY > 0 ? 0.9 : 1.1, e.clientX - r.left, e.clientY - r.top);
   }, { passive: false });
 
   // Initial render
@@ -437,14 +458,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     },
     gpu: gpuDesc,
     render,
-    panBy(dx: number, dy: number) {
-      const w = canvas.width || 1024;
-      const h = canvas.height || 768;
-      const aspect = w / h;
-      cx -= (dx / (w / 2)) * (aspect / scale);
-      cy += (dy / (h / 2)) * (1.0 / scale);
-      render();
-    },
+    panBy,
     zoomBy(delta: number) {
       scale = Math.max(0.5, Math.min(20.0, scale + delta));
       render();

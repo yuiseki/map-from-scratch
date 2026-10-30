@@ -94,7 +94,7 @@ verification:
       expected: 背景色（#0a0f1d）と異なる道路色（高速道路の橙 #f97316 または都道の白 #e2e8f0）
     - id: pan-updates-road-positions
       what: 地図をパンしたとき、道路の画面上ピクセル位置が正しく追従して更新される
-      how: パン前後の固定画面座標ピクセル色を検証
-      expected: パン前後でピクセル色が変化する
+      how: 中央付近で道路の画素を 8 点探し、panBy(50, 30) の後に 50 px 右・30 px 下で読む
+      expected: 8 点中 7 点以上が道路色
   harness:
     - contextlost が起きたらエラーにする
