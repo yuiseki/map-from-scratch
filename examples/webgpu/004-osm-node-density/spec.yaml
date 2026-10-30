@@ -1,0 +1,103 @@
+id: webgpu-004-osm-node-density
+request: >-
+  東京23区の OSM の全ノード（約 966 万点）の密度をヒートマップで見たい。拡大・移動したら、タイルの粗い集計ではなく、
+  その画面の解像度で数え直してほしい。PC のブラウザで。
+  （04-osm-node-density と同じ依頼を WebGPU の compute で数え、同じ条件で比べる）
+
+requirements:
+  - id: recount-per-view
+    need: その画面の解像度で数え直す
+    unmeasured: 正しさの要件なので verification.checks の count-conservation と counts-match-cpu で確かめる
+  - id: smooth-navigation
+    need: 拡大・移動が滑らか
+    rationale: 04 と同じ。120 Hz の 1 フレーム 8.3 ms。全体表示 (最悪の場合) も同じ基準にする
+  - id: visible
+    need: 密度が画面に出ている
+    unmeasured: verification.checks の shibuya-not-empty と ramp-reaches-bright で確かめる
+  - id: opens
+    need: PC のブラウザで開ける
+    rationale: 04 と同じ。966 万点を生のまま配るのは依頼の前提。ローカル配信で 2 秒以内に最初の絵
+
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: opens}
+    - {metric: data_gzip_bytes, max: 20000000, unit: B, requirement: opens}
+    - {metric: code_gzip_bytes, max: 4000, unit: B, requirement: opens}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/004-osm-node-density/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  # headless Chromium only offers WebGPU on SwiftShader. Compare with 04 run
+  # as MFS_DISPLAY=xvfb bin/mfs bench 04-osm-node-density.
+  display: xvfb
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ページの読み込み (38 MB の取得と差分の復元を含む) から、最初の描画の GPU 完了まで
+      metrics: [first_frame_ms]
+    - id: zoom-path
+      what: 04 と同じ。23 区全体から渋谷駅周辺へ 256 倍までズームして戻る 300 フレーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: whole-view
+      what: 全体表示で止めた 60 フレーム。全点が画面内で、同じピクセルへの atomicAdd が最も競合する
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+    - id: street-view
+      what: 256 倍で止めた 60 フレーム。ほぼ全点が範囲外
+      metrics: [street_cpu_ms, street_frame_ms, street_gpu_ms]
+
+datasets:
+  bake: [node, examples/04-osm-node-density/bake.ts]
+  sources:
+    - id: osm-tokyo23
+      origin: OpenStreetMap、東京 23 区の抽出、2026-08-31 時点 (9,659,934 ノード)。04-osm-node-density と同じファイルを読む
+      license: ODbL (© OpenStreetMap contributors)
+  outputs: [data/baked/04-osm-node-density/nodes.bin]
+  preparation:
+    - 04-osm-node-density の bake をそのまま使う (同じ nodes.bin)
+
+performance_knowledge:
+  - id: same-input-as-04
+    finding: 比べる 2 つの差を数え方だけにするため、データ、点の並び (128 本のストライド)、カメラの式、色、画面の大きさ、経路を 04 と同じにした
+    evidence: counts-match-cpu で、6 倍の表示の全ピクセルの数が CPU の数え直しと一致する
+    applies_when: 描画 API を比べるとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU (compute の atomicAdd と、ワークグループごとの atomicMax)
+    language: TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)
+    gpu: hardware
+    code: [examples/webgpu/004-osm-node-density/main.ts, examples/webgpu/004-osm-node-density/density.ts]
+    dependencies: []
+    why: 04 と同じ依頼を、加算ブレンドでなく compute で数えたときの速さを同じ条件で測る
+  alternatives:
+    - option: WebGL2 の加算ブレンド
+      rejected_because: それが 04。この例は比べる相手として作る
+  not_doing: [タイル, 事前集計, タグや種類での絞り込み, 地名, 背景地図, 点のクリック, WebGPU が無いブラウザへの代替表示]
+
+verification:
+  checks:
+    - id: count-conservation
+      what: 全体が見えているとき、ピクセルごとの数の合計が点の数に一致する
+      how: 0.9 倍の表示で数え、カウントのバッファを読み戻して合計する
+      expected: 9,658,062
+    - id: counts-match-cpu
+      what: ピクセルごとの数が、同じ点を CPU で同じ規則 (f32 の演算) で数えた値と全ピクセルで一致する
+      how: 渋谷駅を中心に 6 倍で数え、カウントのバッファと CPU の数え直しを比べる
+      expected: 違うピクセルが 0
+    - id: shibuya-not-empty
+      what: 画面に出た色で、渋谷駅の位置が「点なし」の色でない
+      how: 同じ画面を描き、キャンバスの全ピクセルを読み戻して中央を見る
+      expected: 背景色 (8,8,15) 以外
+    - id: ramp-reaches-bright
+      what: 色の段階のいちばん明るい色まで画面に出ている
+      how: 同じ画面の全ピクセルの G の最大値を見る
+      expected: G ≥ 200
+  harness:
+    - WebGPU のデバイスが失われたらエラーにする
+    - info.gpu がソフトウェア描画ならエラーにする
