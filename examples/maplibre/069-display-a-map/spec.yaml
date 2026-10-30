@@ -1,0 +1,97 @@
+id: maplibre-069-display-a-map
+request: >-
+  初期位置 [0, 0]、ズーム 1 で世界地図を表示し、左下に MapLibre バッジを配置して、
+  ドラッグでパン、ホイールやボタンで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 単純な世界地図表示に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: map-accuracy
+    need: 海洋と陸地の地理座標が正確に描画され、パンやズーム操作でもずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/069-display-a-map/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/069-display-a-map/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-069-display-a-map/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: minimal-canvas2d-basemap
+    finding: 全世界低ズーム（z0〜z2）の基本地図表示であれば、タイルサーバーや GPU シェーダーパイプラインを使わずに単一のベイク済みポリゴン JSON と Canvas 2D を用いることで、HTTP リクエスト数 1 回、起動時間 10 ms 未満を達成できる
+    evidence: MapLibre GL JS の初回表示が数百ミリ秒を要するのに対し、本実装は p50 8 ms 前後で描画完了
+    applies_when: 世界全体を俯瞰する簡易マップや組み込み用静的・動的ウィジェット
+  - id: horizontal-wrap-around
+    finding: 低ズーム表示時に横方向のタイル循環描画（wrap-around）を行うことで、経度 -180/180 度境界での切れ目を防ぎつつ滑らかなパン操作を実現できる
+    evidence: キャンバス幅とスケールから必要最小限の反復範囲（minWrap〜maxWrap）を計算して不要描画を排除
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/069-display-a-map/index.html
+      - examples/maplibre/069-display-a-map/main.ts
+      - examples/maplibre/069-display-a-map/map.ts
+    dependencies: []
+    why: 基本的な地図表示とパン・ズーム操作のみであれば、Canvas 2D による直接描画が最も小さく高速
+  alternatives:
+    - option: WebGL2
+      rejected_because: シェーダーコンパイルと頂点バッファ管理のオーバーヘッドが大きく、コードサイズが数倍になるため
+    - option: ラスタタイル配信 (XYZ)
+      rejected_because: 多数の画像タイルを HTTP で非同期取得することによる初期表示遅延とネットワーク負荷を避けるため
+  not_doing: [3D地形, 地名ラベル, クラスタリング, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: world-map-rendered
+      what: 画面中央 [0, 0] に海洋ピクセル（水色）、[10, 50]（ヨーロッパ）に陸地ピクセル（淡いベージュ）が描画されている
+      how: getImageData で座標位置のピクセル色を検証
+      expected: ocean: r < 190 && g > 190 && b > 210, land: r > 220 && g > 220 && b > 210
+    - id: map-moves-with-pan
+      what: 地図を (50px, 30px) パンしたとき、陸地ピクセルの描画位置が正確に (+50px, +30px) 移動する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先で陸地ピクセルが検出される
+    - id: map-anchors-on-zoom
+      what: ズームを2に変更しても陸地ポリゴンの地理座標位置が正確に追従する
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算されたスクリーン座標に陸地が描画されている
+  harness:
+    - contextlost が起きたらエラーにする

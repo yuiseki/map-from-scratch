@@ -88,7 +88,7 @@
 - [ ] `maplibre-066-display-a-map-in-a-polar-stereographic-projection` → `examples/maplibre/066-display-a-map-in-a-polar-stereographic-projection/` — [Display a map in a polar stereographic projection](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map-in-a-polar-stereographic-projection/)
 - [ ] `maplibre-067-display-a-map-in-utm-zone-32n` → `examples/maplibre/067-display-a-map-in-utm-zone-32n/` — [Display a map in UTM zone 32N](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map-in-utm-zone-32n/)
 - [ ] `maplibre-068-display-a-map-with-mlt` → `examples/maplibre/068-display-a-map-with-mlt/` — [Display a map with MLT](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map-with-mlt/)
-- [ ] `maplibre-069-display-a-map` → `examples/maplibre/069-display-a-map/` — [Display a map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map/)
+- [x] `maplibre-069-display-a-map` → `examples/maplibre/069-display-a-map/` — [Display a map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-map/)
 - [ ] `maplibre-070-display-a-non-interactive-map` → `examples/maplibre/070-display-a-non-interactive-map/` — [Display a non-interactive map](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-non-interactive-map/)
 - [ ] `maplibre-071-display-a-popup-on-click` → `examples/maplibre/071-display-a-popup-on-click/` — [Display a popup on click](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup-on-click/)
 - [ ] `maplibre-072-display-a-popup-on-hover` → `examples/maplibre/072-display-a-popup-on-hover/` — [Display a popup on hover](https://maplibre.org/maplibre-gl-js/docs/examples/display-a-popup-on-hover/)
@@ -861,5 +861,5 @@
 
 ## 進捗
 
-- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **14 件**（maplibre-010、012、013、056、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **15 件**（maplibre-010、012、013、056、069、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
