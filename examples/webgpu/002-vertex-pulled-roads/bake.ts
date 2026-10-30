@@ -1,6 +1,7 @@
 // examples/webgpu/002-vertex-pulled-roads/bake.ts
 import fs from 'node:fs';
 import path from 'node:path';
+import { source } from '../../../tools/sources.ts';
 
 // Bounding box: Tokyo 23 wards
 // [W, S, E, N] = [139.55, 35.53, 139.92, 35.82]
@@ -33,10 +34,7 @@ const CLASS_MAP: Record<string, number> = {
 };
 
 async function main() {
-  const rawPath = path.resolve('data/raw/tokyo23_highways.json');
-  if (!fs.existsSync(rawPath)) {
-    throw new Error(`Missing raw data: ${rawPath}`);
-  }
+  const rawPath = source('osm-tokyo23-highways');
 
   const rawJson = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
 
@@ -108,9 +106,9 @@ async function main() {
   // In WGSL, can be unpacked as 2 x u32 or unpacked via bitcast.
   // Or Float32 vec2 + Float32 flags: 12 bytes.
   // If we store [x: f32, y: f32, meta: f32] = 12 bytes (aligned to 16 in storage buffer).
-  // With 16 bytes: 88,354 * 16 = 1.38 MB (gzips to 560 KB).
+  // With 16 bytes: 87,904 * 16 = 1.41 MB.
   // If we quantize to Uint16: [x: u16, y: u16, meta: u16, roadId: u16] = 8 bytes.
-  // 88,354 * 8 = 706 KB -> gzips to ~280 KB (< 400 KB budget!).
+  // 87,904 * 8 = 703 KB -> gzips to 427 KB (< 450 KB budget).
   const nodeCount = nodes.length;
   const nodeBuf = Buffer.alloc(nodeCount * 8);
   for (let i = 0; i < nodeCount; i++) {

@@ -12,7 +12,7 @@ export async function runBench(map: RoadMap, firstFrameMs: number): Promise<void
   // Verification 1: Roads loaded
   emit({
     check: 'roads-loaded',
-    pass: map.nodeCount === 88354 && map.roadCount === 11509,
+    pass: map.nodeCount === 87904 && map.roadCount === 11238,
     detail: `roads = ${map.roadCount}, nodes = ${map.nodeCount}, segments = ${map.segmentCount}`,
   });
 

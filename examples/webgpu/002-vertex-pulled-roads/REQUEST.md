@@ -1,6 +1,6 @@
 # webgpu-002-vertex-pulled-roads
 
-東京23区の主要幹線道路網（11,509 路線、88,354 ノード、76,845 区間）を WebGPU で描画するレンダラー。
+東京23区の主要幹線道路網（11,238 路線、87,904 ノード、76,666 区間）を WebGPU で描画するレンダラー。
 CPU 側で一切の線幅展開・三角形分割（line tessellation）・頂点属性バッファの再生成を行わず、道路ノード列を Storage Buffer に保持したまま、Vertex Shader が `@builtin(vertex_index)` から前後ノードをプログラマブルに参照して画面空間の太線・接続（Join）・端点（Cap）を動的に生成する。
 
 - **参照アーキテクチャ**: `pygfx`（`pygfx/renderers/wgpu/wgsl/line.wgsl`）の programmable vertex pulling 設計を検証・翻案
@@ -9,18 +9,24 @@ CPU 側で一切の線幅展開・三角形分割（line tessellation）・頂�
 - **画面空間線幅 & Miter Join**: 画面ピクセル幅に応じた法線押し出し、前後ノード参照によるマイター結合、矩形キャップを WGSL 頂点シェーダー内で直接計算
 - **ゼロ頂点バッファ・ゼロインデックスバッファ**: `draw((nodeCount - 1) * 6)` の単一ドローコールのみで描画し、道路終端ノードはゼロ面積 quad としてハードウェアカリング
 
+## データ
+
+OpenStreetMap の motorway・trunk・primary とその link を、東京23区の矩形 (139.55, 35.53)–(139.92, 35.82) で切り出した Overpass JSON。`tools/sources.ts` の `osm-tokyo23-highways` が自前の Overpass (overpass.yuiseki.net) に問い合わせて `data/raw/tokyo23_highways.json` に置く。公開の Overpass には問い合わせない。このサーバのデータは 2025-09-14T23:59:55Z で止まっているので、何度取得しても同じバイト列になる (2026-10-30 に2回取得して一致)。
+
+最初の版は取得手順のない `data/raw/tokyo23_highways.json` から作っていて、11,509 路線・88,354 ノードだった。同じ条件の取得で 11,238 路線・87,904 ノードになるので、出典のデータ時点が違ったと考えられる。数と下の計測値は再現できるこちらのデータのもの。
+
 ## 計測結果
 
-`MFS_CHROME_FLAGS="--enable-unsafe-webgpu --use-angle=swiftshader" bin/mfs bench webgpu-002-vertex-pulled-roads` を 3 反復実行。
+`MFS_CHROME_FLAGS="--enable-unsafe-webgpu --use-angle=swiftshader" bin/mfs bench webgpu-002-vertex-pulled-roads -n 3` を実行 (2026-10-30)。
 
 | 項目 | 計測値 | 予算 / 目標 | 判定 |
 |---|---|---|---|
-| コード配布サイズ (`code_gzip_bytes`) | 5,820 B | <= 7,000 B | 合格 |
-| データ配布サイズ (`data_gzip_bytes`) | 431,494 B | <= 450,000 B | 合格 |
-| 初回描画時間 (`first_frame_ms` p50) | 108.3 ms | <= 1,200 ms | 合格 |
+| コード配布サイズ (`code_gzip_bytes`) | 5,772 B | <= 7,000 B | 合格 |
+| データ配布サイズ (`data_gzip_bytes`) | 427,400 B | <= 450,000 B | 合格 |
+| 初回描画時間 (`first_frame_ms` p50) | 57.0 ms | <= 1,200 ms | 合格 |
 | 再描画時間 (`redraw_ms` p95) | 0.170 ms | <= 2.0 ms | 合格 |
-| フレーム間隔 (`frame_interval_ms` p95) | 16.67 ms | <= 35.0 ms | 合格 |
-| 道路データロード検証 (`roads-loaded`) | 11,509 路線 / 88,354 ノード | 11,509 路線 | 合格 (3/3) |
+| フレーム間隔 (`frame_interval_ms` p95) | 33.34 ms | <= 35.0 ms | 合格 |
+| 道路データロード検証 (`roads-loaded`) | 11,238 路線 / 87,904 ノード | 11,238 路線 / 87,904 ノード | 合格 (3/3) |
 | 静的 GPU バッファ検証 (`static-gpu-buffers`) | 移動・ズーム時の uploadCount 変化なし (1) | uploadCount == 1 | 合格 (3/3) |
 | 道路描画ピクセル検証 (`roads-rendered`) | 道路通過座標での非背景色描画 | 背景色と異なる | 合格 (3/3) |
 | パン追従検証 (`pan-updates-road-positions`) | パン操作に応じたピクセル座標追従 | 位置追従 | 合格 (3/3) |
@@ -33,7 +39,7 @@ CPU 側で一切の線幅展開・三角形分割（line tessellation）・頂�
 | **頂点バッファ** | 始点・終点用の 2 属性インスタンスバッファ (CPU 整列) | **頂点バッファゼロ** (Storage Buffer に生ノード列をそのまま配置) |
 | **接続部 (Join)** | キャップ拡張のみで誤魔化し（急カーブで重なりや隙間） | **Vertex Pulling による Miter Join 計算** (前後ノード参照) |
 | **カメラ移動時の CPU 処理** | 64 バイト Uniform 転送のみ | **64 バイト Uniform 転送のみ** (頂点再計算ゼロ) |
-| **再描画速度 (`redraw_ms`)** | ~1.05 ms (ネイティブ 120 万区間) | **0.075 ms p50 / 0.170 ms p95** (SwiftShader 7.6 万区間) |
+| **再描画速度 (`redraw_ms`)** | ~1.05 ms (ネイティブ 120 万区間) | **0.100 ms p50 / 0.170 ms p95** (SwiftShader 7.7 万区間) |
 | **依存関係** | X11 / EGL / GLES3 開発ヘッダー | **依存ゼロ** (ブラウザ標準 WebGPU API のみ) |
 
 ## 得られた知見

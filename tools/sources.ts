@@ -172,6 +172,18 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/akita-kumadas-wildlife-sighting/resolve/main/raw/2026-10-26/kumadas.csv',
     copy: true,
   },
+  // OpenStreetMap motorway, trunk and primary roads (and their links) in the
+  // Tokyo 23 wards box, as Overpass JSON with geometry. ODbL. Asked of the
+  // self-hosted Overpass, never a public one; its data stops at
+  // 2025-09-14T23:59:55Z, so the answer does not change between runs. No
+  // local copy.
+  'osm-tokyo23-highways': {
+    out: 'tokyo23_highways.json',
+    local: '',
+    remote: 'https://overpass.yuiseki.net/api/interpreter?data=' + encodeURIComponent(
+      '[out:json][timeout:300];way["highway"~"^(motorway|motorway_link|trunk|trunk_link|primary|primary_link)$"](35.53,139.55,35.82,139.92);out geom;'),
+    copy: true,
+  },
   // OpenStreetMap, Tokyo 23 wards, 2026-08-31. ODbL. Only a local copy:
   // elsewhere, cut it from a Japan extract with osmium extract.
   'osm-tokyo23': {

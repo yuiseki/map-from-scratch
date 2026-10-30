@@ -50,7 +50,7 @@ datasets:
   outputs:
     - data/baked/webgpu-002-vertex-pulled-roads/roads.bin
   preparation:
-    - 東京23区の主要幹線道路 11,509 路線、88,354 ノードを 1 ノード 8 バイトの Storage Buffer 構造体に格納
+    - 東京23区の主要幹線道路 11,238 路線、87,904 ノードを 1 ノード 8 バイトの Storage Buffer 構造体に格納
     - 描画順を細街路（都道）先行、高速道路最前面にソート
 
 performance_knowledge:
@@ -81,9 +81,9 @@ architecture_selection:
 verification:
   checks:
     - id: roads-loaded
-      what: 東京23区の道路 11,509 路線、88,354 ノードがすべて GPU ストレージに配置される
+      what: 東京23区の道路 11,238 路線、87,904 ノードがすべて GPU ストレージに配置される
       how: map.nodeCount および map.roadCount を検証
-      expected: nodeCount === 88354, roadCount === 11509
+      expected: nodeCount === 87904, roadCount === 11238
     - id: static-gpu-buffers
       what: ズームやパンの操作を行っても CPU からの頂点バッファ再生成や書き込みが発生しない
       how: map.uploadCount が初回アップロード（1回）のまま変化しないことを検証
