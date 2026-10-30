@@ -53,21 +53,31 @@ datasets:
     - id: ne-110m-land
       origin: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
       license: Public Domain (Natural Earth)
+  outputs:
+    - data/baked/kepler-008-custom-map-style/earthquakes.bin
 
 performance_knowledge:
-  insights:
-    - 地図スタイルの切り替えは Mapbox/MapLibre ではスタイル JSON の再パースやタイルの再フェッチ、レイヤー再構築のオーバーヘッドを伴うが、専用 WebGL2 描画器では海色・陸地色・境界線色・ポイントシェーダーの Uniform を更新するだけで 0ms オーダーで切り替え可能。
-    - レヤーグループの可視性制御も GPU Uniform のブールフラグで描画パスをスキップするだけで済み、再バッファリングは一切発生しない。
+  - id: style-switch-by-uniforms
+    finding: 地図スタイルの切り替えは Mapbox/MapLibre ではスタイル JSON の再パースやタイルの再フェッチ、レイヤー再構築のオーバーヘッドを伴うが、専用 WebGL2 描画器では海色・陸地色・境界線色・ポイントシェーダーの Uniform を更新するだけで切り替えられる
+    evidence: 未計測 (切り替えにかかる時間は測っていない)。style-switch-light の検査で、切り替え後に背景と陸地の色が変わることは確かめている
+    applies_when: 色だけが違う複数のスタイルを切り替えるとき
+  - id: layer-toggle-skips-pass
+    finding: レイヤーグループの可視性制御は描画パスを飛ばすだけで済み、バッファを作り直さない
+    evidence: 未計測。toggle-land-layer の検査で、陸地を消したときに画面のピクセルが変わることは確かめている
+    applies_when: レイヤーの表示・非表示を切り替えるとき
 
 architecture_selection:
   chosen:
-    tech: TypeScript + WebGL2
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: none
     code:
       - examples/kepler/008-custom-map-style/index.html
       - examples/kepler/008-custom-map-style/main.ts
       - examples/kepler/008-custom-map-style/map.ts
-    data:
-      - data/baked/kepler-008-custom-map-style/earthquakes.bin
+    dependencies: []
+    why: スタイルの切り替えとレイヤーの表示切り替えを、Uniform の更新と描画パスの省略だけで行う
   not_doing:
     - React, Redux, styled-components（ピュア CSS とプレーン DOM で kepler.gl の UI を完全再現）
     - deck.gl, luma.gl, Mapbox GL JS（WebGL2 直接制御）
@@ -76,12 +86,22 @@ architecture_selection:
 verification:
   checks:
     - id: dom-elements-ready
-      title: サイドバーとカスタムスタイルカードが存在すること
+      what: サイドバーとカスタムスタイルカードが存在すること
+      how: DOM 要素の有無を調べる
+      expected: すべて存在する
     - id: initial-dark-style-rendered
-      title: 初期 Dark スタイルで暗い背景色と地震点群が描画されること
+      what: 初期 Dark スタイルで暗い背景色と地震点群が描画されること
+      how: 画面のピクセルを読み戻し、海の色が暗いことを確かめる
+      expected: 暗い海の色
     - id: style-switch-light
-      title: Light スタイルに切り替えた際に背景と陸地の色が明色に更新されること
+      what: Light スタイルに切り替えた際に背景と陸地の色が明色に更新されること
+      how: Light に切り替えて画面のピクセルを読み戻す
+      expected: 明るい海の色
     - id: toggle-land-layer
-      title: Land レイヤーグループを非表示にした際にピクセル変化が生じること
+      what: Land レイヤーグループを非表示にした際にピクセル変化が生じること
+      how: 陸地の表示を切り替える前後で画面のピクセルを比べる
+      expected: ピクセルが変わる
     - id: smooth-pan
-      title: パン操作でピクセルが変化し描画エラーがないこと
+      what: パン操作でピクセルが変化し描画エラーがないこと
+      how: パンの前後で画面のピクセルを比べる
+      expected: ピクセルが変わり、エラーがない

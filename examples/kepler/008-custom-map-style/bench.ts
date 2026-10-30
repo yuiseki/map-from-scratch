@@ -1,22 +1,10 @@
 // examples/kepler/008-custom-map-style/bench.ts
+import { emit, glRenderer } from '../../../harness/page/bench.ts';
 import type { KeplerCustomStyleMap } from './map.ts';
 
-declare global {
-  interface Window {
-    __mfsEmit?: (data: unknown) => void;
-  }
-}
-
 export async function runBench(map: KeplerCustomStyleMap, firstFrameMs: number) {
-  const emit = window.__mfsEmit || ((d) => console.log('mfsEmit:', d));
-
-  // Scenario 1: First frame metric
-  emit({
-    scenario: 'first-frame',
-    metrics: {
-      first_frame_ms: firstFrameMs,
-    },
-  });
+  emit({ info: { gpu: glRenderer(map.gl) } });
+  emit({ metric: 'first_frame_ms', value: firstFrameMs });
 
   // Verification Check 1: DOM Elements Ready
   const sidebar = document.getElementById('sidebar');
@@ -94,15 +82,8 @@ export async function runBench(map: KeplerCustomStyleMap, firstFrameMs: number) 
     detail: `Panned pixel before: ${pxBeforePan.join(',')}, after: ${pxAfterPan.join(',')}`,
   });
 
-  redrawTimes.sort((a, b) => a - b);
-  intervals.sort((a, b) => a - b);
-  const p95Idx = Math.floor(redrawTimes.length * 0.95);
-
-  emit({
-    scenario: 'pan',
-    metrics: {
-      redraw_ms: redrawTimes[p95Idx],
-      frame_interval_ms: intervals[p95Idx],
-    },
-  });
+  // The harness takes every sample and computes the percentiles itself.
+  emit({ metric: 'redraw_ms', values: redrawTimes });
+  emit({ metric: 'frame_interval_ms', values: intervals });
+  emit({ done: true });
 }

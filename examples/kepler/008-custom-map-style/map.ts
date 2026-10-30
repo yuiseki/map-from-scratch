@@ -149,7 +149,7 @@ function createProgram(gl: WebGL2RenderingContext, vs: string, fs: string): WebG
 }
 
 export class KeplerCustomStyleMap {
-  private gl: WebGL2RenderingContext;
+  gl: WebGL2RenderingContext;
   private landProg: WebGLProgram;
   private pointProg: WebGLProgram;
 
@@ -170,7 +170,12 @@ export class KeplerCustomStyleMap {
   private showBorders = true;
   private showPoints = true;
 
-  constructor(private canvas: HTMLCanvasElement) {
+  // A plain field: a parameter property is not erasable TypeScript, and the
+  // static server only strips types.
+  private canvas: HTMLCanvasElement;
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
     if (!gl) throw new Error('WebGL2 unsupported');
     this.gl = gl;
