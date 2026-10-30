@@ -1,0 +1,106 @@
+id: forge3d-009-shadow-comparison
+request: >-
+  forge3d のギャラリー例「Shadow Comparison」のように、Mt. Rainier の DEM から作った
+  同じ陰影起伏図を、影（キャストシャドウ）なしと影ありで左右に分割表示し、スライダーで
+  境界を動かして比較したい。パンとホイールズームで地形を動かせること。
+  外部ライブラリなし、Canvas 2D で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 地形の陰影はベイク時に画像として完成させ、実行時に影の計算をしない
+  - id: quick-start
+    need: ページを開いて即座に比較画像が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: パン・ズーム・分割スライダーが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: shadow-comparison
+    need: 影あり側だけが実際に遮蔽された谷を暗くし、日向の斜面は変わらない
+    unmeasured: verification の checks で同一画面座標のピクセル輝度差を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 130000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/009-shadow-comparison/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: relief.bin の取得から初回の左右分割描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/009-shadow-comparison/bake.ts]
+  sources:
+    - id: mapzen-terrarium-z10-165-360
+      origin: AWS Open Data Terrain Tiles (Mapzen terrarium)
+      license: Public Domain / CC0 (elevation data from USGS 3DEP)
+  outputs:
+    - data/baked/forge3d-009-shadow-comparison/relief.bin
+  preparation:
+    - z10/165/360 の terrarium PNG を解読し、200x200 に再標本化した標高から陰影起伏図を作る
+    - 太陽を西北 315°・高度 45°に固定し、Lambert 拡散光と 60 セル先までのレイマーチによる投影影の両方をベイク
+    - 出力は 38 バイトのヘッダ（SHAD, 寸法, 経緯度範囲, 標高, 山頂 uv）+ RGB 面 + 影マスク 1 バイト/テクセル
+
+performance_knowledge:
+  - id: shadow-at-bake-time
+    finding: 投影影のレイマーチ（1テクセルあたり最大60サンプル）を実行時に回す代わりに、影マスクを 1 バイト/テクセルでベイクすると、実行時は 2 枚の画像をクリップして描くだけで済み、パン中の再描画を 3 ms 未満に保てる
+    evidence: 200x200（40,000 テクセル）の影計算をベイクに移し、実行時は base と shadow の 2 枚を X0/Y0/X1/Y1 の整数境界で描くだけにした
+    applies_when: 太陽方向が固定でよい陰影起伏図・地形比較ビューア
+  - id: shared-sample-grid
+    finding: 2 枚のペインを同じ丸め済み矩形（X0 = round(ox), X1 = round(ox + w*s)）で描くと、分割線の左右で同一画面ピクセルが同一テクセルを指し、比較が成立する
+    evidence: verification の cast-shadows-darken が同一座標の輝度差だけを測れる
+    applies_when: スワイプ比較・ビフォーアフター表示
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/forge3d/009-shadow-comparison/index.html
+      - examples/forge3d/009-shadow-comparison/main.ts
+      - examples/forge3d/009-shadow-comparison/relief.ts
+    dependencies: []
+    why: 陰影と影をベイクし、実行時はクリップ付き drawImage 2 回だけにする
+  alternatives:
+    - option: forge3d / Rust Wasm のシャドウマップ
+      rejected_because: 太陽固定の比較画像には Wasm と GPU シェーダーの初期化コストが見合わない
+    - option: 実行時に DEM から陰影を計算
+      rejected_because: フレームごとに 4 万テクセルの法線とレイマーチを回すとパンが滑らかにならない
+  not_doing: [太陽方向の対話的変更, 3D 地形メッシュ, タイルストリーミング, 等高線]
+
+verification:
+  checks:
+    - id: relief-drawn
+      what: DEM の陰影が描かれ、山頂は雪色（無彩色）・低地は森林色（緑）になっている
+      how: getImageData で山頂テクセルと南西低地テクセルのピクセル色を検証
+      expected: 山頂 lum > 60 かつ RGB の最大差 < 30、低地 g > r + 10 かつ g > b
+    - id: cast-shadows-darken
+      what: 影あり側ではベイクが影と判定したテクセルだけが暗くなり、日向のテクセルは変わらない
+      how: 影テクセル 3 点を split 0 と split 1 で同一画面座標から読み、輝度差を比較。日向 1 点は差 < 6
+      expected: 影 3 点すべてで輝度差 > 15
+    - id: pan-moves-terrain
+      what: パンで地形がポインタと 1 対 1 に移動する
+      how: 6 点の色を記録し panBy(40, 30) 後に +（40, 30）px の色と比較
+      expected: 5/6 点以上が全チャネル差 2 以内で一致
+    - id: zoom-keeps-point
+      what: ポインタ位置を中心にズームすると、その地点が同じ画面位置に留まる
+      how: 画面中心で zoom 2 にし、中心テクセルのスクリーン座標のずれを測る
+      expected: ずれ < 1.5 px
+  harness:
+    - contextlost が起きたらエラーにする
