@@ -32,7 +32,7 @@
 - [x] `maplibre-010-add-a-default-marker` → `examples/maplibre/010-add-a-default-marker/` — [Add a default marker](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-default-marker/)
 - [ ] `maplibre-011-add-a-generated-icon-to-the-map` → `examples/maplibre/011-add-a-generated-icon-to-the-map/` — [Add a generated icon to the map](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-generated-icon-to-the-map/)
 - [x] `maplibre-012-add-a-geojson-line` → `examples/maplibre/012-add-a-geojson-line/` — [Add a GeoJSON line](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-line/)
-- [ ] `maplibre-013-add-a-geojson-polygon` → `examples/maplibre/013-add-a-geojson-polygon/` — [Add a GeoJSON polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-polygon/)
+- [x] `maplibre-013-add-a-geojson-polygon` → `examples/maplibre/013-add-a-geojson-polygon/` — [Add a GeoJSON polygon](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-geojson-polygon/)
 - [ ] `maplibre-014-add-a-hillshade-layer` → `examples/maplibre/014-add-a-hillshade-layer/` — [Add a hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-hillshade-layer/)
 - [ ] `maplibre-015-add-a-multidirectional-hillshade-layer` → `examples/maplibre/015-add-a-multidirectional-hillshade-layer/` — [Add a multidirectional hillshade layer](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-multidirectional-hillshade-layer/)
 - [ ] `maplibre-016-add-a-new-layer-below-labels` → `examples/maplibre/016-add-a-new-layer-below-labels/` — [Add a new layer below labels](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-new-layer-below-labels/)
@@ -861,5 +861,5 @@
 
 ## 進捗
 
-- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **13 件**（maplibre-010、012、056、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
+- 対象: **803 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15）。実装済み **14 件**（maplibre-010、012、013、056、deckgl-006、007、008、010、011、012、018、025、d3-016、leaflet-001）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

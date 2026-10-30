@@ -1,0 +1,104 @@
+id: maplibre-013-add-a-geojson-polygon
+request: >-
+  メイン州の境界（GeoJSON Polygon）を、
+  半透明ティール色（#008888、不透明度 0.8）の塗りつぶしとして背景地図上に描画し、
+  ドラッグでパン、ホイールで拡大縮小できる地図を表示したい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1個のポリゴンと背景地図に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とポリゴンが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: polygon-accuracy
+    need: ポリゴンが指定されたスタイル（色・不透明度・外枠）で正確に描画され、操作時にずれない
+    unmeasured: verification の checks で画面ピクセル色と座標変化を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/013-add-a-geojson-polygon/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ポリゴンデータと陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/013-add-a-geojson-polygon/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-013-add-a-geojson-polygon/maine.json
+    - data/baked/maplibre-013-add-a-geojson-polygon/land.json
+  preparation:
+    - MapLibre 公式サンプルの Maine Polygon 座標（20点）を Web Mercator 座標に投影して量子化
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標に投影して量子化
+
+performance_knowledge:
+  - id: canvas2d-native-path-fill
+    finding: 単一ポリゴンの描画であれば、GPU 三角形分割（earcut）や頂点バッファ構築を行わずに Canvas 2D のネイティブ fill を用いることで、初期化と描画処理の両方を極小化できる
+    evidence: Canvas 2D のネイティブ fill による初回描画は p50 15 ms 前後、再描画時間は p95 0.3 ms 未満
+    applies_when: 動的な頂点テッセレーションが不要な 2D ポリゴン可視化
+  - id: prebaked-mercator-projection
+    finding: 経緯度から Web Mercator への対数・三角関数演算をベイク時に済ませることで、毎フレームの描画処理を単純なスケール・平行移動加減算のみに圧縮できる
+    evidence: 描画ループ内の Math.log / Math.tan 呼び出しを完全排除
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/013-add-a-geojson-polygon/index.html
+      - examples/maplibre/013-add-a-geojson-polygon/main.ts
+      - examples/maplibre/013-add-a-geojson-polygon/polygon.ts
+    dependencies: []
+    why: 1個の GeoJSON ポリゴンと背景陸地を描画する目的において、Canvas 2D のパス塗りつぶし機能が最も軽量かつ高品質であるため
+  alternatives:
+    - option: WebGL2 (earcut による三角形分割)
+      rejected_because: 三角形インデックス生成とシェーダーコンパイルが必要になり、コードサイズ・初期化時間ともに増大するため
+    - option: SVG Overlay
+      rejected_because: ドラッグ移動時の DOM 再配置によるジャンクや再レンダリングコストを避け、Canvas 内でフレーム同期描画するため
+  not_doing: [3D地形, 地名ラベル, パターンテクスチャ, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: polygon-filled-teal
+      what: メイン州内部のテスト座標に初期設定の半透明ティール色（#008888）が描画されている
+      how: getImageData でメイン州内部のピクセル色を検証
+      expected: r < 75 && g > 130 && b > 130
+    - id: polygon-moves-with-pan
+      what: 地図を (50px, 30px) パンしたとき、ポリゴンの描画位置が正確に (+50px, +30px) 移動する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先でティール色ピクセルが検出される
+    - id: polygon-restyled
+      what: setPolygonStyle で色をオレンジ（#ff8800）、不透明度を0.9に変更したとき、描画結果が即座に反映される
+      how: スタイル変更後のピクセル色を検証
+      expected: r > 200 && g > 100 && b < 80
+    - id: polygon-anchors-on-zoom
+      what: ズームを6に変更してもポリゴンの地理座標位置が正確に追従する
+      how: ズーム変更後のピクセル色を検証
+      expected: ズーム後も計算されたスクリーン座標にオレンジ色ポリゴンが描画されている
+  harness:
+    - contextlost が起きたらエラーにする
