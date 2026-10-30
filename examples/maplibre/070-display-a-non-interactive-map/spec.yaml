@@ -1,0 +1,92 @@
+id: maplibre-070-display-a-non-interactive-map
+request: >-
+  中心座標 [74.5, 40]、ズーム 3 で静的な世界地図を表示し、
+  ドラッグやホイールによるパン・ズーム操作を完全に無効化（interactive: false）した地図を作りたい。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 静的な背景地図表示に汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に静的地図が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: non-interactive-lock
+    need: ドラッグやスクロールなどのユーザー操作を完全に遮断し、表示位置を固定する
+    unmeasured: verification の checks でイベント送出後の座標・ピクセル不変性を検証
+  - id: map-accuracy
+    need: 指定座標（中央アジア [74.5, 40]）を中心に正確な陸地と海洋が描画される
+    unmeasured: verification の checks で画面ピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 2500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: quick-start}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/070-display-a-non-interactive-map/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: static-render
+      what: 静的再描画時間
+      metrics: [redraw_ms]
+
+datasets:
+  bake: [node, examples/maplibre/070-display-a-non-interactive-map/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-070-display-a-non-interactive-map/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+
+performance_knowledge:
+  - id: zero-interaction-minimal-bundle
+    finding: インタラクションが不要な静的地図であれば、ポインタードラッグや慣性スクロール・タッチジェスチャのイベントリスナーやアニメーションループを一切登録しないことで、コードサイズを極限まで削減できる
+    evidence: JS コードサイズは gzip 1.8 KB 前後、不要なイベントループや requestAnimationFrame のアイドル負荷もゼロ
+    applies_when: サムネイル、印刷ビュー、静的情報パネル等の非対話型地図表示
+  - id: css-cursor-default
+    finding: キャンバス要素に cursor: default を設定することで、対話可能と誤認させる grab/pointer カーソルの発生を防止
+    evidence: 視覚的・操作的に非対話性が一貫する
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/070-display-a-non-interactive-map/index.html
+      - examples/maplibre/070-display-a-non-interactive-map/main.ts
+      - examples/maplibre/070-display-a-non-interactive-map/static-map.ts
+    dependencies: []
+    why: 静的な地図を1度描画して表示を保つだけであり、操作系コードを省いた Canvas 2D が最も小さく高速
+  alternatives:
+    - option: 静的画像 (PNG / WebP)
+      rejected_because: ベクターポリゴンから画面解像度（DPR）に合わせて鮮明にラスタライズする方がRetina画面でもボケないため
+    - option: WebGL2
+      rejected_because: 静止画表示に GPU シェーダーコンパイルと頂点バッファを構築するのは過剰であるため
+  not_doing: [3D地形, 地名ラベル, パン・ズーム操作, 回転・ピッチ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: map-rendered-at-target
+      what: 画面中央 [74.5, 40]（中央アジア）に陸地ピクセル、[74.5, 0]（インド洋）に海洋ピクセルが描画されている
+      how: getImageData で座標位置のピクセル色を検証
+      expected: land: r > 220 && g > 220 && b > 210, ocean: r < 190 && g > 190 && b > 210
+    - id: gestures-ignored
+      what: ポインタードラッグやホイールイベントをキャンバスに送出しても、カメラ座標・ズーム・ピクセル描画が一切変化しない
+      how: イベント送出前後の center, zoom, ピクセル色を検証
+      expected: interactive === false && centerUnchanged && zoomUnchanged && isStillLand
+  harness:
+    - contextlost が起きたらエラーにする
