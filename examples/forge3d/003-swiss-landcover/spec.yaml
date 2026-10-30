@@ -1,0 +1,119 @@
+id: forge3d-003-swiss-landcover
+request: >-
+  forge3d の例「Swiss Land-Cover」のように、スイスの地形に 2024 年の土地被覆 (森林、農地、市街地、草地、
+  雪氷など) を色で重ね、北西からの陰影で起伏が読めるようにしたい。国境の外は描かず、ほぼ真上から国全体を見せ、
+  題、出典、凡例を付ける。ドラッグで回り、ホイールで寄れるようにする。外部ライブラリなしで、最速・最小に。
+
+requirements:
+  - id: classes-readable
+    need: 土地被覆の分類が正しい場所に正しい色で出て、凡例と一致する
+    unmeasured: verification の checks (drape-shows-the-class, legend-matches-data) で確かめる
+  - id: country-only
+    need: スイスの国境の内側だけを描く
+    unmeasured: verification の check (drawn-inside-the-border) で確かめる
+  - id: smooth-interaction
+    need: 国全体 (約 88 万三角形) を回しても滑らか
+  - id: quick-start
+    need: 開いてすぐ国全体が出る
+  - id: light-footprint
+    need: 外部依存ゼロで、コードとデータが小さい
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 760000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 600, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/003-swiss-landcover/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: swiss.bin と legend.json の取得から国全体の初回描画まで
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 120 フレームのオービット (方位 1°/フレーム)
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/003-swiss-landcover/bake.ts]
+  sources:
+    - id: esri-lulc-2024
+      origin: Sentinel-2 10m Land Use/Land Cover 2024 (Esri, Impact Observatory, Microsoft)、UTM 32T と 31T の Cloud Optimized GeoTIFF。元の例の画像と同じデータ
+      license: CC BY 4.0
+    - id: mapzen-terrarium-z8
+      origin: AWS Open Data Terrain Tiles (Mapzen terrarium), z8 x132-135 y89-91
+      license: 出典表示のうえ自由に利用可
+    - id: ne-countries
+      origin: Natural Earth 10m Admin 0 Countries v5.1.1 (スイスの国境)
+      license: Public domain
+  outputs:
+    - data/baked/forge3d-003-swiss-landcover/swiss.bin
+    - data/baked/forge3d-003-swiss-landcover/legend.json
+  preparation:
+    - スイスの範囲を覆う z8 の terrarium の画素をそのまま格子にする (829x533、1 セル 418 m)
+    - 土地被覆を gdalwarp で同じ格子に最頻値で集約する。COG なので GDAL は 420 m に近い概観だけを HTTP で読み、10 m の 325 MB は取らない
+    - 国境を gdal_rasterize で同じ格子に焼き、外側のセルの分類を 0 にする
+    - 国境の内側で 150 m 未満のセル (terrarium の欠損、4 セル) を周囲の平均で埋める
+    - 1 セルあたり標高 16 bit と分類 8 bit を並べる。陰影は焼かず、シェーダで計算する (分類を 1 バイトに保つため)
+
+performance_knowledge:
+  - id: class-index-not-colour
+    finding: 土地被覆を色ではなく分類番号 1 バイトで持ち、パレットを uniform にすると、データは 1 セル 3 バイトで済み、国境の外の 0 が続く部分はよく圧縮される
+    evidence: swiss.bin 1,295 KB、gzip 723 KB (44 万セル)
+    applies_when: 分類の数が少なく、色の割り当てが固定の主題図
+  - id: cog-overview-over-http
+    finding: Cloud Optimized GeoTIFF を /vsicurl/ で gdalwarp に渡すと、目的の解像度に近い概観だけを HTTP の範囲指定で読むので、10 m の 2 タイル (325 MB) を落とさずに 420 m の格子が 30 秒ほどで作れる
+    evidence: 同じファイルの丸ごとのダウンロードは約 100 KB/s で 1 時間近くかかる見込みだった (2026-10-30)
+    applies_when: 元の解像度よりずっと粗い格子に集約するベイク
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/forge3d/003-swiss-landcover/index.html
+      - examples/forge3d/003-swiss-landcover/main.ts
+      - examples/forge3d/003-swiss-landcover/terrain.ts
+      - examples/forge3d/003-swiss-landcover/gl.ts
+    dependencies: []
+    why: 標高と分類の 2 枚の整数テクスチャと 1 本のインデックスバッファで、国全体を 1 ドローコールで描く。題、凡例、出典は HTML
+  alternatives:
+    - option: 陰影を焼き込んだ RGB を配る (forge3d-001 の方式)
+      rejected_because: 1 セル 5 バイトになり、データが大きくなる。陰影の計算は頂点シェーダの 4 回の高さ参照で済む
+    - option: 国境の外を三角形ごと作らない
+      rejected_because: 比べていない。discard で捨てる方がインデックスの作り方が単純で、再描画の予算に収まった
+  not_doing: [スイスの座標系 (EPSG:2056) での表示, 動く太陽, タイルストリーミング, 分類ごとの表示切り替え]
+
+verification:
+  checks:
+    - id: drawn-inside-the-border
+      what: 国境の内側は描かれ、外側は描かれない
+      how: 既定の視点で、ベルンとルツェルン、格子の矩形の中にあるが国外のミュルーズとアヌシーの画素を読む
+      expected: 内側 2 点の alpha > 200、外側 2 点の alpha 0
+    - id: drape-shows-the-class
+      what: 地形に正しい分類が正しい色で載っている
+      how: 分類ごとに、格子の中央に最も近い 9x9 の一様なブロックへ寄り (半径 30 km)、その中心の画素を、陰影の明るさを合わせたうえでパレットの最も近い色に当てる
+      expected: 一様なブロックがある分類が 5 つ以上あり、すべて一致
+    - id: legend-matches-data
+      what: 凡例がデータにある分類だけを、その色で並べ、割合の合計が国全体になる
+      how: 凡例の行と見本の色を DOM から読み、格子にある分類と比べる
+      expected: 行数と分類数が一致、色が一致、割合の合計が 1 (±0.002)
+    - id: orbit-turns-the-country
+      what: ドラッグ相当の方位回転で国が回る
+      how: ジュネーブの投影位置を方位 45° 回す前後で比べる
+      expected: 100 px より大きく動き、ベルンは描かれたまま
+    - id: zoom-changes-scale
+      what: 寄ると国が大きくなる
+      how: ジュネーブとチューリッヒの画面上の距離を半径 430 km と 215 km で比べる
+      expected: 比 > 1.6
+  harness:
+    - contextlost が起きたらエラーにする
