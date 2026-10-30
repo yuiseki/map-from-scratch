@@ -26,7 +26,7 @@ export interface JspiMap {
   getRangeReadCount: () => number;
   getRangeBytes: () => number;
   panBy: (dx: number, dy: number) => void;
-  zoomBy: (delta: number) => void;
+  zoomBy: (delta: number, x?: number, y?: number) => void;
   render: () => void;
   readPixel: (x: number, y: number) => Uint8Array;
 }
@@ -269,8 +269,8 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const factor = e.deltaY > 0 ? -0.15 : 0.15;
-    zoomBy(factor);
+    const r = canvas.getBoundingClientRect();
+    zoomBy(e.deltaY > 0 ? -0.15 : 0.15, e.clientX - r.left, e.clientY - r.top);
   }, { passive: false });
 
   window.addEventListener('resize', () => {
@@ -286,8 +286,15 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
     render();
   }
 
-  function zoomBy(delta: number) {
+  // Zoom about (x, y) in CSS px, the centre when omitted: the ground under
+  // that point stays put.
+  function zoomBy(delta: number, x = canvas.clientWidth / 2, y = canvas.clientHeight / 2) {
+    const ox = x - canvas.clientWidth / 2, oy = y - canvas.clientHeight / 2;
+    const before = 256 * Math.pow(2, zoom);
     zoom = Math.max(0.2, Math.min(2.5, zoom + delta));
+    const after = 256 * Math.pow(2, zoom);
+    cx += ox / before - ox / after;
+    cy = Math.max(0.1, Math.min(0.9, cy + oy / before - oy / after));
     render();
   }
 
