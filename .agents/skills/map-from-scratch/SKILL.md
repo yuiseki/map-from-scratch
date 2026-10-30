@@ -121,6 +121,10 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    interaction. Patterns that worked are in references/patterns.md; the
    browser plumbing (DPR-aware ResizeObserver, pointer to device pixels,
    one pending rAF) is easiest to copy from 02 or 07.
+   Mistakes that drew the wrong map here, by feature (world wrapping,
+   projection, interaction, picking, markers, terrain, 3D extrusion, globe
+   occlusion, layout, …), are in references/rendering-mistakes.md: read the
+   sections for the features you are about to write.
 8. **Write the bench**: first frame (say exactly when it starts and stops in
    `benchmarks.scenarios`; do not count loading the bench code), a camera
    path (`zoomPath` and `benchFrames` in `harness/page/bench.ts`, or the C
@@ -135,7 +139,8 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    parameter sweep pass it through `MFS_PAGE_QUERY` and compare runs.
    Then open the page in a browser and review it as a user would
    (`.agents/skills/visual-review`): every check can pass on a map that is
-   squashed, upside down or missing half the world.
+   squashed, upside down or missing half the world. Add what you find to
+   references/rendering-mistakes.md under its feature.
 10. **Record** what was learnt in `performance_knowledge` (finding, evidence
    with numbers, when it applies), including dead ends and corrected mistakes.
 11. **Optionally compare** with a general engine under `baselines/` (see
