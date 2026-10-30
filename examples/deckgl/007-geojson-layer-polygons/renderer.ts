@@ -15,8 +15,9 @@ void main() {
   float c=cos(u_yaw), s=sin(u_yaw);
   vec2 r=vec2(c*d.x-s*d.y,s*d.x+c*d.y);
   float z=a_z*0.2*u_height;
-  vec2 screen=vec2(r.x,r.y*sin(u_pitch)-z*cos(u_pitch))*u_scale;
-  float depth=(-r.y*cos(u_pitch)-z*sin(u_pitch))/50000.0;
+  // Seen from above and south: height goes up the screen and towards the eye.
+  vec2 screen=vec2(r.x,r.y*sin(u_pitch)+z*cos(u_pitch))*u_scale;
+  float depth=(r.y*cos(u_pitch)-z*sin(u_pitch))/50000.0;
   gl_Position=vec4(screen/u_size*2.0,depth,1.0);
   v_color=a_color; v_light=a_light; v_id=a_id;
 }`;
