@@ -1,0 +1,130 @@
+id: maplibre-128-toggle-interactions
+request: >-
+  MapLibre の "Toggle interactions" 例と同じく、ワシントン DC 周辺 [-77.04, 38.907]・ズーム 3 の
+  地図で、ドラッグによるパン・ホイールズーム・ダブルクリックズームを個別に有効/無効へ
+  切り替えたい。チェックボックスは地図上に置き、無効にした操作はカメラを動かさない。
+  外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 静的な陸地塗りと小さな操作パネルだけに汎用エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と操作パネルが現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: toggleable-gestures
+    need: 3 種類の操作を個別に無効化でき、無効時はカメラが 1 px も動かない
+    unmeasured: verification の checks でカメラ状態と画面上の地物位置をピクセルで検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 5200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/128-toggle-interactions/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から操作パネルを含む初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/128-toggle-interactions/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-128-toggle-interactions/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - 大陸スケール（ズーム 3）なのでラスタタイルは使わず陸地塗りで足りる
+
+performance_knowledge:
+  - id: gate-the-handler-not-the-draw
+    finding: 操作の無効化はレンダリングではなく入力ハンドラで行う。ハンドラの先頭でフラグを見て return するだけで、描画コードは分岐も状態も持たない
+    evidence: drag-disabled-stops-pan / scroll-disabled-stops-zoom / dblclick-disabled-stops-zoom がカメラの完全一致（差分 0）を確認
+  - id: behaviour-not-checkbox
+    finding: チェックボックスの見た目だけでは「無効化が効いている」ことを証明できない。操作イベントを再送し、カメラ状態と地物の画面位置が動かないことを同時に確かめる必要がある
+    evidence: 無効状態で 150×60 px のドラッグを送っても中心が 1e-9 も動かず、目印の投影座標が不変
+  - id: reset-restores-everything
+    finding: 検証とスクリーンショットのために、カメラだけでなくトグル状態も初期値へ戻す resetView を用意すると、テストの順序依存が消える
+    evidence: reset-restores-controls が zoom 3 と 3 つのチェックの復元を確認
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/128-toggle-interactions/index.html
+      - examples/maplibre/128-toggle-interactions/main.ts
+      - examples/maplibre/128-toggle-interactions/controls.ts
+    dependencies: []
+    why: 陸地塗りと 1 枚の操作パネルなら Canvas 2D が最小。操作の可否はイベントハンドラのフラグ 1 個で決まる
+  alternatives:
+    - option: DOM の checkbox を並べる
+      rejected_because: UI の状態そのものを画面ピクセルとして読み戻せない。Canvas に描けばチェックの有無まで検証できる
+    - option: WebGL2
+      rejected_because: 静的な陸地塗りに初期化コストが見合わない
+  not_doing: [回転・ピッチ, ピンチズーム, キーボード操作, タッチのダブルタップ, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: controls-visible
+      what: 地図上に操作パネルが描かれ、3 つのチェックが入っている
+      how: パネル矩形とチェックボックス内のアクセント色、ラベル文字の暗色ピクセル数を数える
+      expected: '3 つのチェックが rgba(42,122,226,255)、ラベル行の暗色ピクセル > 20'
+    - id: map-rendered-at-target
+      what: 既定カメラでワシントン DC が陸地、大西洋が海
+      how: ビューポート中心と、独立投影した [-60,30] のピクセル色を検証
+      expected: 'zoom 3、中心が陸地色、[-60,30] が海洋色'
+    - id: drag-pans-by-default
+      what: 既定ではドラッグでパンする
+      how: 120×60 px の pointerdown/move/up を送り、中心の移動量と目印の投影座標の変化を独立計算と比較
+      expected: 'カメラが -120/-60 px 分ずれ、目印が +120, +60 px 動く'
+    - id: drag-disabled-stops-pan
+      what: Drag pan のチェックを外すとドラッグしても動かない
+      how: パネルの行をクリックしてチェックが消えたことを確認し、150×60 px のドラッグを送る
+      expected: 'チェックが白、カメラと目印の座標が完全一致（差分 0）'
+    - id: drag-reenabled-works
+      what: もう一度クリックするとドラッグが再び効く
+      how: チェックがアクセント色に戻ったことを確認し、80×40 px のドラッグを送る
+      expected: 'チェック復活、カメラが -80/-40 px 分動く'
+    - id: scroll-zooms-by-default
+      what: 既定ではホイールでカーソル中心にズームする
+      how: カーソル (500,400) で deltaY=-100 の wheel を送り、目印のカーソルからの距離が √2 倍になることを検証
+      expected: 'zoom 3 → 3.5、目印のオフセットが √2 倍'
+    - id: scroll-disabled-stops-zoom
+      what: Scroll zoom のチェックを外すとホイールが効かない
+      how: 行をクリックしてから同じ wheel を送る
+      expected: 'zoom が 3.5 のまま、目印の座標が不変'
+    - id: dblclick-zooms-by-default
+      what: 既定ではダブルクリックでカーソル中心に 1 段ズームする
+      how: (500,400) で dblclick を送り、目印のオフセットが 2 倍になることを検証
+      expected: 'zoom 3 → 4、目印のオフセットが 2 倍'
+    - id: dblclick-disabled-stops-zoom
+      what: Double-click zoom のチェックを外すとダブルクリックが効かない
+      how: 行をクリックしてから dblclick を送る
+      expected: 'zoom が 4 のまま'
+    - id: reset-restores-controls
+      what: resetView でカメラと 3 つのチェックが初期状態に戻る
+      how: resetView 後に zoom・トグル状態・チェックの色を検証
+      expected: 'zoom 3、3 つとも有効、3 つのチェックがアクセント色'
+  harness:
+    - contextlost が起きたらエラーにする

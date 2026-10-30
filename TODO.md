@@ -147,7 +147,7 @@
 - [ ] `maplibre-125-style-lines-with-a-data-driven-property` → `examples/maplibre/125-style-lines-with-a-data-driven-property/` — [Style lines with a data-driven property](https://maplibre.org/maplibre-gl-js/docs/examples/style-lines-with-a-data-driven-property/)
 - [ ] `maplibre-126-sync-movement-of-multiple-maps` → `examples/maplibre/126-sync-movement-of-multiple-maps/` — [Sync movement of multiple maps](https://maplibre.org/maplibre-gl-js/docs/examples/sync-movement-of-multiple-maps/)
 - [ ] `maplibre-127-toggle-deckgl-layer` → `examples/maplibre/127-toggle-deckgl-layer/` — [Toggle deck.gl layer](https://maplibre.org/maplibre-gl-js/docs/examples/toggle-deckgl-layer/)
-- [ ] `maplibre-128-toggle-interactions` → `examples/maplibre/128-toggle-interactions/` — [Toggle interactions](https://maplibre.org/maplibre-gl-js/docs/examples/toggle-interactions/)
+- [x] `maplibre-128-toggle-interactions` → `examples/maplibre/128-toggle-interactions/` — [Toggle interactions](https://maplibre.org/maplibre-gl-js/docs/examples/toggle-interactions/)
 - [ ] `maplibre-129-update-a-feature-in-realtime` → `examples/maplibre/129-update-a-feature-in-realtime/` — [Update a feature in realtime](https://maplibre.org/maplibre-gl-js/docs/examples/update-a-feature-in-realtime/)
 - [ ] `maplibre-130-update-geojson-polygons` → `examples/maplibre/130-update-geojson-polygons/` — [Update GeoJSON polygons](https://maplibre.org/maplibre-gl-js/docs/examples/update-geojson-polygons/)
 - [ ] `maplibre-131-use-a-fallback-image` → `examples/maplibre/131-use-a-fallback-image/` — [Use a fallback image](https://maplibre.org/maplibre-gl-js/docs/examples/use-a-fallback-image/)
@@ -387,7 +387,7 @@
 - [ ] `mapbox-010-add-fog` → `examples/mapbox/010-add-fog/` — [Add Fog](https://docs.mapbox.com/mapbox-gl-js/example/add-fog/)
 - [x] `mapbox-011-add-image` → `examples/mapbox/011-add-image/` — [Add Image](https://docs.mapbox.com/mapbox-gl-js/example/add-image/)
 - [ ] `mapbox-012-add-image-animated` → `examples/mapbox/012-add-image-animated/` — [Add Image Animated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-animated/)
-- [ ] `mapbox-013-add-image-generated` → `examples/mapbox/013-add-image-generated/` — [Add Image Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-generated/)
+- [x] `mapbox-013-add-image-generated` → `examples/mapbox/013-add-image-generated/` — [Add Image Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-generated/)
 - [ ] `mapbox-014-add-image-missing-generated` → `examples/mapbox/014-add-image-missing-generated/` — [Add Image Missing Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-missing-generated/)
 - [ ] `mapbox-015-add-image-stretchable` → `examples/mapbox/015-add-image-stretchable/` — [Add Image Stretchable](https://docs.mapbox.com/mapbox-gl-js/example/add-image-stretchable/)
 - [ ] `mapbox-016-add-terrain` → `examples/mapbox/016-add-terrain/` — [Add Terrain](https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/)
@@ -908,4 +908,4 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **78 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、mapbox-009、011、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **80 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、128、mapbox-009、011、013、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、004、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

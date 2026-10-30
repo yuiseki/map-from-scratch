@@ -1,0 +1,113 @@
+id: mapbox-013-add-image-generated
+request: >-
+  Mapbox の "Add an image (generated)" 例と同じく、コードでピクセルごとに生成した 64×64 の
+  グラデーション画像をアイコンとして地図に置きたい。中心 [0, 0]・ズーム 2 で、アイコンは
+  どのズームでも 64 px の画面サイズを保つ。外部ライブラリなしで、最速・最小で。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 画像はコードで生成するので画像アセットを配信しなくてよい
+  - id: quick-start
+    need: ページを開いて即座に地図とアイコンが現れる
+    rationale: 16 KB のピクセル書き込みは 1 回だけで、初期化ラグなしに 300 ms 以内で表示
+  - id: smooth-interaction
+    need: ドラッグによるパンが 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: generated-icon
+    need: アイコンの画素が生成式どおりで、向きが正しく、ズームしても画面サイズが変わらない
+    unmeasured: verification の checks で画素値とアイコン矩形を読み戻して検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 4200, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/013-add-image-generated/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/mapbox/013-add-image-generated/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/mapbox-013-add-image-generated/land.json
+  preparation:
+    - Natural Earth 110m 陸地ポリゴンを Web Mercator 座標 [0, 1] に投影して量子化
+    - アイコン画像はベイクせず、起動時にコードで生成する（元例と同じ）
+    - 世界スケール（ズーム 2）なのでラスタタイルは使わず陸地塗りで足りる
+
+performance_knowledge:
+  - id: generate-once-draw-many
+    finding: 64×64 のグラデーションは起動時に 16 KB のピクセルを 1 回書いてオフスクリーン Canvas に置き、毎フレームは drawImage 1 回で済ませる。ピクセル生成を描画ループに入れると 60 fps の予算を無駄に食う
+    evidence: redraw_ms p95 が 1 ms 未満、アイコンが乗った状態でもパンが 60 fps に収まる
+  - id: symbol-icons-are-screen-sized
+    finding: Mapbox の symbol レイヤーの icon は画面座標のアイコンで、ズームしても大きさが変わらない。地理座標の矩形として描く image ソースとは別物で、混同すると拡大時にアイコンが地図と一緒に膨らむ
+    evidence: icon-keeps-screen-size-on-zoom が zoom 2 → 5 でアイコン矩形が 64 px のまま、周囲の地物は 8 倍に広がることを確認
+  - id: gradient-encodes-orientation
+    finding: 赤が x、緑と青が y に比例するグラデーションは、4 隅の画素を読むだけで転置・反転を検出できる。すべて同じ色のアイコンだと位置の誤りに気づけない
+    evidence: gradient-orientation が (2,2)=(8,8,8)、(61,2)=(243,8,8)、(2,61)=(8,243,243) を独立計算と比較
+  - id: duplicate-the-formula-in-the-bench
+    finding: 期待画素を描画器の関数から取ると、生成式のバグを見逃す。検証側にも同じ式を書き、両者が独立に一致することを確かめる
+    evidence: bench の channel(v) が (v / 64) * 255 を丸めた値で、レンダラの Uint8ClampedArray と ±1 以内で一致
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/mapbox/013-add-image-generated/index.html
+      - examples/mapbox/013-add-image-generated/main.ts
+      - examples/mapbox/013-add-image-generated/gradient-icon.ts
+    dependencies: []
+    why: 陸地塗りと 1 枚の 64×64 アイコンなら Canvas 2D が最小。画像生成も createImageData で完結する
+  alternatives:
+    - option: ベイク時に PNG を作って配信する
+      rejected_because: 元例の「実行時に生成する」という主題が消える。生成コストも 1 回 16 KB で無視できる
+    - option: WebGL2 でテクスチャとして描く
+      rejected_because: 1 枚のアイコンに初期化コストが見合わない
+  not_doing: [3D地形, 回転・ピッチ, 複数アイコン, アイコンの衝突判定, ベクタータイルデコード]
+
+verification:
+  checks:
+    - id: map-rendered-at-target
+      what: アイコンの周囲に世界地図が描かれている
+      how: 独立投影した [20,20]（サハラ）と [-30,30]（大西洋）のピクセル色を検証
+      expected: 'zoom 2、[20,20] が陸地色、[-30,30] が海洋色'
+    - id: gradient-icon-generated
+      what: 64×64 の生成画像が [0,0] を中心に置かれている
+      how: iconReady と iconRect の寸法・中心と、独立投影した [0,0] の画面座標を比較
+      expected: '64×64、中心が投影座標と 1e-9 以内で一致'
+    - id: gradient-orientation
+      what: 赤が x 方向、緑と青が y 方向に増える向きで描かれている
+      how: アイコン内の 4 点 (2,2) (61,2) (2,61) (61,61) の画素を独立計算した式と比較
+      expected: '(8,8,8) (243,8,8) (8,243,243) (243,243,243) ±1'
+    - id: icon-follows-pan
+      what: パンするとアイコンが地図と一緒に動き、画素は変わらない
+      how: panBy(120,60) 前後でアイコン矩形の差と [20,20] の投影座標の差、アイコン内画素を検証
+      expected: '矩形と地物が +120, +60 px、画素は (243,8,8) のまま'
+    - id: icon-keeps-screen-size-on-zoom
+      what: ズームしてもアイコンは 64 px の画面サイズを保つ
+      how: '[0,0] を軸に zoom 5 へ拡大し、アイコン矩形と、周囲の地物のオフセットが 8 倍になることを検証'
+      expected: 'zoom 5、アイコン矩形は不変、地物のオフセットが 8 倍'
+  harness:
+    - contextlost が起きたらエラーにする
