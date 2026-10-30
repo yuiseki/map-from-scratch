@@ -874,9 +874,9 @@
 - [x] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
 - [x] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
 
-## kepler.gl: 8 件
+## kepler.gl: 17 件
 
-出典: [kepler.gl Examples](https://docs.kepler.gl/examples)。掲載されている8件をすべて対象とする。どれも kepler.gl をアプリに組み込む例（単一ページアプリ、モーダル、reducer・テーマ・UI 部品の差し替え、UMD、Node/Express、Mapbox 以外の背景地図）なので、deck.gl の Integrations と同じく、組み込みの仕組みそのものではなく、元例の画面で利用者が見る地図と操作を独立描画器で再現する。
+001〜008 の出典: [kepler.gl Examples](https://docs.kepler.gl/examples)。掲載されている8件をすべて対象とする。どれも kepler.gl をアプリに組み込む例（単一ページアプリ、モーダル、reducer・テーマ・UI 部品の差し替え、UMD、Node/Express、Mapbox 以外の背景地図）なので、deck.gl の Integrations と同じく、組み込みの仕組みそのものではなく、元例の画面で利用者が見る地図と操作を独立描画器で再現する。
 
 - [ ] `kepler-001-demo-app` → `examples/kepler/001-demo-app/` — [Demo App](https://docs.kepler.gl/examples/demo-app)
 - [ ] `kepler-002-open-modal` → `examples/kepler/002-open-modal/` — [Open Modal](https://docs.kepler.gl/examples/open-modal)
@@ -886,6 +886,18 @@
 - [ ] `kepler-006-custom-theme` → `examples/kepler/006-custom-theme/` — [Custom theme](https://docs.kepler.gl/examples/custom-theme)
 - [ ] `kepler-007-node-app` → `examples/kepler/007-node-app/` — [Node App](https://docs.kepler.gl/examples/node-app)
 - [ ] `kepler-008-custom-map-style` → `examples/kepler/008-custom-map-style/` — [Custom map style](https://github.com/keplergl/kepler.gl/tree/14c35fc048a745faab0c6770cab7a4625ccedda3/examples/custom-map-style/README.md)
+
+009〜017 は kepler.gl のデモアプリ ([examples/demo-app](https://github.com/keplergl/kepler.gl/blob/master/examples/demo-app/README.md)) が `/demo/<id>` で開くサンプル地図から 9 件。一覧は [kepler.gl-data](https://github.com/keplergl/kepler.gl-data) の `samples.json` で、各地図の設定 (`config.json`) とデータは同じリポジトリのフォルダにある (commit 49c3101 に固定)。リポジトリは Apache-2.0 だが、データの出典 (USGS、NYC TLC、Foursquare、Uber Movement、国勢調査など) はそれぞれ違うので、実装するときに 1 件ずつ利用条件を確かめる。
+
+- [ ] `kepler-009-california-earthquakes` → `examples/kepler/009-california-earthquakes/` — [California Earthquakes](https://kepler.gl/demo/earthquakes)（データ: [kepler.gl-data/earthquakes](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/earthquakes)）
+- [ ] `kepler-010-nyc-cab-rides` → `examples/kepler/010-nyc-cab-rides/` — [NYC Taxi Trips](https://kepler.gl/demo/nyctrips)（データ: [kepler.gl-data/nyctrips](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/nyctrips)）
+- [ ] `kepler-011-sf-elevation-contour` → `examples/kepler/011-sf-elevation-contour/` — [San Francisco Elevation Contour](https://kepler.gl/demo/sfcontour)（データ: [kepler.gl-data/sfcontour](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/sfcontour)）
+- [ ] `kepler-012-foursquare-places-pmtiles` → `examples/kepler/012-foursquare-places-pmtiles/` — [Foursquare Places (PMTiles)](https://kepler.gl/demo/fsq_places)（データ: [kepler.gl-data/fsq_places](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/fsq_places)）
+- [ ] `kepler-013-population-mvt` → `examples/kepler/013-population-mvt/` — [Population (MVT)](https://kepler.gl/demo/mvt_population)（データ: [kepler.gl-data/mvt_population](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/mvt_population)）
+- [ ] `kepler-014-movement-pittsburgh` → `examples/kepler/014-movement-pittsburgh/` — [Travel Times From Uber Movement](https://kepler.gl/demo/movement_pittsburgh)（データ: [kepler.gl-data/movement_pittsburgh](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/movement_pittsburgh)）
+- [ ] `kepler-015-nyc-population` → `examples/kepler/015-nyc-population/` — [New York City Population by Census Tract](https://kepler.gl/demo/nyc_census)（データ: [kepler.gl-data/nyc_census](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/nyc_census)）
+- [ ] `kepler-016-sf-street-trees` → `examples/kepler/016-sf-street-trees/` — [San Francisco Street Tree Map](https://kepler.gl/demo/sftrees)（データ: [kepler.gl-data/sftrees](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/sftrees)）
+- [ ] `kepler-017-uk-commute` → `examples/kepler/017-uk-commute/` — [Commute Pattern in England and Wales](https://kepler.gl/demo/ukcommute)（データ: [kepler.gl-data/ukcommute](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/ukcommute)）
 
 ## luma.gl: 2 件
 
@@ -908,4 +920,4 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **88 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **832 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2）。実装済み **88 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
