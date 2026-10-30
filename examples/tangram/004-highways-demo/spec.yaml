@@ -1,0 +1,98 @@
+id: tangram-004-highways-demo
+request: >-
+  Mapzen Tangram の「highways-demo」のように、ズームレベルに応じて高速道路（ハイウェイ）の線幅や
+  グロー効果が滑らかに変化するズーム連動道路スタイリングをダークテーマ地図上で表示したい。
+  ドラッグでパン、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 道路ネットワークとズーム連動スタイル描画に Tangram エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と高速道路網が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによるパンや拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: zoom-dependent-styling
+    need: ズームレベルに応じて道路線幅が滑らかに拡大・連動変化する
+    unmeasured: verification の checks でズーム変化前後の描画幅とピクセル色を検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 45000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/tangram/004-highways-demo/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 道路データおよび陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: pan
+      what: 60フレームのパン操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/tangram/004-highways-demo/bake.ts]
+  sources:
+    - id: deckgl-highway-roads
+      origin: https://raw.githubusercontent.com/visgl/deck.gl-data/master/examples/highway/roads.json
+      license: OpenStreetMap / FARS パブリックデータ
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/tangram-004-highways-demo/highways.json
+    - data/baked/tangram-004-highways-demo/land.json
+  preparation:
+    - ベイエリア（サンフランシスコ周辺）の主要高速道路ラインを Web Mercator 座標 [0, 1] に投影して量子化
+    - 背景陸地ポリゴンを Web Mercator 座標 [0, 1] に投影
+
+performance_knowledge:
+  - id: canvas-zoom-dependent-line-styling
+    finding: ズームに応じた線幅の計算（数学的スケーリング）を Canvas 2D の lineWidth とグロー合成で行うことで、GPU シェーダーを介さずに 0.3 ms 未満で滑らかなベクター道路スタイリングを再現できる
+    evidence: 再描画時間は 700 本超のハイウェイ描画で p95 0.35 ms 前後
+    applies_when: 道路階層やズーム連動線幅アニメーション
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/tangram/004-highways-demo/index.html
+      - examples/tangram/004-highways-demo/main.ts
+      - examples/tangram/004-highways-demo/map.ts
+    dependencies: []
+    why: ズーム連動道路線幅とグロー表現を Canvas 2D で軽量・高速に直接描画
+  alternatives:
+    - option: Tangram JS フルスタック
+      rejected_because: 数 MB の WebGL エンジンと GLSL シェーダー初期化オーバーヘッドが過大
+  not_doing: [3D地形, 地名ラベル, 交通量リアルタイムアニメーション]
+
+verification:
+  checks:
+    - id: highways-rendered
+      what: サンフランシスコ周辺の高速道路位置にシアン色（#00e5ff）のハイウェイラインが描画されている
+      how: getImageData で主要ハイウェイ通過座標のピクセル色を検証
+      expected: r < 50 && g > 180 && b > 200 (シアン色ハイウェイ)
+    - id: zoom-dependent-width
+      what: ズームを拡大したとき、ハイウェイ線のピクセル幅が太くなる
+      how: ズーム7とズーム9での線幅周辺ピクセル検出範囲を比較検証
+      expected: ズーム9でハイウェイ色のピクセル幅が拡大
+    - id: highways-move-with-pan
+      what: 地図をパンしたとき、ハイウェイラインのスクリーン座標が正確に追従する
+      how: パン後の移動先ピクセルの色を検証
+      expected: 移動先でハイウェイ色が検出される
+  harness:
+    - contextlost が起きたらエラーにする
