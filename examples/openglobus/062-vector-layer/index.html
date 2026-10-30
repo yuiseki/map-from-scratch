@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenGlobus: Natural Vector Layers</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #030712; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(3, 7, 18, 0.92);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #e2e8f0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+    .panel b { color: #06b6d4; font-size: 14px; }
+    .vector-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .line-swatch {
+      width: 24px;
+      height: 3px;
+      background: #06b6d4;
+      box-shadow: 0 0 8px #06b6d4;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div><b>OpenGlobus 062</b>: Natural Vector Layers</div>
+    <div class="vector-indicator">
+      <span class="line-swatch"></span>
+      <span>Administrative Country Boundaries</span>
+    </div>
+    <div style="font-size: 11px; color: #64748b;">3D globe vector projection &amp; culling @ 60 fps</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

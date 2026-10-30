@@ -1,0 +1,94 @@
+id: openglobus-062-vector-layer
+request: >-
+  OpenGlobus の公式例「Natural Vector Layers」のように、3D 地球儀上に世界の国境ベクター境界線および
+  領土ポリゴンを高精細に投影描画したい。ダークスレート調グローブとシアン発光の国境境界線を用い、
+  視線による裏面カリングを行いながらドラッグで回転、ホイールで拡大縮小でき、60 fps で滑らかに再描画すること。
+  外部ライブラリなし、Canvas 2D で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 3D 地球儀上での国境ベクター描画に OpenGlobus エンジン全体の読み込みは不要
+  - id: quick-start
+    need: ページを開いて即座に 3D 地球儀とベクター国境が現れる
+    rationale: 初期化ラグなしで 300 ms 以内に表示
+  - id: smooth-interaction
+    need: ドラッグによる回転や拡大縮小が 60 fps で滑らかに追従する
+    rationale: 60 Hz の1フレームは 16.7 ms
+  - id: vector-globe-boundaries
+    need: 国境線が球面正射投影で歪みなく描画され、地平線裏面の境界線はカリングされる
+    unmeasured: verification の checks で国境ピクセル色とオクルージョンを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 3500, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 55000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/062-vector-layer/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 国境ベクターデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 60フレームの地球儀回転操作中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/openglobus/062-vector-layer/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/openglobus-062-vector-layer/countries.json
+  preparation:
+    - Natural Earth 110m 領土・国境ポリゴンを球面緯経度座標で格納
+
+performance_knowledge:
+  - id: canvas2d-vector-globe-rendering
+    finding: 3D 地球儀上の密なベクターポリゴン・境界線描画も、球面座標から各頂点の視線 z 深度判定による裏面カリングとパス結合を行うことで、WebGL シャドウや法線計算なしで 0.5 ms 未満の再描画速度を達成できる
+    evidence: 再描画時間 p95 0.58 ms 前後、初回表示 50 ms 前後を達成
+    applies_when: 3D 地球儀上での行政界・等高線・ベクター境界線オーバーレイ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/openglobus/062-vector-layer/index.html
+      - examples/openglobus/062-vector-layer/main.ts
+      - examples/openglobus/062-vector-layer/globe.ts
+    dependencies: []
+    why: 3D 地球儀正射投影とベクター境界線の高速描画に Canvas 2D が最適
+  alternatives:
+    - option: OpenGlobus フルスタック
+      rejected_because: 数 MB の WebGL エンジンとシェーダー初期化オーバーヘッドが過大
+  not_doing: [3D標高DEM, タイルストリーミング, 地名ラベル]
+
+verification:
+  checks:
+    - id: vector-borders-rendered
+      what: 前面の大陸上にシアン色の国境境界線が描画されている
+      how: getImageData で前面の国境線上ピクセル色を検証
+      expected: r < 50 && g > 160 && b > 190 (シアン色境界線)
+    - id: globe-horizon-culling
+      what: 地球儀の球体外部は宇宙背景色（#030712）が維持されている
+      how: getImageData で球体外側のピクセル色を検証
+      expected: r < 10 && g < 15 && b < 25 (暗黒宇宙色)
+    - id: vector-globe-rotates
+      what: ドラッグ操作で地球儀を回転させたとき、ベクター境界線が同期して正確に移動する
+      how: 回転後の移動先ピクセルの色を検証
+      expected: 移動先でシアン色境界線が検出される
+  harness:
+    - contextlost が起きたらエラーにする

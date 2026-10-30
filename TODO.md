@@ -346,7 +346,7 @@
 - [ ] `openglobus-059-terrain-switch` → `examples/openglobus/059-terrain-switch/` — [Terrain Provider Switching](https://sandbox.openglobus.org/examples/terrainSwitch/terrainSwitch.html)
 - [ ] `openglobus-060-time-zone-provider` → `examples/openglobus/060-time-zone-provider/` — [Time Zone Provider](https://sandbox.openglobus.org/examples/timeZoneProvider/timeZoneProvider.html)
 - [ ] `openglobus-061-transparent-background` → `examples/openglobus/061-transparent-background/` — [Transparent Background](https://sandbox.openglobus.org/examples/transparentBackground/transparentBackground.html)
-- [ ] `openglobus-062-vector-layer` → `examples/openglobus/062-vector-layer/` — [Natural Vector Layers](https://sandbox.openglobus.org/examples/vectorLayer/vectorLayer.html)
+- [x] `openglobus-062-vector-layer` → `examples/openglobus/062-vector-layer/` — [Natural Vector Layers](https://sandbox.openglobus.org/examples/vectorLayer/vectorLayer.html)
 - [ ] `openglobus-063-wms` → `examples/openglobus/063-wms/` — [WMS Layer](https://sandbox.openglobus.org/examples/wms/wms.html)
 - [ ] `openglobus-064-epsg4326` → `examples/openglobus/064-epsg4326/` — [EPSG4326 Globe](https://sandbox.openglobus.org/examples/epsg4326/epsg4326.html)
 - [ ] `openglobus-065-lines-circles` → `examples/openglobus/065-lines-circles/` — [Lines And Circles](https://sandbox.openglobus.org/examples/linesCircles/linesCircles.html)
@@ -876,5 +876,5 @@
 
 ## 進捗
 
-- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **37 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、tangram-001、004、010、forge3d-004、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
+- 対象: **813 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10）。実装済み **38 件**（maplibre-010、012、013、053、056、061、069、070、073、084、mapbox-009、018、127、cesium-180、213、244、openglobus-002、004、062、tangram-001、004、010、forge3d-004、008、010、deckgl-006、007、008、010、011、012、016、018、025、d3-005、016、leaflet-001、005）。
 - 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
