@@ -158,6 +158,15 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     console.error('WebGPU device was lost:', info);
   });
 
+  // The backing store follows the element's CSS size: a fixed 1024x768
+  // stretched over the window drew the buildings 1.4 times too wide at
+  // 1920x1021 (the projection takes its aspect from canvas.width/height).
+  const fit = (): void => {
+    canvas.width = canvas.clientWidth * devicePixelRatio;
+    canvas.height = canvas.clientHeight * devicePixelRatio;
+  };
+  fit();
+
   const isSwiftShader = gpuDesc.toLowerCase().includes('swiftshader');
   let webgpuCtx: any = null;
   let colorTexture: any = null;
@@ -492,6 +501,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     const h = canvas.height || 768;
     if (!depthTexture || depthTexture.width !== w || depthTexture.height !== h) {
       createDepthTexture(w, h);
+      createColorTexture(w, h);
     }
 
     updateCameraUniforms(w, h);
@@ -576,6 +586,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   }, { passive: false });
 
   // Initial draw
+  window.addEventListener('resize', () => { fit(); render(); });
   render();
 
   return {
