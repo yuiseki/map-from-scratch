@@ -869,7 +869,7 @@
 - [x] `forge3d-004-luxembourg-rail-network` → `examples/forge3d/004-luxembourg-rail-network/` — [Luxembourg rail network](https://milos-agathon.github.io/forge3d/gallery/04-luxembourg-rail-network.html)
 - [x] `forge3d-005-3d-buildings` → `examples/forge3d/005-3d-buildings/` — [3D buildings](https://milos-agathon.github.io/forge3d/gallery/05-3d-buildings.html)
 - [x] `forge3d-006-point-cloud` → `examples/forge3d/006-point-cloud/` — [Point cloud](https://milos-agathon.github.io/forge3d/gallery/06-point-cloud.html)
-- [ ] `forge3d-007-camera-flyover` → `examples/forge3d/007-camera-flyover/` — [Camera flyover](https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html)
+- [x] `forge3d-007-camera-flyover` → `examples/forge3d/007-camera-flyover/` — [Camera flyover](https://milos-agathon.github.io/forge3d/gallery/07-camera-flyover.html)
 - [x] `forge3d-008-vector-export` → `examples/forge3d/008-vector-export/` — [Vector export](https://milos-agathon.github.io/forge3d/gallery/08-vector-export.html)
 - [x] `forge3d-009-shadow-comparison` → `examples/forge3d/009-shadow-comparison/` — [Shadow comparison](https://milos-agathon.github.io/forge3d/gallery/09-shadow-comparison.html)
 - [x] `forge3d-010-map-plate` → `examples/forge3d/010-map-plate/` — [Map plate](https://milos-agathon.github.io/forge3d/gallery/10-map-plate.html)
@@ -908,4 +908,4 @@
 
 ## 進捗
 
-- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **86 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **823 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 8、luma.gl 2）。実装済み **87 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

@@ -1,0 +1,116 @@
+id: forge3d-007-camera-flyover
+request: >-
+  forge3d の例「Camera Flyover」のように、レーニア山の地形の上をカメラが飛ぶアニメーションを作りたい。
+  山頂を回るオービット、登山道を登る人を後ろから追うフォロー、北側を横切るレールの 3 つのカメラワークを切り替えられ、
+  再生と一時停止、時刻のスライダーで好きな瞬間に飛べる。カメラは地面に潜らない。0°、120°、240° のコマも並べる。
+  外部ライブラリなしで、最速・最小に。
+
+requirements:
+  - id: camera-above-ground
+    need: どのカメラワークでも、カメラが地面から決めた高さより下に行かない
+    unmeasured: verification の check (clearance-holds) で確かめる
+  - id: shots-as-specified
+    need: オービットは forge3d の例と同じ角度の範囲を回り、フォローは登る人を画面の中央に保つ
+    unmeasured: verification の checks (orbit-baked-at-60hz, follow-keeps-the-target) で確かめる
+  - id: playback-and-scrub
+    need: 再生は実時間どおりに進み、スライダーで同じ時刻に戻れば同じ絵になる
+    unmeasured: verification の checks (playback-follows-the-clock, scrub-is-repeatable) で確かめる
+  - id: smooth-playback
+    need: 再生中のフレームが滑らか
+  - id: quick-start
+    need: 開いてすぐ再生できる
+  - id: light-footprint
+    need: 外部依存ゼロで、コードとデータが小さい
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 650000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-start}
+    - {metric: rig_bake_ms, stat: p50, max: 50, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-playback}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-playback}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/forge3d/007-camera-flyover/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地形の取得、3 つのカメラワークのベイク、コマ 3 枚の描画、最初のフレームまで
+      metrics: [first_frame_ms, rig_bake_ms]
+    - id: playback
+      what: オービットを実時間で 1 秒再生する
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/forge3d/001-mount-rainier/bake.ts]
+  sources:
+    - id: mapzen-terrarium-z11
+      origin: forge3d-001 のベイク (rainier.bin) をそのまま使う。AWS Open Data Terrain Tiles (Mapzen terrarium) z11 x330-331 y721-722
+      license: Public Domain / CC0 (USGS 3DEP)
+  outputs:
+    - data/baked/forge3d-001-mount-rainier/rainier.bin
+  preparation:
+    - forge3d-001 のベイクと同じ。この例のためのベイクはない
+
+performance_knowledge:
+  - id: bake-the-camera-path
+    finding: カメラワークを開いたときに 60 Hz の標本列へ焼いておけば、再生のフレームは標本を 1 つ引くだけになり、地面との距離の判定も平滑化も再生中に走らない。3 本 (1,445 標本) を焼くのに数 ms
+    evidence: rig_bake_ms (results/forge3d-007-camera-flyover/latest.json)
+    applies_when: カメラの経路が事前に決まっている演出や案内
+  - id: smooth-clearance
+    finding: 標本ごとに「地面 + 余裕」まで持ち上げるとカメラが尾根ごとに跳ねる。持ち上げた高さに幅 ±0.25 秒の移動最大を取り、同じ幅で平均すると、なめらかになり、しかもどの標本も持ち上げた高さを下回らない (各標本はそれを含む窓の最大がすべて自分以上なので)
+    evidence: clearance-holds の余裕が全標本で 0 以上、レールで持ち上げた標本がある
+    applies_when: 地形の上を飛ぶカメラの高さ制約
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 と Canvas 2D (コマの縮小)
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/forge3d/007-camera-flyover/index.html
+      - examples/forge3d/007-camera-flyover/main.ts
+      - examples/forge3d/007-camera-flyover/terrain.ts
+      - examples/forge3d/007-camera-flyover/gl.ts
+      - examples/forge3d/007-camera-flyover/rigs.ts
+    dependencies: []
+    why: 地形は forge3d-001 の 1 ドローコールをそのまま使い、カメラワークだけを足す。経路は開いたときに焼き、再生は時計で標本を引く
+  alternatives:
+    - option: 毎フレーム経路を計算し、その場で地面との距離を判定する
+      rejected_because: 判定はできても、なめらかにするには前後の時刻を見る必要があり、再生中にそれをやり直すことになる
+  not_doing: [経路の編集, 動画への書き出し, 地形を貫く視線の回避]
+
+verification:
+  checks:
+    - id: clearance-holds
+      what: どのカメラワークでも、カメラが地面からの余裕より下に行かず、低いレールでは実際に持ち上がっている
+      how: 3 本の全標本で、カメラの高さと真下の地面の高さと余裕を比べ、レールで持ち上げた標本を数える
+      expected: 余裕の不足が全標本で 0 以下 (0.01 m の誤差まで)、レールで持ち上げた標本 1 以上
+    - id: orbit-baked-at-60hz
+      what: 秒 60 標本で焼かれ、オービットは forge3d の例と同じ 20° から 320° を回る
+      how: 各カメラワークの標本数と長さ、オービットの最初と最後の標本の方位を比べる
+      expected: 標本数 = 長さ x 60 + 1、方位 20° と 320° (±0.1°)
+    - id: follow-keeps-the-target
+      what: フォローは地面の上の登る人を画面の中央に保ち、そこには地形が描かれている
+      how: フォローの 11 時点で、注視点の投影位置、注視点と地面の高さ、画面中央の画素を読む
+      expected: 中央から 1 px 未満、11 時点とも地面の上、11 時点とも描かれている
+    - id: scrub-is-repeatable
+      what: スライダーで同じ時刻に戻ると同じ絵になる
+      how: レールの 200 標本目、400 標本目、200 標本目の順に飛び、3 点の画素を比べる
+      expected: 200 標本目どうしは一致し、400 標本目とは違う
+    - id: film-strip-drawn
+      what: 0°、120°、240° のコマ 3 枚が描かれ、どれも違う
+      how: 3 枚の Canvas 2D の画素を読む
+      expected: どれも 30% 以上が地形、3 枚とも違う
+    - id: playback-follows-the-clock
+      what: 再生が実時間どおりに進む
+      how: オービットを 1 秒再生し、進んだ標本数と経過時間を比べる
+      expected: 経過時間 x 60 との差が 4 標本以内、絵が動いている
+  harness:
+    - contextlost が起きたらエラーにする
