@@ -193,8 +193,23 @@ between examples.
   fills (32.6 against 37.9 ms p50 with a GPU read-back in Chrome on a Mac);
   6° (30,072 triangles) was four times slower, and splitting at bake time
   cost 67 KB gzip already at 12°.
-- 180 was copied from the same code; 244 (points on a globe) has not been
-  checked for it.
+- 180 was copied from the same code.
+
+### Rings clipped by dropping hidden vertices (cesium 244)
+
+- Screen: a dark band with straight edges cut across western Eurasia and
+  Africa whenever a continent crossed the rim.
+- Why: each land ring was drawn vertex by vertex, skipping vertices behind
+  the horizon and starting a new subpath after each gap. Every visible run is
+  closed by a chord when filled, and the chords cut the land. Holes were also
+  filled as separate rings.
+- Fix: as above. Bake earcut triangles instead of rings (land.bin, 27.7 KB
+  gzip against 39.0 KB for the rings as JSON) and draw them split, pinned to
+  the rim and in one path. Do not ship earcut to triangulate at run time: it
+  alone is larger than a 3.5 KB code budget.
+- Lesson: three globe examples, three ways to get the horizon wrong. Any
+  Canvas 2D globe must clip land at the horizon by geometry, not by skipping
+  points; copy the cesium 213 code.
 
 ## Cartographic layout
 
