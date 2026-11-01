@@ -52,7 +52,7 @@
 - [ ] `maplibre-030-add-multiple-geometries-from-one-geojson-source` → `examples/maplibre/030-add-multiple-geometries-from-one-geojson-source/` — [Add multiple geometries from one GeoJSON source](https://maplibre.org/maplibre-gl-js/docs/examples/add-multiple-geometries-from-one-geojson-source/)
 - [x] `maplibre-031-animate-a-line` → `examples/maplibre/031-animate-a-line/` — [Animate a line](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-line/)
 - [x] `maplibre-032-animate-a-marker` → `examples/maplibre/032-animate-a-marker/` — [Animate a marker](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-marker/)
-- [ ] `maplibre-033-animate-a-point-along-a-route` → `examples/maplibre/033-animate-a-point-along-a-route/` — [Animate a point along a route](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point-along-a-route/)
+- [x] `maplibre-033-animate-a-point-along-a-route` → `examples/maplibre/033-animate-a-point-along-a-route/` — [Animate a point along a route](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point-along-a-route/)
 - [x] `maplibre-034-animate-a-point` → `examples/maplibre/034-animate-a-point/` — [Animate a point](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-point/)
 - [ ] `maplibre-035-animate-a-series-of-images` → `examples/maplibre/035-animate-a-series-of-images/` — [Animate a series of images](https://maplibre.org/maplibre-gl-js/docs/examples/animate-a-series-of-images/)
 - [ ] `maplibre-036-animate-an-icon-on-the-gpu` → `examples/maplibre/036-animate-an-icon-on-the-gpu/` — [Animate an icon on the GPU](https://maplibre.org/maplibre-gl-js/docs/examples/animate-an-icon-on-the-gpu/)

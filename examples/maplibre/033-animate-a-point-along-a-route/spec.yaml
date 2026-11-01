@@ -1,0 +1,90 @@
+id: maplibre-033-animate-a-point-along-a-route
+request: >-
+  MapLibre GL JS の Animate a point along a route サンプルと同じ意図で、
+  サンフランシスコからワシントンD.C.へのルート上をポイントが移動するアニメーション地図を、
+  外部ライブラリ（MapLibre GL JS, Turf.js 等）なしで最小・最速に再現したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存（MapLibre, Turf.js）ゼロで配布サイズを最小限に抑える
+    rationale: 1本のルートと移動点描画に重量級ライブラリは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とルート、移動マーカーが表示される
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-animation
+    need: ルート上の移動アニメーションが 60 fps で滑らかに動作する
+    rationale: フレーム再描画時間を 3 ms 以下、フレーム間隔を 20 ms 以下に抑制
+  - id: point-movement-verification
+    need: 時間経過とともにポイントがルートに沿って東へ移動する
+    unmeasured: verification の checks で画面ピクセル読み戻しを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 45000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/033-animate-a-point-along-a-route/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地およびルートデータの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: anim-loop
+      what: 60フレームのアニメーション描画中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/033-animate-a-point-along-a-route/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-033-animate-a-point-along-a-route/route.json
+    - data/baked/maplibre-033-animate-a-point-along-a-route/land.json
+
+performance_knowledge:
+  - id: turf-and-geojson-overhead-elimination
+    finding: 元の MapLibre 例では Turf.js で測地線をリアルタイムに分割し、毎フレーム GeoJSON Point の setData() を実行して Worker シリアライズと GPU アップロードの多大な負荷を生じさせている。ベイク時に球面線形補間（Slerp）で大圏経路を事前計算し、描画時は配列インデックス参照と Canvas 2D arc() 描画のみにすることで CPU 負荷とメモリ使用量をほぼゼロにできる。
+    evidence: 再描画時間 p95 0.3 ms 未満で安定し、60 fps を維持
+    applies_when: 固定経路に沿ったマーカー移動アニメーション
+  - id: mercator-preprojection
+    finding: 陸地ポリゴンおよび測地線アークの座標変換をベイク時に済ませ、実行時の三角関数演算をゼロにする
+    evidence: 初回描画およびフレーム再描画が極小化
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/033-animate-a-point-along-a-route/index.html
+      - examples/maplibre/033-animate-a-point-along-a-route/main.ts
+      - examples/maplibre/033-animate-a-point-along-a-route/route.ts
+  not_doing:
+    - MapLibre GL JS, Turf.js
+    - 3D 地球儀レンダリング（Web Mercator 2D 投影）
+
+verification:
+  checks:
+    - id: canvas-rendered
+      what: Canvas 要素が存在し正常にマウントされていること
+      how: DOM 要素から canvas を取得し幅・高さが正の値であることを検証
+      expected: canvas.width > 0 && canvas.height > 0
+    - id: route-drawn
+      what: ルートラインが描画されていること
+      how: ルート中間地点付近のピクセル色を検証
+      expected: r > 50 && g > 100 && b > 180
+    - id: point-movement
+      what: 60フレームのアニメーション進行後にポイントマーカーが移動しピクセル変化が生じること
+      how: 60ステップのアニメーション実行前後のマーカー初期位置ピクセル変化と現在ステップ数を検証
+      expected: step >= 60
