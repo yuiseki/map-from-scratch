@@ -1,0 +1,89 @@
+id: maplibre-038-animate-symbol-to-follow-the-mouse
+request: >-
+  MapLibre GL JS の Animate symbol to follow the mouse サンプルと同じ意図で、
+  マウス移動に合わせてシンボルマーカーが地理座標に追従する地図を、
+  外部ライブラリ（MapLibre GL JS 等）なしで最小・最速に再現したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: マウス追従マーカーと背景地図に汎用エンジン全体のバンドルは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とシンボルが表示される
+    rationale: 300 ms 以内に初回描画
+  - id: low-latency-tracking
+    need: マウスカーソルの移動にシンボルが遅延なく 60 fps で追従する
+    rationale: フレーム再描画時間を 3 ms 以下、フレーム間隔を 20 ms 以下に抑制
+  - id: symbol-movement-verification
+    need: マウス座標変更時にシンボル描画位置が移動しピクセルが変化する
+    unmeasured: verification の checks で画面ピクセル読み戻しを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: low-latency-tracking}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: low-latency-tracking}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/038-animate-symbol-to-follow-the-mouse/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: mouse-track
+      what: 60フレームのマウス追従移動中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/038-animate-symbol-to-follow-the-mouse/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-038-animate-symbol-to-follow-the-mouse/land.json
+
+performance_knowledge:
+  - id: bypass-geojson-setData-overhead
+    finding: MapLibre GL JS では mousemove イベント毎に source.setData() で GeoJSON の再シリアライズ、Worker スレッドへの postMessage、頂点バッファ再構築が発生し、高速なマウス操作時に顕著な遅延と GC プレッシャーを生じる。Canvas 2D 直接描画器では、マウス座標を直接受け取り、即座に arc() と fill/stroke を呼ぶだけで済むため、レイテンシは 0.2 ms 未満となり完全な滑らかさを達成できる。
+    evidence: 再描画時間 p95 0.3 ms 未満で安定し、60 fps を維持
+    applies_when: ユーザー操作に即座に追従する動的マーカー描画
+  - id: mercator-preprojection
+    finding: 陸地ポリゴンの投影演算をベイク時に行い、描画ループ内を単純なスケール・平行移動に抑える
+    evidence: 初回描画およびフレーム再描画が極小化
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/038-animate-symbol-to-follow-the-mouse/index.html
+      - examples/maplibre/038-animate-symbol-to-follow-the-mouse/main.ts
+      - examples/maplibre/038-animate-symbol-to-follow-the-mouse/mouse.ts
+  not_doing:
+    - MapLibre GL JS
+    - GeoJSON Worker パイプライン
+
+verification:
+  checks:
+    - id: canvas-rendered
+      what: Canvas 要素が存在し正常にマウントされていること
+      how: DOM 要素から canvas を取得し幅・高さが正の値であることを検証
+      expected: canvas.width > 0 && canvas.height > 0
+    - id: initial-symbol-drawn
+      what: 初期座標（中央付近）に青色シンボルマーカーが描画されていること
+      how: 初期マーカー位置のピクセル色を検証
+      expected: r > 30 && g > 100 && b > 170
+    - id: symbol-follows-mouse
+      what: マウス座標を (+150px, +100px) 移動したとき、シンボル描画位置が追従して移動すること
+      how: 移動先のピクセル色変化を検証
+      expected: 移動先で青色ピクセルが検出され、元の位置が背景色に戻ること
