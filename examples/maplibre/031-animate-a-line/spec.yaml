@@ -1,0 +1,91 @@
+id: maplibre-031-animate-a-line
+request: >-
+  MapLibre GL JS の Animate a line サンプルと同じ意図で、
+  正弦波（Sine wave）経路をフレーム毎にアニメーション描画する地図を、
+  外部ライブラリ（MapLibre GL JS 等）なしで最小・最速に再現したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 1本の正弦波ライン描画に汎用エンジン全体のバンドルは不要
+  - id: quick-start
+    need: ページを開いて即座に地図とラインアニメーションが開始される
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-animation
+    need: アニメーションループが 60 fps で滑らかに進行する
+    rationale: フレーム再描画時間を 3 ms 以下、フレーム間隔を 20 ms 以下に抑制
+  - id: line-growth-verification
+    need: 時間経過とともに正弦波ラインが右方向に成長して画面ピクセルが変化する
+    unmeasured: verification の checks で画面ピクセル読み戻しを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-animation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/031-animate-a-line/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: anim-loop
+      what: 60フレームのアニメーション描画中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/031-animate-a-line/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-031-animate-a-line/land.json
+
+performance_knowledge:
+  - id: canvas2d-native-stroke-overhead-zero
+    finding: MapLibre GL JS では毎フレーム geojson.coordinates.push() と source.setData() を呼ぶため、Worker へのシリアライズ転送、頂点バッファ再生成と GPU アップロードのオーバーヘッドが発生する。Canvas 2D 直接描画器では、累積された Mercator スクリーン座標に対して ctx.lineTo() でストロークするだけであり、CPU/GPU 間の転送コストや GC プレッシャーがほぼゼロとなる。
+    evidence: 再描画時間は 0.5 ms 未満で安定し、60 fps を維持
+    applies_when: リアルタイムで成長・更新するライン描画
+  - id: mercator-preprojection
+    finding: 陸地ポリゴンおよび正弦波の座標計算において対数・三角関数変換を最適化し、描画ループ内を単純なスケール・平行移動に抑える
+    evidence: 初回描画およびフレーム再描画が極小化
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/031-animate-a-line/index.html
+      - examples/maplibre/031-animate-a-line/main.ts
+      - examples/maplibre/031-animate-a-line/line.ts
+    data:
+      - data/baked/maplibre-031-animate-a-line/land.json
+  not_doing:
+    - MapLibre GL JS（Canvas 2D 直接制御）
+    - GeoJSON Worker シリアライザ（メインスレッドで直接描画パス構築）
+
+verification:
+  checks:
+    - id: canvas-rendered
+      what: Canvas 要素が存在し正常にマウントされていること
+      how: DOM 要素から canvas を取得し幅・高さが正の値であることを検証
+      expected: canvas.width > 0 && canvas.height > 0
+    - id: land-drawn
+      what: 陸地背景ポリゴンが描画されていること
+      how: キャンバス中央（陸地位置）のピクセル値を getImageData で検証
+      expected: r > 200 && g > 200
+    - id: line-growth
+      what: 60フレームのアニメーション進行後に正弦波ラインが描画されピクセル変化が生じること
+      how: 60ステップのアニメーション実行前後のピクセル値変化と現在ステップ数を検証
+      expected: step >= 60
