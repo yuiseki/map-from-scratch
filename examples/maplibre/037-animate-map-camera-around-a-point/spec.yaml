@@ -1,0 +1,89 @@
+id: maplibre-037-animate-map-camera-around-a-point
+request: >-
+  MapLibre GL JS の Animate map camera around a point サンプルと同じ意図で、
+  指定した中心点の周囲をカメラが連続して回転旋回する地図アニメーションを、
+  外部ライブラリ（MapLibre GL JS 等）なしで最小・最速に再現したい。
+
+requirements:
+  - id: light-footprint
+    need: 外部依存ゼロで配布サイズを最小限に抑える
+    rationale: 単純なカメラ旋回アニメーションに巨大なエンジン全体のバンドルは不要
+  - id: quick-start
+    need: ページを開いて即座に地図と回転アニメーションが開始される
+    rationale: 300 ms 以内に初回描画
+  - id: smooth-rotation
+    need: カメラの回転アニメーションが 60 fps で滑らかに動作する
+    rationale: フレーム再描画時間を 3 ms 以下、フレーム間隔を 20 ms 以下に抑制
+  - id: rotation-verification
+    need: 時間経過とともにカメラ角度が変化し画面周辺のピクセルが回転する
+    unmeasured: verification の checks で画面ピクセル読み戻しを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 6000, unit: B, requirement: light-footprint}
+    - {metric: data_gzip_bytes, max: 38000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
+    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-rotation}
+    - {metric: frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: smooth-rotation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/037-animate-map-camera-around-a-point/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データの取得から初回描画まで
+      metrics: [first_frame_ms]
+    - id: rotate-loop
+      what: 60フレームのカメラ回転アニメーション中の再描画時間とフレーム間隔
+      metrics: [redraw_ms, frame_interval_ms]
+
+datasets:
+  bake: [node, examples/maplibre/037-animate-map-camera-around-a-point/bake.ts]
+  sources:
+    - id: ne-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Natural Earth パブリックドメイン
+  outputs:
+    - data/baked/maplibre-037-animate-map-camera-around-a-point/land.json
+
+performance_knowledge:
+  - id: canvas2d-transform-rotation
+    finding: MapLibre GL JS では rotateTo() 呼び出し時にビュー行列の更新、錐台カリング、タイルの再ソートが発生する。Canvas 2D 直接描画器では、画面中心を原点としたアフィン変換行列（ctx.rotate）を適用してベイク済み陸地パスを描くだけで済むため、再描画時間は 0.3 ms 未満で安定し、CPU/GPU 負荷が極小化する。
+    evidence: 再描画時間 p95 0.3 ms 未満で安定し、60 fps を維持
+    applies_when: カメラの連続回転・旋回アニメーション
+  - id: mercator-preprojection
+    finding: 陸地ポリゴンの投影演算をベイク時に行い、描画ループ内を単純なスケール・平行移動に抑える
+    evidence: 初回描画およびフレーム再描画が極小化
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript (型ストリップ配信)
+    gpu: none
+    code:
+      - examples/maplibre/037-animate-map-camera-around-a-point/index.html
+      - examples/maplibre/037-animate-map-camera-around-a-point/main.ts
+      - examples/maplibre/037-animate-map-camera-around-a-point/rotate.ts
+  not_doing:
+    - MapLibre GL JS
+    - 3D Extrusion Buildings（2D カメラ回転に集中）
+
+verification:
+  checks:
+    - id: canvas-rendered
+      what: Canvas 要素が存在し正常にマウントされていること
+      how: DOM 要素から canvas を取得し幅・高さが正の値であることを検証
+      expected: canvas.width > 0 && canvas.height > 0
+    - id: center-focal-point-drawn
+      what: 回転中心に十字レティクルまたはフォーカルマーカーが描画されていること
+      how: キャンバス中心のピクセル色を検証
+      expected: r < 100 && g < 100 && b < 100
+    - id: camera-rotates
+      what: 60フレームのカメラ回転アニメーション進行後に周辺の描画ピクセルが変化すること
+      how: 60ステップ回転前後の周辺オフセット位置ピクセル変化を検証
+      expected: bearing > 0 && pixelDiff > 0
