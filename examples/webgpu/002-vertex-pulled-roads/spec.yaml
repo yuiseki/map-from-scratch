@@ -23,23 +23,25 @@ evaluation:
     - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 450000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
-    - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
-    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
-  gates: [エラーがない, verification の check がすべて通る]
+    - {metric: cpu_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
 
 benchmarks:
   runtime: browser
   page: examples/webgpu/002-vertex-pulled-roads/index.html
   viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
   cpu_throttle: 1
+  # headless Chromium only offers WebGPU on SwiftShader
+  display: xvfb
   iterations: 3
   scenarios:
     - id: first-frame
       what: 道路バイナリ読み込みから初回 WebGPU 道路描画まで
       metrics: [first_frame_ms]
     - id: pan
-      what: 60フレームの地図パン中の再描画時間とフレーム間隔
-      metrics: [redraw_ms, frame_interval_ms]
+      what: 60 フレームの地図パン。オフスクリーンに描き、JS の時間 (cpu_ms)、onSubmittedWorkDone までの時間 (frame_ms)、timestamp で測った描画パスの時間 (gpu_ms)
+      metrics: [cpu_ms, frame_ms, gpu_ms]
 
 datasets:
   bake: [node, examples/webgpu/002-vertex-pulled-roads/bake.ts]
@@ -64,7 +66,7 @@ architecture_selection:
     platform: browser
     api: WebGPU
     language: TypeScript (型ストリップ配信)
-    gpu: none
+    gpu: hardware
     code:
       - examples/webgpu/002-vertex-pulled-roads/index.html
       - examples/webgpu/002-vertex-pulled-roads/main.ts

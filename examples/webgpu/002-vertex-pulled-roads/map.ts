@@ -38,25 +38,34 @@ export interface RoadMap {
   segmentCount: number;
   uploadCount: number;
   gpu: string;
-  render: () => void;
-  panBy: (dx: number, dy: number) => void;
+  device: GPUDevice;
+  // ts: timestamps at the start and the end of the pass. offscreen: draw
+  // into a texture the size of the canvas, so that waiting for the frame
+  // does not wait for the canvas to be presented.
+  render: (ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => void;
+  // ts, offscreen: as render's
+  panBy: (dx: number, dy: number, ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => void;
   zoomBy: (delta: number) => void;
   readPixel: (x: number, y: number) => Promise<Uint8Array>;
 }
 
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<RoadMap> {
   if (!navigator.gpu) throw new Error('WebGPU not supported on this browser/platform');
+  // The roads download while the adapter and device are being set up.
+  const data = fetch(dataUrl).then((r) => {
+    if (!r.ok) throw new Error(`Failed to load roads: ${r.status}`);
+    return r.arrayBuffer();
+  });
   const adapter = await navigator.gpu.requestAdapter();
   if (!adapter) throw new Error('No WebGPU adapter found');
   const gpuDesc = (adapter as any).info?.description || (adapter as any).info?.architecture || 'WebGPU SwiftShader';
-  const device = await adapter.requestDevice();
+  const requiredFeatures: GPUFeatureName[] = adapter.features.has('timestamp-query') ? ['timestamp-query'] : [];
+  const device = await adapter.requestDevice({ requiredFeatures });
 
   device.lost.then(info => console.error('WebGPU device lost:', info));
 
   // Load baked roads binary
-  const res = await fetch(dataUrl);
-  if (!res.ok) throw new Error(`Failed to load roads: ${res.status}`);
-  const ab = await res.arrayBuffer();
+  const ab = await data;
   const dv = new DataView(ab);
 
   const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
@@ -359,7 +368,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     device.queue.writeBuffer(uniformBuffer, 0, data);
   }
 
-  function render() {
+  function render(ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false) {
     const w = canvas.width || 1024;
     const h = canvas.height || 768;
     if (!colorTexture || colorTexture.width !== w || colorTexture.height !== h) {
@@ -369,7 +378,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     updateUniforms(w, h);
 
     const commandEncoder = device.createCommandEncoder();
-    const view = webgpuCtx ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
+    const view = webgpuCtx && !offscreen ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
 
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [
@@ -380,6 +389,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
           storeOp: 'store',
         },
       ],
+      timestampWrites: ts && { ...ts.begin, ...ts.end },
     });
 
     renderPass.setPipeline(pipeline);
@@ -421,11 +431,11 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
 
   // Pan by CSS px. Data y grows south and screen y down, so dragging down
   // moves cy north (it moved the map up, against the pointer).
-  function panBy(dx: number, dy: number): void {
+  function panBy(dx: number, dy: number, ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false): void {
     const k = 2 / ((canvas.clientHeight || 768) * scale);
     cx -= dx * k;
     cy -= dy * k;
-    render();
+    render(ts, offscreen);
   }
 
   // Zoom keeping the ground under (x, y) in CSS px still.
@@ -457,6 +467,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
       return uploadCount;
     },
     gpu: gpuDesc,
+    device,
     render,
     panBy,
     zoomBy(delta: number) {

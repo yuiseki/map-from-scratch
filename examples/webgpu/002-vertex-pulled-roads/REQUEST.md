@@ -17,19 +17,23 @@ OpenStreetMap の motorway・trunk・primary とその link を、東京23区の
 
 ## 計測結果
 
-`MFS_CHROME_FLAGS="--enable-unsafe-webgpu --use-angle=swiftshader" bin/mfs bench webgpu-002-vertex-pulled-roads -n 3` を実行 (2026-10-30)。
+`bin/mfs bench webgpu-002-vertex-pulled-roads` を 3 反復。RTX 3060 のホストで、Chromium を Xvfb 上で画面ありで起動する (`display: xvfb`)。headless の Chromium は WebGPU を SwiftShader (CPU) でしか出さない。2026-11-03。
 
 | 項目 | 計測値 | 予算 / 目標 | 判定 |
 |---|---|---|---|
-| コード配布サイズ (`code_gzip_bytes`) | 5,772 B | <= 7,000 B | 合格 |
+| コード配布サイズ (`code_gzip_bytes`) | 6,082 B | <= 7,000 B | 合格 |
 | データ配布サイズ (`data_gzip_bytes`) | 427,400 B | <= 450,000 B | 合格 |
-| 初回描画時間 (`first_frame_ms` p50) | 57.0 ms | <= 1,200 ms | 合格 |
-| 再描画時間 (`redraw_ms` p95) | 0.170 ms | <= 2.0 ms | 合格 |
-| フレーム間隔 (`frame_interval_ms` p95) | 33.34 ms | <= 35.0 ms | 合格 |
+| 初回描画時間 (`first_frame_ms` p50) | 780〜793 ms | <= 1,200 ms | 合格 |
+| 1 フレームの JS (`cpu_ms` p95) | 0.055〜0.075 ms | <= 2.0 ms | 合格 |
+| 完了までのフレーム時間 (`frame_ms` p95) | 3.37〜3.40 ms | <= 16.7 ms | 合格 |
+| GPU 時間 (`gpu_ms` p50、描画パス) | 0.52 ms | | |
 | 道路データロード検証 (`roads-loaded`) | 11,238 路線 / 87,904 ノード | 11,238 路線 / 87,904 ノード | 合格 (3/3) |
 | 静的 GPU バッファ検証 (`static-gpu-buffers`) | 移動・ズーム時の uploadCount 変化なし (1) | uploadCount == 1 | 合格 (3/3) |
 | 道路描画ピクセル検証 (`roads-rendered`) | 道路通過座標での非背景色描画 | 背景色と異なる | 合格 (3/3) |
 | パン追従検証 (`pan-updates-road-positions`) | パン操作に応じたピクセル座標追従 | 位置追従 | 合格 (3/3) |
+
+- 以前は headless の SwiftShader で測り、`frame_interval_ms` p95 の予算を 35 ms にしていた (実測 33.34 ms)。CPU で GPU をまねる速さで、GPU で描く例の速さではなかった。いまは 1 フレームをオフスクリーンに描いて `onSubmittedWorkDone` まで待ち、予算は要件どおり 60 fps の 16.7 ms にした。
+- 初回描画のほとんどは `requestAdapter()` で、webgpu-001 では 660〜690 ms だった。SwiftShader では 57 ms だった。道路データの取得はアダプタの取得と並行に始める。
 
 ## `05-tokyo-roads-native` (OpenGL ES 3.0) との比較
 
@@ -39,7 +43,7 @@ OpenStreetMap の motorway・trunk・primary とその link を、東京23区の
 | **頂点バッファ** | 始点・終点用の 2 属性インスタンスバッファ (CPU 整列) | **頂点バッファゼロ** (Storage Buffer に生ノード列をそのまま配置) |
 | **接続部 (Join)** | キャップ拡張のみで誤魔化し（急カーブで重なりや隙間） | **Vertex Pulling による Miter Join 計算** (前後ノード参照) |
 | **カメラ移動時の CPU 処理** | 64 バイト Uniform 転送のみ | **64 バイト Uniform 転送のみ** (頂点再計算ゼロ) |
-| **再描画速度 (`redraw_ms`)** | ~1.05 ms (ネイティブ 120 万区間) | **0.100 ms p50 / 0.170 ms p95** (SwiftShader 7.7 万区間) |
+| **再描画速度** | ~1.05 ms (ネイティブ 120 万区間) | **JS 0.075 ms p95、GPU 0.52 ms p50** (RTX 3060、7.7 万区間) |
 | **依存関係** | X11 / EGL / GLES3 開発ヘッダー | **依存ゼロ** (ブラウザ標準 WebGPU API のみ) |
 
 ## 得られた知見

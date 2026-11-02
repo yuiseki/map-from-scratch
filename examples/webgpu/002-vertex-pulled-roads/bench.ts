@@ -1,5 +1,5 @@
 // examples/webgpu/002-vertex-pulled-roads/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, benchFramesGpu } from '../../../harness/page/bench.ts';
 import type { RoadMap } from './map.ts';
 
 export async function runBench(map: RoadMap, firstFrameMs: number): Promise<void> {
@@ -78,23 +78,12 @@ export async function runBench(map: RoadMap, firstFrameMs: number): Promise<void
   // Reset view for pan bench
   map.panBy(-50, -30);
 
-  // Pan benchmark: 60 frames
-  const raf = () => new Promise<number>(requestAnimationFrame);
-  await raf();
-  const redrawTimes: number[] = [];
-  const frameIntervals: number[] = [];
-  let last = performance.now();
-
-  for (let i = 0; i < 60; i++) {
-    const t0 = performance.now();
-    map.panBy(Math.sin(i * 0.1) * 3, Math.cos(i * 0.1) * 2);
-    redrawTimes.push(performance.now() - t0);
-    const now = await raf();
-    frameIntervals.push(now - last);
-    last = now;
-  }
-
-  emit({ metric: 'redraw_ms', values: redrawTimes });
-  emit({ metric: 'frame_interval_ms', values: frameIntervals });
+  // Pan benchmark: 60 frames, timed from the start to the end of the pass.
+  // The frames go to an offscreen texture the size of the canvas: waiting for
+  // a canvas frame waits for it to be presented, which took 81 ms a frame on
+  // Xvfb (webgpu-003).
+  await benchFramesGpu(map.device, 60, (i, ts) => {
+    map.panBy(Math.sin(i * 0.1) * 3, Math.cos(i * 0.1) * 2, ts, true);
+  });
   emit({ done: true });
 }
