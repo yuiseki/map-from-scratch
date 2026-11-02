@@ -19,6 +19,8 @@ export class CesiumPointsGlobe {
   ctx: CanvasRenderingContext2D;
   sphere: Float32Array = new Float32Array(0);
   points: Point[] = [];
+  // Unit xyz per point, computed once: a frame only rotates them.
+  private pointXyz: Float32Array = new Float32Array(0);
 
   yaw = 0;       // Center at lon 0 (London / Europe / Africa)
   pitch = 0.35;  // 20 degrees North
@@ -56,6 +58,7 @@ export class CesiumPointsGlobe {
     const count = new Uint32Array(ab, 4, 1)[0];
     const dv = new DataView(ab, 8);
     const pts: Point[] = [];
+    const xyz = this.pointXyz = new Float32Array(count * 3);
 
     for (let i = 0; i < count; i++) {
       const at = i * 8;
@@ -64,6 +67,8 @@ export class CesiumPointsGlobe {
       const colorIdx = dv.getUint8(at + 4);
       const size = dv.getUint8(at + 5);
       pts.push({ lon, lat, colorIdx, size });
+      const L = lon * Math.PI / 180, P = lat * Math.PI / 180;
+      xyz.set([Math.cos(P) * Math.cos(L), Math.cos(P) * Math.sin(L), Math.sin(P)], i * 3);
     }
 
     this.points = pts;
@@ -231,45 +236,28 @@ export class CesiumPointsGlobe {
     }
     ctx.fill();
 
-    // Draw 5,000 Points with Color Batching
-    // 1. Project and collect visible points by palette index
-    const batches: { sx: number; sy: number; r: number }[][] = [[], [], [], [], []];
+    // Points: the rotation of project(), with the trigonometry of each point
+    // done once. A point is a zero-length line with round caps, a disc as
+    // wide as the line. One path per colour and radius (in 1/4 px), stroked
+    // twice: every outline 1.2 px wider, then every fill on top, by colour
+    const paths: Path2D[] = [];
+    const q = this.pointXyz;
     for (let i = 0; i < this.points.length; i++) {
+      const gx = q[i * 3], gy = q[i * 3 + 1], gz = q[i * 3 + 2];
+      const x1 = gx * cosY + gy * sinY;
+      const depth = x1 * cosP + gz * sinP;
+      if (depth <= 0.02) continue;
       const p = this.points[i];
-      const proj = this.project(p.lon, p.lat);
-      if (!proj.visible) continue;
-
-      const r = (p.size * 0.5) * (0.8 + proj.depth * 0.4);
-      batches[p.colorIdx].push({ sx: proj.sx, sy: proj.sy, r });
+      const key = p.colorIdx * 64 + Math.round(p.size * 2 * (0.8 + depth * 0.4));
+      const sx = cx + (-gx * sinY + gy * cosY) * R, sy = cy - (-x1 * sinP + gz * cosP) * R;
+      const path = paths[key] ??= new Path2D();
+      path.moveTo(sx, sy);
+      path.lineTo(sx, sy);
     }
-
-    // 2. Batch Draw: Outlines (1 draw call)
-    ctx.beginPath();
-    for (let c = 0; c < 5; c++) {
-      const list = batches[c];
-      for (let i = 0; i < list.length; i++) {
-        const pt = list[i];
-        ctx.moveTo(pt.sx + pt.r, pt.sy);
-        ctx.arc(pt.sx, pt.sy, pt.r + 1.2, 0, Math.PI * 2);
-      }
-    }
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fill();
-
-    // 3. Batch Draw: Point Fills (5 draw calls)
-    for (let c = 0; c < 5; c++) {
-      const list = batches[c];
-      if (list.length === 0) continue;
-
-      ctx.fillStyle = PALETTE[c];
-      ctx.beginPath();
-      for (let i = 0; i < list.length; i++) {
-        const pt = list[i];
-        ctx.moveTo(pt.sx + pt.r, pt.sy);
-        ctx.arc(pt.sx, pt.sy, pt.r, 0, Math.PI * 2);
-      }
-      ctx.fill();
-    }
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    paths.forEach((path, key) => { ctx.lineWidth = (key % 64) / 2 + 2.4; ctx.stroke(path); });
+    paths.forEach((path, key) => { ctx.strokeStyle = PALETTE[key >> 6]; ctx.lineWidth = (key % 64) / 2; ctx.stroke(path); });
 
     ctx.restore(); // end globe clip
     ctx.restore(); // end dpr scale
