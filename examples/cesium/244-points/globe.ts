@@ -1,11 +1,4 @@
 
-interface Point {
-  lon: number;
-  lat: number;
-  colorIdx: number;
-  size: number;
-}
-
 const PALETTE = [
   '#facc15', // 0: Yellow
   '#06b6d4', // 1: Cyan
@@ -18,9 +11,11 @@ export class CesiumPointsGlobe {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   sphere: Float32Array = new Float32Array(0);
-  points: Point[] = [];
-  // Unit xyz per point, computed once: a frame only rotates them.
-  private pointXyz: Float32Array = new Float32Array(0);
+  private turned: Float32Array = new Float32Array(0);
+  // Per point, computed once: unit xyz (a frame only rotates them), the
+  // colour index and the size
+  private pointXyz = new Float32Array(0);
+  private pointLook = new Uint8Array(0);
 
   yaw = 0;       // Center at lon 0 (London / Europe / Africa)
   pitch = 0.35;  // 20 degrees North
@@ -53,25 +48,22 @@ export class CesiumPointsGlobe {
     ]);
 
     this.sphere = toSphere(new Int16Array(await landRes.arrayBuffer()));
+    this.turned = new Float32Array(this.sphere.length);
 
     const ab = await ptsRes.arrayBuffer();
     const count = new Uint32Array(ab, 4, 1)[0];
     const dv = new DataView(ab, 8);
-    const pts: Point[] = [];
     const xyz = this.pointXyz = new Float32Array(count * 3);
+    const look = this.pointLook = new Uint8Array(count * 2);
 
     for (let i = 0; i < count; i++) {
       const at = i * 8;
-      const lon = dv.getInt16(at, true) / 100;
-      const lat = dv.getInt16(at + 2, true) / 100;
-      const colorIdx = dv.getUint8(at + 4);
-      const size = dv.getUint8(at + 5);
-      pts.push({ lon, lat, colorIdx, size });
-      const L = lon * Math.PI / 180, P = lat * Math.PI / 180;
+      const L = dv.getInt16(at, true) / 100 * Math.PI / 180, P = dv.getInt16(at + 2, true) / 100 * Math.PI / 180;
       xyz.set([Math.cos(P) * Math.cos(L), Math.cos(P) * Math.sin(L), Math.sin(P)], i * 3);
+      look[i * 2] = dv.getUint8(at + 4);
+      look[i * 2 + 1] = dv.getUint8(at + 5);
     }
 
-    this.points = pts;
     this.draw();
   }
 
@@ -207,32 +199,30 @@ export class CesiumPointsGlobe {
     // Land: one path for every front-facing triangle, filled once
     const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
     const cosP = Math.cos(this.pitch), sinP = Math.sin(this.pitch);
-    const s = this.sphere;
-    const px = [0, 0, 0], py = [0, 0, 0], pz = [0, 0, 0];
+    // Rotate every corner in one flat loop, then walk the triangles
+    const s = this.sphere, t = this.turned;
+    for (let j = 0; j < s.length; j += 3) {
+      const x1 = s[j] * cosY + s[j + 1] * sinY;
+      t[j] = -s[j] * sinY + s[j + 1] * cosY;
+      t[j + 1] = -x1 * sinP + s[j + 2] * cosP;
+      t[j + 2] = x1 * cosP + s[j + 2] * sinP;
+    }
     ctx.fillStyle = '#1e3a5f';
     ctx.beginPath();
-    for (let i = 0; i < s.length; i += 9) {
-      let front = 0;
-      for (let k = 0; k < 3; k++) {
-        const gx = s[i + k * 3], gy = s[i + k * 3 + 1], gz = s[i + k * 3 + 2];
-        const x1 = gx * cosY + gy * sinY;
-        px[k] = -gx * sinY + gy * cosY;
-        py[k] = -x1 * sinP + gz * cosP;
-        pz[k] = x1 * cosP + gz * sinP;
-        if (pz[k] > 0) front++;
-      }
-      if (front === 0) continue;
+    for (let i = 0; i < t.length; i += 9) {
+      const a = t[i + 2] > 0, b = t[i + 5] > 0, c = t[i + 8] > 0;
+      if (!a && !b && !c) continue;
       // Across the horizon: put the far corners on the rim.
-      if (front < 3) {
-        for (let k = 0; k < 3; k++) {
-          if (pz[k] > 0) continue;
-          const n = Math.hypot(px[k], py[k]) || 1;
-          px[k] /= n; py[k] /= n;
+      if (!a || !b || !c) {
+        for (let j = i; j < i + 9; j += 3) {
+          if (t[j + 2] > 0) continue;
+          const n = Math.hypot(t[j], t[j + 1]) || 1;
+          t[j] /= n; t[j + 1] /= n;
         }
       }
-      ctx.moveTo(cx + px[0] * R, cy - py[0] * R);
-      ctx.lineTo(cx + px[1] * R, cy - py[1] * R);
-      ctx.lineTo(cx + px[2] * R, cy - py[2] * R);
+      ctx.moveTo(cx + t[i] * R, cy - t[i + 1] * R);
+      ctx.lineTo(cx + t[i + 3] * R, cy - t[i + 4] * R);
+      ctx.lineTo(cx + t[i + 6] * R, cy - t[i + 7] * R);
     }
     ctx.fill();
 
@@ -241,16 +231,15 @@ export class CesiumPointsGlobe {
     // wide as the line. One path per colour and radius (in 1/4 px), stroked
     // twice: every outline 1.2 px wider, then every fill on top, by colour
     const paths: Path2D[] = [];
-    const q = this.pointXyz;
-    for (let i = 0; i < this.points.length; i++) {
+    const q = this.pointXyz, look = this.pointLook;
+    for (let i = 0; i < look.length / 2; i++) {
       const gx = q[i * 3], gy = q[i * 3 + 1], gz = q[i * 3 + 2];
       const x1 = gx * cosY + gy * sinY;
       const depth = x1 * cosP + gz * sinP;
       if (depth <= 0.02) continue;
-      const p = this.points[i];
-      const key = p.colorIdx * 64 + Math.round(p.size * 2 * (0.8 + depth * 0.4));
+      const key = look[i * 2] * 64 + Math.round(look[i * 2 + 1] * 2 * (0.8 + depth * 0.4));
       const sx = cx + (-gx * sinY + gy * cosY) * R, sy = cy - (-x1 * sinP + gz * cosP) * R;
-      const path = paths[key] ??= new Path2D();
+      const path = paths[key] || (paths[key] = new Path2D());
       path.moveTo(sx, sy);
       path.lineTo(sx, sy);
     }
