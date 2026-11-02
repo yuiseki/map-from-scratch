@@ -23,23 +23,25 @@ evaluation:
     - {metric: code_gzip_bytes, max: 7100, unit: B, requirement: light-footprint}  # 7000 から変更: 実測の高さを読む処理と canvas を表示サイズに合わせる処理で 7,029 B
     - {metric: data_gzip_bytes, max: 45000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
-    - {metric: redraw_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
-    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
-  gates: [エラーがない, verification の check がすべて通る]
+    - {metric: cpu_ms, stat: p95, max: 3.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
 
 benchmarks:
   runtime: browser
   page: examples/webgpu/001-gpu-driven-culling/index.html
   viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
   cpu_throttle: 1
+  # headless Chromium only offers WebGPU on SwiftShader
+  display: xvfb
   iterations: 3
   scenarios:
     - id: first-frame
       what: 建物バイナリデータの取得から初回 WebGPU 描画まで
       metrics: [first_frame_ms]
     - id: orbit
-      what: 60フレームの視点回転中の再描画時間とフレーム間隔
-      metrics: [redraw_ms, frame_interval_ms]
+      what: 60 フレームの視点回転。1 フレームはカリングの compute パスと描画パスで、オフスクリーンに描く。JS の時間 (cpu_ms)、onSubmittedWorkDone までの時間 (frame_ms)、timestamp で測ったカリングの開始から描画の終わりまで (gpu_ms)
+      metrics: [cpu_ms, frame_ms, gpu_ms]
 
 datasets:
   bake: [node, examples/webgpu/001-gpu-driven-culling/bake.ts]
@@ -58,15 +60,23 @@ datasets:
 performance_knowledge:
   - id: gpu-driven-culling-indirect
     finding: Compute Shader による視錐台カリングと drawIndexedIndirect() の組み合わせにより、CPU から地物ごとの描画判定と draw コールを完全に剥がし、数千棟の 3D 建築物を 0.5 ms 未満で一括描画できる
-    evidence: toji/webgpu-bundle-culling の設計を検証
+    evidence: RTX 3060 (Xvfb 上の Chromium) で、1 フレームの JS は p95 0.075 ms、timestamp で測った GPU 時間 (カリングの開始から描画の終わり) は p50 0.046 ms。frame_ms p95 2.4 ms は onSubmittedWorkDone の床
     applies_when: 大規模 3D 都市モデル・点群・インスタンス群のリアルタイム表示
+  - id: swiftshader-is-not-the-gpu
+    finding: headless の Chromium の WebGPU は SwiftShader なので、そこで測ったフレーム間隔は CPU の空きで決まり、GPU の例の速さを表さない。Xvfb 上の画面ありの Chromium でハードウェアの GPU を使い、オフスクリーンに描いて timestamp で測る
+    evidence: SwiftShader の frame_interval_ms p95 は実行ごとに 17 ms 前後か 35〜44 ms (予算 35 ms をまたいだ)。RTX 3060 では frame_ms p95 2.4 ms、gpu_ms 0.046 ms
+    applies_when: WebGPU の例を計測するとき
+  - id: adapter-dominates-first-frame
+    finding: 初回描画のほとんどは requestAdapter で、powerPreference を変えても縮まない。データの取得をその間に済ませる
+    evidence: requestAdapter 660〜690 ms、requestDevice 80 ms、データ取得とパイプライン作成で 6 ms。first_frame_ms p50 641〜763 ms
+    applies_when: WebGPU のページの立ち上げを速くしたいとき
 
 architecture_selection:
   chosen:
     platform: browser
     api: WebGPU
     language: TypeScript (型ストリップ配信)
-    gpu: none
+    gpu: hardware
     code:
       - examples/webgpu/001-gpu-driven-culling/index.html
       - examples/webgpu/001-gpu-driven-culling/main.ts

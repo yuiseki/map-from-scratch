@@ -36,8 +36,13 @@ export interface CullingMap {
   canvas: HTMLCanvasElement;
   buildingCount: number;
   gpu: string;
-  render: () => void;
-  orbitBy: (dyaw: number, dpitch: number) => void;
+  device: GPUDevice;
+  // ts: timestamps at the start of the culling pass and the end of the draw.
+  // offscreen: draw into a texture the size of the canvas, so that waiting
+  // for the frame does not wait for the canvas to be presented.
+  render: (ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => void;
+  // ts, offscreen: as render's
+  orbitBy: (dyaw: number, dpitch: number, ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => void;
   zoomBy: (delta: number) => void;
   getVisibleCount: () => Promise<number>;
   readPixel: (x: number, y: number) => Promise<Uint8Array>;
@@ -149,10 +154,17 @@ function extractFrustumPlanes(vp: Float32Array): Float32Array {
 
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<CullingMap> {
   if (!navigator.gpu) throw new Error('WebGPU not supported on this browser/platform');
+  // The data downloads while the adapter and device are being set up
+  // (requestAdapter alone took 660-690 ms on the RTX 3060 host).
+  const data = fetch(dataUrl).then((r) => {
+    if (!r.ok) throw new Error(`Failed to load buildings binary: ${r.status}`);
+    return r.arrayBuffer();
+  });
   const adapter = await navigator.gpu.requestAdapter();
   if (!adapter) throw new Error('No WebGPU adapter found');
   const gpuDesc = (adapter as any).info?.description || (adapter as any).info?.architecture || 'WebGPU SwiftShader';
-  const device = await adapter.requestDevice();
+  const requiredFeatures: GPUFeatureName[] = adapter.features.has('timestamp-query') ? ['timestamp-query'] : [];
+  const device = await adapter.requestDevice({ requiredFeatures });
 
   device.lost.then((info) => {
     console.error('WebGPU device was lost:', info);
@@ -199,9 +211,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   createColorTexture(canvas.width || 1024, canvas.height || 768);
 
   // Load baked data
-  const res = await fetch(dataUrl);
-  if (!res.ok) throw new Error(`Failed to load buildings binary: ${res.status}`);
-  const ab = await res.arrayBuffer();
+  const ab = await data;
   const dv = new DataView(ab);
 
   const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
@@ -496,7 +506,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   // Initial setup for indirect buffer: indexCount=36, instanceCount=0
   const initIndirectData = new Uint32Array([36, 0, 0, 0, 0]);
 
-  function render() {
+  function render(ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false) {
     const w = canvas.width || 1024;
     const h = canvas.height || 768;
     if (!depthTexture || depthTexture.width !== w || depthTexture.height !== h) {
@@ -512,14 +522,14 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     const commandEncoder = device.createCommandEncoder();
 
     // 1. Compute Pass: GPU Frustum Culling
-    const computePass = commandEncoder.beginComputePass();
+    const computePass = commandEncoder.beginComputePass(ts && { timestampWrites: ts.begin });
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, computeBindGroup);
     computePass.dispatchWorkgroups(Math.ceil(buildingCount / 64));
     computePass.end();
 
     // 2. Render Pass: drawIndexedIndirect
-    const view = webgpuCtx ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
+    const view = webgpuCtx && !offscreen ? webgpuCtx.getCurrentTexture().createView() : colorTexture.createView();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
@@ -535,6 +545,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
         depthLoadOp: 'clear',
         depthStoreOp: 'store',
       },
+      timestampWrites: ts?.end,
     });
 
     renderPass.setPipeline(renderPipeline);
@@ -593,11 +604,12 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     canvas,
     buildingCount,
     gpu: gpuDesc,
+    device,
     render,
-    orbitBy(dyaw: number, dpitch: number) {
+    orbitBy(dyaw: number, dpitch: number, ts?: { begin: GPUComputePassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false) {
       yaw += dyaw;
       pitch = Math.max(0.1, Math.min(1.4, pitch + dpitch));
-      render();
+      render(ts, offscreen);
     },
     zoomBy(delta: number) {
       distance = Math.max(300, Math.min(4000, distance + delta));

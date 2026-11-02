@@ -1,5 +1,5 @@
 // examples/webgpu/001-gpu-driven-culling/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, benchFramesGpu } from '../../../harness/page/bench.ts';
 import type { CullingMap } from './map.ts';
 
 export async function runBench(map: CullingMap, firstFrameMs: number): Promise<void> {
@@ -73,23 +73,12 @@ export async function runBench(map: CullingMap, firstFrameMs: number): Promise<v
     detail: `visible count changed on camera rotation: before=${countBefore}, after=${countAfter}`,
   });
 
-  // Orbit Benchmark: 60 frames
-  const raf = () => new Promise<number>(requestAnimationFrame);
-  await raf();
-  const redrawTimes: number[] = [];
-  const frameIntervals: number[] = [];
-  let last = performance.now();
-
-  for (let i = 0; i < 60; i++) {
-    const t0 = performance.now();
-    map.orbitBy(0.015, 0.003 * Math.sin(i * 0.1));
-    redrawTimes.push(performance.now() - t0);
-    const now = await raf();
-    frameIntervals.push(now - last);
-    last = now;
-  }
-
-  emit({ metric: 'redraw_ms', values: redrawTimes });
-  emit({ metric: 'frame_interval_ms', values: frameIntervals });
+  // Orbit benchmark: 60 frames, timed from the culling pass to the end of
+  // the draw. The frames go to an offscreen texture the size of the canvas:
+  // waiting for a canvas frame waits for it to be presented, which took
+  // 81 ms a frame on Xvfb (webgpu-003).
+  await benchFramesGpu(map.device, 60, (i, ts) => {
+    map.orbitBy(0.015, 0.003 * Math.sin(i * 0.1), ts, true);
+  });
   emit({ done: true });
 }
