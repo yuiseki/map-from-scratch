@@ -24,15 +24,19 @@ MapLibre GL JS の公式サンプル「[Render world copies](https://maplibre.or
    - ラジオの選択状態までピクセルとして読み戻せる。
 4. **ズームは 0 でクランプ**
    - MapLibre の minZoom 既定 0 に合わせ、それより縮小しない。
+5. **1 世界ぶんのパスを最初に 1 回だけ作る**
+   - 陸地と海岸線を、Mercator の [0, 1] 座標の `Path2D` として読み込み時に作る。フレームごとには、複製ごとに変換行列を設定して `fill` と `stroke` を呼ぶだけ。線幅は `1 / scale` にして 1 px に保つ。
 
 ## 計測結果
 
+2026-11-03、RTX 3060 のホストの headless Chromium (`bin/mfs bench`、load average 2〜5)。
+
 | 項目 | 値 |
 | --- | --- |
-| 初回描画 first_frame_ms p50 | 15.63 ms |
-| 再描画 redraw_ms p95 | 1.6 ms |
-| フレーム間隔 frame_interval_ms p95 | 9.925 ms |
-| コード gzip | 3,275 B |
+| 初回描画 first_frame_ms p50 | 43.7 ms (Path2D にする前は同じ条件で 50〜60 ms) |
+| 再描画 redraw_ms p95 | 0.085〜0.12 ms |
+| フレーム間隔 frame_interval_ms p95 | 6.7〜7.9 ms |
+| コード gzip | 3,367 B |
 | データ gzip | 30,400 B |
 | 検証チェック | 6 / 6 PASS |
 
@@ -50,6 +54,8 @@ MapLibre GL JS の公式サンプル「[Render world copies](https://maplibre.or
 - Natural Earth 110m 陸地（パブリックドメイン）をベイク時に Web Mercator へ投影。
 
 ## 実装上の落とし穴
+
+- 多角形ごとに頂点を並べ直して `fill` と `stroke` を呼ぶ版は、全体表示 (世界 6 枚) で毎フレーム約 6 万回の `lineTo` になり、redraw_ms p95 が 2.1〜2.6 ms で予算 2 ms を超えた (2026-11-03、RTX 3060 のホストの headless Chromium、load average 2〜5)。`Path2D` を 1 回作って変換行列で使い回す形にして 0.085〜0.12 ms になった。画面の差は海岸線のアンチエイリアスだけで、最大 10 / 255。
 
 - ズーム 0.01 では世界が約 257 px で、大陸は 10 px 程度。厳密な輪郭比較ではなく陸海の分類で検証する。
 - wrap の左右範囲を `Math.floor` で求める際、中心が 179°E のような端にあると符号を間違えやすい。`centerMx ± width / (2 * scale)` をそのまま floor する。

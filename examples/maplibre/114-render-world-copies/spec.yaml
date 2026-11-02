@@ -63,6 +63,10 @@ performance_knowledge:
   - id: sub-pixel-world
     finding: ズーム 0.01 では 1 世界が約 257 px。大陸は 10 px 程度なので、陸海の判定は色で行い、輪郭の 1 px のずれは許容する必要がある
     evidence: 複製の比較で不一致が許容内に収まり、パン後も同じ位置関係を保つ
+  - id: path2d-once-per-world
+    finding: 1 世界ぶんの陸地と海岸線を Mercator 座標の Path2D として 1 回だけ作り、複製ごとに setTransform して fill と stroke を呼ぶと、再描画の JS 時間が 20 分の 1 以下になる
+    evidence: 全体表示のパンで redraw_ms p95 が 2.1〜2.6 ms (多角形ごとに lineTo を並べ直す版) から 0.085〜0.12 ms、frame_interval_ms p95 は 8.5 ms から 6.7〜7.9 ms。画面の差は海岸線のアンチエイリアスだけで最大 10 / 255
+    applies_when: 同じ形を平行移動や拡大縮小だけで何度も描く Canvas 2D
   - id: clamp-zoom-at-zero
     finding: ズームは 0 未満にしない。MapLibre の minZoom 既定 0 と同じで、それ以下へはホイールで縮小しない
     evidence: setZoom が 0..8 にクランプ

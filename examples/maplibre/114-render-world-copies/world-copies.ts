@@ -56,6 +56,26 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   if (!res.ok) throw new Error(`failed to fetch land polygons: ${res.status}`);
   const polygons = (await res.json()) as Polygon[];
 
+  // One world in Mercator units [0, 1], built once: a frame only sets the
+  // transform of each copy, instead of rebuilding 5,000 vertices per copy.
+  const land = new Path2D();
+  // Stroke the coast, not the 180° cut: Natural Earth splits land there,
+  // and its edge drew a line across Chukotka.
+  const coast = new Path2D();
+  for (const poly of polygons) {
+    for (const ring of poly) {
+      for (let i = 0; i < ring.length; i++) {
+        if (i === 0) land.moveTo(ring[i][0], ring[i][1]);
+        else land.lineTo(ring[i][0], ring[i][1]);
+        if (i === 0) continue;
+        const a = ring[i - 1], b = ring[i];
+        if ((a[0] <= 0 && b[0] <= 0) || (a[0] >= 1 && b[0] >= 1)) continue;
+        coast.moveTo(a[0], a[1]);
+        coast.lineTo(b[0], b[1]);
+      }
+    }
+  }
+
   let centerMx = defaultCenterMx;
   let centerMy = defaultCenterMy;
   let zoom = DEFAULT_ZOOM;
@@ -158,38 +178,17 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
     ctx.fillStyle = LAND;
     ctx.strokeStyle = LAND_EDGE;
-    ctx.lineWidth = 1;
+    // The path is in world units, so the 1 px line is 1 / scale of them.
+    ctx.lineWidth = 1 / scale;
 
     const minWrap = copies ? Math.floor(centerMx - width / (2 * scale)) : 0;
     const maxWrap = copies ? Math.floor(centerMx + width / (2 * scale)) : 0;
     for (let wrap = minWrap; wrap <= maxWrap; wrap++) {
-      const shiftX = originX + wrap * scale;
-      for (const poly of polygons) {
-        if (poly.length === 0) continue;
-        ctx.beginPath();
-        for (const ring of poly) {
-          for (let i = 0; i < ring.length; i++) {
-            const x = shiftX + ring[i][0] * scale;
-            const y = originY + ring[i][1] * scale;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          }
-        }
-        ctx.fill();
-        // Stroke the coast, not the 180° cut: Natural Earth splits land there,
-        // and its edge drew a line across Chukotka.
-        ctx.beginPath();
-        for (const ring of poly) {
-          for (let i = 1; i < ring.length; i++) {
-            const a = ring[i - 1], b = ring[i];
-            if ((a[0] <= 0 && b[0] <= 0) || (a[0] >= 1 && b[0] >= 1)) continue;
-            ctx.moveTo(shiftX + a[0] * scale, originY + a[1] * scale);
-            ctx.lineTo(shiftX + b[0] * scale, originY + b[1] * scale);
-          }
-        }
-        ctx.stroke();
-      }
+      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (originX + wrap * scale), dpr * originY);
+      ctx.fill(land);
+      ctx.stroke(coast);
     }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     drawPanel();
     ctx.restore();
