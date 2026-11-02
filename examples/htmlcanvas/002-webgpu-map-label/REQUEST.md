@@ -30,3 +30,19 @@ HTML-in-Canvas で生成した HTML 要素を WebGPU レンダリングパイプ
 3. **動的コンテンツ更新**:
    - ラベルのテキストや評価が更新されたときのみ `canvasHtml.requestPaint()` を呼び出し、再描画完了後に `copyExternalImageToTexture` でアトラスを再転送。
    - 検証チェック `zero-uploads-during-pan` および `texture-updated-on-change` により、静止・移動・更新時のアップロード回数を厳密に証明。
+
+## 計測結果
+
+`bin/mfs bench htmlcanvas-002-webgpu-map-label` を 3 反復、2 回。RTX 3060 のホストで、Chromium を Xvfb 上で画面ありで起動する (`display: xvfb`)。2026-11-03。
+
+| 項目 | 計測値 | 予算 |
+|---|---|---|
+| 初回描画 (`first_frame_ms` p50) | 816〜818 ms | <= 2,000 ms |
+| 1 フレームの JS (`cpu_ms` p95) | 0.08〜0.16 ms | <= 5.0 ms |
+| 完了までのフレーム時間 (`frame_ms` p95) | 2.5〜3.8 ms | <= 16.7 ms |
+| GPU 時間 (`gpu_ms` p50、描画パス) | 0.023 ms | |
+| コード (gzip) | 11,750 B | <= 12,000 B |
+
+- 以前は headless の SwiftShader で測っていた。SwiftShader では毎フレーム画面全体を読み戻して Canvas 2D に写すので、`redraw_ms` の予算は 45 ms、`frame_interval_ms` は 35 ms だった。どちらも CPU で GPU をまねる速さで、GPU で描くこの例の速さではなかった。いまは 1 フレームを実際にパンさせてオフスクリーンに描き、`onSubmittedWorkDone` まで待つ。予算は要件どおり、再描画 5.0 ms と 60 fps の 16.7 ms にした。
+- 以前の計測ループは、フレーム間隔の 15 回は何も描かずに rAF を待つだけで、再描画の 20 回は同じ視点を描き直すだけだった。
+

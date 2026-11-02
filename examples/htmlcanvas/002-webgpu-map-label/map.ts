@@ -60,8 +60,13 @@ export interface WebGpuLabelMap {
   hasDrawElementImage: boolean;
   textureUploadCount: number;
   renderCount: number;
-  render: () => Promise<void>;
-  panBy: (dx: number, dy: number) => Promise<void>;
+  device: GPUDevice;
+  // ts: timestamps at the start and the end of the pass. offscreen: draw
+  // into a texture the size of the canvas, so that waiting for the frame
+  // does not wait for the canvas to be presented.
+  render: (ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => Promise<void>;
+  // ts, offscreen: as render's
+  panBy: (dx: number, dy: number, ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen?: boolean) => Promise<void>;
   zoomBy: (delta: number) => Promise<void>;
   updateLabelContent: (index: number, title: string, badge: string, rating: string) => Promise<void>;
   getLabelScreenPos: (index: number) => { x: number; y: number; width: number; height: number };
@@ -99,7 +104,8 @@ export async function mount(
   const isSwiftShader = gpuName.toLowerCase().includes('swiftshader') ||
                         (adapterInfo.vendor ?? '').toLowerCase().includes('google');
 
-  const device = await adapter.requestDevice();
+  const requiredFeatures: GPUFeatureName[] = adapter.features.has('timestamp-query') ? ['timestamp-query'] : [];
+  const device = await adapter.requestDevice({ requiredFeatures });
   device.addEventListener('uncapturederror', (e: any) => {
     console.error('WebGPU uncapturederror:', e.error?.message);
   });
@@ -601,14 +607,14 @@ export async function mount(
     },
   });
 
-  // Offscreen render target for SwiftShader
+  // Offscreen render target: SwiftShader's frames, and the bench's
   let offscreenTexture: GPUTexture | null = null;
   function ensureOffscreenTexture(): GPUTexture {
     if (!offscreenTexture || offscreenTexture.width !== canvas.width || offscreenTexture.height !== canvas.height) {
       if (offscreenTexture) offscreenTexture.destroy();
       offscreenTexture = device.createTexture({
         size: [canvas.width, canvas.height, 1],
-        format: 'rgba8unorm',
+        format: isSwiftShader ? 'rgba8unorm' : presentationFormat,
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
       });
     }
@@ -616,7 +622,7 @@ export async function mount(
   }
 
   // WebGPU render pass
-  async function render(): Promise<void> {
+  async function render(ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false): Promise<void> {
     renderCount++;
     updateCameraUniform();
 
@@ -678,7 +684,7 @@ export async function mount(
     let targetView: GPUTextureView;
     let targetTexture: GPUTexture | null = null;
 
-    if (isSwiftShader) {
+    if (isSwiftShader || offscreen) {
       targetTexture = ensureOffscreenTexture();
       targetView = targetTexture.createView();
     } else {
@@ -695,6 +701,7 @@ export async function mount(
           storeOp: 'store',
         },
       ],
+      timestampWrites: ts && { ...ts.begin, ...ts.end },
     });
 
     pass.setBindGroup(0, bindGroup);
@@ -716,7 +723,7 @@ export async function mount(
     pass.end();
 
     // In SwiftShader, transfer pixels to onscreen Canvas 2D
-    if (isSwiftShader && onscreen2dCtx && targetTexture) {
+    if (isSwiftShader && !offscreen && onscreen2dCtx && targetTexture) {
       const w = canvas.width;
       const h = canvas.height;
       const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
@@ -747,11 +754,11 @@ export async function mount(
     }
   }
 
-  async function panBy(dx: number, dy: number): Promise<void> {
+  async function panBy(dx: number, dy: number, ts?: { begin: GPURenderPassTimestampWrites; end: GPURenderPassTimestampWrites }, offscreen = false): Promise<void> {
     const scale = getScale();
     centerMx -= dx / scale;
     centerMy -= dy / scale;
-    await render();
+    await render(ts, offscreen);
   }
 
   async function zoomBy(delta: number): Promise<void> {
@@ -923,6 +930,7 @@ export async function mount(
     get renderCount() {
       return renderCount;
     },
+    device,
     render,
     panBy,
     zoomBy,

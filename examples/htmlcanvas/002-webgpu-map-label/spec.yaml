@@ -31,15 +31,17 @@ evaluation:
     - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: light-footprint}
-    - {metric: redraw_ms, stat: p95, max: 45.0, unit: ms, requirement: smooth-interaction}
-    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
-  gates: [エラーがない, verification の check がすべて通る]
+    - {metric: cpu_ms, stat: p95, max: 5.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-interaction}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
 
 benchmarks:
   runtime: browser
   page: examples/htmlcanvas/002-webgpu-map-label/index.html
   viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
   cpu_throttle: 1
+  # headless Chromium only offers WebGPU on SwiftShader
+  display: xvfb
   iterations: 3
   chrome_flags:
     - --enable-blink-features=CanvasDrawElement
@@ -48,8 +50,8 @@ benchmarks:
       what: 初期化から初回 HTML-in-Canvas テクスチャ生成と WebGPU ラベル描画まで
       metrics: [first_frame_ms]
     - id: pan
-      what: 地図パン中の GPU クアッド追従と再描画
-      metrics: [redraw_ms, frame_interval_ms]
+      what: 60 フレームの地図パン。オフスクリーンに描き、JS の時間 (cpu_ms)、onSubmittedWorkDone までの時間 (frame_ms)、timestamp で測った描画パスの時間 (gpu_ms)
+      metrics: [cpu_ms, frame_ms, gpu_ms]
 
 datasets:
   bake: [node, examples/htmlcanvas/002-webgpu-map-label/bake.ts]
@@ -81,12 +83,17 @@ performance_knowledge:
       `viewProj` 行列（または center と scale）から地理座標アンカーを画面空間に投影し、クアッドの頂点オフセットを加算する。
       これにより、パン・ズーム操作中はテクスチャアップロード回数ゼロ・HTML 再計算ゼロで 60 fps の完全追従が実現する。
 
+  - id: swiftshader-is-not-the-gpu
+    finding: headless の Chromium の WebGPU は SwiftShader で、この例はそのとき毎フレーム画面全体を読み戻して Canvas 2D に写す。そこで測った時間は GPU で描くときの速さを表さないので、Xvfb 上の画面ありの Chromium でハードウェアの GPU を使い、オフスクリーンに描いて timestamp で測る
+    evidence: RTX 3060 で 60 フレームのパンは cpu_ms p95 0.08〜0.16 ms、frame_ms p95 2.5〜3.8 ms、gpu_ms 0.023 ms。SwiftShader のときの予算は redraw_ms 45 ms、frame_interval_ms 35 ms だった
+    applies_when: WebGPU の例を計測するとき
+
 architecture_selection:
   chosen:
     language: TypeScript (erasableSyntaxOnly)
     runtime: browser
     api: WebGPU + HTML-in-Canvas (CanvasDrawElement)
-    gpu: none
+    gpu: hardware
     code:
       - examples/htmlcanvas/002-webgpu-map-label/index.html
       - examples/htmlcanvas/002-webgpu-map-label/main.ts

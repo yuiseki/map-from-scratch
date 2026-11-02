@@ -1,5 +1,5 @@
 // examples/htmlcanvas/002-webgpu-map-label/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, benchFramesGpu } from '../../../harness/page/bench.ts';
 import type { WebGpuLabelMap } from './map.ts';
 
 export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promise<void> {
@@ -100,23 +100,12 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
     });
   }
 
-  // Measure frame interval
-  let lastTime = performance.now();
-  for (let i = 0; i < 15; i++) {
-    await new Promise(requestAnimationFrame);
-    const now = performance.now();
-    emit({ metric: 'frame_interval_ms', value: now - lastTime });
-    lastTime = now;
-  }
-
-  // Measure redraw performance
-  const samples = 20;
-  for (let i = 0; i < samples; i++) {
-    const t0 = performance.now();
-    await map.render();
-    const dt = performance.now() - t0;
-    emit({ metric: 'redraw_ms', value: dt });
-  }
-
+  // Pan benchmark: 60 frames, timed from the start to the end of the pass.
+  // The frames go to an offscreen texture the size of the canvas: waiting for
+  // a canvas frame waits for it to be presented, which took 81 ms a frame on
+  // Xvfb (webgpu-003).
+  await benchFramesGpu(map.device, 60, (i, ts) => {
+    void map.panBy(Math.sin(i * 0.1) * 3, Math.cos(i * 0.1) * 2, ts, true);
+  });
   emit({ done: true });
 }
