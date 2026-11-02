@@ -68,5 +68,4 @@ Mapterhorn の全球標高 PMTiles (664 GB、z0-12、512 px の WebP lossless) �
 ## 残っていること
 
 - 配布時の出典: `fuji.terr` は Mapterhorn の標高データを富士山周辺で再標本化・再符号化したもの。Mapterhorn の [帰属情報](https://download.mapterhorn.com/attribution.json) は、日本の元データに国土地理院の基盤地図情報（数値標高モデル）が含まれることを示す。Mapterhorn の[承認書](https://github.com/mapterhorn/mapterhorn/blob/main/source-catalog/jpdem10a/LICENSE.pdf)には「測量法に基づく国土地理院長承認（使用）R 8JHs 131」とある。国土地理院の[承認申請 Q&A（Q1-24）](https://www.gsi.go.jp/LAW/2930-qa.html)では、使用承認を得て作成した成果の二次利用に追加申請は不要とされる。Mapterhorn は[配布案内](https://github.com/mapterhorn/mapterhorn/blob/main/distribution/README.md)で地域別ミラーを案内している。ページ上では Mapterhorn と国土地理院の出典、加工の事実、承認番号を明示する。
-- `--site` では原本の段階 (ローカルの 664 GB ファイルへの symlink) と、ベンチ専用の truth.json と orig-costs.json がないので、それを使う検査が落ちる。ハーネス側の仕組みが要る (spec.yaml の datasets を参照)。
 - LOD の切り替えのポップ (geomorph なし) は目視で確かめていない。

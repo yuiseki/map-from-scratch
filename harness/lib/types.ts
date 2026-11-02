@@ -49,6 +49,8 @@ export interface Spec {
   iterations: number;
   timeoutMs: number;
   footprint: { code: string[]; data: string[]; elf?: string[] };
+  // datasets.bench_only: repository paths served next to the built site
+  benchOnly: string[];
   dependencies: string[];
   budgets: Record<string, Budget>;
   checks: string[];
@@ -82,6 +84,7 @@ export interface Definition {
     bake?: string[];
     sources?: { id: string; origin?: string; license?: string }[];
     outputs?: string[];
+    bench_only?: string[];
     preparation?: string[];
   };
   performance_knowledge: { id: string; finding: string; evidence?: string; applies_when?: string }[];

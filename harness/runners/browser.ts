@@ -204,10 +204,13 @@ async function runOnce(chrome: Chrome, url: string, spec: RunSettings, outDir: s
 }
 
 // root: where the pages are served from (the repository, or the built site);
-// the harness's own pages always come from the repository.
-export async function benchBrowser(root: string, spec: RunSettings, outDir: string, { iterations }: { iterations: number }): Promise<RawResult> {
+// the harness's own pages and the spec's bench-only files always come from
+// the repository.
+export async function benchBrowser(root: string, spec: RunSettings & { benchOnly?: string[] }, outDir: string, { iterations }: { iterations: number }): Promise<RawResult> {
   const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const server = await serve(root, 0, '127.0.0.1', { '/harness/probe/': join(repo, 'harness/probe') });
+  const aliases: Record<string, string> = { '/harness/probe/': join(repo, 'harness/probe') };
+  for (const p of spec.benchOnly ?? []) aliases[`/${p}`] = join(repo, p);
+  const server = await serve(root, 0, '127.0.0.1', aliases);
   // MFS_PAGE_QUERY appends parameters, for comparing variants of a renderer.
   const extra = process.env.MFS_PAGE_QUERY ? `&${process.env.MFS_PAGE_QUERY}` : '';
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/${spec.run.page}?bench=1${extra}`;

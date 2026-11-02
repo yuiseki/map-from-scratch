@@ -50,3 +50,18 @@ test('the server answers Range requests with 206 and the right bytes', async () 
     server.close();
   }
 });
+
+test('an alias can serve one file from elsewhere, next to the rest of root', async () => {
+  const site = mkdtempSync(join(tmpdir(), 'serve-site-')), repo = mkdtempSync(join(tmpdir(), 'serve-repo-'));
+  writeFileSync(join(site, 'page.json'), '"site"');
+  writeFileSync(join(repo, 'truth.json'), '"repo"');
+  writeFileSync(join(repo, 'page.json'), '"repo"');
+  const server = await serve(site, 0, '127.0.0.1', { '/truth.json': join(repo, 'truth.json') });
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    assert.equal(await (await fetch(`${base}/truth.json`)).text(), '"repo"');
+    assert.equal(await (await fetch(`${base}/page.json`)).text(), '"site"');
+  } finally {
+    server.close();
+  }
+});

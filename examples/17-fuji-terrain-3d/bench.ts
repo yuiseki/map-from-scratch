@@ -44,8 +44,10 @@ export async function run(map: FujiMap): Promise<void> {
   const coarseLevels = [0, 1, 2, 3].map((k) => stats.coarseDraw.filter((l) => l === k).length);
   emit({ info: { gpu: glRenderer(gl), page_data_ms: stats.complete - net.start, coarse_frame_chunks_per_level: coarseLevels, mount_at_ms: stats.mountAt, renderer_at_ms: stats.rendererAt, first_response_at_ms: stats.firstBytes, coarse_frame_start_ms: stats.coarseDrawAt, l3_decoded_at_ms: stats.l3Decoded, first_request_at_ms: net.start, samples: gl.getParameter(gl.SAMPLES), max_layers: gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS) } });
   // truth.json, orig-costs.json and the 664 GB original exist only on this
-  // machine (they are not in datasets.outputs), so `bench --site` cannot run
-  // the checks: say so instead of failing on a JSON parse of a 404.
+  // machine. They are datasets.bench_only, which the harness serves from the
+  // repository under `bench --site` too; anywhere else (the published site,
+  // a machine without the original) say so instead of failing on a JSON
+  // parse of a 404.
   const local = await Promise.all([`${BAKED}/truth.json`, `${BAKED}/orig-costs.json`].map((u) => fetch(u)));
   const planet = await fetch('../../data/raw/mapterhorn/planet.pmtiles', { headers: { Range: 'bytes=0-0' } });
   if (local.some((r) => !r.ok) || planet.status !== 206) {

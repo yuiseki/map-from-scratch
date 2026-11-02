@@ -96,6 +96,7 @@ Where the data comes from and what the renderer receives.
 | `bake` | argv run by `bin/mfs bake <id>` |
 | `sources` | list of `{id, origin, license}`; `id` names an entry of `tools/sources.ts` |
 | `outputs` | baked files (or directories) the renderer loads; they are the footprint's data and what GitHub Pages publishes (each file under 100 MB) |
+| `bench_only` | files only the bench reads (truths, a local original), not published. `bin/mfs bench --site` serves them from the repository next to the built site, so the site check runs every check |
 | `preparation` | the bake steps in words: projection, simplification, quantisation, ordering, encoding |
 
 Raw sources live in `tools/sources.ts` (converted once to `data/raw/`,

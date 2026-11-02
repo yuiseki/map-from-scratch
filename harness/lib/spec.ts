@@ -53,6 +53,13 @@ export function validateDefinition(input: unknown, dirName: string): Definition 
   for (const c of def.verification.checks as Loose[]) {
     if (!c.id || !c.what || !c.how || c.expected === undefined) fail(`check ${c.id ?? '?'} needs id, what, how and expected`);
   }
+  // Files only the bench reads (truths, a local original): served from the
+  // repository even when the page comes from the built site.
+  const outputs = new Set(def.datasets.outputs ?? []);
+  for (const p of (def.datasets.bench_only ?? []) as unknown[]) {
+    if (typeof p !== 'string' || p.startsWith('/') || p.split('/').includes('..')) fail(`datasets.bench_only: "${p}" must be a path inside the repository`);
+    if (outputs.has(p)) fail(`datasets.bench_only: "${p}" is also in outputs, which the site already ships`);
+  }
   return def as Definition;
 }
 
@@ -93,6 +100,7 @@ export function fromDefinition(def: Definition): Loose {
     iterations: b.iterations,
     timeoutMs: b.timeout_ms,
     footprint: { code: chosen.code ?? [], data: def.datasets.outputs ?? [], elf: chosen.elf },
+    benchOnly: def.datasets.bench_only ?? [],
     dependencies: chosen.dependencies ?? [],
     budgets: Object.fromEntries(def.evaluation.budgets.map((x) => [x.metric, { stat: x.stat, max: x.max, min: x.min }])),
     checks: def.verification.checks.filter((c) => (c.by ?? 'bench') === 'bench').map((c) => c.id),
@@ -120,6 +128,7 @@ export function validateSpec(spec: Loose, dirName: string): Spec {
   if (shipped.length === 0) fail('footprint.code or footprint.elf (what ships) is required');
   spec.footprint.code ??= [];
   spec.footprint.data ??= [];
+  spec.benchOnly ??= [];
   spec.dependencies ??= [];
   spec.checks ??= [];
   if (spec.toolchain !== undefined && !/^[a-z0-9-]+$/.test(spec.toolchain)) fail('toolchain must be the <name> of docker/Dockerfile.<name>');

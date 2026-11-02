@@ -53,6 +53,17 @@ test('Pages publication defaults to enabled and can be explicitly disabled with 
   assert.throws(() => validateDefinition(d, '01-x'), /publication.reason/);
 });
 
+test('datasets.bench_only: repository files the bench reads that the site does not ship', () => {
+  const d = def();
+  assert.deepEqual(fromDefinition(validateDefinition(d, '01-x')).benchOnly, []);
+  d.datasets.bench_only = ['data/baked/01-x/truth.json'];
+  assert.deepEqual(fromDefinition(validateDefinition(d, '01-x')).benchOnly, ['data/baked/01-x/truth.json']);
+  for (const bad of ['/etc/passwd', 'data/../../x', 'data/baked/01-x/a.bin']) {
+    d.datasets.bench_only = [bad];
+    assert.throws(() => validateDefinition(d, '01-x'), /bench_only/, bad);
+  }
+});
+
 test('every one of the seven sections is required', () => {
   for (const k of ['requirements', 'evaluation', 'benchmarks', 'datasets', 'performance_knowledge', 'architecture_selection', 'verification']) {
     const d = def();

@@ -143,6 +143,7 @@ datasets:
         Mapterhorn は distribution/README.md で地域別ミラーを案内している。fuji.terr は Mapterhorn の成果を富士山周辺で
         再標本化・再符号化したもの。配布時には Mapterhorn と国土地理院の出典、加工の事実、承認番号を明示する。
   outputs: [data/baked/17-fuji-terrain-3d/fuji.terr]
+  bench_only: [data/baked/17-fuji-terrain-3d/truth.json, data/baked/17-fuji-terrain-3d/orig-costs.json, data/raw/mapterhorn/planet.pmtiles]
   preparation:
     - 区画は z12 のタイル 6x6 (x 3624-3629、y 1614-1619)。138.5156-139.0430E、35.1738-35.6037N、3072x3072 標本、47.86 km 四方
     - 外周 1 周を含む z12 タイル 64 枚 (23.3 MB) を Range で読み、GDAL の WEBP ドライバー (libwebp) で VRT モザイクにして生のバイトにする (gdal_translate -of ENVI)
