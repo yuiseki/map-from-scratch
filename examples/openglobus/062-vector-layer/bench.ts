@@ -9,6 +9,30 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
   await new Promise(requestAnimationFrame);
   emit({ metric: 'first_frame_ms', value: firstFrameMs });
 
+  // Rotate benchmark: 60 frames, before any pixel is read. Once the checks
+  // below had read the canvas back, Chromium drew it on the CPU and a frame
+  // took about 20 ms instead of 2 ms; a visitor's page never reads back.
+  const raf = () => new Promise<number>(requestAnimationFrame);
+  const redrawTimes: number[] = [];
+  const frameIntervals: number[] = [];
+  let last = performance.now();
+
+  for (let i = 0; i < 60; i++) {
+    const t0 = performance.now();
+    globe.rotateBy(0.015, Math.sin(i * 0.1) * 0.005);
+    redrawTimes.push(performance.now() - t0);
+    const now = await raf();
+    frameIntervals.push(now - last);
+    last = now;
+  }
+
+  emit({ metric: 'redraw_ms', values: redrawTimes });
+  emit({ metric: 'frame_interval_ms', values: frameIntervals });
+
+  globe.yaw = 0;
+  globe.pitch = 0.3;
+  globe.draw();
+
   const dpr = window.devicePixelRatio || 1;
   // The 1.2 px core line rarely covers the one pixel under a projected
   // vertex exactly (it read the glow at 1920x1021 even before any change):
@@ -39,24 +63,6 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
     pass: isSpaceDark,
     detail: `space corner pos=(20, 20) rgba(${pxSpace.join(',')}) expected #030712`,
   });
-
-  // Rotate benchmark: 60 frames
-  const raf = () => new Promise<number>(requestAnimationFrame);
-  const redrawTimes: number[] = [];
-  const frameIntervals: number[] = [];
-  let last = performance.now();
-
-  for (let i = 0; i < 60; i++) {
-    const t0 = performance.now();
-    globe.rotateBy(0.015, Math.sin(i * 0.1) * 0.005);
-    redrawTimes.push(performance.now() - t0);
-    const now = await raf();
-    frameIntervals.push(now - last);
-    last = now;
-  }
-
-  emit({ metric: 'redraw_ms', values: redrawTimes });
-  emit({ metric: 'frame_interval_ms', values: frameIntervals });
 
   // Verification 3: Vector borders rotate with drag
   globe.yaw = 0.35;

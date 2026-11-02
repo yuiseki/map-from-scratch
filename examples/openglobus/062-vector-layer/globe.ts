@@ -5,6 +5,8 @@ export class OpenGlobusVectorGlobe {
   ctx: CanvasRenderingContext2D;
   polygons: Polygon[] = [];
   sphere: Float32Array = new Float32Array(0);
+  // The outline rings as unit xyz, computed once: a frame only rotates them.
+  private rings: Float32Array[] = [];
 
   yaw = 0;       // Center at lon 0
   pitch = 0.3;   // ~17 deg North
@@ -37,6 +39,10 @@ export class OpenGlobusVectorGlobe {
       fetch(`${baseDir}/data/baked/openglobus-062-vector-layer/land.bin`),
     ]);
     this.polygons = (await res.json()) as Polygon[];
+    this.rings = this.polygons.flat().map((ring) => new Float32Array(ring.flatMap(([lon, lat]) => {
+      const L = lon * Math.PI / 180, P = lat * Math.PI / 180;
+      return [Math.cos(P) * Math.cos(L), Math.cos(P) * Math.sin(L), Math.sin(P)];
+    })));
     this.sphere = toSphere(new Int16Array(await tri.arrayBuffer()));
     this.draw();
   }
@@ -203,59 +209,26 @@ export class OpenGlobusVectorGlobe {
     }
     ctx.fill();
 
-    // Pass 2: Glow Border Pass
+    // Outlines: the visible runs of every ring in one path (the rotation of
+    // project()), stroked twice: Pass 2 the glow, Pass 3 the core
+    const borders = new Path2D();
+    for (const r of this.rings) {
+      let started = false;
+      for (let i = 0; i < r.length; i += 3) {
+        const x1 = r[i] * cosY + r[i + 1] * sinY;
+        if (x1 * cosP + r[i + 2] * sinP <= 0.02) { started = false; continue; }
+        const sx = cx + (-r[i] * sinY + r[i + 1] * cosY) * R, sy = cy - (-x1 * sinP + r[i + 2] * cosP) * R;
+        if (started) borders.lineTo(sx, sy);
+        else borders.moveTo(sx, sy);
+        started = true;
+      }
+    }
     ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
     ctx.lineWidth = 3.5;
-    for (const poly of this.polygons) {
-      for (const ring of poly) {
-        ctx.beginPath();
-        let anyVisible = false;
-        let started = false;
-
-        for (let i = 0; i < ring.length; i++) {
-          const pt = this.project(ring[i][0], ring[i][1]);
-          if (pt.visible) {
-            anyVisible = true;
-            if (!started) {
-              ctx.moveTo(pt.sx, pt.sy);
-              started = true;
-            } else {
-              ctx.lineTo(pt.sx, pt.sy);
-            }
-          } else {
-            started = false;
-          }
-        }
-        if (anyVisible) ctx.stroke();
-      }
-    }
-
-    // Pass 3: Core Cyan Vector Borders
+    ctx.stroke(borders);
     ctx.strokeStyle = '#06b6d4';
     ctx.lineWidth = 1.2;
-    for (const poly of this.polygons) {
-      for (const ring of poly) {
-        ctx.beginPath();
-        let anyVisible = false;
-        let started = false;
-
-        for (let i = 0; i < ring.length; i++) {
-          const pt = this.project(ring[i][0], ring[i][1]);
-          if (pt.visible) {
-            anyVisible = true;
-            if (!started) {
-              ctx.moveTo(pt.sx, pt.sy);
-              started = true;
-            } else {
-              ctx.lineTo(pt.sx, pt.sy);
-            }
-          } else {
-            started = false;
-          }
-        }
-        if (anyVisible) ctx.stroke();
-      }
-    }
+    ctx.stroke(borders);
 
     ctx.restore(); // end globe clip
     ctx.restore(); // end dpr scale

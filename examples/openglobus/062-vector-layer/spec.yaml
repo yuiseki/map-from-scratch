@@ -56,9 +56,15 @@ datasets:
 
 performance_knowledge:
   - id: canvas2d-vector-globe-rendering
-    finding: 3D 地球儀上の密なベクターポリゴン・境界線描画も、球面座標から各頂点の視線 z 深度判定による裏面カリングとパス結合を行うことで、WebGL シャドウや法線計算なしで 0.5 ms 未満の再描画速度を達成できる
-    evidence: 再描画時間 p95 0.58 ms 前後、初回表示 50 ms 前後を達成
-    applies_when: 3D 地球儀上での行政界・等高線・ベクター境界線オーバーレイ描画
+    finding: 境界線のリングは読み込み時に単位球の xyz にしておき、フレームでは回転と z の判定だけをして、見えている区間を 1 本の Path2D にまとめ、光彩と芯線の 2 回 stroke する。頂点ごとに三角関数で投影し、リングごとに stroke していた版より再描画が約半分になる
+    evidence: >-
+      RTX 3060 のホストの headless Chromium (load average 3〜4、2026-11-03)。再描画 p95 は 2.0〜2.9 ms (予算 2 ms) から 1.07〜1.22 ms、
+      コードは 3,382 B から 3,458 B。光彩はリングごとに重ね塗りされなくなり、線が密な北の縁で最大 80 / 255 違う
+    applies_when: Canvas 2D の地球儀に行政界・海岸線・等高線を重ねるとき
+  - id: time-before-readback
+    finding: 検査で getImageData を呼んだあとのキャンバスは Chromium が CPU で描くので、フレーム間隔を測るループは画素を読む検査より前に置く
+    evidence: 読み戻し 2 回のあとでは frame_interval_ms p95 が 21〜35 ms (陸の塗りを外すと 8.8 ms)。読み戻し前に回すと 1.38〜1.58 ms
+    applies_when: Canvas 2D の例で、ベンチが画素を読んで検査するとき
 
 architecture_selection:
   chosen:
