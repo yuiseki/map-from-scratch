@@ -375,7 +375,7 @@
 
 出典: [Mapbox GL JS Examples](https://docs.mapbox.com/mapbox-gl-js/example/)。MapLibre GL JS と共通の祖先（v1.13 以前）を持つが、v2/v3 で導入された独自機能（Mapbox Standard 3D スタイル、全球 3D 地形・大気散乱、glTF/PBR 3D モデルレイヤー、プロシージャル天候効果［雨・雪］、FreeCamera API 等）を含む 168 件の公式例を独立描画器で再現する。
 
-- [ ] `mapbox-001-3d-buildings` → `examples/mapbox/001-3d-buildings/` — [3D Buildings](https://docs.mapbox.com/mapbox-gl-js/example/3d-buildings/)
+- [x] `mapbox-001-3d-buildings` → `examples/mapbox/001-3d-buildings/` — [3D Buildings](https://docs.mapbox.com/mapbox-gl-js/example/3d-buildings/)
 - [ ] `mapbox-002-3d-extrusion-floorplan` → `examples/mapbox/002-3d-extrusion-floorplan/` — [3D Extrusion Floorplan](https://docs.mapbox.com/mapbox-gl-js/example/3d-extrusion-floorplan/)
 - [ ] `mapbox-003-add-3d-model` → `examples/mapbox/003-add-3d-model/` — [Add 3D Model](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-model/)
 - [ ] `mapbox-004-add-3d-model-and-animate-along-route` → `examples/mapbox/004-add-3d-model-and-animate-along-route/` — [Add 3D Model And Animate Along Route](https://docs.mapbox.com/mapbox-gl-js/example/add-3d-model-and-animate-along-route/)
