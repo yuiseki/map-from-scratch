@@ -1,0 +1,70 @@
+id: maplibre-078-display-buildings-in-3d
+request: >-
+  MapLibre の公式サンプル「Display buildings in 3D」のように、建物フットプリントデータから
+  高さに基づき立ち上がる 3D 建築群を生成し、ピッチ角・方位角を持った透視投影と太陽光ライティングで描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D 建物描画に重厚な MapLibre バンドル（数百KB〜MB）を丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D ビル群が現れる
+  - id: 3d-depth-and-lighting
+    need: 建物壁面・屋根が正しい前後関係と太陽光陰影で立体的に描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-depth-and-lighting}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/078-display-buildings-in-3d/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期ビルディングメッシュの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 視点回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - ローワーマンハッタンのグリッド都市ブロックに基づく摩天楼建築群データ（One World Trade Center を含む 140+ 棟）をプロシージャル生成
+
+performance_knowledge:
+  - id: extruded-building-mesh-batching
+    finding: 建物群の側壁および屋根三角形を 1 つの頂点バッファ・インデックスにバッチ結合し、Z-バッファ深度テストと組み合わせることで、単一のドローコールで数百棟の 3D 建築群を 60 fps でリアルタイム描画可能
+    evidence: 1 ドローコールで Manhattan 建築群を描画
+    applies_when: 3D 押し出しポリゴン描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/maplibre/078-display-buildings-in-3d/index.html
+      - examples/maplibre/078-display-buildings-in-3d/main.ts
+      - examples/maplibre/078-display-buildings-in-3d/render.ts
+      - examples/maplibre/078-display-buildings-in-3d/buildings.ts
+  not_doing:
+    - MapLibre GL JS ライブラリ全体のバンドル
+
+verification:
+  checks:
+    - id: buildings-3d-rendered
+      what: 画面中央部に 3D 建物が透視投影で描画されていること
+      how: readPixels で中央ピクセルと上部空ピクセルを読み出し比較
+      expected: 中央ピクセルが建物色であり空ピクセルと異なる
+    - id: depth-and-lighting-contrast
+      what: 建物屋根・壁面・地面の間で法線と太陽光による陰影コントラストが存在すること
+      how: readPixels で地面ピクセルと建物ピクセルの明度差を検証
+      expected: 地面と建物で陰影コントラストが検出される

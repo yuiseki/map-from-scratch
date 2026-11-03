@@ -1,0 +1,61 @@
+import { emit } from '../../../harness/page/bench.ts';
+import type { BuildingRenderer } from './render.ts';
+
+const renderer = (window as unknown as { __mfsRenderer: BuildingRenderer }).__mfsRenderer;
+
+export async function run(): Promise<void> {
+  const gl = renderer.gl;
+  gl.canvas.addEventListener('webglcontextlost', () => emit({ error: 'webglcontextlost' }));
+
+  await new Promise(requestAnimationFrame);
+  await new Promise(requestAnimationFrame);
+
+  const t0 = performance.now();
+  renderer.render(60, -17, 950);
+  const firstFrame = performance.now() - t0;
+  emit({ metric: 'first_frame_ms', value: firstFrame });
+
+  const w = gl.canvas.width;
+  const h = gl.canvas.height;
+
+  // Sky pixel near top
+  const skyPx = renderer.readPixel(Math.round(w / 2), Math.round(h * 0.08));
+  // Building / center pixel
+  const centerPx = renderer.readPixel(Math.round(w / 2), Math.round(h * 0.55));
+  // Ground pixel near bottom
+  const groundPx = renderer.readPixel(Math.round(w * 0.2), Math.round(h * 0.88));
+
+  // Verification 1: Buildings rendered in center area (not sky)
+  const isSky = skyPx[0] > 200 && skyPx[1] > 220 && skyPx[2] > 230;
+  const isBuilding = centerPx[0] > 100 && centerPx[0] < 240 && centerPx[3] === 255;
+
+  emit({
+    check: 'buildings-3d-rendered',
+    pass: isBuilding && isSky,
+    detail: `center=rgba(${centerPx.join(',')}), sky=rgba(${skyPx.join(',')})`,
+  });
+
+  // Verification 2: 3D depth and surface lighting variance between surfaces
+  const hasContrast = Math.abs(centerPx[0] - groundPx[0]) > 5 || Math.abs(centerPx[2] - groundPx[2]) > 5;
+  emit({
+    check: 'depth-and-lighting-contrast',
+    pass: hasContrast,
+    detail: `ground=rgba(${groundPx.join(',')}), building=rgba(${centerPx.join(',')})`,
+  });
+
+  // Measure animated frame intervals
+  const frameIntervals: number[] = [];
+  let last = performance.now();
+  for (let i = 0; i < 30; i++) {
+    const bearing = -17 + i * 0.5;
+    renderer.render(60, bearing, 950);
+    await new Promise(requestAnimationFrame);
+    const now = performance.now();
+    frameIntervals.push(now - last);
+    last = now;
+  }
+
+  emit({ metric: 'frame_interval_ms', values: frameIntervals });
+}
+
+run();
