@@ -33,9 +33,9 @@ interface TileEntry {
 const TILE_STYLE = 'https://tile.yuiseki.net/styles/512/osm-carto.json';
 const MAX_IN_FLIGHT = 6;
 
-const mercY = (lat: number): number =>
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercX = (lon: number): number => (lon + 180) / 360;
 
 const OCEAN = '#b8d6e8';
 const LAND = '#f2efe9';

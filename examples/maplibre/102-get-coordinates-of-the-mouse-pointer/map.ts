@@ -32,12 +32,20 @@ const LAND = '#f0eee8';
 const LAND_EDGE = '#d0cdc4';
 const CROSS = '#e63946';
 
-const mercY = (lat: number): number =>
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercX = (lon: number): number => (lon + 180) / 360;
 const invMercY = (my: number): number =>
   (Math.atan(Math.exp((1 - 2 * my) * Math.PI)) * 360) / Math.PI - 90;
 const wrapLng = (lng: number): number => ((((lng + 180) % 360) + 360) % 360) - 180;
+
+export function screenToLngLat(sx: number, sy: number, width: number, height: number,
+  centerMx: number, centerMy: number, zoom: number): [number, number] {
+  const scale = 256 * 2 ** zoom;
+  const mx = centerMx + (sx - width / 2) / scale;
+  const my = Math.max(0, Math.min(1, centerMy + (sy - height / 2) / scale));
+  return [wrapLng(mx * 360 - 180), invMercY(my)];
+}
 
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
@@ -84,14 +92,12 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function readout(): PointerReadout | null {
     if (!hasPointer) return null;
-    const scale = 256 * Math.pow(2, zoom);
-    const mx = centerMx + (pointerX - width / 2) / scale;
-    const my = Math.max(0, Math.min(1, centerMy + (pointerY - height / 2) / scale));
+    const [lng, lat] = screenToLngLat(pointerX, pointerY, width, height, centerMx, centerMy, zoom);
     return {
       x: pointerX,
       y: pointerY,
-      lng: wrapLng(mx * 360 - 180),
-      lat: invMercY(my),
+      lng,
+      lat,
     };
   }
 

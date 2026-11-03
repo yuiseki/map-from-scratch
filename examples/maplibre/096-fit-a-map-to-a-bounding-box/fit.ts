@@ -54,6 +54,15 @@ const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
 
+export function fitMercatorBounds(minX: number, minY: number, maxX: number, maxY: number, width: number, height: number): { x: number; y: number; zoom: number } {
+  const scale = Math.min(width / (maxX - minX), height / (maxY - minY));
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    zoom: Math.max(1, Math.min(20, Math.log2(scale / 256))),
+  };
+}
+
 const defaultCenterMx = mercX(START_CENTER[0]);
 const defaultCenterMy = mercY(START_CENTER[1]);
 
@@ -112,10 +121,10 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     const [east, north] = BOUNDS[1];
     const minX = mercX(west), maxX = mercX(east);
     const minY = mercY(north), maxY = mercY(south);
-    centerMx = (minX + maxX) / 2;
-    centerMy = (minY + maxY) / 2;
-    const scale = Math.min(width / (maxX - minX), height / (maxY - minY));
-    zoom = Math.max(1, Math.min(20, Math.log2(scale / 256)));
+    const view = fitMercatorBounds(minX, minY, maxX, maxY, width, height);
+    centerMx = view.x;
+    centerMy = view.y;
+    zoom = view.zoom;
     draw();
   }
 

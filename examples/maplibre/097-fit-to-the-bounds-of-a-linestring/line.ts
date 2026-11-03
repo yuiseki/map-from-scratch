@@ -49,6 +49,15 @@ const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
 
+export function fitMercatorLine(minX: number, minY: number, maxX: number, maxY: number, width: number, height: number, padding: number): { x: number; y: number; zoom: number } {
+  const scale = Math.min((width - 2 * padding) / (maxX - minX), (height - 2 * padding) / (maxY - minY));
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    zoom: Math.max(1, Math.min(20, Math.log2(scale / 256))),
+  };
+}
+
 const defaultCenterMx = mercX(START_CENTER[0]);
 const defaultCenterMy = mercY(START_CENTER[1]);
 
@@ -117,13 +126,10 @@ export async function mount(
   // midpoint and the zoom is the larger of the two scales that fits the
   // padded viewport.
   function fitLine(): void {
-    centerMx = (minMx + maxMx) / 2;
-    centerMy = (minMy + maxMy) / 2;
-    const scale = Math.min(
-      (width - 2 * PADDING) / (maxMx - minMx),
-      (height - 2 * PADDING) / (maxMy - minMy),
-    );
-    zoom = Math.max(1, Math.min(20, Math.log2(scale / 256)));
+    const view = fitMercatorLine(minMx, minMy, maxMx, maxMy, width, height, PADDING);
+    centerMx = view.x;
+    centerMy = view.y;
+    zoom = view.zoom;
     draw();
   }
 
