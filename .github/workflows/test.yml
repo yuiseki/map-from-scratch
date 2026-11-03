@@ -21,6 +21,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Tests of native renderers compile C (06-mcu-roadmap's mcumap.test.ts);
+      # docker/base/Dockerfile has build-essential too.
+      - name: Install a C compiler
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends build-essential >/dev/null
       - name: Install the type checker at the versions of docker/base/Dockerfile
         run: npm install -g --no-audit --no-fund $(grep -oE '(typescript|@types/node)@[0-9.]+' docker/base/Dockerfile)
       - name: Unit tests and type checks
