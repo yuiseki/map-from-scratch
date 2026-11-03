@@ -1,0 +1,192 @@
+id: mapbox-044-dancing-buildings
+request: >-
+  Mapbox GL JS の公式サンプル「Animate 3D buildings based on ambient sounds」(dancing buildings) のように、
+  3D の建物の高さと色を音に合わせて踊らせたい。建物は東京の高層ビルの多い地区 (PLATEAU の実データ) を数千棟、
+  押し出して陰影をつけ、少ない描画呼び出しで描く。音はクリックしてからのマイク、マイクがなくても踊るように
+  WebAudio で作るリズム (音声ファイルなし) を内蔵する。ゆっくり回る斜めのカメラ、ドラッグとホイールで動かせる。
+  外部ライブラリなしで、最速・最小に。
+
+requirements:
+  - id: real-buildings
+    need: 東京の高層ビルの多い地区の本物の建物の形と高さで、数千棟
+    rationale: >-
+      東京駅を中心に PLATEAU 2025 の 3 次メッシュ 9 枚 (約 3.4 km x 2.8 km、丸の内・大手町・八重洲・日本橋・京橋・銀座・有楽町)
+      の全 13,051 棟を LOD1 の外形と高さで描く。音がないとき (レベル 0) は本当の高さで立っていることを
+      real-height-at-zero で、出典の表示は画面右下で見る
+    unmeasured: 形と高さは verification の real-height-at-zero と ground-and-sky で、棟数はベイクの出力 (truth.json) で確かめる
+  - id: dance-to-sound
+    need: 音の周波数帯の大きさで建物の高さと色が変わる (GPU で。毎フレーム形を送り直さない)
+    rationale: >-
+      16 の周波数帯 (元の例と同じ fftSize 32 の 16 ビン) の値を毎フレーム uniform で送るだけにし、
+      頂点やテクスチャの転送は 1 フレーム 0 バイト (frame_upload_bytes)。フレームあたりの CPU の仕事 (cpu_ms) は
+      16 個の値を読んで行列と光の色を作るだけなので p95 0.5 ms 以下
+  - id: microphone-or-rhythm
+    need: クリックしてマイク、マイクがなくても内蔵のリズムで踊る (音声ファイルなし)
+    rationale: >-
+      リズムは WebAudio (OscillatorNode、種つきのノイズ) で OfflineAudioContext に描き、解析表を作る。
+      開いてから踊り出すまで (rhythm_ms) p50 1,000 ms 以下。計測は固定の種で同じフレームを再現する (rhythm-reproducible)
+  - id: smooth-camera
+    need: ゆっくり回る斜めのカメラで、踊っている間もなめらか
+    rationale: PC の 120 Hz に合わせ、踊りながら一周する経路と、全域が入る遠景のフレームを GPU 完了まで p95 8.3 ms、GPU 時間 p95 4 ms
+  - id: drag-and-wheel
+    need: ドラッグとホイールで動かせる
+    unmeasured: drag-pans (ドラッグした地面がポインタについてくる) と camera.test.ts (ホイールでポインタの下の点が動かない) で確かめる
+  - id: quick-and-light
+    need: すぐ出て、外部依存なしで小さい
+    rationale: >-
+      dance.bin (4.2 MB、gzip 1.34 MB) の取得から最初の 1 フレームの GPU 完了まで p50 600 ms。
+      転送 4,300 KB 以下 (データ 4,108 KB とコード)、配るコード gzip 13 KB 以下、JS ヒープ 64 MB 以下
+
+evaluation:
+  budgets:
+    - {metric: frame_upload_bytes, stat: max, max: 0, unit: B, requirement: dance-to-sound}
+    - {metric: cpu_ms, stat: p95, max: 0.5, unit: ms, requirement: dance-to-sound}
+    - {metric: rhythm_ms, stat: p50, max: 1000, unit: ms, requirement: microphone-or-rhythm}
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-camera}
+    - {metric: gpu_ms, stat: p95, max: 4, unit: ms, requirement: smooth-camera}
+    - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-camera}
+    - {metric: first_frame_ms, stat: p50, max: 600, unit: ms, requirement: quick-and-light}
+    - {metric: transfer_kb, stat: max, max: 4300, unit: KB, requirement: quick-and-light}
+    - {metric: code_gzip_bytes, max: 13000, unit: B, requirement: quick-and-light}
+    - {metric: data_gzip_bytes, max: 1400000, unit: B, requirement: quick-and-light}
+    - {metric: js_heap_mb, stat: p95, max: 64, unit: MB, requirement: quick-and-light}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/044-dancing-buildings/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: >-
+        ナビゲーション開始 (performance.now() の 0) から、dance.bin を取得・解読して GPU に上げ、レベル 0 (本当の高さ) で
+        最初のフレームを描いて 1 px の readPixels で GPU の完了を待った時刻まで (main.ts の firstFrameMs)。bench.ts はそのあとで読む
+      metrics: [first_frame_ms]
+    - id: rhythm
+      what: 最初のフレームのあと、内蔵のリズム 2 ループ (8 s) を OfflineAudioContext で描き、解析表 (250 行 x 16) を作り終えるまで
+      metrics: [rhythm_ms]
+    - id: dance-orbit
+      what: >-
+        既定の視点 (東京駅の南 150 m、pitch 66、距離 2,400 m) で方位を 1 フレーム 1.5° ずつ回しながら 240 フレーム。
+        レベルは解析表の行 i (16 ms ずつ)、時刻もその行の時刻。そのあいだの bufferData/bufferSubData/texImage の総バイトを
+        フレーム数で割ったものが frame_upload_bytes
+      metrics: [frame_ms, cpu_ms, gpu_ms, frame_upload_bytes]
+    - id: whole
+      what: 全域が入る遠景 (pitch 40、距離 5,500 m) で 120 フレーム踊らせる
+      metrics: [whole_frame_ms, whole_cpu_ms, whole_gpu_ms]
+
+datasets:
+  bake: [node, examples/mapbox/044-dancing-buildings/bake.ts]
+  sources:
+    - id: plateau-13101-2025
+      origin: >-
+        3D都市モデル（Project PLATEAU）千代田区（2025年度）CityGML（v5）、13101_chiyoda-ku_pref_2025_citygml_1_op.zip の
+        udx/bldg/5339460x, 5339461x, 5339462x。https://www.geospatial.jp/ckan/dataset/plateau-13101-chiyoda-ku-2025 。
+        ローカルの写し /sata_hdd_24tb/hf_data/plateau-citygml-jp/data/raw/13101_chiyoda-ku/2025/ (tools/sources.ts にはない。
+        例 16 が data/raw/plateau/gml/ に展開した GML を読み、ないときは bake.ts が zip から展開する)
+      license: PLATEAU サイトポリシー 3 (著作権は千代田区、PDL1.0、CC BY 4.0 互換)
+    - id: plateau-13102-2025
+      origin: >-
+        3D都市モデル（Project PLATEAU）中央区（2025年度）CityGML（v5）、13102_chuo-ku_pref_2025_citygml_1_op.zip。
+        https://www.geospatial.jp/ckan/dataset/plateau-13102-chuo-ku-2025 。ローカルの写し /sata_hdd_24tb/hf_data/plateau-citygml-jp/data/raw/13102_chuo-ku/2025/
+      license: PLATEAU サイトポリシー 3 (著作権は中央区、PDL1.0、CC BY 4.0 互換)
+  outputs:
+    - data/baked/mapbox-044-dancing-buildings/dance.bin
+  bench_only:
+    - data/baked/mapbox-044-dancing-buildings/truth.json
+  preparation:
+    - 3 次メッシュ 53394600〜53394622 の 9 枚の建物 GML (合計 1.2 GB) を流し読みし、bldg:Building ごとに lod1Solid の多角形、gml:name、bldg:measuredHeight だけを取る (gml.ts)。13,051 棟、外形のない建物は 0
+    - 外形は lod1Solid のうち全頂点が立体の最低高さにある面 (底面)、高さは立体の最高と最低の差。緯度経度は東京駅 (35.6812, 139.7671) を原点とする東西南北のメートルに (WGS84 の級数、2.4 km で 0.1% 以内)
+    - measuredHeight との差は p50 0.90 m (measuredHeight が -9999 の 470 棟を除く)。最も高いのはグラントウキョウサウスタワー (LOD1 199.3 m、measuredHeight 209.5 m)。描くのは LOD1 の高さ
+    - 帯 (16) は東京駅からの距離の輪。輪の境は建物の重心の距離の 16 分位で、どの帯も 815〜816 棟 (境は 630, 867, 977 … 1,962, 2,405 m)。低い周波数が中心、高い周波数が外側
+    - 建物を中心から近い順に並べ、外形の角ごとに地面と屋上の 2 頂点 (8 バイト: x, y を 0.1 m の int16、高さを 0.1 m の uint16、帯、屋上かどうか)、壁は辺ごとに 2 三角形、屋根は earcut (穴あり)。173,806 頂点、234,719 三角形、32 bit インデックス。dance.bin 4.21 MB (gzip 1.34 MB)
+    - truth.json (計測用) に最も高い建物の名前、高さ、重心、外周、帯、帯ごとの棟数を書く
+
+performance_knowledge:
+  - id: height-in-the-shader-not-the-vertex
+    finding: 頂点に z を持たせず、建物の高さと「屋上かどうか」と帯を持たせると、踊る高さは頂点シェーダで height * (1 + GAIN * level[band]) になり、毎フレーム送るのは 16 個の float の uniform だけになる
+    evidence: >-
+      playwright の headless Chromium (SwiftShader) で 240 フレームの bufferData/bufferSubData/texImage は 0 バイト、
+      フレームの JS 時間は 0.05〜0.15 ms。ハードウェア GPU での frame_ms と gpu_ms はまだ測っていない (bench 未実行)
+    applies_when: 物ごとに少数のパラメータで形が変わるアニメーション (押し出し高さ、拡大率) を、形を送り直さずに描くとき
+  - id: offline-suspend-is-slow
+    finding: >-
+      AnalyserNode を OfflineAudioContext.suspend() で 16 ms ごとに止めて読む方法は、1 回止めるたびに約 100 ms かかり使えなかった。
+      描き終えたサンプルに Web Audio 仕様の解析 (Blackman 窓、32 点 DFT、|X|/N、平滑化 0.85、-90〜-10 dB) を JS で当てた
+    evidence: >-
+      headless Chromium で 8 s の描画に suspend を 10 回入れると 1,055 ms、50 回で 4,717 ms (500 回なら約 50 s)。
+      suspend なしの描画と JS の解析で 337〜361 ms (playwright、SwiftShader、未計測の harness ではない)
+    applies_when: 音から再現可能な時系列の値を作りたいとき。マイクや再生中の音は本物の AnalyserNode を毎フレーム読めばよい
+  - id: equal-count-rings
+    finding: 帯を等幅の輪にすると、中心 (東京駅の線路と皇居側) は建物が少なく、低音の帯 0 は 10 棟、最外の帯は 4,690 棟になった。輪の境を距離の分位にして全帯 816 棟にした
+    evidence: ベイクの出力 (半径 1,600 m の等幅 16 輪 → per band 10 46 91 … 4690、分位 → 815〜816)
+    applies_when: 空間の帯に信号を割り当て、どの帯も同じくらい目立たせたいとき
+  - id: gate-the-analyser
+    finding: >-
+      元の例の解析設定 (fftSize 32、-90〜-10 dB) では、内蔵のリズムのバイト値は 60〜218 で 0.25 を下回らず、レベル = バイト / 255 だと
+      全部の建物が常に 1.4〜2.3 倍で立ち、拍が見えなかった。0.4 の下限で切ってから 0〜1 に伸ばした (dance.ts levelOf)
+    evidence: 解析表の帯 0, 3, 8, 15 を 4 行おきに見た値 (最小 43、ほとんど 60 以上)。下限のあとの最大レベルは帯ごとに 0.22〜0.76
+    applies_when: AnalyserNode のバイト値をそのまま大きさに使うとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/mapbox/044-dancing-buildings/index.html
+      - examples/mapbox/044-dancing-buildings/main.ts
+      - examples/mapbox/044-dancing-buildings/format.ts
+      - examples/mapbox/044-dancing-buildings/render.ts
+      - examples/mapbox/044-dancing-buildings/camera.ts
+      - examples/mapbox/044-dancing-buildings/dance.ts
+      - examples/mapbox/044-dancing-buildings/audio.ts
+    dependencies: []
+    why: >-
+      13,051 棟と地面を 1 本の頂点バッファと 1 本のインデックスバッファにまとめて 1 回の drawElements。音は 16 個のレベルと光の色を
+      uniform で送るだけ。法線は持たず、フラグメントシェーダで dFdx/dFdy から取る (forge3d 005 と同じ)
+  alternatives:
+    - option: 元の例のように高さで 16 層に分け、層ごとに高さを付け替える
+      rejected_because: 本当の高さを捨てることになる (元の例は高さを 10 + 4i + bin[i] に置き換える)。依頼は本当の高さのまわりで踊ること
+    - option: 帯ごとのレベルを 16x1 のテクスチャで送る
+      rejected_because: 比べていない。16 個なら uniform 配列で足り、texSubImage も要らない
+    - option: 解析を OfflineAudioContext.suspend() で本物の AnalyserNode から読む
+      rejected_because: 1 回止めるたびに約 100 ms (performance_knowledge offline-suspend-is-slow)
+    - option: OSM の建物 (osm-tokyo23-src-2026-08)
+      rejected_because: 高さのタグのない建物が多く、本当の高さで立つことを確かめられない。PLATEAU は全棟に LOD1 の高さがある
+  not_doing: [建物の半透明 (元の例は opacity 0.6。描画順の並べ替えが要る), LOD2 の屋根の形, 地形, ラベル, 建物のクリック, 影]
+
+verification:
+  checks:
+    - id: real-height-at-zero
+      what: レベル 0 では建物が本当の (ベイクした) 高さで立っている
+      how: >-
+        最も高い建物 (truth.json、グラントウキョウサウスタワー 199.3 m) を、目の高さ 77 m の低いカメラ (重心を注視点、方位 0、pitch 86、距離 1,100 m) で
+        見て、屋上の外周の投影の x 平均の列を上から読み、空の色でない最初の行を、高さ 199.3 m の外周を投影した y の範囲と比べる
+      expected: 範囲 ±2 px に入り、高さを 0.9 倍にしたときの範囲 ±2 px には入らない
+    - id: roof-rises-with-level
+      what: その建物の帯のレベルが高いと、屋上が画面で上に来る
+      how: 同じカメラで、その建物の帯だけレベル 0.4、他は 0 で描いて同じ列を読む
+      expected: レベル 0 より 20 px より上で、高さ 199.3 x (1 + GAIN x 0.4) の外周の投影の y 範囲 ±2 px に入る
+    - id: colours-change
+      what: 踊っている 2 つのフレームで色が変わる
+      how: 既定の視点で解析表の行 40 と 3 s あとの行を描き、画面中央 128 x 128 の画素を比べる
+      expected: RGB の差の絶対値の平均が 6 より大きい
+    - id: ground-and-sky
+      what: 地面と空が見える
+      how: 既定の視点、レベル 0 で、画面上端 4% の行の空の色 (±3) の割合と、下半分の地面の色 (±3) の割合を数える
+      expected: 空 50% 超、地面 3% 超
+    - id: rhythm-reproducible
+      what: マイクのないときのリズムが毎回同じで、すべての帯を動かす
+      how: 解析表をもう一度作ってバイトごとに比べ、帯ごとの最大レベルを見る
+      expected: 一致し、全帯で最大レベル 0.1 超
+    - id: drag-pans
+      what: ドラッグした地面がポインタについてくる
+      how: 画面の (50%, 70%) から右に 100 px、下に 60 px の合成 PointerEvent を送り、始点の下にあった地面の点を新しい視点で投影する
+      expected: 終点から 2 px 以内
+  harness:
+    - contextlost が起きたらエラーにする
+    - ハードウェアの GPU でないとき (SwiftShader) は失敗にする
