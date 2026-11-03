@@ -13,6 +13,7 @@
 // - reversed-Z into depth32float (float-precision): near 0.5 m, far 10 km;
 // - 4x MSAA resolved into the canvas, as 23's antialias: true.
 import type { Cloud } from '../../23-taito-point-cloud/decode.ts';
+import { packCloudVertices } from './render-data.ts';
 
 // TypeScript's DOM types have the GPU* interfaces but not the constant
 // objects, so the flags are spelled out.
@@ -88,11 +89,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
   function upload(cloud: Cloud): Mesh {
     const bytes = Math.max(1, cloud.count) * 16;
     const buffer = device.createBuffer({ size: bytes, usage: VERTEX, mappedAtCreation: true });
-    const range = buffer.getMappedRange(), f = new Float32Array(range), c = new Uint8Array(range);
-    for (let i = 0; i < cloud.count; i++) {
-      f[i * 4] = cloud.positions[i * 3]; f[i * 4 + 1] = cloud.positions[i * 3 + 1]; f[i * 4 + 2] = cloud.positions[i * 3 + 2];
-      c[i * 16 + 12] = cloud.colors[i * 3]; c[i * 16 + 13] = cloud.colors[i * 3 + 1]; c[i * 16 + 14] = cloud.colors[i * 3 + 2];
-    }
+    new Uint8Array(buffer.getMappedRange()).set(new Uint8Array(packCloudVertices(cloud)));
     buffer.unmap();
     return { buffer, count: cloud.count, bytes };
   }
