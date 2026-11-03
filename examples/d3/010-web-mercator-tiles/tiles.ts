@@ -21,6 +21,15 @@ const mercY = (lat: number): number =>
 const invMercY = (my: number): number =>
   (2 * Math.atan(Math.exp((0.5 - my) * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
 
+export function tileAddressFromWorld(mx: number, my: number, zoom: number): string | null {
+  const n = 1 << zoom;
+  const y = Math.floor(my * n);
+  if (y < 0 || y >= n) return null;
+  const rawX = Math.floor(mx * n);
+  const x = ((rawX % n) + n) % n;
+  return `${zoom}/${x}/${y}`;
+}
+
 interface TileEntry {
   state: 'loading' | 'ready' | 'error';
   bitmap?: ImageBitmap;
@@ -183,10 +192,8 @@ export class GridTileMap {
   tileAddressAt(x: number, y: number): string | null {
     const L = this.layout();
     if (!L) return null;
-    const tx = Math.floor((x * this.dpr - L.originX) / L.tileDev);
-    const ty = Math.floor((y * this.dpr - L.originY) / L.tileDev);
-    if (ty < 0 || ty >= L.n) return null;
-    return this.keyOf(L.zi, tx, ty);
+    const [mx, my] = this.worldAtScreen(x, y);
+    return tileAddressFromWorld(mx, my, L.zi);
   }
 
   // Tile boundaries in CSS px, from the same expression the draw loop uses.
