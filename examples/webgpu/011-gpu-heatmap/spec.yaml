@@ -1,0 +1,56 @@
+id: webgpu-011-gpu-heatmap
+request: >-
+  ニューヨークの Uber 乗車地点 10 万件を、WebGPU の Instanced Gaussian Splatting と
+  カラーマッピングを用いて高速に描画するヒートマップ描画器を作成する。
+requirements:
+  - id: webgpu-weighted-heatmap
+    need: 10万件の重み付き乗車地点の密度を、WebGPU による Instanced Gaussian Splatting とカラーランプで高速かつ滑らかに描画する
+    unmeasured: 描画結果のピクセルを読み戻してヒートマップの着色領域を確認する
+  - id: real-time-controls
+    need: 半径・強度・閾値のスライダー変更およびパン・ズーム操作に対してリアルタイムに再描画する
+    rationale: 60Hz/120Hzでの快適な操作のため 16.6ms 以内
+  - id: fast-startup
+    need: 10万件のバイナリをロードし、初回のヒートマップを高速に表示する
+    rationale: 1秒以内に初回フレームを表示する
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.6, unit: ms, requirement: real-time-controls}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: fast-startup}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: fast-startup}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/011-gpu-heatmap/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: heatmap-animation
+      what: 10万件のヒートマップを連続パン・アニメーションしながら描画する
+      metrics: [frame_ms, fps]
+datasets:
+  outputs: [data/baked/deckgl-011-heatmap-layer/points.bin]
+performance_knowledge:
+  - id: instanced-splatting-r16float
+    finding: WebGPU 標準で blendable な r16float テクスチャへ Instanced Quad による加算ブレンドで Gaussian Splat を描画することで、特殊な拡張機能なしに高速集約できる
+    evidence: 画面 1/2 解像度ターゲットでの splatting とフルスクリーンパスの組み合わせにより 10 万点が 60fps 以上で更新可能
+    applies_when: 大規模な点群から滑らかな密度ヒートマップを WebGPU で描画する場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU (Instanced Gaussian splatting to r16float + color mapping pass)
+    language: TypeScript
+    gpu: hardware
+    code: [examples/webgpu/011-gpu-heatmap/index.html, examples/webgpu/011-gpu-heatmap/main.ts, examples/webgpu/011-gpu-heatmap/render.ts, examples/webgpu/011-gpu-heatmap/heatmap.ts]
+    dependencies: []
+    why: WebGPU の Instanced Drawing と浮動小数点テクスチャ加算ブレンドを活用し、deck.gl 等の重量ライブラリなしで最小実装を実現
+  alternatives:
+    - option: WebGL2 (deckgl/011-heatmap-layer)
+      rejected_because: 本例は次世代の WebGPU WGSL ネイティブ実装を目的とするため
+  not_doing: [背景地図タイル, 地名ラベル, 3D視点, 動的データ追加]
+verification:
+  checks:
+    - id: visible-heatmap
+      what: 画面にヒートマップの着色ピクセルが表示されている
+      how: 描画結果からサンプリングし背景色と異なるピクセル数を判定
+      expected: 着色ピクセルが100個以上
