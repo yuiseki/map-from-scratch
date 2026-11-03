@@ -64,6 +64,14 @@ function shader(gl: WebGL2RenderingContext, kind: number, source: string): WebGL
   return s;
 }
 
+export function decodeTemperatureRaster(bytes: ArrayBuffer): Uint16Array {
+  const view = new DataView(bytes);
+  if (String.fromCharCode(...new Uint8Array(bytes, 0, Math.min(4, bytes.byteLength))) !== 'GT01') throw new Error('invalid data header');
+  const width = view.getUint32(4, true), height = view.getUint32(8, true);
+  if (width !== 720 || height !== 361 || bytes.byteLength !== 12 + width * height * 2) throw new Error('invalid raster dimensions');
+  return new Uint16Array(bytes, 12);
+}
+
 export class TemperatureMap {
   readonly gl: WebGL2RenderingContext;
   readonly canvas: HTMLCanvasElement;
@@ -75,10 +83,8 @@ export class TemperatureMap {
   step = 5;
   constructor(canvas: HTMLCanvasElement, bytes: ArrayBuffer) {
     this.canvas = canvas;
-    const view = new DataView(bytes);
-    if (String.fromCharCode(...new Uint8Array(bytes, 0, 4)) !== 'GT01') throw new Error('invalid data header');
-    const width = view.getUint32(4, true), height = view.getUint32(8, true);
-    if (width !== 720 || height !== 361 || bytes.byteLength !== 12 + width * height * 2) throw new Error('invalid raster dimensions');
+    const width = 720, height = 361;
+    const pixels = decodeTemperatureRaster(bytes);
     this.count = width * height;
     const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true, depth: false });
     if (!gl) throw new Error('WebGL2 が必要です');
@@ -98,8 +104,7 @@ export class TemperatureMap {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, width, height, 0, gl.RED_INTEGER, gl.UNSIGNED_SHORT,
-      new Uint16Array(bytes, 12));
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, width, height, 0, gl.RED_INTEGER, gl.UNSIGNED_SHORT, pixels);
     if (gl.getError() !== gl.NO_ERROR) throw new Error('temperature texture upload failed');
     gl.bindVertexArray(gl.createVertexArray());
     this.resize();
