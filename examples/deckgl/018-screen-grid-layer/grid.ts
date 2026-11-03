@@ -1,6 +1,7 @@
 // One-purpose WebGL2 screen grid for the deck.gl ScreenGridLayer demo data.
 // The point buffer is uploaded once. Each view bins the weighted points in an
 // R32F target, reduces its maximum, then colors screen-space cells.
+import { parseWeightedPoints } from '../011-heatmap-layer/weighted-points.ts';
 const POINT_VS = `#version 300 es
 layout(location=0) in vec2 a_xy;
 layout(location=1) in float a_weight;
@@ -65,13 +66,7 @@ export type ScreenGrid = Awaited<ReturnType<typeof mount>>;
 export async function mount(canvas: HTMLCanvasElement, url: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`data HTTP ${response.status}`);
-  const bin = await response.arrayBuffer();
-  const head = new DataView(bin);
-  if (head.getUint32(0, true) !== 0x31304753) throw new Error('invalid screen grid data');
-  const points = head.getUint32(4, true);
-  const bounds = [head.getFloat32(8, true), head.getFloat32(12, true), head.getFloat32(16, true), head.getFloat32(20, true)] as const;
-  const totalWeight = head.getUint32(24, true);
-  if (bin.byteLength !== 32 + points * 6) throw new Error('truncated screen grid data');
+  const { buffer: bin, count: points, bounds, totalWeight } = parseWeightedPoints(await response.arrayBuffer(), 0x31304753, 'screen grid');
 
   const ctx = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!ctx) throw new Error('WebGL2 unavailable');

@@ -1,6 +1,7 @@
 // Purpose-built WebGL2 weighted heatmap. Points are uploaded once; each view
 // splats Gaussian weights into an R32F target, reduces its maximum on the GPU,
 // then colors the density field. No deck.gl or general-purpose map runtime.
+import { parseWeightedPoints } from './weighted-points.ts';
 const SPLAT_VS = `#version 300 es
 layout(location=0) in vec2 a_xy;
 layout(location=1) in float a_weight;
@@ -77,13 +78,7 @@ export type Heatmap = Awaited<ReturnType<typeof mount>>;
 export async function mount(canvas: HTMLCanvasElement, url: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`data HTTP ${response.status}`);
-  const bin = await response.arrayBuffer();
-  const head = new DataView(bin);
-  if (head.getUint32(0, true) !== 0x31304d48) throw new Error('invalid heatmap data');
-  const points = head.getUint32(4, true);
-  const bounds = [head.getFloat32(8, true), head.getFloat32(12, true), head.getFloat32(16, true), head.getFloat32(20, true)] as const;
-  const totalWeight = head.getUint32(24, true);
-  if (bin.byteLength !== 32 + points * 6) throw new Error('truncated heatmap data');
+  const { buffer: bin, count: points, bounds, totalWeight } = parseWeightedPoints(await response.arrayBuffer(), 0x31304d48, 'heatmap');
 
   const ctx = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!ctx) throw new Error('WebGL2 unavailable');
