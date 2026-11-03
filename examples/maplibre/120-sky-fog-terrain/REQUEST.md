@@ -31,8 +31,12 @@ MapLibre GL JS の公式サンプル「Sky, Fog, Terrain」(ref-repos/maplibre__
 - 目視 (1280x800、SwiftShader): 空は上が青、地平線の付近が白っぽく、遠い稜線ほど霧に溶ける。手前に穂高・槍の岩稜、谷は緑。
   近景と遠景の境目は初期画角では見えない。enabled を外すと空が白になり霧が消えることも見た。
 
-## 未計測
+## 計測 (RTX 3060、bench -n 1)
 
-ユーザーの指示で `bin/mfs bench` はまだ走らせていない。spec.yaml の予算 (first_frame_ms p50 2,000 ms、frame_ms p95 16.7 ms、
-gpu_ms p95 8 ms、whole_frame_ms p95 16.7 ms、control_redraw_ms max 16.7 ms、transfer_kb 2,700、code_gzip_bytes 14,000) と
-verification の 7 つのチェックは、書いただけで一度も通していない。
+最初の GPU 実行で top-rows-sky-color、distant-terrain-fog-color、controls-change-only-their-pixels が落ちた。どれもチェックの作りの誤りで、描画器は変えていない。
+- 既定の sky-horizon-blend 0.5 では帯 (200 px) が上端まで届く。MapLibre の式どおり上端にも horizon-color が 7.6% 混ざる。
+- 遠い帯の標本は、地形の外を埋める horizon-color か、霧の深さ 0.99 を超えて horizon-color に移った最遠の地形だった。
+- 霧の地形として数えた標本の多くが埋め色だった。
+
+直したあとは 7 チェックすべて合格し、予算も満たした。first_frame_ms 413 ms、frame_ms p95 1.64 ms、gpu_ms p95 0.54 ms、
+control_redraw_ms max 12.9 ms、transfer_kb 2,235、code_gzip_bytes 9,219。詳細は spec.yaml の check-fixes-first-gpu-run。

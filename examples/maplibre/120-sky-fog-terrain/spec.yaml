@@ -119,6 +119,25 @@ performance_knowledge:
     finding: 最初の drag は dx で方位を減らしていて、手前の地面がポインターと逆に動いた。camera.test.ts の「右へドラッグすると手前の地面が右へ動く」が 640 → 478.7 px で失敗して見つかり、符号を直した
     evidence: 修正後は同じテストで右へ動く
     applies_when: 周回カメラのドラッグを書くとき
+  - id: check-fixes-first-gpu-run
+    finding: >-
+      最初の GPU 実行 (RTX 3060、Pages のサイト検査) で 3 つのチェックが落ちた。原因はどれも描画器ではなくチェックの作りで、描画器は変えていない。
+      (1) top-rows-sky-color: 既定の sky-horizon-blend 0.5 では MapLibre の式どおり帯が 200 px あり、地平線 (上から 145 px) より上の全部に
+      horizon-color が混ざる。上端の混ざり方は (1 - 145/200)^2 = 7.6% で、sky-color からの距離 22.0 は 0.076 × 239 (2 色の距離) と合う。
+      (2) distant-terrain-fog-color: 遠い帯 (地平線の 48 px 下) の赤からの距離 337.07 は horizon-color #dce8f2 と赤の距離そのもの。標本は
+      地形の外を埋める horizon-color か、霧の深さ 0.99 を超えて horizon-color に移った最遠の地形だった。地形の画素だけに絞ると、霧だけ赤では
+      地平線直下の帯 A 164.8 が下の帯 B 128 より赤から遠く (horizon-color に移るため)、B と下端は 122.5 と 205 (MapLibre の霧は深さの 2 乗)。
+      そこで horizon-color も赤にして、遠いほど霧の色に近いことを確かめるようにした。
+      (3) controls-change-only-their-pixels: horizon-color は空の標本の 40/320 しか変えなかった (帯 40 px にかかるのは 8 行中 1 行)。
+      horizon-fog-blend は霧の帯の 98/400。帯の標本の多くが霧を受けない地形の外の埋め色だった。領域を上空・帯・霧の地形 (地形の画素だけ)・手前に分けた
+    evidence: >-
+      直したあとの bench -n 1 で 7 チェックすべて合格。同じ回の予算は first_frame_ms 413.3 ms、frame_ms p95 1.64 ms、gpu_ms p95 0.543 ms、
+      whole_frame_ms p95 1.84 ms、control_redraw_ms max 12.89 ms、transfer_kb 2,235、code_gzip_bytes 9,219
+    applies_when: 空のグラデーションと霧の画素を読み戻すチェックを書くとき。帯の幅と地形の外の埋め色を先に数える
+  - id: control-redraw-margin
+    finding: control_redraw_ms の最大は 2 回の実行で 11.03 ms と 12.89 ms。予算 16.7 ms に対して余裕は 4 ms ほど
+    evidence: 測っているのは input イベントから rAF 1 回とフレーム全体の readPixels (1280x800) まで。描画そのものは frame_ms p95 1.2〜1.6 ms
+    applies_when: 予算に近づいたら、まず readPixels の分を疑う
   - id: host-browser-without-webgl
     finding: playwright-cli の既定の chromium (headless) は WebGL のコンテキストを作った直後に失った (CONTEXT_LOST_WEBGL)。--use-angle=swiftshader --enable-unsafe-swiftshader を渡すと描けた
     evidence: 目視レビュー用のスクリーンショットは SwiftShader で撮った。GPU の時間ではない
@@ -162,22 +181,27 @@ verification:
   checks:
     - id: top-rows-sky-color
       what: 画面の上端の行が sky-color
-      how: 描画直後に既定のフレームバッファーを readPixels し、y=1,3,5 の行を 32 点
-      expected: すべて sky-color から RGB 距離 12 以内、かつ地平線の行が上から 30 px より下
+      how: >-
+        描画直後に既定のフレームバッファーを readPixels し、y=1,3,5 の行を 32 点。sky-horizon-blend を 0.1 (帯 40 px) にした画面と、
+        既定の 0.5 (帯 200 px、地平線は上から 145 px なので上端まで届く) の画面の両方
+      expected: 0.1 ではすべて sky-color から RGB 距離 6 以内。0.5 ではすべて horizon-color より sky-color に近い。地平線の行が上から 45 px より下
     - id: horizon-row-horizon-color
       what: 地平線のすぐ上の行が horizon-color
       how: horizonY - 2 の行を 64 点。目の高さがデータの最高点 (3,662 m) を超えることも確かめる
       expected: 95% 以上が horizon-color から 12 以内
     - id: distant-terrain-fog-color
       what: 遠くの地形が fog-color に近づく
-      how: fog-color を #ff0000、horizon-fog-blend を 0.99 にし、地平線の 6% 下の帯と画面下端の帯の、赤からの平均距離を比べる
-      expected: 遠い帯の距離が下端の半分未満、かつ 120 未満
+      how: >-
+        fog-color と horizon-color を #ff0000 にし (霧は遠い端で horizon-color に移るため。performance_knowledge の check-fixes-first-gpu-run)、
+        enabled を外した画面で地形と分かる画素だけを、帯 A (地平線から高さの 10% 下まで)、帯 B (10〜25%)、画面下端 3% で比べる
+      expected: 赤からの平均距離が A < B < 下端、A は下端の半分未満、A と B はそれぞれ 50 画素以上
     - id: controls-change-only-their-pixels
       what: 6 つの操作がそれぞれ変えるべきピクセルだけを変える
       how: >-
-        sky-horizon-blend を 0.1 にした画面を基準に、空 (地平線より上)、霧の帯 (地平線から 15% 下まで)、手前 (下端 3%、霧の近い面より手前)
-        の標本を、1 つずつ値を変えた画面と比べる。sky-color は空だけ、horizon-color は空と霧の帯、fog-color・horizon-fog-blend・
-        fog-ground-blend は霧の帯だけ、sky-horizon-blend は空だけ
+        sky-horizon-blend を 0.1 (帯 40 px) にした画面を基準に、上空 (帯より上)、帯、霧の地形 (地平線から高さの 25% 下までのうち、
+        enabled を外した画面で地形と分かる画素。地形の外を埋める horizon-color は霧を受けないので除く)、手前 (下端 3%、霧の近い面より手前)
+        の標本を、1 つずつ値を変えた画面と比べる。sky-color は上空と帯、horizon-color は帯と霧の地形、fog-color・horizon-fog-blend (0.95 へ)・
+        fog-ground-blend は霧の地形だけ、sky-horizon-blend (0.6 へ) は帯 (上空は帯が広がって変わりうるので問わない)
       expected: 変えるべき領域の 30% 以上が変わり (距離 3 超)、それ以外の領域は 1 点も変わらない
     - id: sky-disabled-changes-sky
       what: enabled を外すと空の部分が変わり、霧も消える
@@ -192,5 +216,4 @@ verification:
       how: 方位 15 度ごとに、最大の傾き 85 度で距離 800 m〜80 km を設定し (clampCamera が通る setCam)、目の位置の CPU の高さと比べる
       expected: 目は常に地面から 149 m 以上上
   harness: >-
-    ハーネスは first_frame_ms、transfer_kb、code_gzip_bytes を集め、info.gpu がソフトウェアラスタライザーなら失敗にする。
-    2026-11-03 時点で bench は未実行 (ユーザーの指示で計測は後でまとめて行う)。チェックと予算は書いたが一度も走っていない
+    ハーネスは first_frame_ms、transfer_kb、code_gzip_bytes を集め、info.gpu がソフトウェアラスタライザーなら失敗にする

@@ -51,55 +51,94 @@ export async function run(p: Page): Promise<void> {
   const eyeZ = eyeOf(cam0)[2];
   emit({ info: { pitch: cam0.pitch, horizon_css_y: hy, eye_m: eyeZ } });
 
-  // 1. top rows are the sky colour
+  // Terrain mask: with the sky disabled nothing but the terrain is drawn on
+  // the white background and there is no fog. The horizon fill (no data
+  // beyond the far grid) is not terrain and does not take fog.
+  set(ui.enabled, false);
+  const bare = snap();
+  reset();
+  const white = rgb255(NO_SKY);
+  const isTerrain = (x: number, y: number) => dist(bare(x, y), white) > 20;
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+
+  // 1. top rows are the sky colour. MapLibre's band (sky-horizon-blend * half
+  //    the height above the horizon) reaches the top at the default 0.5 here
+  //    (200 px band, horizon 145 px from the top), so the top is 92% sky
+  //    there; with the band at 0.1 (40 px) the top rows must be the sky colour
+  //    itself, and at the default still nearer to it than to the horizon colour.
   {
-    const at = snap(), sky = rgb255(ui.skyColor.value);
-    let worst = 0;
-    for (let x = 4; x < cssW; x += cssW / 32) for (const y of [1, 3, 5]) worst = Math.max(worst, dist(at(x, y), sky));
-    emit({ check: 'top-rows-sky-color', pass: worst <= 12 && hy > 30, detail: { worst, sky, horizon_y: hy } });
+    const sky = rgb255(ui.skyColor.value), hor = rgb255(ui.horizonColor.value);
+    const def = snap();
+    set(ui.skyHorizonBlend, '0.1');
+    const narrow = snap();
+    reset();
+    let worst = 0, nearer = 0, n = 0;
+    for (let x = 4; x < cssW; x += cssW / 32) for (const y of [1, 3, 5]) {
+      n++;
+      worst = Math.max(worst, dist(narrow(x, y), sky));
+      if (dist(def(x, y), sky) < dist(def(x, y), hor)) nearer++;
+    }
+    emit({ check: 'top-rows-sky-color', pass: worst <= 6 && nearer === n && hy > 45, detail: `band 0.1: worst distance to sky ${r1(worst)}; band 0.5: ${nearer}/${n} nearer sky than horizon; horizon y ${r1(hy)} px` });
   }
   // 2. the row just above the horizon is the horizon colour
   {
     const at = snap(), hor = rgb255(ui.horizonColor.value);
     let ok = 0, n = 0, worst = 0;
     for (let x = 4; x < cssW; x += cssW / 64) { const d = dist(at(x, hy - 2), hor); n++; if (d <= 12) ok++; worst = Math.max(worst, d); }
-    emit({ check: 'horizon-row-horizon-color', pass: eyeZ > 3700 && ok / n >= 0.95, detail: { ok, n, worst, eye_m: eyeZ } });
+    emit({ check: 'horizon-row-horizon-color', pass: eyeZ > 3700 && ok / n >= 0.95, detail: `${ok}/${n} within 12, worst ${r1(worst)}, eye ${Math.round(eyeZ)} m` });
   }
-  // 3. distant terrain approaches the fog colour: with a pure red fog, the
-  //    band just below the horizon is much closer to it than the bottom band
+  // 3. distant terrain approaches the fog colour. The fog mixes the ground
+  //    towards fog-color, and over the last part of fog depth towards
+  //    horizon-color (horizon-fog-blend): measured with only the fog red, the
+  //    band just below the horizon (terrain beyond ~109 km, fog depth > 0.99)
+  //    was 164.8 from red against 128 for the band below it, because it had
+  //    turned to the horizon colour as designed. So both are red here and the
+  //    claim is: the further the terrain (the higher on the screen), the
+  //    nearer to the fog colour. Bands: A = horizon to 10% of the height below
+  //    it, B = 10-25%, bottom = in front of the fog's near plane.
   {
-    set(ui.fogColor, '#ff0000'); set(ui.horizonFogBlend, '0.99');
+    set(ui.fogColor, '#ff0000'); set(ui.horizonColor, '#ff0000');
     const at = snap(), red: Px = [255, 0, 0];
-    let farD = 0, nearD = 0, n = 0;
-    for (let x = 4; x < cssW; x += cssW / 64) {
-      farD += dist(at(x, hy + 0.06 * cssH), red); nearD += dist(at(x, cssH - 4), red); n++;
-    }
-    farD /= n; nearD /= n;
-    emit({ check: 'distant-terrain-fog-color', pass: farD < 0.5 * nearD && farD < 120, detail: { far_mean_dist: farD, near_mean_dist: nearD } });
+    const band = (y0: number, y1: number, terrainOnly: boolean): [number, number] => {
+      let s = 0, n = 0;
+      for (let x = 4; x < cssW; x += cssW / 64) for (let y = y0; y < y1; y += 0.01 * cssH) {
+        if (terrainOnly && !isTerrain(x, y)) continue;
+        s += dist(at(x, y), red); n++;
+      }
+      return [n ? s / n : Infinity, n];
+    };
+    const [dA, nA] = band(hy + 2, hy + 0.1 * cssH, true);
+    const [dB, nB] = band(hy + 0.1 * cssH, hy + 0.25 * cssH, true);
+    const [dN, nN] = band(cssH - 0.03 * cssH, cssH - 1, false);
+    emit({ check: 'distant-terrain-fog-color', pass: nA >= 50 && nB >= 50 && dA < dB && dB < dN && dA < 0.5 * dN, detail: `mean distance to the red fog: band A ${r1(dA)} (${nA} px), band B ${r1(dB)} (${nB} px), bottom ${r1(dN)} (${nN} px)` });
     reset();
   }
   // 4. each control changes the pixels it should and only those.
-  //    Regions: sky = above the horizon row; ground-near = the bottom 3% (view
-  //    depth below the fog's near plane, no fog); fogged = the band from the
-  //    horizon to 15% below it.
+  //    Regions, with sky-horizon-blend 0.1 (a 40 px band): top = sky above
+  //    the band; band = the band; fogged = terrain pixels from the horizon to
+  //    25% of the height below it; near = the bottom 3% (in front of the
+  //    fog's near plane, no fog).
   {
-    set(ui.skyHorizonBlend, '0.1');            // keeps the top rows out of the horizon band
+    set(ui.skyHorizonBlend, '0.1');
+    const bandPx = 0.1 * cssH / 2;
     const base = snap();
     const pts: { x: number; y: number; r: string }[] = [];
     for (let x = 4; x < cssW; x += cssW / 40) {
-      for (let y = 2; y < hy - 2; y += Math.max(2, (hy - 4) / 8)) pts.push({ x, y, r: 'sky' });
-      for (let y = hy + 2; y < hy + 0.15 * cssH; y += 0.015 * cssH) pts.push({ x, y, r: 'fogged' });
+      for (let y = 2; y < hy - bandPx - 4; y += (hy - bandPx - 6) / 6) pts.push({ x, y, r: 'top' });
+      for (let y = hy - bandPx + 4; y < hy - 3; y += (bandPx - 7) / 4) pts.push({ x, y, r: 'band' });
+      for (let y = hy + 2; y < hy + 0.25 * cssH; y += 0.015 * cssH) if (isTerrain(x, y)) pts.push({ x, y, r: 'fogged' });
       for (let y = cssH - 0.03 * cssH; y < cssH - 1; y += 4) pts.push({ x, y, r: 'near' });
     }
     const cases: { id: string; el: HTMLInputElement; v: string; change: string[]; keep: string[] }[] = [
-      { id: 'sky-color', el: ui.skyColor, v: '#ff00ff', change: ['sky'], keep: ['fogged', 'near'] },
-      { id: 'horizon-color', el: ui.horizonColor, v: '#ff8000', change: ['sky', 'fogged'], keep: ['near'] },
-      { id: 'fog-color', el: ui.fogColor, v: '#00ff00', change: ['fogged'], keep: ['sky', 'near'] },
-      { id: 'sky-horizon-blend', el: ui.skyHorizonBlend, v: '0.6', change: ['sky'], keep: ['fogged', 'near'] },
-      { id: 'horizon-fog-blend', el: ui.horizonFogBlend, v: '0.05', change: ['fogged'], keep: ['sky', 'near'] },
-      { id: 'fog-ground-blend', el: ui.fogGroundBlend, v: '0.6', change: ['fogged'], keep: ['sky', 'near'] },
+      { id: 'sky-color', el: ui.skyColor, v: '#ff00ff', change: ['top', 'band'], keep: ['fogged', 'near'] },
+      { id: 'horizon-color', el: ui.horizonColor, v: '#ff8000', change: ['band', 'fogged'], keep: ['top', 'near'] },
+      { id: 'fog-color', el: ui.fogColor, v: '#00ff00', change: ['fogged'], keep: ['top', 'band', 'near'] },
+      // 0.6 widens the band past the top, so the top may change too
+      { id: 'sky-horizon-blend', el: ui.skyHorizonBlend, v: '0.6', change: ['band'], keep: ['fogged', 'near'] },
+      { id: 'horizon-fog-blend', el: ui.horizonFogBlend, v: '0.95', change: ['fogged'], keep: ['top', 'band', 'near'] },
+      { id: 'fog-ground-blend', el: ui.fogGroundBlend, v: '0.6', change: ['fogged'], keep: ['top', 'band', 'near'] },
     ];
-    const results: Record<string, unknown> = {};
+    const lines: string[] = [];
     let all = true;
     for (const c of cases) {
       const old = c.el.value;
@@ -111,11 +150,11 @@ export async function run(p: Page): Promise<void> {
         total[q.r] = (total[q.r] ?? 0) + 1;
         if (dist(at(q.x, q.y), base(q.x, q.y)) > 3) changed[q.r] = (changed[q.r] ?? 0) + 1;
       }
-      const pass = c.change.every((r) => (changed[r] ?? 0) / total[r] >= 0.3) && c.keep.every((r) => (changed[r] ?? 0) === 0);
+      const pass = c.change.every((r) => total[r] > 0 && (changed[r] ?? 0) / total[r] >= 0.3) && c.keep.every((r) => (changed[r] ?? 0) === 0);
       all &&= pass;
-      results[c.id] = { pass, changed, total };
+      lines.push(`${c.id} ${pass ? 'ok' : 'FAIL'} [${Object.keys(total).map((r) => `${r} ${changed[r] ?? 0}/${total[r]}`).join(', ')}]`);
     }
-    emit({ check: 'controls-change-only-their-pixels', pass: all, detail: results });
+    emit({ check: 'controls-change-only-their-pixels', pass: all, detail: lines.join('; ') });
     reset();
   }
   // 5. with the sky disabled the sky area changes (to the page background)
@@ -131,7 +170,7 @@ export async function run(p: Page): Promise<void> {
       for (const y of [2, hy / 2, hy - 3]) { n++; if (dist(on(x, y), off(x, y)) > 30) skyChanged++; if (dist(off(x, y), bg) <= 6) skyBg++; }
       m++; if (dist(on(x, hy + 0.05 * cssH), off(x, hy + 0.05 * cssH)) > 10) fogGone++;
     }
-    emit({ check: 'sky-disabled-changes-sky', pass: skyChanged / n >= 0.95 && skyBg / n >= 0.95 && fogGone / m >= 0.5, detail: { skyChanged, skyBg, n, fogGone, m } });
+    emit({ check: 'sky-disabled-changes-sky', pass: skyChanged / n >= 0.95 && skyBg / n >= 0.95 && fogGone / m >= 0.5, detail: `sky changed ${skyChanged}/${n}, background ${skyBg}/${n}, fog gone ${fogGone}/${m}` });
   }
   // 6. every control redraws within one frame of its input event
   {
@@ -156,7 +195,7 @@ export async function run(p: Page): Promise<void> {
     }
     p.draw();
     emit({ metric: 'control_redraw_ms', values: ms });
-    emit({ check: 'controls-redraw-next-frame', pass: ok === els.length, detail: { ok, of: els.length } });
+    emit({ check: 'controls-redraw-next-frame', pass: ok === els.length, detail: `${ok}/${els.length} inputs redrawn` });
   }
   // 7. the camera never goes under the terrain: extreme drags and zooms in
   //    every direction, measured against the CPU heights
@@ -172,7 +211,7 @@ export async function run(p: Page): Promise<void> {
       }
     }
     p.setCam(c0);
-    emit({ check: 'camera-above-terrain', pass: worst >= CLEARANCE - 1, detail: { worst_clearance_m: worst } });
+    emit({ check: 'camera-above-terrain', pass: worst >= CLEARANCE - 1, detail: `worst clearance ${Math.round(worst)} m` });
   }
   // 8. orbit: a full turn with pitch and distance moving, then the fixed
   //    opening view
