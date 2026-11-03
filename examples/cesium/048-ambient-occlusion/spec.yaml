@@ -1,0 +1,82 @@
+id: cesium-048-ambient-occlusion
+request: >-
+  CesiumJS の showcase である「Ambient Occlusion」のように、3D 都市ジオメトリの
+  ビル間の谷間や建物の接地面、陰影の窪みに生じる接触影（Contact Shadows）を
+  リアルタイムのスクリーンスペース・アンビエントオクルージョン（SSAO）パイプライン
+  （G-Buffer 生成、16 サンプル半球カーネル、4x4 回転ノイズ、バイラテラルブラー、アンビエント乗算合成）で
+  対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: SSAO の実装に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 都市と SSAO 影が描画される
+  - id: ssao-pipeline
+    need: SSAO による局所的な環境遮蔽影が画面上で正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 400, unit: ms, requirement: ssao-pipeline}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/048-ambient-occlusion/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ジオメトリ生成と SSAO G-Buffer パイプラインの初期化および初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: カメラ自転中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 3D 都市ブロック街区ジオメトリを動的生成
+
+performance_knowledge:
+  - id: normal-depth-packed-g-buffer
+    finding: G-Buffer の第二アタッチメント（RGBA16F）にビュー空間法線（xyz）と線形深度（w）を一体化格納することで、テクスチャフェッチ数を半減しキャッシュヒット率を最大化
+    evidence: 単一サンプリングで法線と遮蔽判定用深度が同時に揃い、SSAO ループの帯域負荷を大幅削減
+    applies_when: SSAO・スクリーンスペース反射 (SSR)・被写界深度
+  - id: rotated-tangent-hemisphere-kernel
+    finding: 4x4 の微小な回転ノイズテクスチャで半球サンプルカーネルをピクセルごとにランダム回転させることで、サンプリング数を 16 に抑えながら規則的なバンディングアーティファクトを完全に解消
+    evidence: 少数サンプル数でも後段の簡易ブラーと併せて平滑なコンタクトシャドウを生成
+    applies_when: SSAO・ボリュメトリックフォグ・シャドウ
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/048-ambient-occlusion/index.html
+      - examples/cesium/048-ambient-occlusion/main.ts
+      - examples/cesium/048-ambient-occlusion/ssao.ts
+      - examples/cesium/048-ambient-occlusion/render.ts
+  not_doing:
+    - CesiumJS や Three.js などの重量ライブラリの読み込み
+    - CPU 側でのピクセルバッファ処理（全段 GPU FBO パイプラインで完結）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が背景色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 背景色（r < 80, g < 95, b < 120）であること
+    - id: city-geometry-rendered
+      what: 画面中央に 3D 都市ブロック群が描画されている
+      how: gl.readPixels で中央ピクセル色を取得
+      expected: 都市ビル描画色（r > 15 || g > 15 || b > 15）であること
+    - id: ssao-contact-shadows-applied
+      what: SSAO による局所遮蔽コントラストが計算されている
+      how: gl.readPixels で SSAO 有無時のピクセル輝度を比較検証
+      expected: SSAO 有効時にビル接地面や谷間で遮蔽影が評価されていること

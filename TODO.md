@@ -595,7 +595,7 @@
 - [ ] `cesium-045-aec-snapping` → `examples/cesium/045-aec-snapping/` — [Aec Snapping](https://sandcastle.cesium.com/?src=aec-snapping)
 - [ ] `cesium-046-aec-tileset-metadata-filtering` → `examples/cesium/046-aec-tileset-metadata-filtering/` — [Aec Tileset Metadata Filtering](https://sandcastle.cesium.com/?src=aec-tileset-metadata-filtering)
 - [ ] `cesium-047-aerometrex-san-francisco` → `examples/cesium/047-aerometrex-san-francisco/` — [Aerometrex San Francisco](https://sandcastle.cesium.com/?src=aerometrex-san-francisco)
-- [ ] `cesium-048-ambient-occlusion` → `examples/cesium/048-ambient-occlusion/` — [Ambient Occlusion](https://sandcastle.cesium.com/?src=ambient-occlusion)
+- [x] `cesium-048-ambient-occlusion` → `examples/cesium/048-ambient-occlusion/` — [Ambient Occlusion](https://sandcastle.cesium.com/?src=ambient-occlusion)
 - [ ] `cesium-049-arcgis-mapserver` → `examples/cesium/049-arcgis-mapserver/` — [Arcgis Mapserver](https://sandcastle.cesium.com/?src=arcgis-mapserver)
 - [ ] `cesium-050-arcgis-tiled-elevation-terrain` → `examples/cesium/050-arcgis-tiled-elevation-terrain/` — [Arcgis Tiled Elevation Terrain](https://sandcastle.cesium.com/?src=arcgis-tiled-elevation-terrain)
 - [ ] `cesium-051-arcticdem` → `examples/cesium/051-arcticdem/` — [Arcticdem](https://sandcastle.cesium.com/?src=arcticdem)

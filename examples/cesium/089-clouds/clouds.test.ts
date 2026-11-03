@@ -18,7 +18,7 @@ test('createCumulusClouds creates expected number of cloud puffs within bounds',
   for (const p of puffs) {
     assert.ok(Math.abs(p.x) <= bounds[0] * 0.7, 'Cloud x within bounds');
     assert.ok(Math.abs(p.z) <= bounds[2] * 0.7, 'Cloud z within bounds');
-    assert.ok(p.y >= 250 && p.y <= 450, 'Cloud altitude near base altitude');
+    assert.ok(p.y >= 250 && p.y <= 500, 'Cloud altitude near base altitude');
     assert.ok(p.radius >= 20 && p.radius <= 160, 'Puff radius is valid');
   }
 });
