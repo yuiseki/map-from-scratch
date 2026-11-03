@@ -29,6 +29,7 @@ const mercX = (lon: number) => (lon + 180) / 360;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
 const centerMx0 = mercX(CENTER_LNG);
 const centerMy0 = mercY(CENTER_LAT);
+export const orbitPoint = (angle: number): [number, number] => [Math.cos(angle) * RADIUS_DEG, Math.sin(angle) * RADIUS_DEG];
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<AnimatePointMap> {
   const ctx = canvas.getContext('2d')!;
@@ -57,7 +58,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function pointLngLat(): [number, number] {
-    return [Math.cos(angle) * RADIUS_DEG, Math.sin(angle) * RADIUS_DEG];
+    return orbitPoint(angle);
   }
 
   function getPointScreenPos(): [number, number] {

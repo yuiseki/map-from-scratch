@@ -21,6 +21,8 @@ function mercX(lon: number): number {
   return (lon + 180) / 360;
 }
 
+export const nextBearing = (bearing: number, delta = 0.5): number => (bearing + delta) % 360;
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<CameraRotateMap> {
   const ctx = canvas.getContext('2d')!;
   const res = await fetch(landUrl);
@@ -106,7 +108,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function step(delta = 0.5) {
-    bearing = (bearing + delta) % 360;
+    bearing = nextBearing(bearing, delta);
     draw();
   }
 

@@ -12,6 +12,8 @@ export interface RouteAnimationMap {
   stop(): void;
 }
 
+export const nextRouteStep = (current: number, maxSteps: number): number => (current + 1) % (maxSteps + 1);
+
 export async function mount(
   canvas: HTMLCanvasElement,
   landUrl: string,
@@ -109,7 +111,7 @@ export async function mount(
   }
 
   function step() {
-    currentStep = (currentStep + 1) % (maxSteps + 1);
+    currentStep = nextRouteStep(currentStep, maxSteps);
     draw();
   }
 
