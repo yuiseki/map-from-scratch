@@ -43,7 +43,7 @@ export class OpenGlobusVectorGlobe {
       const L = lon * Math.PI / 180, P = lat * Math.PI / 180;
       return [Math.cos(P) * Math.cos(L), Math.cos(P) * Math.sin(L), Math.sin(P)];
     })));
-    this.sphere = toSphere(new Int16Array(await tri.arrayBuffer()));
+    this.sphere = triangleVerticesOnSphere(new Int16Array(await tri.arrayBuffer()));
     this.draw();
   }
 
@@ -241,7 +241,7 @@ export class OpenGlobusVectorGlobe {
 // big flat ones crossing the horizon folded over the ocean (as in 180, 213).
 const MAX_EDGE = 20;
 type LL = [number, number];
-function toSphere(v: Int16Array): Float32Array {
+export function triangleVerticesOnSphere(v: Int16Array): Float32Array {
   const out: number[] = [];
   const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
   const split = (a: LL, b: LL, c: LL): void => {
