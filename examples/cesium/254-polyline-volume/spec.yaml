@@ -1,0 +1,191 @@
+id: cesium-254-polyline-volume
+request: >-
+  CesiumJS Sandcastle の「Polyline Volume」(https://sandcastle.cesium.com/?src=polyline-volume) のように、
+  2D の断面（円・箱・星）をポリラインに沿って掃引した 3D のチューブを地球上に描きたい。角は丸めるか
+  マイター（上限つき）で継ぐ。データは実在の線: ローカルの OSM から日本の新幹線の全線を取り出し、
+  地球の曲率に沿ってチューブにする。ねじれない（回転最小化フレーム）こと、断面は元の例と同じく
+  円・箱・星から選べること、線ごとに色を変えて光を当て、Natural Earth の暗い陸地の上でほのかに光らせる。
+  各線の実際の運転速度に比例した速さで光のパルスが走る。ドラッグで回転、ホイールでズーム、ボタンで
+  日本全体から富士山近くの東海道新幹線を斜めから見る近景へ飛ぶ。ODbL の帰属表示を画面に出す。
+
+requirements:
+  - id: real-lines
+    need: 日本の新幹線（営業線 10 線）の実際の線形を OSM から取り出し、駅の位置にチューブがある
+    rationale: 駅は線とは別の OSM ノード（railway=station）で、ベイクで線から 151 m 以内と確認済み。全線が入る開幕ビューで 15 駅すべての画面位置の 3 px 以内に、その線の色のチューブ画素がある
+    unmeasured: verification の tube-at-stations で画面ピクセルを検証する
+  - id: sweep-follows-earth
+    need: 断面を地球の曲率に沿って掃引し、曲がり角で継ぎ目の隙間も突起もない。ねじれない
+    rationale: 回転最小化フレームは球面上で動径に一致する（測地的ねじれ 0）ので箱が立ったまま進む。最も鋭い角（データ中の 85.4°、秋田新幹線・大曲）で、中心線の両側 1.5 km の全画素がチューブで、線から半径×マイター上限より遠いチューブ画素が 0
+    unmeasured: sweep.test.ts（フレームが反転しない、動径から 1° 以内、マイター長、丸め角の刻み、帯の連続）と verification の sharp-bend-joined
+  - id: shapes-selectable
+    need: 断面を円・箱・星から選べ、選ぶとシルエットが変わる
+    rationale: 富士川付近の近景で、3 形状の東海道チューブのマスクが互いに XOR/和集合 0.08 超で異なる
+    unmeasured: verification の shape-changes-silhouette
+  - id: lit-glowing-lines
+    need: 線ごとの色で照らされ、暗い陸地の上でほのかに光る。陸地と海が見える
+    rationale: Natural Earth の陸地点 4 つが海の点 3 つより輝度で 6 以上明るく、どちらにもチューブ色がない
+    unmeasured: verification の base-map-visible と目視（results/<id>/screenshot.png）
+  - id: pulses-at-line-speed
+    need: 各線の運転速度（OSM maxspeed の最頻値）に比例した速さで光のパルスが走る
+    rationale: 速度の比例は pulse.test.ts。画面では、パルス先頭の位置がパルスなしより輝度 30 以上明るい
+    unmeasured: pulse.test.ts と verification の pulse-at-head
+  - id: navigation
+    need: ドラッグで回転、ホイールでズーム、ボタンで富士山近くの東海道新幹線の斜め近景へ飛ぶ
+    rationale: 回転中のフレームを 60 Hz の 16.7 ms 以内に（p95）。ドラッグで駅が指に付いて動き、飛行の後に新富士駅の列でチューブが 12 px 以上の高さに見える
+  - id: quick-start
+    need: ページを開いてすぐ日本全体が見える
+    rationale: 陸地 222 KB gzip と線 9 KB を取ってメッシュを組み、初回描画まで 1.5 s 以内（p50）
+  - id: small-page
+    need: 地図ライブラリなし、データとコードが小さい
+    rationale: コード gzip 20 KB 以内、転送 800 KB 以内（静的サーバは gzip しないので非圧縮の land.bin 535 KB を含む）
+  - id: modest-geometry
+    need: 全線を 1 回の描画で出しても GPU が重くならない
+    rationale: 断面と角の 6 通りのどれでも三角形 25 万以内（実測 6.2 万〜10.6 万の見込み）。形状を切り替えたときのメッシュ再構築は 100 ms 以内
+
+evaluation:
+  budgets:
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+    - {metric: fuji_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: japan_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: lit-glowing-lines}
+    - {metric: triangles, stat: max, max: 250000, unit: count, requirement: modest-geometry}
+    - {metric: rebuild_ms, stat: p95, max: 100, unit: ms, requirement: modest-geometry}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: small-page}
+    - {metric: data_gzip_bytes, max: 260000, unit: B, requirement: small-page}
+    - {metric: transfer_kb, max: 800, unit: KB, requirement: small-page}
+  gates: [エラーがない, ハードウェア GPU, WebGL context loss がない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/254-polyline-volume/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 120000
+  scenarios:
+    - id: first-frame
+      what: ナビゲーション開始から、lines.bin・land.bin・meta.json の取得、陸地の細分割、チューブメッシュ構築、初回描画と 1 画素の読み戻しが終わるまで（main.ts の firstFrameMs、performance.now() の値）。bench.ts の読み込みは含まない
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 日本全体のビューで注視点を東西に ±6°、南北に ±2° 振る 120 フレーム（パルスあり、円・丸め）。benchFrames が 1 フレームごとに 1 画素を読み戻して GPU の完了を待つ
+      metrics: [frame_ms, cpu_ms, gpu_ms]
+    - id: fixed-views
+      what: 開幕ビュー（日本全体）と富士近景を 60 フレームずつ。近景ではチューブとハローが画面の多くを覆い、フィルが最も重い
+      metrics: [japan_frame_ms, japan_gpu_ms, fuji_frame_ms, fuji_gpu_ms]
+    - id: styles
+      what: 断面 3 種 x 角 2 種でメッシュを組み直す時間と三角形数（最大値を triangles に）
+      metrics: [rebuild_ms, triangles]
+
+datasets:
+  bake: [node, examples/cesium/254-polyline-volume/bake.ts]
+  sources:
+    - id: osm-japan-src-2026-08
+      origin: /sata_hdd_24tb/hf_data/__published/osm-japan-src-2026-08/data/parquet/ (hf:yuiseki/osm-japan-src-2026-08, planet 2026-08-31)
+      license: ODbL 1.0, © OpenStreetMap contributors
+    - id: natural-earth-v5.1.2
+      origin: /sata_hdd_24tb/hf_data/__published/natural-earth/data/parquet/v5.1.2/ (ne_10m_land, ne_110m_land)
+      license: Natural Earth, public domain
+  outputs:
+    - data/baked/cesium-254-polyline-volume/lines.bin
+    - data/baked/cesium-254-polyline-volume/land.bin
+    - data/baked/cesium-254-polyline-volume/meta.json
+  preparation:
+    - planet_osm_line から route=railway の関係（東海道・山陽・東北・上越・北陸・九州・西九州・北海道・秋田・山形新幹線）の way を EPSG:4326 で取り出す。関係には上下線、駅の副本線、ホーム、車両基地への線が入っている
+    - centreline.ts で 1 本の中心線にする。頂点を 0.5 km のセルにまとめ（セルの重心は上下線の間に来る）、way に沿った隣接と 8 近傍でつなぎ、最大の連結成分の最長の最短路を Dijkstra 2 回で求める。0.25 km のセルでは東北新幹線が 38.9° N 付近の 2 本とも途切れた区間で切れ、405 km しか残らなかった（0.5 km で 675 km）
+    - 線は表の順に処理し、先に処理した線から 1.2 km 以内のセルを捨てる（山形の関係は東京〜福島の東北線を、上越は東京〜大宮を含む）。端が先の線から 3 km 以内なら、先の線の最寄り点まで延ばしてつなぐ
+    - 局所の km 座標で Douglas–Peucker 40 m に簡略化。10 線で 1,654 点、延長 3,206 km
+    - 運転速度は、中心線から 80 m 以内に中点がある maxspeed つき railway=rail の way を速度ごとに延長で合計した最頻値。秋田新幹線は maxspeed が 1 km 分しかないので（20% 未満）lines.ts の 130 km/h（在来線区間の最高速度）を使い、meta.json の speed_from にそう書く
+    - 駅は planet_osm_point の railway=station で名前の一致するノードのうち、その線の中心線に最も近いもの（全 15 駅が 151 m 以内）
+    - 陸地は ne_10m_land を 118–155° E、20–50° N の箱で切り、外は ne_110m_land から箱を差し引いて、どちらも earcut で三角形分割（10m 22,791 頂点、110m 4,855 頂点）
+    - lines.bin は線ごとの点数と、経緯度 x 1e6 の Int32 差分。land.bin は層ごとの経緯度 x 1e5 の Int32 差分と Uint32 インデックス。読み込み時に辺 1° を超える三角形を中点で分割して球面に載せる
+
+performance_knowledge:
+  - id: rmf-is-radial-on-a-sphere
+    finding: 球面上の曲線は測地的ねじれが 0 なので、動径で初期化した回転最小化フレーム（角ごとに入る接線から出る接線への最小回転で up を回す）は動径のまま進む。箱の断面が全線で地面に立ち、反転しない
+    evidence: sweep.test.ts で 201 点の蛇行線（緯度 ±0.4°）の全リングの up が動径から 1° 以内、隣り合うリングの up の内積 > 0.99。平面 S 字では変曲点を越えても up が不変
+    applies_when: 地表に沿う線を管・帯・壁にするとき。Frenet フレームは変曲点で反転する
+  - id: centreline-from-relation
+    finding: OSM の路線関係は上下線・ホーム・側線を全部含むので、そのまま掃引するとチューブが 2 本重なる。セルの重心で上下線をまとめ、グラフの直径をとると 1 本の中心線になる。セルが細かすぎると欠けた区間で線が切れる
+    evidence: 0.25 km セルで東北 405 km（実際の東京〜新青森 674.9 km）、0.5 km で 675 km。他の線は東海道 514 km、山陽 553 km、九州 257 km など営業キロに近い。駅ノードは中心線から 1〜151 m
+    applies_when: OSM の route 関係から 1 本の線を作るとき
+  - id: mitre-limit-falls-back-to-round
+    finding: マイター上限（伸び 1/cos(θ/2) が 2 を超える角、θ > 120°）では Cesium の BEVELED のように面を足すのでなく、角の頂点のまわりに 15° 刻みでリングを並べて丸める。隙間も突起も出ない
+    evidence: sweep.test.ts で 160° の折り返しで最大オフセットが半径 x 2 以内、90° のマイターで √2 倍。ブラウザでの試走（SwiftShader）で sharp-bend-joined は丸め・マイターとも隙間 0、突起 0（最遠 74.9 px と 93 px、上限 128.6 px）
+    applies_when: 太い線や管の角を継ぐとき
+  - id: min-pixel-radius
+    finding: 0.8 km の管は日本全体のビュー（約 2.3 km/px）では 1 px 未満になる。頂点シェーダで画面上の半径が 2 px を下回るとき断面を中心で拡大し、同じだけ持ち上げて地面に載せたままにする
+    evidence: 開幕ビューで 15 駅すべてにチューブ画素（tube-at-stations、試走）
+    applies_when: 実寸の太さを持つ 3D の線を広域から近景まで見せるとき
+  - id: not-measured-yet
+    finding: この例は計測前に実装した（ユーザーの指示: 実装を先に、計測は後でまとめて）。予算とチェックは書いたが bin/mfs bench は未実行
+    evidence: playwright の Chromium（SwiftShader）で ?bench を開き、7 つの check がすべて pass、first_frame_ms 791.5 ms（ソフトウェア描画、参考値）
+    applies_when: 計測パスでこの項目を実測値で置き換える
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/cesium/254-polyline-volume/index.html
+      - examples/cesium/254-polyline-volume/main.ts
+      - examples/cesium/254-polyline-volume/format.ts
+      - examples/cesium/254-polyline-volume/land.ts
+      - examples/cesium/254-polyline-volume/tubes.ts
+      - examples/cesium/254-polyline-volume/sweep.ts
+      - examples/cesium/254-polyline-volume/render.ts
+      - examples/cesium/254-polyline-volume/shaders.ts
+      - examples/cesium/254-polyline-volume/camera.ts
+      - examples/cesium/254-polyline-volume/pulse.ts
+      - examples/cesium/254-polyline-volume/lines.ts
+    dependencies: []
+    why: >-
+      断面とつなぎ方を画面で切り替えるので、メッシュは実行時に組む（1,654 点から数 ms）。中心線の抽出・簡略化・
+      三角形分割はベイクで済ませる。海は球とのレイ交差で正確に塗って深度を書き、陸地とチューブはその深度で
+      地平線の向こうを隠す。座標は日本の中心を原点にした相対値で Float32 に入れる。1 フレーム 4 回の描画
+      （海・陸・チューブ・ハロー）
+  alternatives:
+    - option: CesiumJS の PolylineVolumeGeometry
+      rejected_because: エンジン全体（数 MB）が要る。フレームは各頂点の楕円体法線から作るので、ここでは同じ結果を回転最小化フレームで得ている（比較は未計測）
+    - option: 3 形状 x 2 種の角のメッシュをすべてベイクする
+      rejected_because: 6 倍のデータ（1 種で数 MB の頂点）を送ることになる。実行時の構築は 1,654 点ぶん
+    - option: 画面空間のブルームで光らせる
+      rejected_because: フレームバッファ 2 枚とぼかし数パスが要る。断面を 2 倍にした殻を加算合成するハローは描画 1 回で済む（見た目の比較は目視のみ）
+    - option: 海を球メッシュで描く
+      rejected_because: 球メッシュの弦は陸地の弦と別の高さに沈み、近景で陸と海の前後が入れ替わる。レイ交差なら球は正確
+  not_doing: [地形（富士山の起伏）, 楕円体（球で近似）, 在来線, 建設中の中央新幹線, 駅のピッキング, ラベルの衝突回避, 実時刻の運行]
+
+verification:
+  checks:
+    - id: tube-at-stations
+      what: 全線が入る開幕ビューで、各駅（OSM の駅ノード）の画面位置にその線の色のチューブがある
+      how: 開幕ビューを描いて読み戻し、15 駅を投影して 7x7 px の範囲に、その線の色と色相が一致し（RGB の余弦 > 0.95）最大チャネル 80 以上の画素を探す
+      expected: 画面内の駅が 12 以上、そのすべてで見つかる
+    - id: base-map-visible
+      what: 暗い陸地と海が見え、チューブ色ではない
+      how: 海の 3 点（日本海 134E 40N、太平洋 139.5E 33N、131E 37.5N）と陸の 4 点（大雪 142.8E 43.5N、韓国 127.8E 36.5N、岐阜 137.3E 35.9N、山口 131.2E 34.2N）を読む
+      expected: 陸の最小輝度が海の最大輝度 +6 超、海は青が赤より強い、どれもチューブ色でない
+    - id: shape-changes-silhouette
+      what: 断面を変えると画面上の形が変わる
+      how: 新富士駅付近（18 km、俯角 30°）で円・箱・星を描き、駅のまわり 440 px 四方の東海道チューブ画素のマスクを比べる
+      expected: どの 2 形状も XOR / 和集合 > 0.08、各マスク 2,000 px 超
+    - id: sharp-bend-joined
+      what: データ中で最も鋭い角（85.4°、秋田新幹線・大曲）に隙間も突起もない
+      how: その頂点の真上 14 km から、丸めとマイターそれぞれで、前後の中心線上 1.5 km の全画素（3x3）にチューブ色があるか、頂点のまわり 3 km 四方のチューブ画素の、投影した線からの距離を測る
+      expected: 隙間 0、半径 x マイター上限 + 3 px より遠い画素 0
+    - id: pulse-at-head
+      what: パルスが東海道の 200 km 地点にいる時刻に、その地点がパルスなしより明るい
+      how: pulseHead で 200 km になる時刻を求め、メッシュのその距離のリングの中心を投影し、パルスあり・なしで同じ画素を読む
+      expected: 輝度差 > 30
+    - id: drag-follows-pointer
+      what: ドラッグで地面がポインタに付いて動く
+      how: キャンバスに pointerdown・pointermove (+120, +60)・pointerup を送り、東京駅の投影位置の移動量を測る
+      expected: (120, 60) から各軸 8 px 以内
+    - id: fly-to-fuji
+      what: ボタンで富士山近くの東海道新幹線の斜め近景に着く
+      how: ボタンを押して 4.2 s 待ち、カメラが FUJI と一致するか、新富士駅の列のチューブ画素数を数える
+      expected: 一致し、チューブ画素 12 px 超
+  harness:
+    - webglcontextlost が起きたらエラーにする
