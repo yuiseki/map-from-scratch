@@ -235,7 +235,7 @@
 - [ ] `d3-004-world-choropleth` → `examples/d3/004-world-choropleth/` — [World choropleth](https://observablehq.com/@d3/world-choropleth/2)
 - [x] `d3-005-world-map` → `examples/d3/005-world-map/` — [World map](https://observablehq.com/@d3/world-map)
 - [x] `d3-006-projection-transitions` → `examples/d3/006-projection-transitions/` — [Projection transitions](https://observablehq.com/@d3/projection-transitions)
-- [ ] `d3-007-projection-comparison` → `examples/d3/007-projection-comparison/` — [Projection comparison](https://observablehq.com/@d3/projection-comparison)
+- [x] `d3-007-projection-comparison` → `examples/d3/007-projection-comparison/` — [Projection comparison](https://observablehq.com/@d3/projection-comparison)
 - [ ] `d3-008-antimeridian-cutting` → `examples/d3/008-antimeridian-cutting/` — [Antimeridian cutting](https://observablehq.com/@d3/antimeridian-cutting)
 - [ ] `d3-009-tissots-indicatrix` → `examples/d3/009-tissots-indicatrix/` — [Tissot’s indicatrix](https://observablehq.com/@d3/tissots-indicatrix)
 - [x] `d3-010-web-mercator-tiles` → `examples/d3/010-web-mercator-tiles/` — [Web Mercator tiles](https://observablehq.com/@d3/web-mercator-tiles)
@@ -252,10 +252,10 @@
 - [ ] `d3-021-star-map` → `examples/d3/021-star-map/` — [Star map](https://observablehq.com/@d3/star-map)
 - [ ] `d3-022-non-contiguous-cartogram` → `examples/d3/022-non-contiguous-cartogram/` — [Non-contiguous cartogram](https://observablehq.com/@d3/non-contiguous-cartogram)
 - [ ] `d3-023-zoom-to-bounding-box` → `examples/d3/023-zoom-to-bounding-box/` — [Zoom to bounding box](https://observablehq.com/@d3/zoom-to-bounding-box)
-- [ ] `d3-024-orthographic-to-equirectangular` → `examples/d3/024-orthographic-to-equirectangular/` — [Orthographic to equirectangular](https://observablehq.com/@d3/orthographic-to-equirectangular)
-- [ ] `d3-025-world-tour` → `examples/d3/025-world-tour/` — [World tour](https://observablehq.com/@d3/world-tour)
+- [x] `d3-024-orthographic-to-equirectangular` → `examples/d3/024-orthographic-to-equirectangular/` — [Orthographic to equirectangular](https://observablehq.com/@d3/orthographic-to-equirectangular)
+- [x] `d3-025-world-tour` → `examples/d3/025-world-tour/` — [World tour](https://observablehq.com/@d3/world-tour)
 - [ ] `d3-026-walmarts-growth` → `examples/d3/026-walmarts-growth/` — [Walmart’s growth](https://observablehq.com/@d3/walmarts-growth)
-- [ ] `d3-027-versor-dragging` → `examples/d3/027-versor-dragging/` — [Versor dragging](https://observablehq.com/@d3/versor-dragging)
+- [x] `d3-027-versor-dragging` → `examples/d3/027-versor-dragging/` — [Versor dragging](https://observablehq.com/@d3/versor-dragging)
 - [ ] `d3-028-seamless-zoomable-map-tiles` → `examples/d3/028-seamless-zoomable-map-tiles/` — [Seamless zoomable map tiles](https://observablehq.com/@d3/seamless-zoomable-map-tiles)
 - [ ] `d3-029-volcano-contours` → `examples/d3/029-volcano-contours/` — [Volcano contours](https://observablehq.com/@d3/volcano-contours/2)
 - [ ] `d3-030-hexbin-map` → `examples/d3/030-hexbin-map/` — [Hexbin map](https://observablehq.com/@d3/hexbin-map)
@@ -930,4 +930,4 @@
 
 ## 進捗
 
-- 対象: **832 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2）。実装済み **89 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **832 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2）。実装済み **93 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
