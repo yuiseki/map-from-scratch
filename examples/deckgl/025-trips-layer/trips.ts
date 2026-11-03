@@ -1,6 +1,7 @@
 // One-purpose WebGL2 taxi-trip animator. All segments and building triangles
 // are uploaded once. Playback changes a time uniform, with partial segments
 // clipped to the visible trail window in the vertex shader.
+import { parseBuildingBuffer, parseTripsBuffer, type BuildingBinary, type TripsBinary } from './trips-data.ts';
 const BUILDING_VS = `#version 300 es
 layout(location=0) in vec2 a_xy;
 layout(location=1) in float a_height;
@@ -79,45 +80,15 @@ void main() {
   o = vec4(color, alpha);
 }`;
 
-interface Data { buffer: ArrayBuffer; count: number; objects: number; bounds: [number, number, number, number] }
-async function load(url: string, magic: number, stride: number): Promise<Data> {
+async function load(url: string, magic: number, stride: number): Promise<TripsBinary> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`data HTTP ${response.status}`);
-  const buffer = await response.arrayBuffer();
-  const head = new DataView(buffer);
-  if (head.getUint32(0, true) !== magic) throw new Error('invalid trips data');
-  const count = head.getUint32(4, true), objects = head.getUint32(8, true);
-  if (buffer.byteLength !== 32 + count * stride) throw new Error('truncated trips data');
-  return { buffer, count, objects, bounds: [12, 16, 20, 24].map((o) => head.getFloat32(o, true)) as Data['bounds'] };
+  return parseTripsBuffer(await response.arrayBuffer(), magic, stride);
 }
-async function loadBuildings(url: string): Promise<Data & { indices: Uint16Array }> {
+async function loadBuildings(url: string): Promise<BuildingBinary> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`building data HTTP ${response.status}`);
-  const buffer = await response.arrayBuffer();
-  const head = new DataView(buffer);
-  if (head.getUint32(0, true) !== 0x33304442) throw new Error('invalid building data');
-  const count = head.getUint32(4, true), indexCount = head.getUint32(8, true);
-  if (buffer.byteLength < 32 + count * 8) throw new Error('truncated building data');
-  const packed = new Uint8Array(buffer, 32 + count * 8);
-  const indices = new Uint16Array(indexCount);
-  let offset = 0, previous = 0;
-  for (let i = 0; i < indexCount; i++) {
-    let code = 0, shift = 0, byte = 0;
-    do {
-      if (offset >= packed.length || shift > 21) throw new Error('truncated building indices');
-      byte = packed[offset++];
-      code += (byte & 127) * 2 ** shift;
-      shift += 7;
-    } while (byte & 128);
-    previous += (code >>> 1) ^ -(code & 1);
-    if (previous < 0 || previous >= count) throw new Error('invalid building index');
-    indices[i] = previous;
-  }
-  if (offset !== packed.length) throw new Error('unexpected building index bytes');
-  return {
-    buffer, count, indices, objects: head.getUint32(28, true),
-    bounds: [12, 16, 20, 24].map((o) => head.getFloat32(o, true)) as Data['bounds'],
-  };
+  return parseBuildingBuffer(await response.arrayBuffer());
 }
 
 export type TripsMap = Awaited<ReturnType<typeof mount>>;

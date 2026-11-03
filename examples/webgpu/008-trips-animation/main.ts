@@ -1,4 +1,5 @@
 import { createRenderer, type Camera, type BuildingsData, type TripsData } from './render.ts';
+import { parseBuildingBuffer, parseTripsBuffer } from '../../deckgl/025-trips-layer/trips-data.ts';
 
 const canvas = document.getElementById('map') as HTMLCanvasElement;
 const status = document.getElementById('status')!;
@@ -70,52 +71,14 @@ function frame(now: number) {
 async function loadBuildings(url: string): Promise<BuildingsData> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`buildings HTTP ${res.status}`);
-  const buffer = await res.arrayBuffer();
-  const head = new DataView(buffer);
-  if (head.getUint32(0, true) !== 0x33304442) throw new Error('建物データ形式が不正です');
-
-  const count = head.getUint32(4, true);
-  const indexCount = head.getUint32(8, true);
-  if (buffer.byteLength < 32 + count * 8) throw new Error('建物データが不完全です');
-
-  const packed = new Uint8Array(buffer, 32 + count * 8);
-  const indices = new Uint16Array(indexCount);
-  let offset = 0, previous = 0;
-  for (let i = 0; i < indexCount; i++) {
-    let code = 0, shift = 0, byte = 0;
-    do {
-      if (offset >= packed.length || shift > 21) throw new Error('インデックス復号エラー');
-      byte = packed[offset++];
-      code += (byte & 127) * (1 << shift);
-      shift += 7;
-    } while (byte & 128);
-    previous += (code >>> 1) ^ -(code & 1);
-    indices[i] = previous;
-  }
-
-  return {
-    buffer, count, indices,
-    objects: head.getUint32(28, true),
-    bounds: [12, 16, 20, 24].map(o => head.getFloat32(o, true)) as BuildingsData['bounds'],
-  };
+  return parseBuildingBuffer(await res.arrayBuffer());
 }
 
 // Trips binary loader
 async function loadTrips(url: string): Promise<TripsData> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`trips HTTP ${res.status}`);
-  const buffer = await res.arrayBuffer();
-  const head = new DataView(buffer);
-  if (head.getUint32(0, true) !== 0x33305054) throw new Error('軌跡データ形式が不正です');
-
-  const count = head.getUint32(4, true);
-  const objects = head.getUint32(8, true);
-  const segments = head.getUint32(28, true);
-
-  return {
-    buffer, count, segments, objects,
-    bounds: [12, 16, 20, 24].map(o => head.getFloat32(o, true)) as TripsData['bounds'],
-  };
+  return parseTripsBuffer(await res.arrayBuffer(), 0x33305054, 10);
 }
 
 // UI listeners
