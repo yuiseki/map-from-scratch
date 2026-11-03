@@ -1,7 +1,7 @@
 // Dedicated WebGL2 contour renderer for the fixed county time series. County
 // rates are aggregated only when week or cell size changes; navigation samples
 // one reusable scalar texture in a single full-screen draw.
-type County = { x: number; y: number; rates: Uint16Array };
+export type County = { x: number; y: number; rates: Uint16Array };
 const WORLD_METERS = 40075016.686 * Math.cos(40 * Math.PI / 180);
 const mercX = (lon: number) => (lon + 180) / 360;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
@@ -61,10 +61,7 @@ function shader(gl: WebGL2RenderingContext, kind: number, source: string): WebGL
 
 export type ContourMap = Awaited<ReturnType<typeof mount>>;
 
-export async function mount(canvas: HTMLCanvasElement, land: HTMLCanvasElement, dataUrl: string, landUrl: string) {
-  const [dataResponse, landResponse] = await Promise.all([fetch(dataUrl), fetch(landUrl)]);
-  if (!dataResponse.ok || !landResponse.ok) throw new Error(`data HTTP ${dataResponse.status} / ${landResponse.status}`);
-  const [buffer, polygons] = await Promise.all([dataResponse.arrayBuffer(), landResponse.json() as Promise<number[][][][]>]);
+export function decodeCountySeries(buffer: ArrayBuffer): { counties: County[]; weeks: number; rateLimit: number } {
   const head = new DataView(buffer);
   if (head.getUint32(0, true) !== 0x31305443) throw new Error('invalid county data');
   const count = head.getUint32(4, true), weeks = head.getUint32(8, true), rateLimit = head.getFloat32(12, true);
@@ -79,9 +76,17 @@ export async function mount(canvas: HTMLCanvasElement, land: HTMLCanvasElement, 
       rates[week] = head.getUint8(src) | ((head.getUint8(src + 1) & 15) << 8);
       if (week + 1 < weeks) rates[week + 1] = (head.getUint8(src + 1) >> 4) | (head.getUint8(src + 2) << 4);
     }
-    counties.push({ x: head.getFloat32(at, true), y: head.getFloat32(at + 4, true),
-      rates });
+    counties.push({ x: head.getFloat32(at, true), y: head.getFloat32(at + 4, true), rates });
   }
+  return { counties, weeks, rateLimit };
+}
+
+export async function mount(canvas: HTMLCanvasElement, land: HTMLCanvasElement, dataUrl: string, landUrl: string) {
+  const [dataResponse, landResponse] = await Promise.all([fetch(dataUrl), fetch(landUrl)]);
+  if (!dataResponse.ok || !landResponse.ok) throw new Error(`data HTTP ${dataResponse.status} / ${landResponse.status}`);
+  const [buffer, polygons] = await Promise.all([dataResponse.arrayBuffer(), landResponse.json() as Promise<number[][][][]>]);
+  const { counties, weeks, rateLimit } = decodeCountySeries(buffer);
+  const count = counties.length;
   const landMaybe = land.getContext('2d');
   const glMaybe = canvas.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: false });
   if (!landMaybe || !glMaybe) throw new Error('Canvas2D or WebGL2 unavailable');
