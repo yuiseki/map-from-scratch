@@ -64,7 +64,7 @@ architecture_selection:
     api: WebGL2 point sprites and Canvas2D land and labels
     language: TypeScript
     gpu: hardware
-    code: [examples/maplibre/056-create-and-style-clusters/index.html, examples/maplibre/056-create-and-style-clusters/main.ts, examples/maplibre/056-create-and-style-clusters/clusters.ts]
+    code: [examples/maplibre/056-create-and-style-clusters/index.html, examples/maplibre/056-create-and-style-clusters/main.ts, examples/maplibre/056-create-and-style-clusters/clusters.ts, examples/maplibre/056-create-and-style-clusters/cluster-data.ts]
     dependencies: []
     why: カメラ操作中は集約結果を再利用し、円を1回のGPU描画呼び出しで描く
   alternatives:

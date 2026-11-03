@@ -1,7 +1,7 @@
 // A dedicated fixed-data WebGL2 cluster renderer. Aggregate once per integer
 // zoom; camera movement only changes uniforms and reuses the same GPU buffer.
-type Point = { x: number; y: number; mag: number; tsunami: boolean };
-type Cluster = { x: number; y: number; count: number; first: number };
+import { buildClusterLevels, clusterRadius, decodeClusterPoints } from './cluster-data.ts';
+import type { Cluster } from './cluster-data.ts';
 
 const VS = `#version 300 es
 layout(location=0) in vec4 a_cluster;
@@ -39,8 +39,6 @@ function compile(gl: WebGL2RenderingContext, kind: number, source: string): WebG
 }
 const mercX = (lon: number) => (lon + 180) / 360;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
-const radius = (count: number) => count === 1 ? 5 : count < 100 ? 20 : count < 750 ? 30 : 40;
-
 export type ClusterMap = Awaited<ReturnType<typeof mount>>;
 
 export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement, land: HTMLCanvasElement,
@@ -50,31 +48,9 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
   const [buffer, polygons] = await Promise.all([
     response.arrayBuffer(), landResponse.json() as Promise<number[][][][]>,
   ]);
-  const view = new DataView(buffer);
-  if (view.getUint32(0, true) !== 0x31305145) throw new Error('invalid earthquake data');
-  const count = view.getUint32(4, true);
-  if (buffer.byteLength !== 16 + count * 16) throw new Error('truncated earthquake data');
-  const points: Point[] = new Array(count);
-  for (let i = 0; i < count; i++) {
-    const at = 16 + i * 16;
-    points[i] = { x: view.getFloat32(at, true), y: view.getFloat32(at + 4, true),
-      mag: view.getFloat32(at + 8, true), tsunami: view.getUint32(at + 12, true) === 1 };
-  }
-
-  const levels: Cluster[][] = [];
-  for (let z = 0; z <= 14; z++) {
-    const scale = 512 * 2 ** z / 50;
-    const bins = new Map<string, Cluster>();
-    for (let i = 0; i < count; i++) {
-      const p = points[i];
-      const key = `${Math.floor(p.x * scale)}:${Math.floor(p.y * scale)}`;
-      const cell = bins.get(key);
-      if (cell) { cell.x += p.x; cell.y += p.y; cell.count++; }
-      else bins.set(key, { x: p.x, y: p.y, count: 1, first: i });
-    }
-    levels.push([...bins.values()].map((c) => ({ ...c, x: c.x / c.count, y: c.y / c.count })));
-  }
-  levels.push(points.map((p, i) => ({ x: p.x, y: p.y, count: 1, first: i })));
+  const points = decodeClusterPoints(buffer);
+  const count = points.length;
+  const levels = buildClusterLevels(points);
 
   const maybeGl = canvas.getContext('webgl2', { antialias: false, alpha: true });
   const maybeCtx = labels.getContext('2d');
@@ -209,7 +185,7 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     ctx.fillStyle = '#132b39';
     const occupied: { x: number; y: number }[] = [];
     for (const k of copies()) for (const c of labelOrder) {
-      const p = toScreen({ x: c.x + k, y: c.y }), r = radius(c.count) * devicePixelRatio;
+      const p = toScreen({ x: c.x + k, y: c.y }), r = clusterRadius(c.count) * devicePixelRatio;
       if (p.x < -r || p.x > canvas.width + r || p.y < -r || p.y > canvas.height + r) continue;
       if (occupied.some((q) => Math.abs(q.x - p.x) < 24 * devicePixelRatio && Math.abs(q.y - p.y) < 15 * devicePixelRatio)) continue;
       ctx.fillText(c.count >= 1000 ? `${(c.count / 1000).toFixed(1)}k` : String(c.count), p.x, p.y);
@@ -231,7 +207,7 @@ export async function mount(canvas: HTMLCanvasElement, labels: HTMLCanvasElement
     let best: Cluster | undefined, distance = Infinity;
     for (const k of copies()) for (const c of current) {
       const p = toScreen({ x: c.x + k, y: c.y }), d = Math.hypot(p.x - x, p.y - y);
-      if (d <= radius(c.count) * devicePixelRatio + 2 && d < distance) { best = c; distance = d; }
+      if (d <= clusterRadius(c.count) * devicePixelRatio + 2 && d < distance) { best = c; distance = d; }
     }
     return best;
   };
