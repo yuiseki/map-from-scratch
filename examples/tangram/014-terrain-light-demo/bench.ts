@@ -155,17 +155,22 @@ export async function run(app: App, firstFrameMs: number): Promise<void> {
     detail: `bearing ${f1(b0 / RAD)} -> ${f1(app.cam.bearing / RAD)}, south point x ${f1(before.x)} -> ${f1(after.x)}; dist ${Math.round(d0)} -> ${Math.round(app.cam.dist)}, point under the pointer moved ${Math.hypot(qa.x - qs.x, qa.y - qs.y).toFixed(2)} px`,
   });
 
-  // 7: the Sun toggle animates the light (and redraws the shadows).
+  // 7: the Sun toggle animates the light (and redraws the shadows). The sun
+  // moves with the clock (SUN_DAY_MS per day, 9° of azimuth per second), so
+  // wait one second of wall time, not a count of frames: the harness runs
+  // Chromium without vsync, where 60 frames took about 55 ms (0.5°).
   setCam(SUMMIT, { bearing: 0, tilt: 55 * RAD, dist: 30000 });
   (document.getElementById('sun') as HTMLButtonElement).click();
   for (let k = 0; k < 3; k++) await raf();
-  const a0 = app.light.az, p0 = app.shadowPasses, l0 = lum(east.x, east.y);
-  for (let k = 0; k < 60; k++) await raf();
+  const a0 = app.light.az, p0 = app.shadowPasses, l0 = lum(east.x, east.y), t0 = performance.now();
+  let frames = 0;
+  while (performance.now() - t0 < 1000) { await raf(); frames++; }
+  const secs = (performance.now() - t0) / 1000;
   const a1 = app.light.az, p1 = app.shadowPasses, l1 = lum(east.x, east.y);
   (document.getElementById('sun') as HTMLButtonElement).click();
   emit({
-    check: 'sun-toggle-animates', pass: app.sun === false && (a1 - a0) / RAD > 3 && p1 - p0 >= 30 && Math.abs(l1 - l0) > 2,
-    detail: `az ${f1(a0 / RAD)} -> ${f1(a1 / RAD)} over 60 frames, ${p1 - p0} shadow passes, east flank ${f1(l0)} -> ${f1(l1)}`,
+    check: 'sun-toggle-animates', pass: app.sun === false && (a1 - a0) / RAD > 3 && p1 - p0 >= Math.min(30, frames) && Math.abs(l1 - l0) > 2,
+    detail: `az ${f1(a0 / RAD)} -> ${f1(a1 / RAD)} over ${secs.toFixed(2)} s (${frames} frames), ${p1 - p0} shadow passes, east flank ${f1(l0)} -> ${f1(l1)}`,
   });
 
   // Timing. The light path moves the light every frame (shadow pass and

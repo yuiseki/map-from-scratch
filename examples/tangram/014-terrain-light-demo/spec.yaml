@@ -14,7 +14,7 @@ requirements:
     unmeasured: 数値の予算ではなく verification の lit-slope-brighter と order-flips-with-light で確かめる
   - id: sun-cycle
     need: トグルで、太陽が東から昇り南を通って西へ沈むように光が動く (元の DEMO MODE)
-    rationale: 一日 20 秒。60 フレームで方位が 3° 以上進み、影の計算がフレームごとにやり直され、斜面の明るさが変わる
+    rationale: 一日 20 秒 (方位は毎秒 9°)。1 秒で方位が 3° 以上進み、影の計算がフレームごとにやり直され、斜面の明るさが変わる
     unmeasured: verification の sun-toggle-animates で確かめる
   - id: opening-view
     need: 開いた最初の画面で、光が主役になる。富士山が空を背に大きく立ち、低い暖色の太陽で斜面の明暗と尾根の影が読める
@@ -164,6 +164,15 @@ performance_knowledge:
       地平線は画面の外 (上端の視線が 13° 下向き) から画面内 (y 153 px) に入った。opening-view-sky は山頂の 12 px 上の輝度 185.5 に対し
       空の式の値 185.3。直射の強さを 1.5 倍にしたので、影の比は忍野で 0.723 (白い光)
     applies_when: 地形の陰影を見せるデモの最初の画面
+  - id: sun-check-waits-wall-time
+    finding: >-
+      太陽の検査を 60 フレーム待ちで書いていたため、vsync とフレームレート制限を外したハーネス (--disable-gpu-vsync
+      --disable-frame-rate-limit) では 60 フレームが約 55 ms で終わり、方位が 0.5° しか進まず落ちた。太陽は SUN_DAY_MS (20 秒で一日、
+      方位は毎秒 9°) の時計で動くので描画器は正しく、検査を壁時計の 1 秒待ちに直した
+    evidence: >-
+      サイト検査 (RTX 3060) で az 108.0 -> 108.5 over 60 frames、影のパス 60 回。0.5° は 20 秒の一日の 56 ms 分。
+      vsync のある目視 (60 Hz) では 60 フレーム 1 秒で 9° 動いていた (az 108.2 -> 117.2)
+    applies_when: 時刻で進むアニメーションを vsync なしのハーネスで確かめるとき
   - id: haze-relative-to-target
     finding: >-
       霞を目からの絶対距離 (30 km から) で始めると、70 km まで引いたときに区画全体が白く褪せた。カメラの目標までの距離 + 5 km から
@@ -246,8 +255,10 @@ verification:
       expected: 方位が増え、南の点が 5 px 以上右へ、距離が 0.8 倍未満、ポインターの下の点のずれ 1 px 未満
     - id: sun-toggle-animates
       what: 太陽ボタンで光が動き出し、もう一度押すと止まる
-      how: ボタンを click し、60 フレーム待って光の方位、影のパスの回数、東斜面の輝度を比べる。もう一度 click
-      expected: 方位が 3° 以上進む、影のパス 30 回以上、輝度が 2 以上変わる、止まる
+      how: >-
+        ボタンを click し、壁時計で 1 秒待って光の方位、影のパスの回数、東斜面の輝度を比べる。もう一度 click。
+        太陽は時刻で動くので、フレーム数では待たない (vsync なしのハーネスでは 60 フレームが約 55 ms で 0.5° しか進まなかった)
+      expected: 方位が 3° 以上進む (期待 9°)、影のパスが待ったフレーム数 (最大 30) 以上、輝度が 2 以上変わる、止まる
   harness:
     - webglcontextlost が起きたらエラーにする
     - info.gpu がソフトウェアラスタライザならエラー (gpu: hardware)
