@@ -24,6 +24,15 @@ benchmarks:
   runtime: browser
   page: examples/webgpu/010-grid-cell-3d/index.html
   viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  display: xvfb
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 密度セルを読み込み、インスタンス描画で最初のグリッドを表示
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 視点を回転しながら 3D グリッドを連続描画
+      metrics: [cpu_ms, frame_ms, gpu_ms]
 
 datasets:
   served:

@@ -23,6 +23,7 @@ benchmarks:
   page: examples/webgpu/011-gpu-heatmap/index.html
   viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
   cpu_throttle: 1
+  display: xvfb
   iterations: 3
   scenarios:
     - id: heatmap-animation

@@ -20,8 +20,12 @@ walk(join(root, 'examples'));
 test('every browser benchmark with scenarios signals completion', () => {
   const incomplete: string[] = [];
   const missingGpu: string[] = [];
+  const missingXvfb: string[] = [];
   for (const dir of specs) {
     const spec = loadSpec(dir);
+    if (spec.definition?.architecture_selection.chosen.api?.includes('WebGPU') && spec.run.display !== 'xvfb') {
+      missingXvfb.push(spec.id);
+    }
     if (spec.runtime !== 'browser' || !spec.definition?.benchmarks.scenarios?.length) continue;
     const bench = join(dir, 'bench.ts');
     assert.ok(existsSync(bench), `${spec.id}: benchmark scenarios need bench.ts`);
@@ -35,4 +39,5 @@ test('every browser benchmark with scenarios signals completion', () => {
   }
   assert.deepEqual(incomplete, [], `benchmarks missing done signal: ${incomplete.join(', ')}`);
   assert.deepEqual(missingGpu, [], `hardware GPU benchmarks missing renderer info: ${missingGpu.join(', ')}`);
+  assert.deepEqual(missingXvfb, [], `WebGPU benchmarks must use Xvfb: ${missingXvfb.join(', ')}`);
 });
