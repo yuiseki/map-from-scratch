@@ -845,7 +845,7 @@
 - [ ] `cesium-295-vector-3d-tiles` → `examples/cesium/295-vector-3d-tiles/` — [Vector 3D Tiles](https://sandcastle.cesium.com/?src=vector-3d-tiles)
 - [ ] `cesium-296-video` → `examples/cesium/296-video/` — [Video](https://sandcastle.cesium.com/?src=video)
 - [ ] `cesium-297-viewerless` → `examples/cesium/297-viewerless/` — [Viewerless](https://sandcastle.cesium.com/?src=viewerless)
-- [ ] `cesium-298-volumecloud` → `examples/cesium/298-volumecloud/` — [Volumecloud](https://sandcastle.cesium.com/?src=volumecloud)
+- [x] `cesium-298-volumecloud` → `examples/cesium/298-volumecloud/` — [Volumecloud](https://sandcastle.cesium.com/?src=volumecloud)
 - [ ] `cesium-299-volumes-dev` → `examples/cesium/299-volumes-dev/` — [Volumes Dev](https://sandcastle.cesium.com/?src=volumes-dev)
 - [ ] `cesium-300-voxel-picking` → `examples/cesium/300-voxel-picking/` — [Voxel Picking](https://sandcastle.cesium.com/?src=voxel-picking)
 - [ ] `cesium-301-voxels` → `examples/cesium/301-voxels/` — [Voxels](https://sandcastle.cesium.com/?src=voxels)

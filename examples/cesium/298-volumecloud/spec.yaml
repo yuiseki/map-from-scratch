@@ -1,0 +1,82 @@
+id: cesium-298-volumecloud
+request: >-
+  CesiumJS の showcase である「Volumecloud」のように、3D 地球儀の上空に広がる
+  対流圏の大気球殻（Spherical Tropospheric Shell）に対して、
+  光学的放射伝達（Beer-Lambert 則による吸収、Henyey-Greenstein 位相関数による前方散乱、
+  太陽方向への二次レイマーチによる雲の自己遮蔽）を伴うリアルタイム・ボリュメトリッククラウドを
+  対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: ボリュームクラウドの実装に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 地球と大気雲層が描画される
+  - id: volumetric-raymarching
+    need: レイマーチングによる 3D ボリュメトリック大気雲が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 200, unit: ms, requirement: volumetric-raymarching}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/298-volumecloud/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: フルスクリーンレイマーチパイプラインの初期化および初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 雲の風速移動および地球自転中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - シェーダー内で 3D 空間ノイズおよび対流圏大気球殻を動的生成
+
+performance_knowledge:
+  - id: spherical-shell-bounded-raymarching
+    finding: 大気層の開始・終了距離（内半径・外半径）を幾何学的球体交差（Ray-Sphere Intersection）で閉形式に解析解を求め、その区間内のみをサンプリングすることで、無駄な空間レイマーチステップを 100% 排除
+    evidence: 全空間マーチに比べてステップ数を 36 回程度に抑えつつ滑らかな大気雲を描画
+    applies_when: ボリュメトリック雲・大気散乱・惑星オーラレンダリング
+  - id: secondary-shadow-raymarch-sampling
+    finding: 太陽方向へのシャドウ光線サンプリングを適応型少数ステップ（単一〜少数サンプル）で近似評価することで、指数関数的な計算爆発を防ぎつつ明暗の立体自己遮蔽（Silver Lining）を再現
+    evidence: 実時間フレームレートを維持しながら平坦ではない立体積雲の外観を実現
+    applies_when: ボリュメトリック散乱・雲・フォグ
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/298-volumecloud/index.html
+      - examples/cesium/298-volumecloud/main.ts
+      - examples/cesium/298-volumecloud/cloud.ts
+      - examples/cesium/298-volumecloud/render.ts
+  not_doing:
+    - CesiumJS や Three.js などの重量ライブラリの読み込み
+    - 巨大な 3D テクスチャの外部読み込み（プロシージャル 3D ノイズで完結）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が宇宙空間色で描画されている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 宇宙背景色（r < 55, g < 55, b < 70）であること
+    - id: earth-globe-rendered
+      what: 画面中央に 3D 地球儀表面が描画されている
+      how: gl.readPixels で中央ピクセル色を取得
+      expected: 地球表面色（r > 10 || g > 15 || b > 20）であること
+    - id: volumetric-clouds-rendered
+      what: 地球上空の対流圏にボリュメトリック雲が存在している
+      how: gl.readPixels で雲領域のピクセル色を取得
+      expected: 雲の散乱光彩（r > 15 || g > 20 || b > 25）が存在すること
