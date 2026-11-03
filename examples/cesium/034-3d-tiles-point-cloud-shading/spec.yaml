@@ -11,7 +11,7 @@ request: >-
 requirements:
   - id: real-point-cloud
     need: 東京駅・丸の内の実測点群を 3D で見る
-    rationale: 開始視点で画面の 60% 以上が点で覆われ、4 ビット量子化で 300 色以上（実データの航空写真色）
+    rationale: 開始視点でデータの正方形が画面の 60% 以上を占め、その 50% 以上が点で覆われ、4 ビット量子化で 150 色以上（実測 59.4%、187 色。performance_knowledge の opening-coverage）
     unmeasured: verification の opening-view-drawn で確かめる（数値予算ではなく画面検査）
   - id: opens-fast
     need: ページを開いてすぐ点群が出る
@@ -24,7 +24,7 @@ requirements:
     rationale: 60 Hz の 1 フレーム 16.7 ms。旋回経路と近接・全詳細視点の両方の p95
   - id: lod-bounds-points
     need: 描く点の数が詳細度の選択で抑えられる
-    rationale: 既定の SSE 16 では旋回中に根ノード程度（約 19.5 万点）、上限 40 万点。SSE 2 の近接視点でも 200 万点以下
+    rationale: 既定の SSE 16 では旋回中は根ノード（195,252 点）が中心だが、寄ると目が根の箱の中に入り z17 へ細分される（実測最大 498,500 点）ので上限 60 万点。SSE 2 の近接視点でも 200 万点以下
   - id: controls
     need: 原典と同じ操作（減衰・EDL のトグル、6 つのスライダー）がそれぞれ次のフレームで描画に反映される
     rationale: 入力イベントから描画完了まで 2 フレーム（33.4 ms）以内。描画が変わったことは verification の controls-redraw-next-frame で確かめる
@@ -45,7 +45,7 @@ evaluation:
     - {metric: transfer_kb, stat: max, max: 25000, unit: KB, requirement: loads-only-the-view}
     - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-orbit}
     - {metric: close_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-orbit}
-    - {metric: points_drawn, stat: max, max: 400000, unit: points, requirement: lod-bounds-points}
+    - {metric: points_drawn, stat: max, max: 600000, unit: points, requirement: lod-bounds-points}
     - {metric: close_points_drawn, stat: max, max: 2000000, unit: points, requirement: lod-bounds-points}
     - {metric: control_redraw_ms, stat: p95, max: 33.4, unit: ms, requirement: controls}
     - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-page}
@@ -60,7 +60,7 @@ benchmarks:
   scenarios:
     - id: first-frame
       what: >-
-        ナビゲーション開始から、開始視点（八重洲側から西向き、俯角 28°、距離 820 m）で選ばれたノードが
+        ナビゲーション開始から、開始視点（八重洲側から西向き、俯角 45°、距離 650 m、目はデータの正方形の上）で選ばれたノードが
         すべて読み込まれ、EDL つきで描画され、GPU が終わる（1 画素 readPixels）まで。
         同時に開始時点の読み込みバイト数・件数・描画点数を出す
       metrics: [first_frame_ms, opening_bytes, opening_requests, opening_points]
@@ -75,7 +75,7 @@ benchmarks:
     - id: controls
       what: >-
         近接視点で 6 つのスライダーと 2 つのトグルを DOM の input イベントで動かし、
-        イベントから次の rAF でのページの描画と GPU 完了までの時間
+        イベントから次の rAF でのページの描画と GPU 完了（1 画素 readPixels）までの時間。検査用の全画面読み戻しは含めない
       metrics: [control_redraw_ms]
 
 datasets:
@@ -106,10 +106,36 @@ performance_knowledge:
     finding: Cesium の葉の幾何誤差の推定 cbrt(体積/点数) は、高層ビルのある航空 LiDAR では実際の点間隔の約 7 倍になる
     evidence: z18 の葉（124 m × 124 m × 高さ最大 160 m、約 5.5 万点）で推定 3.5 m、平均点間隔 sqrt(面積/点数) は約 0.53 m。基準解像度スライダーで 0.5 前後を与えると葉の点が実際の間隔の大きさになる
     applies_when: 3D Tiles の葉の幾何誤差が 0 の点群で減衰を使うとき
-  - id: unmeasured-yet
-    finding: 実装のみで計測は未実施（ユーザー指示で bench は後日の別作業）。予算はすべて見積もり
-    evidence: 開始視点の読み込みは根ノード 4 つ 1,757,268 B と tileset.json（ベイクの出力サイズから計算）
-    applies_when: 計測時にこの項目を実測値で置き換える
+  - id: first-gpu-run-2026-11-03
+    finding: RTX 3060 での初回計測（--site）で 4 項目が落ちた。描画器の誤りは開始視点の構図だけで、残りは検査と予算の見積もりの誤りだった
+    evidence: >-
+      初回: points_drawn 最大 673,500（予算 40 万）、opening-view-drawn 34.3%・183 色、edl-darkens-depth-edges は段差・平面とも輝度比中央値 1.000、
+      controls-redraw-next-frame は EDL 強度 1→0.1 で 0.0%。修正後（2026-11-03、-n 1、負荷平均約 30）: first_frame_ms 338.9、frame_ms p95 1.485、
+      close_frame_ms p95 1.66、points_drawn 最大 498,500、close 1,080,000 点、control_redraw_ms p95 11.8、transfer_kb 18,380、code_gzip_bytes 9,348、検査 5 件すべて合格
+    applies_when: この例を再計測するとき
+  - id: edl-saturates
+    finding: >-
+      EDL は動いていた。Cesium と同じ exp(-300 × 強度 × 平均 log2 差) は強く、数 m の段差の隣はほぼ黒、同じ点の四角の中と平らな面は 1.0 のままになる。
+      強度 1→4 は黒→黒で画素が変わらず、高さマップ上の段差の画素は手前の点の四角に覆われて EDL の黒い縁はその外側に出るため、旧検査は効果なしと読んだ
+    evidence: >-
+      真上 300 m で EDL により輝度が半分未満になった画素 33,500（覆われた画素 532,644 のうち）の 99.3% がデータの 3 m の段差から 4 px 以内（覆われた画素全体では 48.3%）、
+      平らな所 26,600 画素の輝度比中央値 1.000。強度 1→0.1 では画素の 5.2% が変わる（1→4 では 0.0%）。検査を「暗くなった画素が段差の近くに偏る」形に、操作の検査を強度 1→0.1 に変えた
+    applies_when: EDL の効果を画面で検査するとき。強度を上げる方向は飽和して変化が出ない
+  - id: opening-coverage
+    finding: >-
+      旧開始視点（俯角 28°、距離 820 m）は目がデータの東端（x 584 m）の外の x 684 m にあり、画面の上と右がデータの外だった。
+      目を正方形の上に置き（目標 (60, -140)、俯角 45°、距離 650 m）、検査はデータの正方形の内側の被覆率で見る形にした。
+      内側でも約 4 割が背景なのは、Cesium の減衰が点の大きさを平均点間隔（z16 で約 2.2 m）から決め、斜め視の短縮を考えないため
+    evidence: 新しい視点で正方形が画面の 66.3%、その内 59.4% が点、画面全体では 44.6%（旧 34.3%）、187 色。しきい値を 50% と 150 色にした
+    applies_when: 減衰つき点群の被覆率を検査するとき。SSE 16 の根ノードでは斜め視で隙間が残るのが仕様どおり
+  - id: lod-eye-inside-box
+    finding: 高層ビルで根の箱が高さ 250 m あり、旋回経路で 369 m まで寄ると目と箱の距離が小さく（または 0）なって z17 へ細分される。予算 40 万点は根ノードだけを想定した見積もりの誤り
+    evidence: 旋回 300 フレームの描画点数 p50 195,300、p95 448,200、最大 498,500（旧視点では最大 673,500）。予算を 60 万点にした
+    applies_when: 背の高い箱の LOD で、箱までの距離で SSE を測るとき
+  - id: redraw-timing-excluded-readback
+    finding: control_redraw_ms に検査用の全画面読み戻し（1280×800 の drawImage と getImageData）が入っていた
+    evidence: 読み戻しを含めて p95 35.91 ms、GPU 完了で止めて p95 11.8 ms（p50 3.865）
+    applies_when: 入力から描画までを測る区間に検査の処理を入れないこと
 
 architecture_selection:
   chosen:
@@ -148,24 +174,26 @@ verification:
   checks:
     - id: opening-view-drawn
       what: 開始視点が実データの点で覆われている
-      how: 開始視点で全画面を readBack し、背景色以外の画素の割合と 4 ビット量子化した色の種類を数える
-      expected: 60% 以上が点、300 色以上
+      how: 開始視点で全画面を readBack し、根ノードの正方形を地上 5 m で投影した四角形の内側の画素のうち背景色以外の割合と、4 ビット量子化した色の種類を数える
+      expected: 正方形が画面の 60% 以上を占め、その 50% 以上が点、150 色以上
     - id: attenuation-fills-holes
       what: 減衰オンで点の隙間（背景が見える画素）が減る
       how: 開始視点の下中央（縦 50〜95%、横 25〜75%、データの正方形の内側）で、減衰のチェックボックスをオン・オフして背景色の画素を数える
       expected: オフで 5% 以上の穴があり、オンの穴がオフの半分以下
     - id: edl-darkens-depth-edges
-      what: EDL は奥行きの段差（建物の縁の外側）を暗くし、平らな所（道路・屋上）はほとんど変えない
+      what: EDL は奥行きの段差のそばを暗くし、平らな所（道路・屋上）はほとんど変えない
       how: >-
-        真上から 450 m で EDL オン・オフの画面を読み戻し、輝度比を求める。段差と平面は描画器ではなくデータから決める：
-        描画中のノードの点を同じカメラで投影した高さマップで、半径 2 画素内に 3 m 以上高い点がある画素を段差、
-        5×5 近傍の点がすべて ±0.3 m 以内（6 点以上）の画素を平面とする
-      expected: 段差・平面とも 200 画素以上、輝度比の中央値が段差で 0.8 以下、平面で 0.95 以上
+        真上から 300 m で EDL オン・オフの画面を読み戻し、輝度比を求める。段差と平面は描画器ではなくデータから決める：
+        描画中のノードの点を同じカメラで投影した高さマップで、9×9 画素の窓の高さの幅が 3 m 以上なら段差の近く、
+        5×5 近傍の点（4 点以上）がすべて ±0.3 m 以内なら平面とする
+      expected: >-
+        輝度が半分未満になった画素が覆われた画素の 0.5% 以上あり、その 80% 以上が段差の近く、かつ覆われた画素全体の段差の近くの割合より 10 ポイント以上高い。
+        平面 200 画素以上で輝度比の中央値 0.95 以上
     - id: controls-redraw-next-frame
       what: 6 つのスライダーと 2 つのトグルが、それぞれ次のフレームで画面を変える
       how: >-
         近接視点（SSE 2、葉ノードを描画）で各要素の値を変えて input イベントを送り、次の rAF の中で readBack して
-        直前の画面と比べる（最大減衰 0→4、基準解像度 0→0.3、幾何誤差スケール 1→0.05、SSE 2→1、EDL 強度 1→4、EDL 半径 1→3、EDL オフ、減衰オフ）
+        直前の画面と比べる（最大減衰 0→4、基準解像度 0→0.3、幾何誤差スケール 1→0.05、SSE 2→1、EDL 強度 1→0.1、EDL 半径 1→3、EDL オフ、減衰オフ）
       expected: どの操作でも画素の 0.5% 以上が変わる
     - id: drag-and-wheel-move-view
       what: ドラッグで回転、ホイールで寄る

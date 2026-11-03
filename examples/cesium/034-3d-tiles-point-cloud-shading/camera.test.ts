@@ -62,3 +62,21 @@ test('distance to a box is 0 inside it and the gap to its nearest face outside',
   assert.equal(distanceToBox([5, 5, 5], [0, 0, 0], [10, 10, 10]), 0);
   assert.equal(distanceToBox([13, 5, 14], [0, 0, 0], [10, 10, 10]), 5);
 });
+
+test('the opening view stands over the baked square, so the data fills most of the screen', async () => {
+  const { HOME } = await import('./camera.ts');
+  // The four z16 roots of bake.ts: x -409..584 m, y -635..320 m from Tokyo Station.
+  const v = viewOf(HOME, W, H);
+  assert.ok(v.eye[0] > -409 && v.eye[0] < 584 && v.eye[1] > -635 && v.eye[1] < 320, `eye ${v.eye.map(Math.round)}`);
+  // Count a grid of screen samples whose ray meets street level inside the square.
+  let inside = 0, total = 0;
+  for (let sy = 5; sy < H; sy += 10) for (let sx = 5; sx < W; sx += 10) {
+    total++;
+    const t = Math.tan(v.fovy / 2), nx = (2 * sx / W - 1) * t * W / H, ny = (1 - 2 * sy / H) * t;
+    const d = [0, 1, 2].map((a) => v.forward[a] + nx * v.right[a] + ny * v.up[a]);
+    if (d[2] >= 0) continue;
+    const k = (5 - v.eye[2]) / d[2], x = v.eye[0] + k * d[0], y = v.eye[1] + k * d[1];
+    if (x > -409 && x < 584 && y > -635 && y < 320) inside++;
+  }
+  assert.ok(inside / total >= 0.6, `${(100 * inside / total).toFixed(1)}% of the screen over the data`);
+});

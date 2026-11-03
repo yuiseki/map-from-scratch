@@ -91,3 +91,8 @@ export function distanceToBox(p: V3, min: V3, max: V3): number {
   for (let a = 0; a < 3; a++) { const d = Math.max(min[a] - p[a], 0, p[a] - max[a]); s += d * d; }
   return Math.sqrt(s);
 }
+
+// Opening view: Tokyo Station from the Yaesu side, looking west over the
+// station building to the Marunouchi towers, with the eye over the baked
+// square so the data fills most of the screen.
+export const HOME: Orbit = { tx: 60, ty: -140, tz: 10, heading: 270, pitch: 45, distance: 650 };

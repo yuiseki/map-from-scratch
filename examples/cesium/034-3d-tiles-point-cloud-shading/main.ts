@@ -1,5 +1,5 @@
 import { createRenderer, type Mesh } from './render.ts';
-import { viewOf, orbitDrag, panDrag, wheelZoom, type Orbit } from './camera.ts';
+import { viewOf, orbitDrag, panDrag, wheelZoom, HOME, type Orbit } from './camera.ts';
 import { select } from './lod.ts';
 import { DEFAULTS, edlActive, edlUniforms, pointUniforms, type Shading } from './shading.ts';
 import type { Tileset } from './format.ts';
@@ -12,9 +12,6 @@ const bench = params.has('bench');
 const canvas = document.getElementById('map') as HTMLCanvasElement;
 const status = document.getElementById('status')!;
 const renderer = createRenderer(canvas);
-// Opening view: Tokyo Station from the Yaesu side, looking west over the
-// station building to the Marunouchi towers.
-const HOME: Orbit = { tx: -40, ty: 0, tz: 10, heading: 270, pitch: 28, distance: 820 };
 const orbit: Orbit = { ...HOME };
 const shading: Shading = { ...DEFAULTS };
 const lod = { maximumScreenSpaceError: 16 };
