@@ -49,7 +49,7 @@ export interface CullingMap {
 }
 
 // 4x4 Matrix and Frustum utilities
-function mat4Perspective(fovRad: number, aspect: number, near: number, far: number): Float32Array {
+export function mat4Perspective(fovRad: number, aspect: number, near: number, far: number): Float32Array {
   const f = 1.0 / Math.tan(fovRad / 2);
   const nf = 1 / (near - far);
   const out = new Float32Array(16);
@@ -61,7 +61,7 @@ function mat4Perspective(fovRad: number, aspect: number, near: number, far: numb
   return out;
 }
 
-function mat4LookAt(eye: [number, number, number], target: [number, number, number], up: [number, number, number]): Float32Array {
+export function mat4LookAt(eye: [number, number, number], target: [number, number, number], up: [number, number, number]): Float32Array {
   let [ex, ey, ez] = eye;
   let [tx, ty, tz] = target;
   let [ux, uy, uz] = up;
@@ -87,7 +87,7 @@ function mat4LookAt(eye: [number, number, number], target: [number, number, numb
   return out;
 }
 
-function mat4Multiply(a: Float32Array, b: Float32Array): Float32Array {
+export function mat4Multiply(a: Float32Array, b: Float32Array): Float32Array {
   const out = new Float32Array(16);
   for (let i = 0; i < 4; i++) {
     const ai0 = a[i], ai1 = a[i + 4], ai2 = a[i + 8], ai3 = a[i + 12];
@@ -100,7 +100,7 @@ function mat4Multiply(a: Float32Array, b: Float32Array): Float32Array {
 }
 
 // Extract 6 frustum planes: [A, B, C, D] where Ax + By + Cz + D >= 0 is inside
-function extractFrustumPlanes(vp: Float32Array): Float32Array {
+export function extractFrustumPlanes(vp: Float32Array): Float32Array {
   const planes = new Float32Array(24);
   const m = vp;
 

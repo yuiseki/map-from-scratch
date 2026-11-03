@@ -27,7 +27,7 @@ const RENDER_ATTACHMENT = 0x10, TEX_COPY_SRC = 0x01;
 const SAMPLES = 4;
 
 // Flat-topped hexagon unit geometry (54 vertices = 18 triangles: 6 top + 12 sides)
-function createUnitHexMesh(): Float32Array {
+export function unitHexMesh(): Float32Array {
   const n = 6;
   const topFan = n * 3;
   const sideQuads = n * 6;
@@ -272,7 +272,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
   });
 
   // 2. Render Pipeline
-  const hexUnitMesh = createUnitHexMesh();
+  const hexUnitMesh = unitHexMesh();
   const hexUnitBuffer = device.createBuffer({
     size: hexUnitMesh.byteLength,
     usage: VERTEX,
