@@ -1,5 +1,6 @@
 // examples/wasm/001-jspi-range-reader/map.ts
 // Interactive map powered by synchronous C PMTiles v3 reader compiled with WebAssembly JSPI.
+import { parseTileRings } from './tile-data.ts';
 
 declare global {
   interface Window {
@@ -123,28 +124,7 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
       }
 
       // Parse custom tile payload: [numRings: u16, [numPoints: u16, [x, y]*numPoints]...]
-      const dv = new DataView(Module.HEAPU8.buffer, ptr, size);
-      const numRings = dv.getUint16(0, true);
-      const rings: Float32Array[] = [];
-      let offset = 2;
-
-      for (let r = 0; r < numRings; r++) {
-        if (offset + 2 > size) break;
-        const numPoints = dv.getUint16(offset, true);
-        offset += 2;
-        const ring = new Float32Array(numPoints * 2);
-        for (let p = 0; p < numPoints; p++) {
-          if (offset + 4 > size) break;
-          const lx = dv.getUint16(offset, true) / 4096;
-          const ly = dv.getUint16(offset + 2, true) / 4096;
-          offset += 4;
-          ring[p * 2] = lx;
-          ring[p * 2 + 1] = ly;
-        }
-        rings.push(ring);
-      }
-
-      const res: TileRings = { rings };
+      const res: TileRings = { rings: parseTileRings(Module.HEAPU8.buffer, ptr, size) };
       tileCache.set(key, res);
       return res;
     } finally {
