@@ -62,6 +62,23 @@ const defaultCenterMy = mercY(CENTER_LAT);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
+export function minZoomForMercatorBounds(bounds: { west: number; east: number; north: number; south: number }, width: number, height: number): number {
+  const spanX = bounds.east - bounds.west;
+  const spanY = bounds.south - bounds.north;
+  return Math.log2(Math.max(width / (256 * spanX), height / (256 * spanY)));
+}
+
+export function constrainMercatorCenter(x: number, y: number, zoom: number, width: number, height: number,
+  bounds: { west: number; east: number; north: number; south: number }): { x: number; y: number } {
+  const scale = 256 * 2 ** zoom;
+  const hw = width / (2 * scale);
+  const hh = height / (2 * scale);
+  return {
+    x: bounds.east - bounds.west <= 2 * hw ? (bounds.west + bounds.east) / 2 : clamp(x, bounds.west + hw, bounds.east - hw),
+    y: bounds.south - bounds.north <= 2 * hh ? (bounds.north + bounds.south) / 2 : clamp(y, bounds.north + hh, bounds.south - hh),
+  };
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<BoundsMap> {
   const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
@@ -89,24 +106,17 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   // MapLibre keeps maxBounds smaller than the viewport by zooming in until
   // the bounds fill it. The bound that needs the largest scale wins.
   function minZoomForViewport(): number {
-    const needX = width / (256 * (eastMx - westMx));
-    const needY = height / (256 * (southMy - northMy));
-    return Math.log2(Math.max(needX, needY));
+    return minZoomForMercatorBounds({ west: westMx, east: eastMx, north: northMy, south: southMy }, width, height);
   }
 
   // MapLibre's constrain rule: if the viewport is wider (taller) than the
   // bounds, the centre is pinned to the bounds centre on that axis; otherwise
   // the viewport may not cross a bounds edge.
   function constrain(): void {
-    const scale = 256 * Math.pow(2, zoom);
-    const hw = width / (2 * scale);
-    const hh = height / (2 * scale);
-    const spanX = eastMx - westMx;
-    const spanY = southMy - northMy;
-    if (spanX <= 2 * hw) centerMx = (westMx + eastMx) / 2;
-    else centerMx = clamp(centerMx, westMx + hw, eastMx - hw);
-    if (spanY <= 2 * hh) centerMy = (northMy + southMy) / 2;
-    else centerMy = clamp(centerMy, northMy + hh, southMy - hh);
+    const center = constrainMercatorCenter(centerMx, centerMy, zoom, width, height,
+      { west: westMx, east: eastMx, north: northMy, south: southMy });
+    centerMx = center.x;
+    centerMy = center.y;
   }
 
   function resize(): void {

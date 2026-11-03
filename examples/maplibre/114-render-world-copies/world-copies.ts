@@ -43,6 +43,7 @@ const LAND_EDGE = '#d0cdc4';
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
+export const worldPixelWidth = (zoom: number): number => 256 * 2 ** zoom;
 
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
@@ -86,7 +87,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   let height = canvas.clientHeight || 600;
 
   function worldWidth(): number {
-    return 256 * Math.pow(2, zoom);
+    return worldPixelWidth(zoom);
   }
 
   function resize(): void {

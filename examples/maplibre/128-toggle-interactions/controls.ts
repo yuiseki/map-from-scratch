@@ -53,6 +53,15 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
 
+export function togglePanelRects(): { panel: Rect; rows: Rect[]; checkboxes: Rect[] } {
+  const panel: Rect = { x: PANEL_X, y: PANEL_Y, width: PANEL_W, height: PAD + HEADER_H + 3 * ROW_H + PAD };
+  const rows = Array.from({ length: 3 }, (_, i): Rect => ({
+    x: panel.x, y: panel.y + PAD + HEADER_H + i * ROW_H, width: panel.width, height: ROW_H,
+  }));
+  const checkboxes = rows.map((row): Rect => ({ x: row.x + 10, y: row.y + (ROW_H - BOX) / 2, width: BOX, height: BOX }));
+  return { panel, rows, checkboxes };
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<ToggleMap> {
   const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
@@ -99,22 +108,15 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function getPanelRect(): Rect {
-    return {
-      x: PANEL_X,
-      y: PANEL_Y,
-      width: PANEL_W,
-      height: PAD + HEADER_H + rows.length * ROW_H + PAD,
-    };
+    return togglePanelRects().panel;
   }
 
   function getRowRect(i: number): Rect {
-    const p = getPanelRect();
-    return { x: p.x, y: p.y + PAD + HEADER_H + i * ROW_H, width: p.width, height: ROW_H };
+    return togglePanelRects().rows[i] ?? { x: PANEL_X, y: PANEL_Y, width: 0, height: 0 };
   }
 
   function getCheckboxRect(i: number): Rect {
-    const r = getRowRect(i);
-    return { x: r.x + 10, y: r.y + (ROW_H - BOX) / 2, width: BOX, height: BOX };
+    return togglePanelRects().checkboxes[i] ?? { x: PANEL_X, y: PANEL_Y, width: 0, height: 0 };
   }
 
   function drawPanel(): void {
