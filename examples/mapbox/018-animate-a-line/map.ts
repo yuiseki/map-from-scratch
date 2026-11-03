@@ -1,6 +1,11 @@
 type Polygon = [number, number][][];
 type Point = [number, number];
 
+export function advanceLineProgress(progress: number, step = 0.005): number {
+  const next = progress + step;
+  return next > 1 ? 0 : next;
+}
+
 const mercX = (lon: number): number => (lon + 180) / 360;
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
@@ -55,8 +60,7 @@ export class MapboxAnimatedLineMap {
     if (this.animId !== null) return;
     const loop = () => {
       if (this.isAnimating) {
-        this.progress += 0.005;
-        if (this.progress > 1.0) this.progress = 0.0;
+        this.progress = advanceLineProgress(this.progress);
         this.draw();
       }
       this.animId = requestAnimationFrame(loop);

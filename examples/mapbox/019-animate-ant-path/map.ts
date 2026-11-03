@@ -8,6 +8,9 @@ const mercY = (lat: number): number =>
 // The ant pattern: 8 px dash, 12 px gap, scrolling at 0.6 px per frame.
 const DASH: [number, number] = [8, 12];
 const ANT_SPEED = 0.6;
+export function advanceAntDash(offset: number, speed = ANT_SPEED, period = DASH[0] + DASH[1]): number {
+  return (offset - speed) % period;
+}
 
 export class MapboxAntPathMap {
   canvas: HTMLCanvasElement;
@@ -56,7 +59,7 @@ export class MapboxAntPathMap {
     if (this.animId !== null) return;
     const loop = () => {
       if (this.isAnimating) {
-        this.dashOffset = (this.dashOffset - ANT_SPEED) % (DASH[0] + DASH[1]);
+        this.dashOffset = advanceAntDash(this.dashOffset);
         this.draw();
       }
       this.animId = requestAnimationFrame(loop);
