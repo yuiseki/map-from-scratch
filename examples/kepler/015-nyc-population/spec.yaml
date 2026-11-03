@@ -1,0 +1,70 @@
+id: kepler-015-nyc-population
+request: >-
+  kepler.gl のショーケースデモ「New York City Population by Census Tract」のように、国勢調査区ポリゴンから
+  人口規模に応じた 3D 立体タワー群を押し出し生成し、Viridis カラーパレットと太陽光ライティングで描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D 人口タワー描画に重厚な kepler.gl / deck.gl バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 人口タワー群が現れる
+  - id: 3d-population-towers
+    need: 人口密度に応じた高さと段彩を持つ 3D タワーが立体陰影を伴い正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-population-towers}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/015-nyc-population/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期国勢調査区タワーメッシュの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 視点回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - ニューヨーク市の国勢調査区グリッドおよび人口規模データを生成
+
+performance_knowledge:
+  - id: extruded-choropleth-batching
+    finding: 統計ポリゴンから生成した押し出し柱状メッシュ（側壁・屋根）を単一の頂点バッファに結合して Z-バッファ深度テストで描画することで、数百の国勢調査区タワーを 60 fps で瞬時に描画可能
+    evidence: 1 ドローコールで NYC 人口タワー群を描画
+    applies_when: 3D 統計コロプレス・押し出しタワー描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/kepler/015-nyc-population/index.html
+      - examples/kepler/015-nyc-population/main.ts
+      - examples/kepler/015-nyc-population/render.ts
+      - examples/kepler/015-nyc-population/census.ts
+  not_doing:
+    - kepler.gl および React / Redux バンドル
+
+verification:
+  checks:
+    - id: census-pillars-rendered
+      what: 画面中央部に 3D 人口タワーが透視投影で描画されていること
+      how: readPixels で中央ピクセルと上部夜空ピクセルを読み出し比較
+      expected: 中央ピクセルがタワー色であり暗い背景ピクセルと異なる
+    - id: population-density-contrast
+      what: 高密度地区と低密度地区の間で人口段彩による明瞭な色差が存在すること
+      how: readPixels で高密度部と周辺低密度部の色度差を検証
+      expected: 高密度部と低密度部で段彩コントラストが検出される

@@ -1,0 +1,60 @@
+import { emit } from '../../../harness/page/bench.ts';
+import type { CensusRenderer } from './render.ts';
+
+const renderer = (window as unknown as { __mfsRenderer: CensusRenderer }).__mfsRenderer;
+
+export async function run(): Promise<void> {
+  const gl = renderer.gl;
+  gl.canvas.addEventListener('webglcontextlost', () => emit({ error: 'webglcontextlost' }));
+
+  await new Promise(requestAnimationFrame);
+  await new Promise(requestAnimationFrame);
+
+  const t0 = performance.now();
+  renderer.render(55, -22, 9500);
+  const firstFrame = performance.now() - t0;
+  emit({ metric: 'first_frame_ms', value: firstFrame });
+
+  const w = gl.canvas.width;
+  const h = gl.canvas.height;
+
+  // Sky pixel near top
+  const skyPx = renderer.readPixel(Math.round(w / 2), Math.round(h * 0.08));
+  // Central high-density pillar (Manhattan)
+  const centerPx = renderer.readPixel(Math.round(w / 2), Math.round(h * 0.52));
+  // Peripheral lower-density tract / ground
+  const sidePx = renderer.readPixel(Math.round(w * 0.15), Math.round(h * 0.82));
+
+  // Verification 1: Census pillars rendered against sky
+  const isSky = skyPx[0] < 30 && skyPx[1] < 35 && skyPx[2] < 45;
+  const isPillar = centerPx[3] === 255 && (centerPx[0] > 40 || centerPx[1] > 40 || centerPx[2] > 40);
+
+  emit({
+    check: 'census-pillars-rendered',
+    pass: isSky && isPillar,
+    detail: `center=rgba(${centerPx.join(',')}), sky=rgba(${skyPx.join(',')})`,
+  });
+
+  // Verification 2: Population density color contrast between areas
+  const hasDensityContrast = Math.abs(centerPx[0] - sidePx[0]) > 20 || Math.abs(centerPx[1] - sidePx[1]) > 20;
+  emit({
+    check: 'population-density-contrast',
+    pass: hasDensityContrast,
+    detail: `center=rgba(${centerPx.join(',')}), side=rgba(${sidePx.join(',')})`,
+  });
+
+  const frameIntervals: number[] = [];
+  let last = performance.now();
+  for (let i = 0; i < 30; i++) {
+    const bearing = -22 + i * 0.5;
+    renderer.render(55, bearing, 9500);
+    await new Promise(requestAnimationFrame);
+    const now = performance.now();
+    frameIntervals.push(now - last);
+    last = now;
+  }
+
+  emit({ metric: 'frame_interval_ms', values: frameIntervals });
+}
+
+run();
