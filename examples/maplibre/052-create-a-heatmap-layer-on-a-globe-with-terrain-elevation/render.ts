@@ -1,7 +1,10 @@
 // WebGL2 renderer: sky and atmosphere, the Akita terrain mesh with the
 // heatmap draped on it, and a coarse world mesh around it, all on one globe.
 import { frame, metresPerPixel, atmosphereBlend, EARTH_R, FOV, type View, type Frame } from './camera.ts';
-import { ACCUM_VS, ACCUM_FS, kernelExtent, radiusZoomFactor, heatLevel, rampTexture, RAMP_SIZE } from './heat.ts';
+import {
+  ACCUM_VS, ACCUM_FS, HIST_VS, HIST_FS, PCT_VS, PCT_FS, HEAT_T_GLSL, HIST_BINS, HIST_SAMPLES_FLOAT, HIST_SAMPLES_HALF,
+  kernelExtent, radiusZoomFactor, heatLevel, histSampling, rampTexture, RAMP_SIZE,
+} from './heat.ts';
 import { gridMesh } from './mesh.ts';
 import { mercX, mercY, lonOfX, latOfY } from './tiles.ts';
 import { yearRange, type Points } from './points.ts';
@@ -63,14 +66,15 @@ in vec2 v_merc;
 in vec3 v_rel, v_dir;
 uniform int u_mode;
 uniform vec4 u_area;
-uniform sampler2D u_hArea, u_hWorld, u_heat, u_ramp;
+uniform sampler2D u_hArea, u_hWorld, u_heat, u_ramp, u_dref;
 uniform vec2 u_heatScale;
-uniform float u_heatOn, u_atm, u_fogAmt;
+uniform float u_heatOn, u_atm, u_fogAmt, u_intensity;
 uniform vec2 u_fog;
 uniform vec3 u_horizon;
 out vec4 o;
 ${SHADE}
 const vec3 ATM = vec3(0.55, 0.78, 1.0);
+${HEAT_T_GLSL}
 void main() {
   vec2 uv; ivec2 n;
   bool area = u_mode == 0;
@@ -99,8 +103,8 @@ void main() {
   if (abs(h) < 0.2) c = vec3(0.66, 0.81, 0.91);          // Mapterhorn's sea is exactly 0 m
   c = s < 0.0 ? mix(c, vec3(0.278, 0.231, 0.141), clamp(-s * 1.4, 0.0, 0.85)) : mix(c, vec3(1.0), clamp(s * 0.8, 0.0, 0.5));
   if (area) {
-    float d = texture(u_heat, uv * u_heatScale).r;
-    vec4 r = texture(u_ramp, vec2(clamp(d, 0.0, 1.0) * ${((RAMP_SIZE - 1) / RAMP_SIZE).toFixed(6)} + ${(0.5 / RAMP_SIZE).toFixed(6)}, 0.5));
+    float d = heatT(texture(u_heat, uv * u_heatScale).r, texelFetch(u_dref, ivec2(0), 0).r, u_intensity);
+    vec4 r = texture(u_ramp, vec2(d * ${((RAMP_SIZE - 1) / RAMP_SIZE).toFixed(6)} + ${(0.5 / RAMP_SIZE).toFixed(6)}, 0.5));
     c = mix(c, r.rgb, r.a * u_heatOn);
   }
   float dist = length(v_rel);
@@ -155,6 +159,20 @@ function compile(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgr
   return p;
 }
 
+function floatTarget(gl: WebGL2RenderingContext, format: number, w: number, h: number): [WebGLTexture, WebGLFramebuffer] {
+  const t = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, format, w, h);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  const f = gl.createFramebuffer()!;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('float framebuffer incomplete');
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return [t, f];
+}
+
 function heightTexture(gl: WebGL2RenderingContext, h: Float32Array, w: number, hgt: number): WebGLTexture {
   const t = gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D, t);
@@ -184,12 +202,15 @@ export class Renderer {
   readonly gl: WebGL2RenderingContext;
   view: View;
   radius = 15;          // px at zoom 9 and above, the original's curve below
-  intensity = 0.2;
+  intensity = 1;        // MapLibre's default; scales density / Dref (heat.ts heatT)
   year = 0;             // 0: every year
   heatOn = 1;
   lastFrame: Frame | null = null;
   heatCalls = 0;        // accumulation passes run (the bench reports it)
   private terrain: WebGLProgram; private sky: WebGLProgram; private accum: WebGLProgram;
+  private histProg: WebGLProgram; private pctProg: WebGLProgram;
+  private hist: [WebGLTexture, WebGLFramebuffer]; private dref: [WebGLTexture, WebGLFramebuffer];
+  private histSamples: number;
   private u = new Map<string, WebGLUniformLocation | null>();
   private area: Heights; private world: Heights | null = null;
   private areaRect: [number, number, number, number];
@@ -213,6 +234,15 @@ export class Renderer {
     this.terrain = compile(gl, TERRAIN_VS, TERRAIN_FS);
     this.sky = compile(gl, SKY_VS, SKY_FS);
     this.accum = compile(gl, ACCUM_VS, ACCUM_FS);
+    this.histProg = compile(gl, HIST_VS, HIST_FS);
+    this.pctProg = compile(gl, PCT_VS, PCT_FS);
+    // The percentile of the density, on the GPU: a log2 histogram counted with additive
+    // blending (exact in float32 with EXT_float_blend, else half float with fewer samples),
+    // then a 1 x 1 pass that walks it. Nothing is read back to the CPU.
+    const floatBlend = !!gl.getExtension('EXT_float_blend');
+    this.histSamples = floatBlend ? HIST_SAMPLES_FLOAT : HIST_SAMPLES_HALF;
+    this.hist = floatTarget(gl, floatBlend ? gl.R32F : gl.R16F, HIST_BINS, 1);
+    this.dref = floatTarget(gl, gl.R32F, 1, 1);
     this.hArea = heightTexture(gl, area.h, area.w, area.hgt);
     this.hWorld = heightTexture(gl, new Float32Array(1), 1, 1);
     this.areaVao = meshVao(gl, AREA_CELLS[0], AREA_CELLS[1], true);
@@ -289,7 +319,7 @@ export class Renderer {
   }
 
   private loc(p: WebGLProgram, name: string): WebGLUniformLocation | null {
-    const k = `${p === this.terrain ? 't' : p === this.sky ? 's' : 'a'}${name}`;
+    const k = `${p === this.terrain ? 't' : p === this.sky ? 's' : p === this.accum ? 'a' : p === this.histProg ? 'h' : 'p'}${name}`;
     if (!this.u.has(k)) this.u.set(k, this.gl.getUniformLocation(p, name));
     return this.u.get(k)!;
   }
@@ -300,9 +330,9 @@ export class Renderer {
     const rM = this.radius * radiusZoomFactor(v.zoom) * metresPerPixel(v.zoom, v.lat);
     const rMerc = rM / (2 * Math.PI * EARTH_R * Math.cos((areaLat * Math.PI) / 180));
     const ru = rMerc / mw, rv = rMerc / mh;
-    const k = heatLevel(ru * kernelExtent(1, this.intensity) * HEAT_W);
+    const k = heatLevel(ru * kernelExtent(1, 1) * HEAT_W);
     const [first, end] = yearRange(this.points, this.year);
-    const key = `${ru.toPrecision(5)}|${this.intensity}|${first}|${end}|${k}`;
+    const key = `${ru.toPrecision(5)}|${first}|${end}|${k}`;
     if (key === this.heatKey) return;
     this.heatKey = key;
     this.heatCalls++;
@@ -318,7 +348,6 @@ export class Renderer {
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.useProgram(this.accum);
       gl.uniform2f(this.loc(this.accum, 'u_radius'), ru, rv);
-      gl.uniform1f(this.loc(this.accum, 'u_intensity'), this.intensity);
       gl.bindVertexArray(this.pointVao);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.pointBuf);
       gl.vertexAttribPointer(1, 2, gl.UNSIGNED_SHORT, true, 0, first * 4);
@@ -326,6 +355,28 @@ export class Renderer {
       gl.bindVertexArray(null);
       gl.disable(gl.BLEND);
     }
+    // Dref: the HEAT_PERCENTILE density of the texels with heat (heat.ts).
+    const s = histSampling(w, h, this.histSamples);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.hist[1]);
+    gl.viewport(0, 0, HIST_BINS, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.useProgram(this.histProg);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.heat);
+    gl.uniform1i(this.loc(this.histProg, 'u_heat'), 0);
+    gl.uniform2i(this.loc(this.histProg, 'u_size'), w, h);
+    gl.uniform1i(this.loc(this.histProg, 'u_stride'), s.stride);
+    gl.uniform1i(this.loc(this.histProg, 'u_cols'), s.cols);
+    gl.drawArrays(gl.POINTS, 0, s.cols * s.rows);
+    gl.disable(gl.BLEND);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.dref[1]);
+    gl.viewport(0, 0, 1, 1);
+    gl.useProgram(this.pctProg);
+    gl.bindTexture(gl.TEXTURE_2D, this.hist[0]);
+    gl.uniform1i(this.loc(this.pctProg, 'u_hist'), 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -364,6 +415,7 @@ export class Renderer {
     gl.uniform4f(T('u_area'), ...this.areaRect);
     gl.uniform2f(T('u_heatScale'), ...this.heatScale);
     gl.uniform1f(T('u_heatOn'), this.heatOn);
+    gl.uniform1f(T('u_intensity'), this.intensity);
     gl.uniform1f(T('u_atm'), atm);
     // Haze from twice the camera distance to the horizon hides the coarse world beyond the area.
     const alt = Math.hypot(...f.eye) - EARTH_R;
@@ -371,7 +423,7 @@ export class Renderer {
     gl.uniform2f(T('u_fog'), toCentre * 1.6, Math.max(toCentre * 6, alt * 3));
     gl.uniform1f(T('u_fogAmt'), (1 - atm) * Math.min(1, Math.max(0, (v.pitch - 30) / 30)) * 0.85);
     gl.uniform3f(T('u_horizon'), horizon[0], horizon[1], horizon[2]);
-    const tex: [string, WebGLTexture][] = [['u_hArea', this.hArea], ['u_hWorld', this.hWorld], ['u_heat', this.heat], ['u_ramp', this.ramp]];
+    const tex: [string, WebGLTexture][] = [['u_hArea', this.hArea], ['u_hWorld', this.hWorld], ['u_heat', this.heat], ['u_ramp', this.ramp], ['u_dref', this.dref[0]]];
     tex.forEach(([name, t], i) => {
       gl.activeTexture(gl.TEXTURE0 + i);
       gl.bindTexture(gl.TEXTURE_2D, t);

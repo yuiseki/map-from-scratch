@@ -57,6 +57,30 @@ export async function run(r: Renderer, firstFrameMs: number, worldReady: Promise
     emit({ check: 'hotspot-hot-end', pass: hot >= 13, detail: `${hot}/25 px at density >= 0.75 at (${x.toFixed(0)}, ${y.toFixed(0)}); ${detail}; top colour rgb(${RAMP[RAMP.length - 1].slice(1, 4)})` });
   }
 
+  // 1b. The opening view tells dense from moderate: of the pixels the heat changes, only a small
+  //     share is drawn in the hot end of the ramp (density >= 0.8), and the heat spans the ramp.
+  {
+    set({});
+    r.heatOn = 1; r.draw();
+    const on = read(0, 0, W(), H()).px;
+    r.heatOn = 0; r.draw();
+    const off = read(0, 0, W(), H()).px;
+    r.heatOn = 1;
+    let heat = 0, hot = 0;
+    const bands = [0, 0, 0, 0, 0];
+    for (let i = 0; i < on.length; i += 4) {
+      if (Math.abs(on[i] - off[i]) + Math.abs(on[i + 1] - off[i + 1]) + Math.abs(on[i + 2] - off[i + 2]) <= 30) continue;
+      heat++;
+      const { t, d } = rampT(on, i);
+      if (d >= 30) continue;
+      bands[Math.min(4, Math.floor(t * 5))]++;
+      if (t >= 0.8) hot++;
+    }
+    const share = hot / Math.max(1, heat), used = bands.filter((n) => n > 0.03 * heat).length;
+    emit({ check: 'hot-end-share', pass: heat > 20000 && share < 0.15 && used >= 4,
+      detail: `${heat} heat px in the opening view, ${(100 * share).toFixed(1)}% at density >= 0.8; per 0.2 band ${bands.map((n) => (100 * n / Math.max(1, heat)).toFixed(1) + '%').join(' ')}` });
+  }
+
   // 2. A place with no sighting within 8 km shows the terrain: identical with the heat on and off,
   //    while the hot spot does change (so the comparison can fail).
   {
