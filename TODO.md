@@ -607,7 +607,7 @@
 - [ ] `cesium-057-billboards-dev` → `examples/cesium/057-billboards-dev/` — [Billboards Dev](https://sandcastle.cesium.com/?src=billboards-dev)
 - [ ] `cesium-058-billboards-instancing-dev` → `examples/cesium/058-billboards-instancing-dev/` — [Billboards Instancing Dev](https://sandcastle.cesium.com/?src=billboards-instancing-dev)
 - [ ] `cesium-059-bing-maps-labels-only` → `examples/cesium/059-bing-maps-labels-only/` — [Bing Maps Labels Only](https://sandcastle.cesium.com/?src=bing-maps-labels-only)
-- [ ] `cesium-060-bloom` → `examples/cesium/060-bloom/` — [Bloom](https://sandcastle.cesium.com/?src=bloom)
+- [x] `cesium-060-bloom` → `examples/cesium/060-bloom/` — [Bloom](https://sandcastle.cesium.com/?src=bloom)
 - [ ] `cesium-061-blue-marble` → `examples/cesium/061-blue-marble/` — [Blue Marble](https://sandcastle.cesium.com/?src=blue-marble)
 - [ ] `cesium-062-box` → `examples/cesium/062-box/` — [Box](https://sandcastle.cesium.com/?src=box)
 - [ ] `cesium-063-box-dev` → `examples/cesium/063-box-dev/` — [Box Dev](https://sandcastle.cesium.com/?src=box-dev)

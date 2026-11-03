@@ -1,0 +1,81 @@
+id: cesium-060-bloom
+request: >-
+  CesiumJS の showcase である「Bloom」のように、暗夜の都市ジオメトリに配された
+  超高輝度なネオンライトビーコンや発光エッジから光が周囲の空間へと拡散・滲み出る
+  HDR ブルーム後処理パイプライン（Bright pass 抽出・分離型ガウシアンブラー・加算合成トーンマッピング）を
+  対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: ブルームポストプロセスの実装に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 都市とブルーム効果が現れる
+  - id: hdr-bloom-pipeline
+    need: 高輝度オブジェクトからの光の滲み（ブルーム拡散）が画面上で正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: hdr-bloom-pipeline}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/060-bloom/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: シーンジオメトリとブルーム FBO パイプラインの初期化および初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: カメラ自転中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時にネオン都市タワーおよび発光ビーコンジオメトリを動的生成
+
+performance_knowledge:
+  - id: downsampled-separable-gaussian-blur
+    finding: ブラー段を半解像度 FBO で実行し、2D コンボリューションを水平・垂直の 2 つの 1D パスに分離することで、計算量を O(N^2) から O(2N) へ激減
+    evidence: フル解像度 2D ブラーに比べて数倍高速に同等品質の光彩拡散を達成
+    applies_when: ブルーム・被写界深度・グロー・グレア後処理
+  - id: photometric-bright-pass
+    finding: BT.709 相対輝度比（0.2126 R + 0.7152 G + 0.0722 B）による閾値クランプで、真に高輝度な発光体のみをブラー対象として正確に抽出
+    evidence: 一般色調オブジェクトの白飛びや全体的ぼやけを完全に防止
+    applies_when: HDR トーンマッピング・グレア抽出
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/060-bloom/index.html
+      - examples/cesium/060-bloom/main.ts
+      - examples/cesium/060-bloom/bloom.ts
+      - examples/cesium/060-bloom/render.ts
+  not_doing:
+    - CesiumJS や Three.js などの重量ポストプロセスライブラリの読み込み
+    - CPU 側でのピクセルバッファ処理（全段 GPU FBO パイプラインで完結）
+
+verification:
+  checks:
+    - id: dark-scene-cleared
+      what: 画面隅が暗夜の空間色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: ガンマ補正後の暗い背景色（r < 50, g < 50, b < 65）であること
+    - id: neon-geometry-rendered
+      what: 画面中央に 3D ネオン都市ジオメトリが描画されている
+      how: gl.readPixels で中央ピクセル色を取得
+      expected: ネオンタワー色（r > 10 || g > 10 || b > 15）であること
+    - id: bloom-glow-diffused
+      what: ネオンタワー上方の何もない空間にブルームの光が拡散している
+      how: gl.readPixels でタワー上部空間のピクセル色を取得
+      expected: 拡散したグロー光彩（r > 3 || g > 3 || b > 3）が存在すること
