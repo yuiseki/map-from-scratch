@@ -1,0 +1,195 @@
+id: maplibre-062-display-a-globe-with-a-fill-extrusion-layer
+request: >-
+  MapLibre GL JS の公式サンプル「Display a globe with a fill extrusion layer」
+  （地球儀の上で手書きの矩形ポリゴン3つを fill-extrusion で押し出し、GlobeControl で
+  地球儀と平面を切り替える）を、実データで見応えのあるものにしたい。Natural Earth の国境ポリゴンを
+  すべて人口（POP_EST）に応じて球面から外向きに押し出し、カラーランプと凡例で色分けする。
+  側面と天面には陰影をつけて高さが読めるようにし、押し出しは曲面に沿わせ（長い辺を分割して天面が
+  球を突き抜けないように）、180度線や極をまたぐポリゴンでトゲや穴を出さない。ドラッグで回転、
+  ホイールで拡大縮小、地球儀と平面（正距円筒）を切り替えるボタンを持ち、どちらでも押し出しが見える。
+  国にポインタを乗せるかタップすると国名と値を出す。外部ライブラリなしで最小・最速に。
+
+requirements:
+  - id: light-footprint
+    need: 地図エンジンを読み込まずに配布サイズを小さく保つ
+    rationale: MapLibre GL JS は gzip で約 230 KB。専用描画器のコードはその 1/20 の 12 KB 以内
+  - id: data-transfer
+    need: 258 か国の押し出しメッシュの元データを 1 回の読み込みで受け取る
+    rationale: >-
+      countries.bin 1,010,364 B と countries.json 12,330 B。静的サーバは gzip しないので
+      transfer_kb は非圧縮で数える。1.1 MB（1,100 KB）を上限、gzip 後は 360 KB 以内
+  - id: quick-start
+    need: ページを開いてすぐ押し出された地球儀が出る
+    rationale: 1 MB の取得、デコード、メッシュ構築、シェーダーのコンパイルを含めて 800 ms 以内
+  - id: smooth-rotation
+    need: ドラッグで回しているあいだ 60 fps を保つ
+    rationale: 60 Hz の 1 フレームは 16.7 ms。回転・ズームする経路の frame_ms p95 を 8 ms 以内（他の処理の余裕を残す）
+  - id: smooth-flat
+    need: 平面表示でパンしているあいだも 60 fps を保つ
+    rationale: 平面では世界を 3 つ並べて描くので三角形が 3 倍。flat_frame_ms p95 を 12 ms 以内
+  - id: triangle-budget
+    need: 曲面に沿わせる分割で三角形を増やしすぎない
+    rationale: 海 14,400、天面 55,962、側面 107,424 で計 177,786（頂点 297,575）。地球儀 200,000、平面 3 倍で 600,000 以内
+  - id: quick-hover
+    need: ポインタを動かすたびに国名がすぐ出る
+    rationale: pointermove ごとに 1 ピクセルの id 描画と読み戻し。pick_ms p95 を 4 ms 以内
+  - id: curved-extrusion
+    need: 押し出しが曲面に沿い、天面が球を突き抜けず、180 度線と極でトゲや穴を出さない
+    unmeasured: >-
+      grid.test.ts（3 度格子への切り分けで面積が保たれ三角形が格子をはみ出さない）、ramp.test.ts
+      （最小の高さ 0.004 R が格子の弦のたわみ 0.00067 R の 3 倍以上）、mesh.test.ts（180 度線と極に壁を立てない）
+      と、bench の limb-round、wall-past-limb の画面読み戻しで確かめる
+  - id: lit-and-coloured
+    need: 側面と天面に陰影があり、色と高さが凡例と一致する
+    unmeasured: bench の ocean-pixel-colour、land-pixel-colour、toggle-changes-outline で画面の色をランプから求めた値と比べる
+  - id: globe-and-flat
+    need: 地球儀と平面を切り替えられ、どちらでも押し出しが見える
+    unmeasured: bench の toggle-changes-outline と drag-moves-ground で確かめる
+  - id: identify
+    need: 国にポインタを乗せる（タップする）と国名と人口が出る
+    unmeasured: bench の hover-known-country で 4 か国と海の点を確かめる
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-footprint}
+    - {metric: transfer_kb, stat: max, max: 1100, unit: KB, requirement: data-transfer}
+    - {metric: data_gzip_bytes, max: 360000, unit: B, requirement: data-transfer}
+    - {metric: first_frame_ms, stat: p50, max: 800, unit: ms, requirement: quick-start}
+    - {metric: frame_ms, stat: p95, max: 8, unit: ms, requirement: smooth-rotation}
+    - {metric: flat_frame_ms, stat: p95, max: 12, unit: ms, requirement: smooth-flat}
+    - {metric: triangles, stat: max, max: 200000, unit: count, requirement: triangle-budget}
+    - {metric: flat_triangles, stat: max, max: 600000, unit: count, requirement: triangle-budget}
+    - {metric: pick_ms, stat: p95, max: 4, unit: ms, requirement: quick-hover}
+  gates: [エラーがない, ハードウェア GPU で描画している, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: >-
+        ナビゲーション開始（performance.timeOrigin）から、countries.bin と countries.json の取得、
+        デコード、メッシュ構築、シェーダーのコンパイルを経て最初の draw を発行し終えるまで。bench.ts の
+        読み込みは含まない
+      metrics: [first_frame_ms, transfer_kb]
+    - id: rotate-globe
+      what: 地球儀を中心 (30, 40) から 1 フレーム 3 度ずつ東へ 120 フレーム回し、同時に距離を 3.2 から 2.0 へ寄せて戻す
+      metrics: [frame_ms, cpu_ms, gpu_ms, triangles]
+    - id: pan-flat
+      what: 平面表示で 1 フレーム 3 度ずつ東へ、緯度を 40 から 20 へ振りながら 120 フレームパンする
+      metrics: [flat_frame_ms, flat_cpu_ms, flat_gpu_ms, flat_triangles]
+    - id: hover
+      what: 開始時の視点で画面上の 40 点に id 描画と 1 ピクセル読み戻しを行う
+      metrics: [pick_ms]
+
+datasets:
+  bake: [node, examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/bake.ts]
+  sources:
+    - id: ne-countries
+      origin: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/ (ne_10m_admin_0_countries v5.1.1, hf:ne-admin0-10m)
+      license: Natural Earth パブリックドメイン（出典表示は画面右下）
+  outputs:
+    - data/baked/maplibre-062-display-a-globe-with-a-fill-extrusion-layer/countries.bin
+    - data/baked/maplibre-062-display-a-globe-with-a-fill-extrusion-layer/countries.json
+  preparation:
+    - Natural Earth 10m admin 0 の 258 か国（548,471 点）を経緯度のまま Douglas–Peucker 0.05 度で簡略化
+    - 0.02 平方度未満の島を落とす（各国の最大のポリゴンは残す）。1,083 個
+    - 0.01 度単位の int16 に量子化し、3 度格子の線と交わる辺にその交点の頂点を挿入する
+    - 各ポリゴンを 3 度格子のセルごとに Sutherland–Hodgman で切り分け、earcut で三角形分割（天面 75,346 頂点、55,962 三角形）
+    - 側面用に挿入済みのリング（1,188 本、53,843 頂点）をそのまま出力。側面の四角形は読み込み時に組み立てる
+    - 座標と添字は前の値との差分で格納（format.ts）。countries.bin 1,010,364 B、gzip 344,389 B
+
+performance_knowledge:
+  - id: grid-cut-before-earcut
+    finding: >-
+      天面を曲面に沿わせるには、earcut の後で三角形を分割するより、earcut の前にポリゴンを 3 度格子で切る方が
+      簡単で割れ目が出ない。リングに格子線との交点を先に入れておけば、隣り合うセルが同じ境界頂点を共有し、
+      側面の上端も天面の縁と頂点単位で一致する
+    evidence: >-
+      3 度セルの対角 4.24 度の弦のたわみは 1 - cos(2.12°) = 0.00068 R で、最小の押し出し 0.004 R の 1/6。
+      grid.test.ts で穴あきポリゴンの面積が切り分け後も厳密に一致することを確かめた。天面 55,962 三角形
+    applies_when: 球面上に経緯度ポリゴンを平らな三角形で描く地球儀全般
+  - id: index-delta-int16
+    finding: 格子セルごとに三角形分割すると添字の飛びが小さく（最大 219）、差分を int16 で持てる
+    evidence: u32 の差分で 1,346,136 B（gzip 364,796 B）、int16 で 1,010,364 B（gzip 344,389 B）
+    applies_when: 局所的に三角形分割したメッシュを配る
+  - id: not-measured-yet
+    finding: 計測はまだ行っていない（ユーザーの指示で実装を先に済ませ、bench は別の回でまとめて流す）
+    evidence: bin/mfs test と型検査のみ通過。frame_ms、first_frame_ms、pick_ms、transfer_kb は未計測
+    applies_when: 次の計測の回で数字を入れて置き換える
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/index.html
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/main.ts
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/format.ts
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/mesh.ts
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/render.ts
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/ramp.ts
+      - examples/maplibre/062-display-a-globe-with-a-fill-extrusion-layer/camera.ts
+    dependencies: []
+    why: >-
+      18 万三角形の 3D メッシュを深度つきで回すには GPU が要る。地球儀と平面は同じ頂点（経度、緯度、国 id、天面か）を
+      頂点シェーダーで球面か平面へ置き、t で補間するので、切り替えは uniform 1 個で済みアニメーションもできる。
+      国ごとの色と高さは N×1 の RGBA32F テクスチャに置き、ホバーは uniform 1 個。法線は dFdx/dFdy から求めて配らない
+  alternatives:
+    - option: earcut の三角形を読み込み時に最長辺で二分割していく
+      rejected_because: 隣の三角形が同じ辺を割らないと T 字接合で割れ目が出る。格子で先に切れば起きない（not compared）
+    - option: 天面の法線を頂点ごとに配る
+      rejected_because: 頂点データが 1.5 倍になる。画面空間の微分で平面ごとの法線が得られる（not compared）
+    - option: CPU で光線と球の交差から国を当てる
+      rejected_because: 押し出しの側面や縁の向こうに立つ天面を当てられない。同じ頂点シェーダーの id 描画なら絵と食い違わない
+    - option: Web Mercator の平面
+      rejected_because: 極で発散し、南極とグリーンランドの押し出しが画面外へ伸びる。正距円筒なら球の中心付近と縮尺が合い補間が素直
+  not_doing:
+    - ベースマップのタイル、ラベル、国境線
+    - 地形、大気、星空
+    - 地球儀の傾き（ピッチ）と方位の回転。平面表示は 40 度の固定ピッチ
+    - 押し出しの高さのアニメーション
+    - 1:10m より細かい海岸線
+
+verification:
+  checks:
+    - id: ocean-pixel-colour
+      what: 海の画素が海の色（無灯火）
+      how: 中心を太平洋 (150 W, 0) に置き、画面中央の画素を読む
+      expected: RGB (30, 62, 102) と各成分の差 2 以内
+    - id: land-pixel-colour
+      what: 陸の画素がその国のランプ色に陰影をかけた色
+      how: 中心をブラジル内陸 (52 W, 10 S) に置き、画面中央の画素を ramp(sqrt(POP_EST/最大)) と比べる
+      expected: 40 を超える成分の比が揃い（差 0.08 未満）、AMBIENT − 0.04 から 1.04 の範囲
+    - id: limb-round
+      what: 地球儀の縁が円
+      how: 中心を (170 W, 10 S) に置き、72 方向で外側から内側へ背景でない最初の画素を探す
+      expected: 75% 以上の方向でカメラから求めた縁の半径と 1.5 px 以内、半径より内側に凹む方向が 0
+    - id: wall-past-limb
+      what: 高い国の押し出しが縁の向こうに見える
+      how: >-
+        中心を (13 E, 0) に置き、地平線の裏にある中国内陸 (103 E, 35 N) の天面の投影位置の 5×5 画素と、
+        画面中心について反対側（77 W, 35 S の太平洋側）の 5×5 画素を読む
+      expected: 中国の点は縁の円より 3 px 以上外で背景色でも海の色でもない画素があり、反対側はすべて背景色
+    - id: hover-known-country
+      what: 既知の国にポインタを乗せると正しい国名が出る
+      how: 開始時の視点でエジプト (30, 26)、トルコ (35, 39)、ドイツ (10.5, 51)、サウジアラビア (45, 24) の天面の投影位置と、イオニア海 (18, 34) に pointermove を送る
+      expected: 4 か国でツールチップが NAME で始まり hover id が一致、海ではツールチップが消え hover が -1
+    - id: drag-moves-ground
+      what: ドラッグで押した地点がポインタについてくる
+      how: 画面の (0.45, 0.45) から (0.55, 0.52) へ 10 回の pointermove でドラッグし、離した画素の経緯度を押した地点と比べる
+      expected: 経度・緯度とも差 0.5 度未満
+    - id: toggle-changes-outline
+      what: 切り替えで輪郭が変わり、平面でも押し出しが見える
+      how: >-
+        中心 (0, 0) で縁の半径の 1.2 倍右の画素を地球儀と平面で読み、ボタンの表示を確かめ、
+        平面で中心を中国 (103 E, 35 N) に置いて中央の画素をランプ色と比べる
+      expected: 地球儀では背景色、平面では背景色でない、ボタンが「Globe」、中国の画素が land-pixel-colour と同じ条件を満たす
+  harness:
+    - webglcontextlost が起きたらエラーにする
+    - info.gpu がソフトウェアラスタライザなら失敗
