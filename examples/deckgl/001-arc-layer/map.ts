@@ -30,6 +30,17 @@ function projectMercator(lon: number, lat: number): [number, number] {
   return [x, y];
 }
 
+export function selectCountyFlows(flows: FlowRecord[], selectedCountyIdx: number): FlowRecord[] {
+  let selected: FlowRecord[];
+  if (selectedCountyIdx >= 0) {
+    selected = flows.filter((flow) => flow.s === selectedCountyIdx)
+      .sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 200);
+  } else {
+    selected = flows.slice(0, 300);
+  }
+  return selected.sort((a, b) => Math.abs(a.v) - Math.abs(b.v));
+}
+
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<ArcMap> {
   const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('Failed to get Canvas 2D context');
@@ -85,25 +96,9 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   let activeArcCount = 0;
   let activeFlows: FlowRecord[] = [];
   function updateActiveFlows() {
-    activeFlows = [];
-    if (selectedCountyIdx >= 0) {
-      // Only the selected county's own records, as deck.gl reads
-      // selected.properties.flows: the sign is in-flow (+) or out-flow (-)
-      // from its side. The other counties' records about it (t === selected)
-      // carry the opposite sign and repeated each pair, so out-flows were
-      // drawn as in-flows.
-      for (const fl of flows) {
-        if (fl.s === selectedCountyIdx) activeFlows.push(fl);
-      }
-      activeFlows.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
-      if (activeFlows.length > 200) {
-        activeFlows = activeFlows.slice(0, 200);
-      }
-    } else {
-      activeFlows.push(...flows.slice(0, 300));
-    }
+    // Only each selected county's own records carry its correct in/out sign.
+    activeFlows = selectCountyFlows(flows, selectedCountyIdx);
     activeArcCount = activeFlows.length;
-    activeFlows.sort((a, b) => Math.abs(a.v) - Math.abs(b.v));
   }
   updateActiveFlows();
 
