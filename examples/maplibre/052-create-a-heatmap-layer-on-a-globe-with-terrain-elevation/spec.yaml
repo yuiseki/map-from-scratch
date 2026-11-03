@@ -1,0 +1,165 @@
+id: maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation
+request: >-
+  MapLibre GL JS の公式サンプル「Create a Heatmap layer on a globe with terrain elevation」のように、
+  3D 地形の上にヒートマップを貼り、約70度傾けた視点で見て、縮小すると大気の光をまとった地球儀になる地図を作りたい。
+  データは秋田県のクマ出没情報（クマダス、CC BY 4.0）、地形は奥羽山脈を含む Mapterhorn の標高と陰影。
+  ヒートマップは GPU で集計し、地形の面に沿って谷や尾根で曲がること。ドラッグで回転・傾き、ホイールで拡大縮小、
+  半径・強度のスライダーと年の絞り込みを付ける。外部ライブラリなし。
+
+requirements:
+  - id: heat-on-terrain
+    need: クマ出没地点の密度を GPU で集計し、地形の面に沿って（平面ではなく）色で表示する
+    unmeasured: 正しさの要件なので verification の hotspot-hot-end、empty-shows-terrain、heat-on-slope-displaced で画面を読み戻して確かめる
+  - id: globe-and-atmosphere
+    need: 縮小すると大気の光をまとった地球儀になり、その移り変わりが途切れない
+    unmeasured: verification の limb-atmosphere と zoom-out-continuous で画面を読み戻して確かめる
+  - id: controls
+    need: ドラッグで回転・傾き、ホイールで拡大縮小、半径と強度のスライダー、年の絞り込み
+    unmeasured: verification の drag-and-wheel と radius-changes-hot-area で確かめる。年の絞り込みは描画範囲の切り替えで、points.test.ts が範囲を確かめる
+  - id: smooth-orbit
+    need: 傾けた地形を回しても滑らかに動く
+    rationale: 60 Hz の 1 フレームは 16.7 ms。p95 で見る
+  - id: smooth-zoom
+    need: 地形から地球儀まで拡大縮小する間も滑らか（毎フレームでヒートマップを集計し直す経路）
+    rationale: 60 Hz の 16.7 ms。全域を真上から見て集計を毎回強制する経路も同じ予算
+  - id: quick-start
+    need: ページを開いてすぐ地形とヒートマップが出る
+    rationale: 標高 z9 の 1536x2048 画素（WebP 2.05 MB）と出没 23,306 件（93 KB）を読み、デコード・GPU 転送・初回描画まで 1.5 s。世界の粗い標高（548 KB）は初回描画の後に届けばよい
+  - id: small-transfer
+    need: 転送量を抑える
+    rationale: 標高 2.05 MB + 世界 0.55 MB + 点 0.09 MB + コード。合計 3,000 KB 以下、コードは gzip 16 KB 以下
+  - id: attribution
+    need: Mapterhorn とクマダス（秋田県）の出典を表示する
+    unmeasured: index.html の固定文言。目視で確かめる
+
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-orbit}
+    - {metric: zoom_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-zoom}
+    - {metric: whole_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-zoom}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: transfer_kb, stat: max, max: 3000, unit: KB, requirement: small-transfer}
+    - {metric: code_gzip_bytes, max: 16000, unit: B, requirement: small-transfer}
+  gates: [エラーがない, ハードウェア GPU で描画, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ナビゲーション開始（performance.now() の原点）から、meta.json・points.bin・akita-z9.webp の取得とデコード、メッシュと GPU 資源の作成、ヒートマップの集計と最初の描画を readPixels で待ち終えるまで。世界の標高はこの後に読む
+      metrics: [first_frame_ms, transfer_kb]
+    - id: orbit
+      what: 開始視点（ズーム 8.7、傾き 70 度）で方位を 1.5 度ずつ 240 フレーム回す。ヒートマップは集計し直さない
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: zoom-out
+      what: 開始視点からズーム 1 まで縮小して戻る 120 フレーム。半径が地上距離で変わるので毎フレーム集計し直す
+      metrics: [zoom_cpu_ms, zoom_frame_ms, zoom_gpu_ms]
+    - id: whole-area
+      what: 地形の全域を真上から（ズーム 7.6）見て、集計を毎フレーム強制する 60 フレーム
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+
+datasets:
+  bake: [node, examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/bake.ts]
+  sources:
+    - id: akita-kumadas
+      origin: 秋田県「ツキノワグマ等情報マップシステム『クマダス』データ」（2022-04〜2026-09、hf:akita-kumadas-wildlife-sighting raw/2026-10-26/kumadas.csv）
+      license: CC BY 4.0（出典：秋田県「ツキノワグマ等情報マップシステム『クマダス』データ」を加工して作成）
+    - id: mapterhorn-planet
+      origin: z:mapterhorn/2026-01-06/planet.pmtiles（/sata_hdd_24tb/www/html/static/mapterhorn/2026-01-06/planet.pmtiles）z9 の 12 タイルと z1 の 4 タイル
+      license: © Mapterhorn（https://mapterhorn.com/attribution/ の各 DEM の条件。日本は国土地理院 基盤地図情報 数値標高モデルを含む）
+  outputs:
+    - data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/akita-z9.webp
+    - data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/world-z1.webp
+    - data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/points.bin
+    - data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/meta.json
+  bench_only:
+    - data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/truth.json
+  preparation:
+    - Mapterhorn planet.pmtiles から z9 の x 454〜456、y 192〜195（139.22〜141.33°E、38.82〜40.98°N、秋田県全域と奥羽山脈）の WebP Terrarium タイル 12 枚を取り出し、GDAL の WEBP ドライバでデコードして 1536x2048 にモザイクする
+    - 標高を 0.25 m 単位の 16 ビット（R,G。B は 0）にして可逆 WebP にする。Terrarium の B（1/256 m）は 117 m 格子では雑音で、外すと 3.53 MB（元タイル）が 2.05 MB になる。1 m 単位なら 1.49 MB だが平野の陰影に段がつくので採らない
+    - 同じ方法で z1 の 4 タイル（1024x1024）を地球儀用に 548 KB の WebP にする
+    - クマダスの CSV から獣種ツキノワグマの 23,306 件を取り、範囲の Mercator 座標を u16 に量子化、年ごとにまとめて並べる（年の絞り込みは描画範囲）。93,256 B
+    - 検査用に、1 km 格子で 3x3 km の件数が最大の地点（秋田市 140.134°E 39.739°N、690 件）、8 km 以内に出没のない山地（140.856°E 39.199°N、1,200 m）、範囲の最高点（鳥海山 140.049°E 39.100°N、z9 平均で 2,206 m）を truth.json に書く
+
+performance_knowledge:
+  - id: drop-terrarium-fraction
+    finding: Terrarium の小数バイト（B）は z9 の 117 m 格子では雑音で、可逆 WebP の大きさの大半を占める。0.25 m 単位の 2 バイトにすると 42% 小さくなる
+    evidence: 秋田の z9 12 タイルは元の WebP で 3,530,922 B、0.25 m 単位の 2 バイト可逆 WebP で 2,054,524 B、1 m 単位で 1,488,066 B、同じ 0.25 m を PNG（ZLEVEL 9）にすると 2,817,233 B。z1 の世界 4 タイルは 895,064 B → 547,922 B
+    applies_when: 標高を画像として配り、ブラウザの画像デコーダで読む場合
+  - id: unmeasured-yet
+    finding: 計測は利用者の指示で後回し（2026-11-03）。予算と check は書いたがまだ一度も走らせていない
+    evidence: bin/mfs bench は未実行。開発サーバと Chromium（playwright）で開始視点と縮小した地球儀を目視し、地形・陰影・ヒートマップ・大気の光が出ることだけ確かめた
+    applies_when: 次の計測パスで最初に確かめる
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2（EXT_color_buffer_float の R16F 加算ブレンド、インスタンス描画、頂点シェーダでの標高テクスチャ読み）
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/index.html
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/main.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/render.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/camera.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/heat.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/mesh.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/tiles.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/points.ts
+      - examples/maplibre/052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/controls.ts
+    dependencies: []
+    why: >-
+      MapLibre はヒートマップをタイルごとのテクスチャに描いてから地形へ貼る。ここでは地形の範囲が 1 枚の z9 画像なので、
+      その範囲を覆う 1 枚の半精度テクスチャに MapLibre と同じガウス核（heatmap.vertex.glsl）を加算し、地形の断片シェーダが
+      範囲座標で読んで色ランプに通す。密度は地形の面の属性になるので尾根や谷で曲がる。地球儀は MapLibre と同じ中心縮尺の
+      球をすべてのズームで使い、球と平面の切り替えがないので縮小は連続する
+  alternatives:
+    - option: MapLibre GL JS（元例）
+      rejected_because: 外部ライブラリなしという依頼。比較計測はしていない（not compared）
+    - option: ヒートマップを画面空間で集計して地形の上に重ねる（deckgl-011 の方式）
+      rejected_because: 画面上の円は地形の面に沿わず、斜面で位置がずれる。依頼の「谷や尾根で曲がる」を満たさない
+    - option: z ごとに MapLibre のように球から Mercator 平面へ切り替える
+      rejected_because: 最大ズームを 12 に止めれば float32 の地球中心座標で足り（誤差 1 m 未満）、切り替えのない球のほうが単純で連続
+  not_doing:
+    - 背景のベクトル地図（道路・地名・行政界）。地形の段彩と陰影と海だけ
+    - 秋田の範囲外の詳細な標高（世界は z1、約 39 km 画素。遠景は霞で隠す）
+    - 範囲外へのヒートマップのはみ出し（密度テクスチャは範囲の中だけ）
+    - ズーム 12 より先、ピッチ 80 度より先
+    - 出没地点の円表示とクリックでの詳細表示
+    - タッチのピンチ操作（1 本指のドラッグは使える）
+
+verification:
+  checks:
+    - id: hotspot-hot-end
+      what: 出没の最も密な地点（秋田市、truth.json の dense）がランプの熱い端の色で描かれる
+      how: ズーム 10・傾き 60 度で dense を中心に描き、地形の高さ込みで投影した画素の 5x5 を読み、最も近いランプ色の密度を求める
+      expected: 13/25 画素以上が密度 0.75 以上のランプ色（差 30 未満）
+    - id: empty-shows-terrain
+      what: 8 km 以内に出没のない山地は地形のまま表示され、ヒートマップは色を足さない
+      how: truth.json の empty の 5x5 をヒートマップあり・なしで読み比べ、上端の空とも比べる。同時に dense の画素があり・なしで変わることを確かめる
+      expected: empty の差が各成分 3 以下、空の色ではない、dense の差は 60 超
+    - id: heat-on-slope-displaced
+      what: 斜面の熱は地形の高さの位置に描かれ、高さ 0 として投影した位置にはない
+      how: 鳥海山南斜面（最高点の 0.025° 南）に 1 点だけ置き（setPoints）、南から ズーム 11・傾き 65 度で見る。窓の中で最も熱い画素の位置を、高さ込みの投影と高さ 0 の投影と比べる
+      expected: 高さによるずれが 25 px 超、最も熱い画素は高さ込みの位置から 6 px 未満、高さ 0 の位置からはずれ量 - 8 px より遠い
+    - id: limb-atmosphere
+      what: ズーム 0.6 で地球儀の縁の外側に大気の色が出る
+      how: 傾き 0 で camera.ts の limbPx から縁の 8 px 外の左右の画素と、画面隅（宇宙）を読む
+      expected: 縁の外は B が R より 40 以上大きく、隅より B が 40 以上明るい
+    - id: radius-changes-hot-area
+      what: 半径スライダーで熱い範囲の大きさが変わる
+      how: 秋田市中心の 500x400 画素で、ヒートマップあり・なしの差が 30 を超える画素を半径 10 と 30 で数える
+      expected: 半径 30 の画素数が半径 10 の 1.4 倍超
+    - id: zoom-out-continuous
+      what: 地形から地球儀まで縮小する間に表示が飛ばない
+      how: ズーム 9 から 0.5 まで 0.25 刻みで描き、隣り合うフレームの輝度差の平均を求める
+      expected: 最大値が中央値の 3 倍 + 6 以下
+    - id: drag-and-wheel
+      what: ドラッグで回転と傾き、ホイールでポインタの下を保った拡大
+      how: canvas に PointerEvent（右へ 100 px、上へ 50 px）と WheelEvent（画面の 70% の位置、deltaY -100）を送る
+      expected: 方位が 30 度以上減る、傾きが増える、ズームが増え、ポインタの下の地面が 3 px 未満しか動かない
+  harness: 転送量、コードの gzip 量、初回描画、GPU 名をハーネスが記録する。ソフトウェアラスタライザなら失敗にする
