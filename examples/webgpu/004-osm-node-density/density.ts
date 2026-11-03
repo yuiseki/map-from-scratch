@@ -7,6 +7,7 @@
 //   2. a render pass colouring log(1 + count) / log(1 + max)
 // The data, the camera, the point order and the colours are 04's, so the two
 // differ only in how the counting is done. Nothing goes back to the CPU.
+import { decodePackedDensity } from './density-data.ts';
 
 // TypeScript's DOM types have the GPU* interfaces but not the constant
 // objects, so the flags are spelled out.
@@ -87,24 +88,13 @@ export async function mount(canvas: HTMLCanvasElement, url: string) {
   const gpu = `${adapter.info.vendor} ${adapter.info.architecture} ${adapter.info.description}`.trim();
 
   const bin = await fetch(url).then((r) => r.arrayBuffer());
-  const n = new Uint32Array(bin, 0, 1)[0];
-  const bbox = new Float64Array(bin, 8, 4);
-  const dx = new Uint16Array(bin, 40, n), dy = new Uint16Array(bin, 40 + n * 2, n);
   // Undo the delta coding and deal the Morton-ordered points out across S
   // strides, as 04 does for its blending. The same order keeps the two
   // renderers' inputs identical. For atomicAdd the order matters less: with
   // all points in view, gpu_ms is 0.96 ms for S = 1, 0.51 for 16 and 128,
   // 0.63 for 1024 (RTX 3060; 04's blending: 11.7 ms for S = 1, 2.6 for 128).
   // The first rem strides hold per points, the others one fewer.
-  const S = 128;
-  const per = Math.ceil(n / S), rem = n % S || S;
-  const pos = new Uint32Array(n);
-  for (let i = 0, x = 0, y = 0; i < n; i++) {
-    x = (x + dx[i]) & 0xffff;
-    y = (y + dy[i]) & 0xffff;
-    const r = i % S;
-    pos[r * per - Math.max(0, r - rem) + Math.floor(i / S)] = x | (y << 16);
-  }
+  const { count: n, bbox, points: pos } = decodePackedDensity(bin, 128);
   const pts = device.createBuffer({ size: pos.byteLength, usage: STORAGE, mappedAtCreation: true });
   new Uint32Array(pts.getMappedRange()).set(pos);
   pts.unmap();
