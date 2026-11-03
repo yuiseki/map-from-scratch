@@ -914,6 +914,7 @@
 - [x] `webgpu-002-vertex-pulled-roads` → `examples/webgpu/002-vertex-pulled-roads/` — [pygfx Line Shader](https://github.com/pygfx/pygfx)
 - [x] `webgpu-003-subgroup-density` → `examples/webgpu/003-subgroup-density/` — [WebGPU Subgroups Compute Density](https://developer.chrome.com/blog/new-in-webgpu-151-152)
 - [x] `webgpu-004-osm-node-density` → `examples/webgpu/004-osm-node-density/` — [04-osm-node-density を WebGPU compute で (同じ条件で比べる)](https://github.com/yuiseki/map-from-scratch/tree/main/examples/04-osm-node-density)
+- [x] `webgpu-005-taito-point-cloud` → `examples/webgpu/005-taito-point-cloud/` — [23-taito-point-cloud を WebGPU で (同じ条件で比べる)](https://github.com/yuiseki/map-from-scratch/tree/main/examples/23-taito-point-cloud)
 - [x] `opfs-001-offline-pmtiles` → `examples/opfs/001-offline-pmtiles/` — [OPFS SyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle)
 - [x] `wasm-001-jspi-range-reader` → `examples/wasm/001-jspi-range-reader/` — [V8 JSPI (JavaScript Promise Integration)](https://v8.dev/blog/jspi)
 - [x] `htmlcanvas-001-rich-map-popup` → `examples/htmlcanvas/001-rich-map-popup/` — [WICG HTML-in-Canvas (CanvasDrawElement)](https://html-in-canvas.dev)

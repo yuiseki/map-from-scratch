@@ -21,6 +21,10 @@ const tiles = new Map<string, Tile>();
 let pending = 0, prefetchPending = 0, requests = 0, bytes = 0, points = 0, gpuBytes = 0, lastError = '', scheduled = false;
 let previousDistance = camera.distance;
 let zoomIn = true;
+let visibleTiles: Tile[] = [];
+// Set by the bench: it drives the camera itself, so the page stops drawing
+// (and so stops starting new tile requests).
+let frozen = false;
 const key = (z: number, x: number, y: number) => `${z}/${x}/${y}`;
 
 function tile(z: number, x: number, y: number): Tile {
@@ -30,7 +34,7 @@ function tile(z: number, x: number, y: number): Tile {
   return found;
 }
 function schedule() {
-  if (scheduled) return;
+  if (scheduled || frozen) return;
   scheduled = true;
   requestAnimationFrame(() => { scheduled = false; draw(); });
 }
@@ -60,6 +64,7 @@ function draw() {
   const plan = planTiles(z, mx0 + camera.x / world, my0 - camera.y / world, zoomIn);
   previousDistance = camera.distance;
   const wanted = plan.visible.map(({ z, x, y }) => tile(z, x, y));
+  visibleTiles = wanted;
   const prefetch = plan.prefetch.map(({ z, x, y }) => tile(z, x, y));
   const now = performance.now();
   for (const t of [...wanted, ...prefetch]) t.used = now;
@@ -134,5 +139,17 @@ canvas.addEventListener('pointercancel', () => { drag = null; });
 canvas.addEventListener('wheel', event => {
   event.preventDefault(); camera.distance = Math.max(65, Math.min(9000, camera.distance * Math.exp(event.deltaY * 0.0015))); schedule();
 }, { passive: false });
+// The bench (also webgpu-005's comparison) waits for the view's tiles, then
+// times the renderer alone on them. Not loaded without ?bench.
+if (new URLSearchParams(location.search).has('bench')) {
+  void import('./bench.ts').then(({ run }) => run({
+    gl: renderer.gl, draw: renderer.draw, camera, origin,
+    ready: () => visibleTiles.length > 0 && visibleTiles.every(t => t.mesh || t.failed),
+    freeze: () => { frozen = true; },
+    idle: () => pending === 0,
+    visible: () => visibleTiles.map(({ z, x, y, mesh, failed }) => ({ z, x, y, mesh, failed })),
+    error: () => lastError,
+  }));
+}
 new ResizeObserver(schedule).observe(canvas);
 schedule();

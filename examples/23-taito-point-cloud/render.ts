@@ -74,5 +74,5 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     for (const mesh of meshes) { gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.POINTS, 0, mesh.count); }
     gl.bindVertexArray(null);
   }
-  return { upload, remove, draw };
+  return { gl, upload, remove, draw };
 }

@@ -1,0 +1,110 @@
+id: webgpu-005-taito-point-cloud
+request: >-
+  台東区の点群 PNG を表示したい。
+  （23-taito-point-cloud と同じ依頼を WebGPU で描画し、同じ条件で比べる）
+
+requirements:
+  - id: taito
+    need: 台東区の点群を 3D で見る
+    unmeasured: verification.checks の screen-covered と centre-tile-matches-cpu で確かめる
+  - id: stream
+    need: 必要な範囲と解像度だけを読み込む
+    unmeasured: verification.checks の view-tiles-loaded で確かめる
+  - id: smooth-navigation
+    need: 拡大・回転・移動が滑らか
+    rationale: 60 Hz の 1 フレーム 16.7 ms。23 の WebGL2 版と同等以上の描画速度
+  - id: opens
+    need: WebGPU 対応ブラウザで開ける
+    rationale: 初回 25 タイルの取得・復号・描画が 30 秒以内に完了する
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: opens}
+    - {metric: first_frame_ms, stat: p50, max: 30000, unit: ms, requirement: opens}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-navigation}
+    - {metric: top_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-navigation}
+    - {metric: close_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/005-taito-point-cloud/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 1
+  scenarios:
+    - id: first-frame
+      what: ページの読み込みから、浅草・雷門周辺の表示用 25 タイルが揃った最初の描画の GPU 完了まで
+      metrics: [first_frame_ms]
+    - id: orbit-path
+      what: 23 と同じ。浅草周辺を旋回・ズームする 300 フレーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: top-view
+      what: 23 と同じ。1.4 km 上空から見下ろす 60 フレーム
+      metrics: [top_cpu_ms, top_frame_ms, top_gpu_ms]
+    - id: close-view
+      what: 23 と同じ。低空・接近視点でオーバードローが最も高い 60 フレーム
+      metrics: [close_cpu_ms, close_frame_ms, close_gpu_ms]
+
+datasets:
+  bake: []
+  sources:
+    - id: gsj-mixed-pcpng
+      origin: https://tiles.gsj.jp/tiles/pcpng/mixed/index.html
+      license: GSJ 公開タイルを参照し、GSJ と元データ提供元の東京都を画面に表示する。
+  outputs: []
+  preparation:
+    - GSJ の可逆 WebP タイルを必要時に取得し、点群 PNG 1.0 のカラム別 RGB 符号をブラウザで復号する
+
+performance_knowledge:
+  - id: point-quad-instancing
+    finding: WebGPU には gl_PointSize がないため、各点を 4 頂点 triangle-strip のインスタンスクワッドとして展開し、頂点シェーダー内で視点距離に応じたサイズ計算（1.2〜8.0 px）とクワッド展開を行い、フラグメントシェーダーで discard することで円盤を描画する
+    evidence: 23-taito-point-cloud の gl.POINTS 描画と同等の見た目を維持しつつ、WebGPU パイプラインで高速にラスタライズ可能
+    applies_when: WebGPU で可変サイズの円形ポイントを描画するとき
+  - id: interleaved-vertex-layout
+    finding: 23 の WebGL2 版では位置 12B と色 3B の 2 バッファ（計 15B）に分離していたが、WebGPU には 3 バイト頂点属性フォーマットがないため、1 点 16 バイト（float32x3 位置 + unorm8x4 色）のインターリーブ配置を採用した
+    evidence: バッファバインド数を 1 つに削減し、メモリ読み出し効率を向上
+    applies_when: WebGPU での位置と色属性を持つ点群
+  - id: reversed-z-precision
+    finding: 浮動小数点深度バッファ depth32float と Reversed-Z（near = 1.0, far = 0.0）を採用することで、0.5 m の近距離から 10 km の遠景まで z-fighting のない安定した前後関係判定を実現した
+    evidence: 低空近接視点から 1.4 km 俯瞰視点まで正確な深度テストを維持
+    applies_when: 広域かつ高密度な 3D 点群・メッシュ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU、Fetch、createImageBitmap
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/webgpu/005-taito-point-cloud/index.html
+      - examples/webgpu/005-taito-point-cloud/main.ts
+      - examples/webgpu/005-taito-point-cloud/render.ts
+      - examples/23-taito-point-cloud/decode.ts
+      - examples/23-taito-point-cloud/tiles.ts
+    dependencies: []
+    why: 23-taito-point-cloud の WebGL2 実装と全く同一のデータ・カメラ・タイル計画を用い、WebGPU パイプラインでの描画速度と GPU 負荷を公平に比較する。
+  alternatives:
+    - option: WebGL2 による gl.POINTS 描画
+      rejected_because: それが 23。この例は比べる相手として作る。
+  not_doing: [3D Tiles, 点群の空間 LOD 木, 点群の分類表示, 地図ラベル]
+
+verification:
+  checks:
+    - id: view-tiles-loaded
+      what: 浅草周辺の表示用 25 タイルのうち大半が正常に取得・復号されメッシュ化されること
+      how: visibleTiles の状態を検証
+      expected: 20タイル以上がロード成功しエラーがないこと
+    - id: screen-covered
+      what: 画面の大半が点群で覆われていること
+      how: 描画バッファを読み戻し、背景色以外のピクセル割合を計算
+      expected: 画面の 50% 以上が点群ピクセルであること
+    - id: colours-vary
+      what: 点群が単色でなく多様な RGB カラーで描かれていること
+      how: 画面上の異なる 4-bit 色数をカウント
+      expected: 300 色以上の異なる色が存在すること
+    - id: centre-tile-matches-cpu
+      what: 中心タイルが CPU のリファレンス splat 描画と画素単位で一致すること
+      how: 中心タイルの点群を CPU でソフトウェアラスタライズし、GPU 描画結果と画素色・深度を比較
+      expected: 90% 以上の画素で色が一致し、不要な画素の漏れが 2% 以下であること
