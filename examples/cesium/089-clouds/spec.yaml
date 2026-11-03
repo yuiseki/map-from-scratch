@@ -1,0 +1,80 @@
+id: cesium-089-clouds
+request: >-
+  CesiumJS の showcase である「Clouds」のように、立体的な積雲（Cumulus Cloud）の
+  マルチパフ構造、太陽光による陰影（上面の銀白色と下面の散乱影）、風によるドリフト移動、
+  および丘陵地表への動的雲影（Cloud Shadow）の投影をレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 積雲と地表影の描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 雲塊と地形が現れる
+  - id: 3d-volumetric-clouds
+    need: 大気空背景と地形の上に立体積雲と雲影が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-volumetric-clouds}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/089-clouds/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期雲塊バッファと地形メッシュの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 雲の風ドリフトとオービット中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に積雲マルチパフ配列と地形標高グリッドをメモリ内で動的生成
+
+performance_knowledge:
+  - id: multi-puff-volumetric-billboarding
+    finding: 複数の球状パフを組み合わせたポイントスプライトに法線推定と太陽光減衰を適用することで、重い3Dテクスチャやボリュームレイマーチングなしにリアルな積雲を高速描画可能
+    evidence: 1 ドローコールで 100 以上の雲パフを高速描画
+    applies_when: 積雲・煙・ガスボリューム描画
+  - id: analytical-ground-shadow-projection
+    finding: 雲中心座標から太陽光ベクトルに沿って地面への投影座標をシェーダー内で直接計算して地形を減衰させることで、シャドウマップなしにシャドウ描画を実現可能
+    evidence: シャドウマップテクスチャ不要でメモリ消費ゼロ
+    applies_when: 雲影・飛行物体シャドウ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/089-clouds/index.html
+      - examples/cesium/089-clouds/main.ts
+      - examples/cesium/089-clouds/render.ts
+      - examples/cesium/089-clouds/clouds.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 3D テクスチャによる重いレイマーチング（パフ法線推定ポイントスプライトを採用）
+
+verification:
+  checks:
+    - id: sky-dome-cleared
+      what: 画面上部が大気空色で描画されている
+      how: gl.readPixels で上部ピクセルを取得して確認
+      expected: 空色グラデーションと一致すること
+    - id: terrain-and-shadows-rendered
+      what: 画面下部に起伏ある地形が描画されている
+      how: gl.readPixels で下部ピクセルを取得して確認
+      expected: 地形サーフェスピクセルが描画されていること
+    - id: cumulus-clouds-rendered
+      what: 空間内に太陽光を浴びた積雲パフが描画されている
+      how: gl.readPixels で雲塊領域のピクセル輝度およびパフ数を確認
+      expected: 白銀の雲ピクセルが検出されるか生存パフ数が正しく保持されていること

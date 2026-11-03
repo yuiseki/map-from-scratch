@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cesium-089-clouds — 3D Volumetric Cumulus Clouds</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #688295; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    .overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      color: #fff;
+      max-width: 320px;
+      pointer-events: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    h1 { font-size: 15px; margin-bottom: 6px; font-weight: 600; color: #38bdf8; }
+    p { font-size: 12px; color: #94a3b8; line-height: 1.4; margin-bottom: 12px; }
+    .controls { display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+    .control-row { display: flex; justify-content: space-between; align-items: center; }
+    label { color: #cbd5e1; }
+    input[type="range"] {
+      background: #1e293b;
+      accent-color: #38bdf8;
+    }
+    .stats { margin-top: 12px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="overlay">
+    <h1>Cesium 3D Cumulus Clouds</h1>
+    <p>Volumetric cumulus cloud clusters drifting across a 3D landscape with directional sun shading and dynamic ground shadows.</p>
+    <div class="controls">
+      <div class="control-row">
+        <label for="windSlider">Wind Speed</label>
+        <input type="range" id="windSlider" min="0" max="100" value="35">
+      </div>
+      <div class="control-row">
+        <label for="sunSlider">Sun Angle</label>
+        <input type="range" id="sunSlider" min="0" max="6.28" step="0.05" value="0.9">
+      </div>
+      <div class="control-row">
+        <label for="autoDrift">Wind Drift</label>
+        <input type="checkbox" id="autoDrift" checked>
+      </div>
+    </div>
+    <div class="stats">
+      <span>Drag to orbit • Wheel to zoom</span>
+      <div id="puffCount">Cloud Puffs: 112</div>
+      <div id="fps">FPS: --</div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

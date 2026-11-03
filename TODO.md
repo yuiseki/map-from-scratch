@@ -636,7 +636,7 @@
 - [ ] `cesium-086-clipping-regions` → `examples/cesium/086-clipping-regions/` — [Clipping Regions](https://sandcastle.cesium.com/?src=clipping-regions)
 - [ ] `cesium-087-clock` → `examples/cesium/087-clock/` — [Clock](https://sandcastle.cesium.com/?src=clock)
 - [ ] `cesium-088-cloud-parameters` → `examples/cesium/088-cloud-parameters/` — [Cloud Parameters](https://sandcastle.cesium.com/?src=cloud-parameters)
-- [ ] `cesium-089-clouds` → `examples/cesium/089-clouds/` — [Clouds](https://sandcastle.cesium.com/?src=clouds)
+- [x] `cesium-089-clouds` → `examples/cesium/089-clouds/` — [Clouds](https://sandcastle.cesium.com/?src=clouds)
 - [ ] `cesium-090-clustering` → `examples/cesium/090-clustering/` — [Clustering](https://sandcastle.cesium.com/?src=clustering)
 - [ ] `cesium-091-constant-lod-dev` → `examples/cesium/091-constant-lod-dev/` — [Constant Lod Dev](https://sandcastle.cesium.com/?src=constant-lod-dev)
 - [ ] `cesium-092-coplanar-polygon-dev` → `examples/cesium/092-coplanar-polygon-dev/` — [Coplanar Polygon Dev](https://sandcastle.cesium.com/?src=coplanar-polygon-dev)
