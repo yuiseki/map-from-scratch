@@ -1,4 +1,5 @@
 // WebGPU 1M Point Subgroup Density Binning & KDE Heatmap Renderer
+import { parseSubgroupPoints } from './point-data.ts';
 //
 // Features:
 // - WGSL compute shader with `enable subgroups;`
@@ -81,14 +82,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   device.lost.then(info => console.error('WebGPU device lost:', info));
 
   // Load baked 1M points binary
-  const ab = await data;
-  const dv = new DataView(ab);
-  const magic = dv.getUint32(0, true);
-  if (magic !== 0x47535542) throw new Error(`Invalid magic: 0x${magic.toString(16)}`);
-  const pointCount = dv.getUint32(4, true);
-
-  // Points buffer (u32 per point: low 16 bits = x, high 16 bits = y)
-  const pointBytes = new Uint8Array(ab, 40, pointCount * 4);
+  const { count: pointCount, points: pointBytes } = parseSubgroupPoints(await data);
   const pointBuffer = device.createBuffer({
     size: pointBytes.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,

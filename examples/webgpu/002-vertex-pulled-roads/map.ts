@@ -1,4 +1,5 @@
 // examples/webgpu/002-vertex-pulled-roads/map.ts
+import { parseRoadData } from './road-data.ts';
 
 const GPUBufferUsage = {
   MAP_READ: 0x0001,
@@ -65,18 +66,8 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   device.lost.then(info => console.error('WebGPU device lost:', info));
 
   // Load baked roads binary
-  const ab = await data;
-  const dv = new DataView(ab);
-
-  const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
-  if (magic !== 'VPRD') throw new Error(`Invalid magic: ${magic}`);
-
-  const roadCount = dv.getUint32(6, true);
-  const nodeCount = dv.getUint32(10, true);
-  const segmentCount = dv.getUint32(14, true);
-
+  const { roadCount, nodeCount, segmentCount, nodes: nodeData } = parseRoadData(await data);
   const nodeBytes = nodeCount * 8;
-  const nodeData = new Uint32Array(ab, 32, nodeCount * 2);
 
   let uploadCount = 0;
 
