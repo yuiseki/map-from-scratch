@@ -2,7 +2,7 @@
 // directories and JPEG tile bytes. Each request is an explicit HTTP Range.
 // Format: https://github.com/protomaps/PMTiles/blob/main/spec/v3/spec.md
 const URL = 'https://z.yuiseki.net/static/gsi/seamlessphoto/seamlessphoto512.pmtiles';
-interface Entry { id: number; offset: number; length: number; run: number }
+export interface Entry { id: number; offset: number; length: number; run: number }
 interface Header { root: number; rootLength: number; leaves: number; data: number; minZoom: number; maxZoom: number }
 const T = [0, 1, 5, 21, 85, 341, 1365, 5461, 21845, 87381, 349525, 1398101, 5592405, 22369621, 89478485, 357913941, 1431655765, 5726623061];
 
@@ -31,7 +31,7 @@ async function ungzip(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-function directory(bytes: Uint8Array): Entry[] {
+export function directory(bytes: Uint8Array): Entry[] {
   let p = 0;
   const varint = (): number => {
     let value = 0, factor = 1, byte: number;
@@ -55,7 +55,7 @@ function directory(bytes: Uint8Array): Entry[] {
   return entries;
 }
 
-function tileId(z: number, x: number, y: number): number {
+export function tileId(z: number, x: number, y: number): number {
   const n = 2 ** z;
   let id = 0;
   for (let s = n / 2; s >= 1; s /= 2) {
@@ -69,7 +69,7 @@ function tileId(z: number, x: number, y: number): number {
   return T[z] + id;
 }
 
-function find(entries: Entry[], id: number): Entry | null {
+export function find(entries: Entry[], id: number): Entry | null {
   let lo = 0, hi = entries.length - 1, hit = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
