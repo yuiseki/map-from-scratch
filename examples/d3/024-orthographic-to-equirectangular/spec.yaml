@@ -1,6 +1,6 @@
 id: d3-024-orthographic-to-equirectangular
 request: >-
-  D3.js の残りのTODOから派手な3D地球儀の例を専用描画器で再実装する。
+  スライダーを動かして、正射図法の地球儀を正距円筒図法の世界地図へ連続的に変形させたい。
 requirements:
   - id: independent-renderer
     need: 元例の目的を実行時ライブラリなしで再現する

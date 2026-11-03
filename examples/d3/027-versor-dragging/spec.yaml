@@ -1,6 +1,6 @@
 id: d3-027-versor-dragging
 request: >-
-  D3.js の残りのTODOから派手な3D地球儀の例を専用描画器で再実装する。
+  ドラッグで地球儀を回転させ、操作に合わせて地図の向きを追従させたい。
 requirements:
   - id: independent-renderer
     need: 元例の目的を実行時ライブラリなしで再現する

@@ -1,6 +1,6 @@
 id: d3-025-world-tour
 request: >-
-  D3.js の残りのTODOから派手な3D地球儀の例を専用描画器で再実装する。
+  地球上の訪問先を大圏航路で結び、カメラが順番に巡る世界旅行を見たい。
 requirements:
   - id: independent-renderer
     need: 元例の目的を実行時ライブラリなしで再現する

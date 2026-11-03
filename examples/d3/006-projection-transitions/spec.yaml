@@ -1,6 +1,6 @@
 id: d3-006-projection-transitions
 request: >-
-  D3.js の残りのTODOから派手な3D地球儀の例を専用描画器で再実装する。
+  正射図法の地球儀から正距円筒図法の世界地図へ、陸地と経緯線を滑らかに変形させたい。
 requirements:
   - id: independent-renderer
     need: 元例の目的を実行時ライブラリなしで再現する
