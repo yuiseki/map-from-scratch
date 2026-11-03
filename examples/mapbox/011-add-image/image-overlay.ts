@@ -50,6 +50,15 @@ const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
 
+export function overlayScreenRect(centerMx: number, centerMy: number, scale: number, width: number, height: number,
+  bounds: { west: number; east: number; north: number; south: number }): { x: number; y: number; width: number; height: number } {
+  const x0 = width / 2 + (mercX(bounds.west) - centerMx) * scale;
+  const x1 = width / 2 + (mercX(bounds.east) - centerMx) * scale;
+  const y0 = height / 2 + (mercY(bounds.north) - centerMy) * scale;
+  const y1 = height / 2 + (mercY(bounds.south) - centerMy) * scale;
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+}
+
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
 
@@ -271,11 +280,9 @@ export async function mount(
     // The image quad is linear in projected space, so an axis-aligned bbox is
     // exactly one drawImage call. Rotated corners would need a transform.
     if (overlay) {
-      const x0 = width / 2 + (mercX(WEST) - centerMx) * scale;
-      const x1 = width / 2 + (mercX(EAST) - centerMx) * scale;
-      const y0 = height / 2 + (mercY(NORTH) - centerMy) * scale;
-      const y1 = height / 2 + (mercY(SOUTH) - centerMy) * scale;
-      ctx.drawImage(overlay, x0, y0, x1 - x0, y1 - y0);
+      const rect = overlayScreenRect(centerMx, centerMy, scale, width, height,
+        { west: WEST, east: EAST, north: NORTH, south: SOUTH });
+      ctx.drawImage(overlay, rect.x, rect.y, rect.width, rect.height);
     }
 
     ctx.restore();
