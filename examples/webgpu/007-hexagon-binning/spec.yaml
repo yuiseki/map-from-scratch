@@ -1,0 +1,91 @@
+id: webgpu-007-hexagon-binning
+request: >-
+  英国の交通事故約14万件を WebGPU Compute Shader でリアルタイムに六角形セルへ集計し、
+  件数を 3D 六角柱の高さと色で立体可視化したい。
+  （deckgl-012-hexagon-layer の CPU 再集計を WebGPU Compute で超高速化する）
+
+requirements:
+  - id: realtime-binning
+    need: 半径スライダーの変更に伴う再集計が GPU 上で瞬時に完了する
+    rationale: WebGL2 版の CPU 再集計（約 20 ms）に対し、WebGPU Compute Shader では 2 ms 以内
+  - id: hexagon-extrusion
+    need: 各セルの事故件数を 3D 六角柱の高さとヒートマップ色で表現する
+    unmeasured: verification.checks の screen-covered と columns-rendered で確かめる
+  - id: smooth-navigation
+    need: カメラの回転・パン・ズームが 60 fps で滑らかに動作する
+    rationale: 60 Hz の 1 フレーム 16.7 ms 以内
+  - id: opens
+    need: データの読み込みと初期化が高速に完了する
+    rationale: 14 万点のバイナリ取得と GPU パイプライン初期化が 1.5 秒以内
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: opens}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: opens}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-navigation}
+    - {metric: rebin_ms, stat: p95, max: 2.0, unit: ms, requirement: realtime-binning}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/007-hexagon-binning/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 1
+  scenarios:
+    - id: first-frame
+      what: ページの読み込みから、14 万点の Compute 集計と初回 3D 描画完了まで
+      metrics: [first_frame_ms]
+    - id: orbit-path
+      what: ロンドン周辺の事故密集地帯を旋回・ズームする 300 フレーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: rebin-sweep
+      what: 半径を 500m から 3000m まで連続的に変化させながら GPU Compute でリアルタイム再集計する 60 回
+      metrics: [rebin_ms]
+
+datasets:
+  bake: [node, examples/deckgl/012-hexagon-layer/bake.ts]
+  sources:
+    - id: deckgl-uk-road-accidents
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/3d-heatmap
+      license: UK Open Government Licence (OGL)
+  outputs: [data/baked/deckgl-012-hexagon-layer/points.bin]
+  preparation:
+    - deckgl-012-hexagon-layer と同一の 140,029 件の量子化座標バイナリを利用
+
+performance_knowledge:
+  - deck.gl や WebGL2 版では半径変更時に CPU 側で 14 万件の点をループ集計（約 20 ms）していたが、WebGPU Compute Shader により 0.5 ms 以下で全並列集計できる。
+  - Cube Coordinates Rounding アルゴリズムにより、任意の平面座標から Hex Axial 座標への写像を分岐なしの算術演算のみで解く。
+  - 単位六角柱（24 頂点、18 三角形）のインデックスメッシュを基本形状とし、GPU 集計されたアクティブセルをインスタンス描画することで、CPU 側のジオメトリ再構築を完全排除する。
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU (Compute Shader + Render Pipeline)
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/webgpu/007-hexagon-binning/index.html
+      - examples/webgpu/007-hexagon-binning/main.ts
+      - examples/webgpu/007-hexagon-binning/render.ts
+    dependencies: []
+    why: 14 万点のポイント集計を Compute Shader で並列実行し、得られたセルグリッドを直接 3D 六角柱としてインスタンス描画する
+  alternatives:
+    - WebGL2 では Transform Feedback や float テクスチャレンダリングのオーバーヘッドが大きく、CPU 集計に頼らざるを得なかった
+  not_doing: [サーバー側動的集計, 事故詳細属性のフィルタリング, 外部地図ライブラリ]
+
+verification:
+  checks:
+    - id: screen-covered
+      what: 画面の 10% 以上に 3D 六角柱が描画されていること
+      how: 画面の中央 1280x800 画素を読み戻し、背景色 [14, 22, 32] 以外の画素比率を検査
+      expected: ratio >= 0.10
+    - id: count-conservation
+      what: GPU Compute で集計された全セルの合計カウントが元データ点数 140,029 件と完全に一致すること
+      how: セルバッファの count の総和を検証
+      expected: sum == 140029
+    - id: radius-adapts
+      what: 半径を広げると集計される六角形セルの総数が減少し、1セルあたりの最大事故件数が増加すること
+      how: 半径 800m と 2000m の結果を比較
+      expected: cells_800m > cells_2000m

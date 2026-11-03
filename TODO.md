@@ -916,7 +916,7 @@
 - [x] `webgpu-004-osm-node-density` → `examples/webgpu/004-osm-node-density/` — [04-osm-node-density を WebGPU compute で (同じ条件で比べる)](https://github.com/yuiseki/map-from-scratch/tree/main/examples/04-osm-node-density)
 - [x] `webgpu-005-taito-point-cloud` → `examples/webgpu/005-taito-point-cloud/` — [23-taito-point-cloud を WebGPU で (同じ条件で比べる)](https://github.com/yuiseki/map-from-scratch/tree/main/examples/23-taito-point-cloud)
 - [x] `webgpu-006-h3-population` → `examples/webgpu/006-h3-population/` — [19-kontur-h3-population を WebGPU 3D 六角柱押し出しで](https://github.com/yuiseki/map-from-scratch/tree/main/examples/19-kontur-h3-population)
-- [ ] `webgpu-007-hexagon-binning` → `examples/webgpu/007-hexagon-binning/` — [数百万点の WebGPU Compute リアルタイム 3D ヘクスビン集計](https://github.com/yuiseki/map-from-scratch/tree/main/examples/deckgl/012-hexagon-layer)
+- [x] `webgpu-007-hexagon-binning` → `examples/webgpu/007-hexagon-binning/` — [数百万点の WebGPU Compute リアルタイム 3D ヘクスビン集計](https://github.com/yuiseki/map-from-scratch/tree/main/examples/deckgl/012-hexagon-layer)
 - [ ] `webgpu-008-trips-animation` → `examples/webgpu/008-trips-animation/` — [数十万軌跡の WebGPU 移動体トレイルアニメーション](https://github.com/yuiseki/map-from-scratch/tree/main/examples/deckgl/025-trips-layer)
 - [x] `opfs-001-offline-pmtiles` → `examples/opfs/001-offline-pmtiles/` — [OPFS SyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemSyncAccessHandle)
 - [x] `wasm-001-jspi-range-reader` → `examples/wasm/001-jspi-range-reader/` — [V8 JSPI (JavaScript Promise Integration)](https://v8.dev/blog/jspi)
