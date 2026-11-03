@@ -3,6 +3,7 @@ import type { Renderer } from './render.ts';
 import { project, unproject, limbPx, frame, type View } from './camera.ts';
 import { RAMP, rampTexture } from './heat.ts';
 import { mercX, mercY } from './tiles.ts';
+import { jumpSteps } from './continuity.ts';
 
 interface Place { lon: number; lat: number; h: number }
 interface Truth { dense: Place; slope: Place; empty: Place; peak: Place }
@@ -21,8 +22,10 @@ export async function run(r: Renderer, firstFrameMs: number, worldReady: Promise
 
   // Pixels of the frame just drawn (same task, so the drawing buffer is still there), y down.
   const read = (x: number, y: number, w: number, h: number) => {
+    // Whole pixels: a fractional width (a window spanning two projected points) made the row
+    // offsets below fractional, every pixel read undefined, and heat-on-slope-displaced failed.
     x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y));
-    w = Math.min(w, W() - x); h = Math.min(h, H() - y);
+    w = Math.min(Math.round(w), W() - x); h = Math.min(Math.round(h), H() - y);
     const px = new Uint8Array(w * h * 4);
     gl.readPixels(x, H() - y - h, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const flipped = new Uint8Array(px.length);
@@ -169,16 +172,18 @@ export async function run(r: Renderer, firstFrameMs: number, worldReady: Promise
   {
     const lum = () => { const { px } = read(0, 0, W(), H()); const o: number[] = []; for (let i = 0; i < px.length; i += 4 * 37) o.push(px[i] + px[i + 1] + px[i + 2]); return o; };
     let prev: number[] | null = null;
-    const diffs: number[] = [];
+    const diffs: number[] = [], zs: number[] = [];
     for (let z = 9; z >= 0.5; z -= 0.25) {
       set({ zoom: z });
       r.draw();
       const cur = lum();
-      if (prev) { let s = 0; for (let i = 0; i < cur.length; i++) s += Math.abs(cur[i] - prev[i]); diffs.push(s / cur.length / 3); }
+      if (prev) { let s = 0; for (let i = 0; i < cur.length; i++) s += Math.abs(cur[i] - prev[i]); diffs.push(s / cur.length / 3); zs.push(z); }
       prev = cur;
     }
     const sorted = [...diffs].sort((a, b) => a - b), med = sorted[sorted.length >> 1], max = sorted[sorted.length - 1];
-    emit({ check: 'zoom-out-continuous', pass: max <= 3 * med + 6, detail: `mean |dL| per 0.25 zoom step: median ${med.toFixed(2)}, max ${max.toFixed(2)} over ${diffs.length} steps` });
+    const jumps = jumpSteps(diffs);
+    emit({ check: 'zoom-out-continuous', pass: jumps.length === 0,
+      detail: `steps changing > 2x both neighbours + 6: ${jumps.map((i) => `zoom ${(zs[i] + 0.25).toFixed(2)} -> ${zs[i]} (${diffs[i].toFixed(1)})`).join(', ') || 'none'}; mean |dL| per 0.25 step: median ${med.toFixed(2)}, max ${max.toFixed(2)}; ${diffs.map((d, i) => `${zs[i]}:${d.toFixed(1)}`).join(' ')}` });
   }
 
   // 7. Drag rotates and tilts, the wheel zooms about the pointer (through the page's own handlers).
@@ -190,6 +195,7 @@ export async function run(r: Renderer, firstFrameMs: number, worldReady: Promise
     const b0 = v.bearing, p0 = v.pitch;
     ptr('pointerdown', 300, 300); ptr('pointermove', 400, 300); ptr('pointermove', 400, 250); ptr('pointerup', 400, 250);
     const turned = v.bearing < b0 - 30, tilted = v.pitch > p0 + 5 || v.pitch === 80;
+    const b1 = v.bearing, p1 = v.pitch;
     set({});
     const sx = 0.7 * c.clientWidth, sy = 0.7 * c.clientHeight;
     const g = unproject(frame(v), sx * dpr, sy * dpr, v.centerH)!;
@@ -198,7 +204,7 @@ export async function run(r: Renderer, firstFrameMs: number, worldReady: Promise
     const after = project(frame(v), g[0], g[1], v.centerH)!;
     const kept = Math.hypot(after[0] - sx * dpr, after[1] - sy * dpr);
     emit({ check: 'drag-and-wheel', pass: turned && tilted && v.zoom > z0 && kept < 3,
-      detail: `bearing ${b0.toFixed(1)} -> ${v.bearing.toFixed(1)}, pitch ${p0} -> ${v.pitch.toFixed(1)}; zoom ${z0} -> ${v.zoom.toFixed(2)}, ground under pointer moved ${kept.toFixed(2)} px` });
+      detail: `bearing ${b0.toFixed(1)} -> ${b1.toFixed(1)}, pitch ${p0} -> ${p1.toFixed(1)}; zoom ${z0} -> ${v.zoom.toFixed(2)}, ground under pointer moved ${kept.toFixed(2)} px` });
   }
 
   // Timing: orbit at the opening view (heat unchanged), a zoom out to the globe and back

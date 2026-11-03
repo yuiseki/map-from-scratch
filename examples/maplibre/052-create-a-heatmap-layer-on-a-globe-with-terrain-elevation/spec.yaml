@@ -107,9 +107,25 @@ performance_knowledge:
       P99.9 では 1 件が t=0.09 でほぼ透明、K=10 では谷が薄い。heat.test.ts の開始視点のヒストグラムで、旧は熱い端 29.7%、新は 10% 未満を確かめる。
       半径 10 と 30 の熱い画素は 73,947 → 134,748 から 98,153 → 144,886（1.48 倍、閾値 1.4 倍は据え置き）。コードは gzip で 14,024 → 14,720 B
     applies_when: 点の密度が数桁にわたって偏り、MapLibre 流の線形の色付けでは飽和するヒートマップ。年の絞り込みや半径で密度の桁が変わる場合も Dref が追従する
+  - id: three-failing-checks
+    finding: >-
+      初めて ?bench を走らせたとき失敗した3つの check は、2つが検査側、1つが描画器（操作）側の誤りだった。
+      (1) heat-on-slope-displaced: 描画は正しく、1 点の熱は高さ込みの投影位置 (640, 319) に出ていた。検査の read() が窓の幅 60.00000000001 のような小数を
+      そのまま使い、行の位置が小数になって全画素が undefined、どの画素もランプ色と判定されなかった。read() で幅と高さを整数に丸めた。
+      (2) zoom-out-continuous: 跳びはなかった。ズーム 2 から 0 で元例の atmosphere-blend（interpolate linear 0:1, 2:0）が空を青から宇宙の色へ変え、
+      0.25 刻みの各段が 21〜28 変わる（他の段は約 3）。全段の中央値と比べる基準（最大 ≤ 3 × 中央値 + 6）はこの意図したフェードで落ちる。
+      両隣のどちらよりも 2 倍 + 6 を超えて変わる段を跳びとする基準（continuity.ts）に変えた。単独のスパイクは端でもフェードの途中でも検出する（continuity.test.ts）。
+      (3) drag-and-wheel: pointerdown で setPointerCapture を先に呼んでおり、合成の PointerEvent（ブラウザが知らない pointerId）では例外が出て、ドラッグの開始点が記録されなかった。
+      開始点を先に記録し、キャプチャの失敗は無視する（controls.ts bindDrag）。ホイールは zoomAt が「画面上の誤差だけ中心を pan する」反復で、傾き 70 度・画面の右下 70% の位置では
+      1 回の pan で点が誤差より大きく動き、誤差の符号が毎回反転して 10 回後も 18.9 px 残った（controls.test.ts は傾き 60 度までしか見ていなかった）。
+      ポインタの下の地面の経緯度の差だけ中心を動かす反復に変え、傾き 70・80 度で 1 px 未満（実ページで 0.00 px）
+    evidence: >-
+      修正後の ?bench（RTX 3060、計時なし）: heat-on-slope-displaced は高さによるずれ 36.5 px、最も熱い画素（t 0.97）が高さ込みの位置から 0.0 px、
+      zoom-out-continuous は跳び 0 段（中央値 3.20、最大 28.01 はズーム 0.75→0.5 のフェード）、drag-and-wheel は方位 72→32、傾き 70→80、ポインタの下の地面 0.00 px
+    applies_when: 窓の大きさを投影座標から作る readPixels の検査、意図したフェードを含むズーム経路の連続性の検査、傾きの大きいカメラでの点を保つズーム、合成イベントでの操作の検査
   - id: unmeasured-yet
     finding: 計測は利用者の指示で後回し（2026-11-03）。予算と check は書いたがまだ一度も走らせていない
-    evidence: bin/mfs bench は未実行。開発サーバと Chromium（playwright）で開始視点と縮小した地球儀を目視し、地形・陰影・ヒートマップ・大気の光が出ることだけ確かめた。2026-11-03 の色付けの修正で、?bench のページを GPU つきの Chromium で開いて check だけ読んだ（計時はしていない）: heat-on-slope-displaced（窓にランプ色の画素がない）、zoom-out-continuous（最大 28.0、中央値 3.2〜3.4）、drag-and-wheel（合成の PointerEvent で方位が変わらない）は修正の前も後も失敗し、色付けとは別の問題
+    evidence: bin/mfs bench は未実行。開発サーバと Chromium（playwright）で開始視点と縮小した地球儀を目視し、地形・陰影・ヒートマップ・大気の光が出ることだけ確かめた。2026-11-03 の色付けの修正で、?bench のページを GPU つきの Chromium で開いて check だけ読んだ（計時はしていない）: heat-on-slope-displaced（窓にランプ色の画素がない）、zoom-out-continuous（最大 28.0、中央値 3.2〜3.4）、drag-and-wheel（合成の PointerEvent で方位が変わらない）は修正の前も後も失敗し、色付けとは別の問題だった。同じ日に3つとも直し、?bench の 8 つの check がすべて通った（id: three-failing-checks）
     applies_when: 次の計測パスで最初に確かめる
 
 architecture_selection:
@@ -178,7 +194,7 @@ verification:
     - id: zoom-out-continuous
       what: 地形から地球儀まで縮小する間に表示が飛ばない
       how: ズーム 9 から 0.5 まで 0.25 刻みで描き、隣り合うフレームの輝度差の平均を求める
-      expected: 最大値が中央値の 3 倍 + 6 以下
+      expected: 両隣のどちらよりも 2 倍 + 6 を超えて変わる段がない（continuity.ts）。ズーム 2〜0 の大気のフェードは各段 21〜28 で続くので跳びではない
     - id: drag-and-wheel
       what: ドラッグで回転と傾き、ホイールでポインタの下を保った拡大
       how: canvas に PointerEvent（右へ 100 px、上へ 50 px）と WheelEvent（画面の 70% の位置、deltaY -100）を送る

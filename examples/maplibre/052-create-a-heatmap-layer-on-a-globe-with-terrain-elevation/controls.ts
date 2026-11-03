@@ -32,12 +32,41 @@ export function zoomAt(v: View, sx: number, sy: number, dz: number): void {
   const before = unproject(frame(v), sx, sy, v.centerH);
   v.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, v.zoom + dz));
   if (!before) return;
-  // Pan by how far that ground point moved, until it is back under the pointer.
+  // Move the centre on the ground by how far the ground under the pointer slid, until the
+  // pointer is over the old ground point again. Correcting in ground coordinates converges
+  // at any pitch; panning by the screen error (pan) overshot at pitch 70, where a step of the
+  // centre moves a point low on the screen by much more than the same step in pixels.
   for (let it = 0; it < 10; it++) {
+    const now = unproject(frame(v), sx, sy, v.centerH);
+    if (!now) return;
+    v.lon += before[0] - now[0];
+    v.lat = Math.max(-85, Math.min(85, v.lat + before[1] - now[1]));
     const p = project(frame(v), before[0], before[1], v.centerH);
-    if (!p) return;
-    const ex = sx - p[0], ey = sy - p[1];
-    if (Math.hypot(ex, ey) < 0.1) return;
-    pan(v, ex, ey);
+    if (!p || Math.hypot(sx - p[0], sy - p[1]) < 0.05) return;
   }
+}
+
+export interface DragTarget {
+  addEventListener(type: string, fn: (e: { clientX: number; clientY: number; pointerId: number; shiftKey?: boolean }) => void): void;
+  setPointerCapture(id: number): void;
+}
+
+/** Pointer drag on an element: move(dx, dy, shift) in CSS px per pointermove while a pointer is down. */
+export function bindDrag(el: DragTarget, move: (dx: number, dy: number, shift: boolean) => void): void {
+  let last: { x: number; y: number } | null = null;
+  el.addEventListener('pointerdown', (e) => {
+    last = { x: e.clientX, y: e.clientY };
+    // Capture keeps the drag when the pointer leaves the canvas. It throws for a pointer the
+    // browser does not know as active (a synthetic event); the drag must not depend on it.
+    try { el.setPointerCapture(e.pointerId); } catch { /* drag without capture */ }
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!last) return;
+    const dx = e.clientX - last.x, dy = e.clientY - last.y;
+    last = { x: e.clientX, y: e.clientY };
+    move(dx, dy, !!e.shiftKey);
+  });
+  const end = () => { last = null; };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
 }

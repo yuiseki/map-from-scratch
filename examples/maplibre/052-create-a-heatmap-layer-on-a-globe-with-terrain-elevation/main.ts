@@ -1,7 +1,7 @@
 import { Renderer, type Heights } from './render.ts';
 import { decodePoints, yearRange } from './points.ts';
 import { heightsFromRGBA } from './tiles.ts';
-import { orbit, pan, zoomAt } from './controls.ts';
+import { orbit, pan, zoomAt, bindDrag } from './controls.ts';
 import type { View } from './camera.ts';
 
 const DATA = '../../../data/baked/maplibre-052-create-a-heatmap-layer-on-a-globe-with-terrain-elevation/';
@@ -70,19 +70,11 @@ const slider = (id: string, set: (n: number) => void) => {
 slider('radius', (n) => { r.radius = n; });
 slider('intensity', (n) => { r.intensity = n; });
 
-let last: { x: number; y: number } | null = null;
-canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); last = { x: e.clientX, y: e.clientY }; });
-canvas.addEventListener('pointermove', (e) => {
-  if (!last) return;
+bindDrag(canvas, (cx, cy, shift) => {
   const dpr = canvas.width / canvas.clientWidth;
-  const dx = (e.clientX - last.x) * dpr, dy = (e.clientY - last.y) * dpr;
-  last = { x: e.clientX, y: e.clientY };
-  if (e.shiftKey) pan(view, dx, dy); else orbit(view, dx / dpr, dy / dpr);
+  if (shift) pan(view, cx * dpr, cy * dpr); else orbit(view, cx, cy);
   redraw();
 });
-const end = () => { last = null; };
-canvas.addEventListener('pointerup', end);
-canvas.addEventListener('pointercancel', end);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const dpr = canvas.width / canvas.clientWidth, rect = canvas.getBoundingClientRect();
