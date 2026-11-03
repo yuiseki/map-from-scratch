@@ -13,9 +13,9 @@ export interface WorldMap {
 type Ring = [number, number][];
 type Polygon = Ring[];
 
-const mercY = (lat: number): number =>
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercX = (lon: number): number => (lon + 180) / 360;
 
 export async function mount(
   canvas: HTMLCanvasElement,

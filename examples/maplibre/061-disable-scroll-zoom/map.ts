@@ -21,6 +21,7 @@ const PORTLAND_LAT = 45.52;
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
+export const wheelZoomTarget = (zoom: number, deltaY: number): number => zoom + (deltaY < 0 ? 0.25 : -0.25);
 
 const defaultCenterMx = mercX(PORTLAND_LNG);
 const defaultCenterMy = mercY(PORTLAND_LAT);
@@ -142,8 +143,7 @@ export async function mount(
     if (!scrollZoomEnabled) {
       return;
     }
-    const dz = e.deltaY < 0 ? 0.25 : -0.25;
-    zoomAt(e, zoom + dz);
+    zoomAt(e, wheelZoomTarget(zoom, e.deltaY));
   }
 
   // Zoom keeping the point under the pointer still (MapLibre, Leaflet do).
