@@ -779,7 +779,7 @@
 - [ ] `cesium-229-parallels-and-meridians` → `examples/cesium/229-parallels-and-meridians/` — [Parallels And Meridians](https://sandcastle.cesium.com/?src=parallels-and-meridians)
 - [ ] `cesium-230-partial-ellipsoids` → `examples/cesium/230-partial-ellipsoids/` — [Partial Ellipsoids](https://sandcastle.cesium.com/?src=partial-ellipsoids)
 - [ ] `cesium-231-particle-system` → `examples/cesium/231-particle-system/` — [Particle System](https://sandcastle.cesium.com/?src=particle-system)
-- [ ] `cesium-232-particle-system-fireworks` → `examples/cesium/232-particle-system-fireworks/` — [Particle System Fireworks](https://sandcastle.cesium.com/?src=particle-system-fireworks)
+- [x] `cesium-232-particle-system-fireworks` → `examples/cesium/232-particle-system-fireworks/` — [Particle System Fireworks](https://sandcastle.cesium.com/?src=particle-system-fireworks)
 - [ ] `cesium-233-particle-system-tails` → `examples/cesium/233-particle-system-tails/` — [Particle System Tails](https://sandcastle.cesium.com/?src=particle-system-tails)
 - [ ] `cesium-234-particle-system-weather` → `examples/cesium/234-particle-system-weather/` — [Particle System Weather](https://sandcastle.cesium.com/?src=particle-system-weather)
 - [ ] `cesium-235-pbr-lighting-dev` → `examples/cesium/235-pbr-lighting-dev/` — [Pbr Lighting Dev](https://sandcastle.cesium.com/?src=pbr-lighting-dev)

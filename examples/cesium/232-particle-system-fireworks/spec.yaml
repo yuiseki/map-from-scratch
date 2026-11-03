@@ -1,0 +1,80 @@
+id: cesium-232-particle-system-fireworks
+request: >-
+  CesiumJS の showcase である「Particle System Fireworks」のように、夜空に打ち上がるロケットの光跡、
+  多色（真紅・黄金・翡翠・シアン・マゼンタ）の球面爆発バースト、重力加速度と空気抵抗による火花の減速・落下、
+  発光コアルミネセンスを備えた 3D パーティクルシステム花火をレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: パーティクル花火の描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D パーティクル花火が現れる
+  - id: 3d-particle-fireworks
+    need: 暗夜背景の上に打ち上げロケットと球面爆発パーティクルが加算ブレンド発光で正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-particle-fireworks}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/232-particle-system-fireworks/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期パーティクルバッファの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 花火爆発パーティクルアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に数百の 3D パーティクルシミュレーションとポイントスプライトバッファをメモリ内で動的生成
+
+performance_knowledge:
+  - id: gpu-point-sprite-particle-batching
+    finding: 頂点属性（位置・色・サイズ）をパックした動的 VBO とポイントスプライトシェーダーにより、数千の 3D 発光パーティクルを単一ドローコールで 60 fps 描画可能
+    evidence: 1 ドローコールで花火パーティクル群を描画
+    applies_when: パーティクルシステム・花火・天候エフェクト描画
+  - id: additive-depth-mask-blend
+    finding: 深度テストを有効にしつつ深度書き込み（depthMask）を無効化した加算合成により、Z-fighting なしに自然な光の重なりと輝度加算を実現可能
+    evidence: 加算ブレンドによる高輝度発光表現
+    applies_when: 炎・花火・光跡パーティクル描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/232-particle-system-fireworks/index.html
+      - examples/cesium/232-particle-system-fireworks/main.ts
+      - examples/cesium/232-particle-system-fireworks/render.ts
+      - examples/cesium/232-particle-system-fireworks/fireworks.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 複雑な物理エンジンライブラリの読み込み（直接オイラー積分物理計算）
+
+verification:
+  checks:
+    - id: dark-sky-cleared
+      what: 画面上部が暗夜の空色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 暗夜クリア色と一致すること
+    - id: ground-plane-rendered
+      what: 画面下部に地表面グリッドプレーンが描画されている
+      how: gl.readPixels で画面下部ピクセルを取得して確認
+      expected: 地表面サーフェスピクセルが描画されていること
+    - id: fireworks-particles-rendered
+      what: 空間内に発光花火パーティクルが描画されている
+      how: gl.readPixels で爆発中心領域のピクセル輝度およびパーティクル生存数を確認
+      expected: 発光パーティクルが検出されるか生存パーティクル数が正しく保持されていること
