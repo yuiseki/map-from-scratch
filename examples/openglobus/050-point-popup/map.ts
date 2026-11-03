@@ -15,6 +15,7 @@ const mercY = (lat: number): number =>
 const mercX = (lon: number): number => (lon + 180) / 360;
 
 const HIT_RADIUS = 13;
+export const popupPointHitTest = (dx: number, dy: number): boolean => Math.hypot(dx, dy) <= HIT_RADIUS;
 
 export class PopupPointsMap {
   canvas: HTMLCanvasElement;
@@ -118,7 +119,7 @@ export class PopupPointsMap {
     for (let k = w0; k <= w1; k++) {
       for (const p of this.points) {
         const [sx, sy] = this.screenFromMercator(p.mx + k, p.my);
-        if (Math.hypot(x - sx, y - sy) <= HIT_RADIUS) {
+        if (popupPointHitTest(x - sx, y - sy)) {
           this.activePopup = { text: p.text, mx: p.mx + k, my: p.my };
           this.draw();
           return;

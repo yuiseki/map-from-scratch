@@ -6,7 +6,7 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 
 export type LayerId = 'osm' | 'satellite';
 
-const STYLES: Record<LayerId, { ocean: string; land: string; stroke: string }> = {
+export const baseLayerStyles: Record<LayerId, { ocean: string; land: string; stroke: string }> = {
   osm: {
     ocean: '#aad3df',
     land: '#f2efe9',
@@ -133,7 +133,7 @@ export class BaseLayerMap {
     const ctx = this.ctx;
     const w = this.canvas.width / this.dpr;
     const h = this.canvas.height / this.dpr;
-    const style = STYLES[this.activeLayer];
+    const style = baseLayerStyles[this.activeLayer];
 
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
