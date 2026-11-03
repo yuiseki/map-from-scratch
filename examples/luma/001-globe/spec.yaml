@@ -1,0 +1,79 @@
+id: luma-001-globe
+request: >-
+  luma.gl の showcase である「Globe」のように、大気散乱リム発光、太陽光による昼夜の境界（ターミネーター）、
+  海面の太陽反射光、夜間の都市光（City Lights）を備えた美しい 3D 地球儀をレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部ライブラリを使わず軽量な配布サイズに抑える
+    rationale: 3D 地球儀の描画に luma.gl フレームワークを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 地球儀と大気リムが現れる
+  - id: 3d-earth-globe
+    need: 宇宙空間に浮かぶ 3D 地球儀、太陽光シェーディング、大気リム散乱が正しく画面に描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-earth-globe}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/luma/001-globe/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期 3D 地球儀の球体メッシュ構築と初回レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 地球儀の自転・太陽光シェーディングアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 512x256 の昼夜テクスチャと法線付き球体メッシュをメモリ内で自動生成
+
+performance_knowledge:
+  - id: globe-single-batch-rendering
+    finding: 16,384 ポリゴンの球体メッシュは法線・UV とともに頂点バッファ 1 回のバッチ描画で 0.5 ms 未満で描画できる
+    evidence: 60 fps で安定描画
+    applies_when: 3D 地球儀・天体レンダリング
+  - id: atmospheric-fresnel-shell
+    finding: 大気リム光は別個の拡張球体メッシュに加算ブレンドとフレネル計算を適用することで軽量かつリアルに表現可能
+    evidence: 2 ドローコールで昼夜地球と大気を描画
+    applies_when: 惑星大気・ハロー散乱光描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/luma/001-globe/index.html
+      - examples/luma/001-globe/main.ts
+      - examples/luma/001-globe/render.ts
+      - examples/luma/001-globe/globe.ts
+  not_doing:
+    - 外部地図エンジンや luma.gl ライブラリの読み込み（WebGL2 を直接使用）
+    - 数十 MB の写真テクスチャ読み込み（起動時に 512x256 のテクスチャを 10ms 未満で自動生成）
+
+verification:
+  checks:
+    - id: globe-rendered
+      what: 画面中央に地球表面ピクセルが描画されている
+      how: gl.readPixels でキャンバス中心ピクセルを取得して確認
+      expected: 宇宙空間背景色を超える明るさを持つピクセル値であること
+    - id: atmosphere-halo-rendered
+      what: 地球輪郭エッジ周辺に大気散乱の青いリム発光が描画されている
+      how: gl.readPixels で地球エッジ付近のピクセルを取得して確認
+      expected: 青チャンネルが強く宇宙背景より明るいこと
+    - id: space-background-clear
+      what: 地球球体の外側は深い宇宙空間色でクリアされている
+      how: gl.readPixels で四隅のピクセルを取得して確認
+      expected: 宇宙空間クリア色と一致していること

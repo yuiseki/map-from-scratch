@@ -903,7 +903,7 @@
 
 出典: [luma.gl Examples](https://luma.gl/examples)。2026-10-30 時点で掲載されている55件のうち、地図系の2件（地球儀の [Globe](https://luma.gl/examples/showcase/globe) と、MapLibre の WebGL2 コンテキストに重ねて描く External WebGL Context）を対象とする。API・チュートリアル・エフェクト・GPGPU・シミュレーションなど地図ではない53件は含めない。
 
-- [ ] `luma-001-globe` → `examples/luma/001-globe/` — [Globe](https://luma.gl/examples/showcase/globe)
+- [x] `luma-001-globe` → `examples/luma/001-globe/` — [Globe](https://luma.gl/examples/showcase/globe)
 - [ ] `luma-002-external-context` → `examples/luma/002-external-context/` — [External WebGL Context](https://luma.gl/examples/integrations/external-context)
 
 ## WebGPU / 先端ウェブアーキテクチャ
