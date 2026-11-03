@@ -906,9 +906,9 @@
 - [x] `luma-001-globe` → `examples/luma/001-globe/` — [Globe](https://luma.gl/examples/showcase/globe)
 - [ ] `luma-002-external-context` → `examples/luma/002-external-context/` — [External WebGL Context](https://luma.gl/examples/integrations/external-context)
 
-## Three.js: 7 件
+## Three.js: 9 件
 
-出典: [Three.js Examples](https://threejs.org/examples/)。地理空間データ形式、地図向けカメラ操作、地形、地球儀、点群の表示に直接関係する7件を対象とする。一般的な3Dモデル表示や、地理参照を扱わない素材ローダー・シーン生成は含めない。
+出典: [Three.js Examples](https://threejs.org/examples/)。地理空間データ形式や地図向けカメラ操作、地形、地球儀、点群、ラスタ画像の描画に関係する例を対象とする。XYZ/PCDの例は点群形式の読み込みを、TIFFの例はラスタ画像のテクスチャ化を扱うため選定した（座標参照系やGeoTIFFの地理参照処理は各例の対象外）。一般的な3Dモデル表示や、地理空間データ・地図操作と結びつかない素材ローダーやシーン生成は含めない。
 
 - [ ] `threejs-001-3d-tiles` → `examples/threejs/001-3d-tiles/` — [3D Tiles + clouds](https://threejs.org/examples/webgl_loader_3dtiles.html)
 - [ ] `threejs-002-map-controls` → `examples/threejs/002-map-controls/` — [Map Controls](https://threejs.org/examples/misc_controls_map.html)
@@ -917,6 +917,8 @@
 - [ ] `threejs-005-pcd-point-cloud` → `examples/threejs/005-pcd-point-cloud/` — [PCD point cloud](https://threejs.org/examples/webgl_loader_pcd.html)
 - [ ] `threejs-006-earth` → `examples/threejs/006-earth/` — [Earth](https://threejs.org/examples/webgpu_tsl_earth.html)
 - [ ] `threejs-007-procedural-terrain` → `examples/threejs/007-procedural-terrain/` — [Procedural terrain](https://threejs.org/examples/webgpu_tsl_procedural_terrain.html)
+- [ ] `threejs-008-xyz-point-cloud` → `examples/threejs/008-xyz-point-cloud/` — [XYZ point cloud](https://threejs.org/examples/webgl_loader_xyz.html)
+- [ ] `threejs-009-tiff-raster-texture` → `examples/threejs/009-tiff-raster-texture/` — [TIFF texture](https://threejs.org/examples/webgl_loader_texture_tiff.html)
 
 ## WebGPU / 先端ウェブアーキテクチャ
 
@@ -942,4 +944,4 @@
 
 ## 進捗
 
-- 対象: **839 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 7）。実装済み **93 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **841 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 9）。実装済み **93 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
