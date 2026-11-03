@@ -808,7 +808,7 @@
 - [ ] `cesium-258-polylines-on-3d-tiles` → `examples/cesium/258-polylines-on-3d-tiles/` — [Polylines On 3D Tiles](https://sandcastle.cesium.com/?src=polylines-on-3d-tiles)
 - [ ] `cesium-259-polylines-on-terrain-dev` → `examples/cesium/259-polylines-on-terrain-dev/` — [Polylines On Terrain Dev](https://sandcastle.cesium.com/?src=polylines-on-terrain-dev)
 - [ ] `cesium-260-post-processing` → `examples/cesium/260-post-processing/` — [Post Processing](https://sandcastle.cesium.com/?src=post-processing)
-- [ ] `cesium-261-procedural-terrain` → `examples/cesium/261-procedural-terrain/` — [Procedural Terrain](https://sandcastle.cesium.com/?src=procedural-terrain)
+- [x] `cesium-261-procedural-terrain` → `examples/cesium/261-procedural-terrain/` — [Procedural Terrain](https://sandcastle.cesium.com/?src=procedural-terrain)
 - [ ] `cesium-262-projection` → `examples/cesium/262-projection/` — [Projection](https://sandcastle.cesium.com/?src=projection)
 - [ ] `cesium-263-rectangle` → `examples/cesium/263-rectangle/` — [Rectangle](https://sandcastle.cesium.com/?src=rectangle)
 - [ ] `cesium-264-rectangle-dev` → `examples/cesium/264-rectangle-dev/` — [Rectangle Dev](https://sandcastle.cesium.com/?src=rectangle-dev)

@@ -1,0 +1,80 @@
+id: cesium-261-procedural-terrain
+request: >-
+  CesiumJS の showcase である「Procedural Terrain」のように、多重オクターブのフラクタルノイズによる
+  鋭い山脈と平坦な谷底を持つプロシージャル 3D 地形を生成し、標高と傾斜に応じたマルチバイオーム
+  （湖水・砂浜・草地・岩壁・冠雪峰）の質感分けと大気距離フォグをレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: プロシージャル地形の描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D プロシージャル地形が現れる
+  - id: 3d-procedural-terrain
+    need: 大気空背景と霧の中に冠雪峰と谷底地形が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-procedural-terrain}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/261-procedural-terrain/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期プロシージャル標高グリッド構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 山岳オービット飛行アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時にフラクタル標高関数から 128x128 メッシュと法線バッファをメモリ内で動的生成
+
+performance_knowledge:
+  - id: procedural-ridged-multifractal-terrain
+    finding: 多重オクターブのリッジドフラクタル合成により、外部 DEM タイルを一切ダウンロードすることなく数万ポリゴンの雄大な山岳地形を瞬時にプロシージャル生成可能
+    evidence: 数ミリ秒で 3 万以上の三角形メッシュを生成し 60 fps で描画
+    applies_when: プロシージャル地形・DEM 不要の山岳描画
+  - id: slope-elevation-biome-splatting
+    finding: 頂点高さ（elevation）と法線（normal.y の傾斜度）の 2 変数からシェーダー内で水面・砂浜・草地・岩肌・雪原を滑らかにブレンドすることで、テクスチャアトラス不要で多様な自然景観を表現可能
+    evidence: テクスチャ不要で極小の配布バンドルサイズを維持
+    applies_when: リアルタイム地形シェーディング
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/261-procedural-terrain/index.html
+      - examples/cesium/261-procedural-terrain/main.ts
+      - examples/cesium/261-procedural-terrain/render.ts
+      - examples/cesium/261-procedural-terrain/terrain.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 巨大な外部 DEM 標高タイルのダウンロード（プロシージャル標高生成を採用）
+
+verification:
+  checks:
+    - id: sky-fog-cleared
+      what: 画面上部が大気空色と遠景フォグ色で描画されている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 空色グラデーションと一致すること
+    - id: mountain-peaks-rendered
+      what: 画面中央上部の山稜シルエットに冠雪または岩肌の山頂が描画されている
+      how: gl.readPixels で山頂領域ピクセルを取得して確認
+      expected: 山頂ピクセルが描画されていること
+    - id: valley-terrain-rendered
+      what: 画面下部に谷底の湖水または草地が描画されている
+      how: gl.readPixels で画面下部ピクセルを取得して確認
+      expected: 地表面サーフェスピクセルが描画されていること
