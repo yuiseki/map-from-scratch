@@ -60,6 +60,12 @@ export interface DensityMap {
 
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<DensityMap> {
   if (!navigator.gpu) throw new Error('WebGPU not supported on this browser/platform');
+  // The points download while the adapter and device are being set up
+  // (requestAdapter alone took 660-690 ms on the RTX 3060 host, webgpu-001).
+  const data = fetch(dataUrl).then((r) => {
+    if (!r.ok) throw new Error(`Failed to load points: ${r.status}`);
+    return r.arrayBuffer();
+  });
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
   if (!adapter) throw new Error('No WebGPU adapter found');
 
@@ -75,9 +81,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   device.lost.then(info => console.error('WebGPU device lost:', info));
 
   // Load baked 1M points binary
-  const res = await fetch(dataUrl);
-  if (!res.ok) throw new Error(`Failed to load points: ${res.status}`);
-  const ab = await res.arrayBuffer();
+  const ab = await data;
   const dv = new DataView(ab);
   const magic = dv.getUint32(0, true);
   if (magic !== 0x47535542) throw new Error(`Invalid magic: 0x${magic.toString(16)}`);
