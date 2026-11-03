@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extrude, footprints, toLocal } from './mesh.ts';
+import { footprints, toBuilding, toLocal } from './mesh.ts';
 import type { Poly } from './gml.ts';
 
 // Rings 75 m wide, as edges of bands 0..15.
@@ -42,30 +42,14 @@ test('footprints keeps the bottom faces only and reads the height from the solid
   assert.ok(Math.abs(f.cx - 110) < 0.5 && Math.abs(f.cy - 55) < 0.5, `centroid ${f.cx},${f.cy}`);
 });
 
-test('extrude makes a bottom and a top vertex per corner, walls and a roof, with the band of the centroid', () => {
-  const f = footprints(boxSolid(100, 50, 20, 10, 4, 39.6), LAT0, LON0);
-  const verts: { x: number; y: number; h: number; band: number; top: number }[] = [];
-  const idx: number[] = [];
-  extrude(f, EDGES, verts, idx);
-  assert.equal(verts.length, 8);
-  assert.equal(verts.filter((v) => v.top).length, 4);
-  assert.ok(verts.every((v) => Math.abs(v.h - 35.6) < 1e-9 && v.band === 1), 'every vertex carries the height and band (ring 75-150 m)');
-  assert.equal(idx.length, 4 * 6 + 2 * 3, 'four wall quads and a two-triangle roof');
-  const roof = idx.slice(24);
-  assert.ok(roof.every((k) => verts[k].top === 1), 'the roof uses top vertices only');
-  // Every wall quad spans the ground and the roof.
-  for (let q = 0; q < 4; q++) {
-    const tops = idx.slice(q * 6, q * 6 + 6).map((k) => verts[k].top);
-    assert.ok(tops.includes(0) && tops.includes(1), `wall ${q}`);
-  }
-});
-
-test('extrude appends after earlier buildings (indices are offset)', () => {
-  const verts: { x: number; y: number; h: number; band: number; top: number }[] = [];
-  const idx: number[] = [];
-  extrude(footprints(boxSolid(0, 0, 5, 5, 0, 10), LAT0, LON0), EDGES, verts, idx);
-  const n = idx.length;
-  extrude(footprints(boxSolid(500, 0, 5, 5, 0, 20), LAT0, LON0), EDGES, verts, idx);
-  assert.ok(idx.slice(n).every((k) => k >= 8));
-  assert.equal(verts[8].band, 6);
+test('toBuilding keeps the rings, triangulates the roof over the corners, and takes the band of the centroid', () => {
+  const b = toBuilding(footprints(boxSolid(100, 50, 20, 10, 4, 39.6), LAT0, LON0), EDGES);
+  assert.equal(b.band, 1, 'centroid 123 m out: ring 75-150 m');
+  assert.ok(Math.abs(b.height - 35.6) < 1e-9);
+  assert.equal(b.polys.length, 1);
+  const [p] = b.polys;
+  assert.equal(p.rings[0].length, 8);
+  assert.equal(p.roof.length, 2 * 3, 'two roof triangles');
+  assert.ok(p.roof.every((k) => k >= 0 && k < 4));
+  assert.equal(toBuilding(footprints(boxSolid(500, 0, 5, 5, 0, 20), LAT0, LON0), EDGES).band, 6);
 });

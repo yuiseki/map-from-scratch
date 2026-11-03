@@ -42,10 +42,14 @@ Mapbox GL JS の公式サンプル「Animate 3D buildings based on ambient sound
   グラントウキョウサウスタワーは LOD1 199.3 m、measuredHeight 209.5 m。グラントウキョウノースタワーは LOD1 92.5 m (実際は約 205 m)。
 - 各区の zip のメッシュには、その区の建物しか入っていない。メッシュ 9 枚の範囲でも港区などの建物は描かれない。
 
-## まだやっていないこと
+- 最初の GPU のサイト検査で data_gzip_bytes 1.45 MB が予算 1.4 MB を超えた。予算は手元の gzip -6 (1.34 MB) で決めたが、
+  ハーネスは gzip -9 で数える。中身は 4.21 MB のうち 2.8 MB が 32 bit のインデックスで、屋上の頂点は地面の頂点の写し、
+  壁は輪の隣り合う角から決まる。角 (差分符号化、x と y を分けて並べる)、輪の長さ、屋根の三角形だけを書き、
+  ページの `decode` で頂点と壁を作り直すようにした: 0.83 MB、gzip -9 320 KB、転送 4,148 KB → 854 KB。
+  作り直した頂点とインデックスは旧形式とバイト単位で同じ。最初のフレームは 382 → 397 ms (1 回ずつ、展開の分)。
 
-- `bin/mfs bench` はまだ実行していない (計測は別に行う)。spec.yaml の予算と verification の検査は書いたが、
-  ハーネスでは未実行。playwright の headless Chromium (SwiftShader) で `?bench` を開き、6 つの検査がすべて通ることだけ確かめた
-  (real-height-at-zero: 上端 175 px、期待 174.8〜185.4 px、0.9 倍なら 198〜207 px。roof-rises-with-level: 175 → 35 px。
-  colours-change: 平均差 13.1。ground-and-sky: 空 100%、地面 14%。rhythm-reproducible: 一致。drag-pans: 誤差 0 px)。
-  SwiftShader の frame_ms (約 90 ms) は CPU のラスタライズなので意味がない。
+## 計測 (RTX 3060、ANGLE Vulkan、`bin/mfs bench -n 1`)
+
+first_frame_ms 397、rhythm_ms 156、踊る周回 frame_ms p95 1.14 ms / gpu_ms p95 0.29 ms / cpu_ms p95 0.085 ms、
+遠景 whole_frame_ms p95 1.21 ms、1 フレームの転送 0 B、転送 854 KB、コード gzip 10,780 B、データ gzip 320,000 B、
+JS ヒープ 1.7 MB。6 つの検査はすべて通る。

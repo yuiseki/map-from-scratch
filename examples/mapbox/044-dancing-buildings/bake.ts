@@ -10,11 +10,12 @@
 // from the same zips with Python's zipfile (ZIP64; the image has no unzip).
 import { createReadStream, existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { gzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Lod1Reader, type Lod1Building } from './gml.ts';
-import { extrude, footprints, type Footprint } from './mesh.ts';
-import { encode, bandOf, ringEdges, BANDS, type Vertex } from './format.ts';
+import { footprints, toBuilding, type Footprint } from './mesh.ts';
+import { encode, decode, bandOf, ringEdges, BANDS } from './format.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');
@@ -76,9 +77,10 @@ for (const mesh of MESHES) {
 // Nearest first: a ring's buildings are contiguous in the buffer.
 kept.sort((p, q) => Math.hypot(p.f.cx, p.f.cy) - Math.hypot(q.f.cx, q.f.cy));
 const edges = ringEdges(kept.map((k) => Math.hypot(k.f.cx, k.f.cy)));
-const verts: Vertex[] = [], indices: number[] = [];
-for (const k of kept) extrude(k.f, edges, verts, indices);
-const bin = encode({ edges, buildings: kept.length, verts, indices });
+const bin = encode(edges, kept.map((k) => toBuilding(k.f, edges)));
+// What the page will draw, decoded here as the page decodes it.
+const drawn = decode(bin);
+const verts = { length: drawn.vertexCount }, indices = drawn.indices;
 writeFileSync(join(OUT, 'dance.bin'), new Uint8Array(bin));
 
 // The tallest building, for the bench's height checks: its outer ring and
@@ -107,6 +109,6 @@ writeFileSync(join(OUT, 'truth.json'), JSON.stringify(truth, null, 1) + '\n');
 const pct = (p: number) => heightDiff[Math.min(heightDiff.length - 1, Math.floor(p * heightDiff.length))].toFixed(2);
 console.log(`read ${read} buildings, ${noFootprint} without a footprint, kept ${kept.length}`);
 console.log(`lod1 height vs measuredHeight |diff| p50 ${pct(0.5)} m, p99 ${pct(0.99)} m, max ${pct(1)} m`);
-console.log(`${verts.length} vertices, ${indices.length / 3} triangles -> dance.bin ${(bin.byteLength / 1e6).toFixed(2)} MB`);
+console.log(`${verts.length} vertices, ${indices.length / 3} triangles -> dance.bin ${(bin.byteLength / 1e6).toFixed(2)} MB, gzip -9 ${(gzipSync(new Uint8Array(bin), { level: 9 }).length / 1e6).toFixed(3)} MB`);
 console.log(`per band ${perBand.join(' ')}`);
 console.log(`tallest ${tallest.b.id} ${tallest.b.name ?? ''} ${tallest.f.height.toFixed(1)} m (measured ${tallest.b.measuredHeight}) at ${tallest.f.cx.toFixed(0)}, ${tallest.f.cy.toFixed(0)} band ${truth.tallest.band}`);

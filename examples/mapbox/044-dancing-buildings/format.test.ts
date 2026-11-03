@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BANDS, HEADER_BYTES, MAGIC, UNIT_M, VERTEX_BYTES, bandOf, decode, encode, ringEdges } from './format.ts';
+import { BANDS, MAGIC, UNIT_M, VERTEX_BYTES, bandOf, decode, encode, ringEdges, type Building } from './format.ts';
 
 test('bandOf rings outward from the centre: the first edge the distance is below, the last band holding the rest', () => {
   const edges = Array.from({ length: BANDS }, (_, i) => 75 * (i + 1));
@@ -24,40 +24,85 @@ test('ringEdges puts the same number of buildings in every band', () => {
   for (let i = 1; i < BANDS; i++) assert.ok(edges[i] > edges[i - 1]);
 });
 
-test('encode and decode round-trip the vertices, indices and header', () => {
-  const verts = [
-    { x: -12.34, y: 56.78, h: 0, band: 0, top: 0 },
-    { x: -12.34, y: 56.78, h: 241.5, band: 3, top: 1 },
-    { x: 1500, y: -1500, h: 6.2, band: 15, top: 1 },
-  ];
-  const idx = [0, 1, 2, 2, 1, 0];
-  const edges = Array.from({ length: BANDS }, (_, i) => 100 * (i + 1));
-  const buf = encode({ edges, buildings: 2, verts, indices: idx });
-  assert.equal(buf.byteLength, HEADER_BYTES + verts.length * VERTEX_BYTES + idx.length * 4);
-  assert.equal(new TextDecoder().decode(new Uint8Array(buf, 0, 4)), MAGIC);
-  const d = decode(buf);
-  assert.equal(d.vertexCount, 3);
-  assert.deepEqual([...d.edges], edges);
-  assert.equal(d.buildings, 2);
-  assert.deepEqual([...d.indices], idx);
-  const xy = new Int16Array(d.vertices.buffer, d.vertices.byteOffset, d.vertices.byteLength / 2);
-  const u8 = new Uint8Array(d.vertices.buffer, d.vertices.byteOffset, d.vertices.byteLength);
-  verts.forEach((v, i) => {
-    assert.ok(Math.abs(xy[i * 4] * UNIT_M - v.x) <= UNIT_M / 2, `x ${i}`);
-    assert.ok(Math.abs(xy[i * 4 + 1] * UNIT_M - v.y) <= UNIT_M / 2, `y ${i}`);
-    const h = u8[i * 8 + 4] | (u8[i * 8 + 5] << 8);
-    assert.ok(Math.abs(h * UNIT_M - v.h) <= UNIT_M / 2, `h ${i}`);
-    assert.equal(u8[i * 8 + 6], v.band);
-    assert.equal(u8[i * 8 + 7], v.top);
+const EDGES = Array.from({ length: BANDS }, (_, i) => 100 * (i + 1));
+// A 20 m x 10 m box, 35.6 m tall, band 1, and an L-shaped courtyard block
+// (outer ring and a hole), 12.3 m tall, band 15, far away.
+const box: Building = { height: 35.6, band: 1, polys: [{ rings: [[100, 50, 120, 50, 120, 60, 100, 60]], roof: [1, 2, 3, 3, 0, 1] }] };
+const court: Building = {
+  height: 12.3, band: 15,
+  polys: [{
+    rings: [[-1500, -1500, -1460, -1500, -1460, -1460, -1500, -1460], [-1490, -1490, -1490, -1470, -1470, -1470, -1470, -1490]],
+    roof: [0, 4, 5, 0, 1, 4, 1, 7, 4, 1, 2, 7, 2, 6, 7, 2, 3, 6, 3, 5, 6, 3, 0, 5],
+  }],
+};
+
+interface V { x: number; y: number; h: number; band: number; top: number }
+function vertices(d: ReturnType<typeof decode>): V[] {
+  const dv = new DataView(d.vertices.buffer, d.vertices.byteOffset, d.vertices.byteLength);
+  return Array.from({ length: d.vertexCount }, (_, i) => ({
+    x: dv.getInt16(i * VERTEX_BYTES, true) * UNIT_M,
+    y: dv.getInt16(i * VERTEX_BYTES + 2, true) * UNIT_M,
+    h: dv.getUint16(i * VERTEX_BYTES + 4, true) * UNIT_M,
+    band: dv.getUint8(i * VERTEX_BYTES + 6),
+    top: dv.getUint8(i * VERTEX_BYTES + 7),
+  }));
+}
+
+test('decode rebuilds a bottom and a top vertex per corner, carrying height and band, from the shipped corners', () => {
+  const d = decode(encode(EDGES, [box]));
+  assert.equal(new TextDecoder().decode(new Uint8Array(encode(EDGES, [box]), 0, 4)), MAGIC);
+  assert.equal(d.buildings, 1);
+  assert.deepEqual([...d.edges], EDGES);
+  const v = vertices(d);
+  assert.equal(v.length, 8);
+  assert.deepEqual(v.map((p) => p.top), [0, 0, 0, 0, 1, 1, 1, 1]);
+  const xy = box.polys[0].rings[0];
+  v.forEach((p, i) => {
+    assert.ok(Math.abs(p.x - xy[(i % 4) * 2]) <= UNIT_M / 2 && Math.abs(p.y - xy[(i % 4) * 2 + 1]) <= UNIT_M / 2, `corner ${i}`);
+    assert.ok(Math.abs(p.h - 35.6) <= UNIT_M / 2 && p.band === 1);
   });
 });
 
-test('decode refuses a file with the wrong magic', () => {
-  const buf = encode({ edges: [], buildings: 0, verts: [], indices: [] });
-  new Uint8Array(buf)[0] = 0x58;
-  assert.throws(() => decode(buf), /magic/);
+test('decode rebuilds two wall triangles per edge spanning ground and roof, then the shipped roof on the top vertices', () => {
+  const d = decode(encode(EDGES, [box]));
+  const v = vertices(d), idx = [...d.indices];
+  assert.equal(idx.length, 4 * 6 + 6);
+  for (let q = 0; q < 4; q++) {
+    const quad = idx.slice(q * 6, q * 6 + 6);
+    assert.ok(quad.some((k) => v[k].top === 0) && quad.some((k) => v[k].top === 1), `wall ${q}`);
+    // The wall of edge q joins corners q and q + 1 (mod 4).
+    assert.deepEqual([...new Set(quad.map((k) => k % 4))].sort(), [q, (q + 1) % 4].sort());
+  }
+  assert.deepEqual(idx.slice(24), box.polys[0].roof.map((k) => 4 + k));
 });
 
-test('encode refuses coordinates that do not fit 16 bits', () => {
-  assert.throws(() => encode({ edges: [], buildings: 1, verts: [{ x: 4000, y: 0, h: 0, band: 0, top: 0 }], indices: [] }), /16 bit/);
+test('holes get walls too, and later buildings are offset', () => {
+  const d = decode(encode(EDGES, [box, court]));
+  const v = vertices(d), idx = [...d.indices];
+  assert.equal(d.buildings, 2);
+  assert.equal(v.length, 8 + 16);
+  // box: 24 + 6; court: 8 edges x 6 + 24 roof.
+  assert.equal(idx.length, 30 + 48 + 24);
+  const courtIdx = idx.slice(30);
+  assert.ok(courtIdx.every((k) => k >= 8));
+  assert.ok(v.slice(8).every((p) => p.band === 15 && Math.abs(p.h - 12.3) <= UNIT_M / 2));
+  // The hole's corners (court corners 4..7) appear in walls.
+  const walls = courtIdx.slice(0, 48).map((k) => (k - 8) % 8);
+  for (const c of [4, 5, 6, 7]) assert.ok(walls.includes(c), `hole corner ${c}`);
+  assert.ok(Math.abs(v[8 + 4].x - -1490) <= UNIT_M / 2 && Math.abs(v[8 + 4].y - -1490) <= UNIT_M / 2);
+});
+
+test('the shipped file is small: no top vertices, no wall indices, corners delta-coded', () => {
+  const many: Building[] = Array.from({ length: 200 }, (_, i) => ({ ...box, polys: [{ ...box.polys[0], rings: [box.polys[0].rings[0].map((c) => c + i * 3)] }] }));
+  const buf = encode(EDGES, many);
+  const d = decode(buf);
+  // What decode builds: 8 vertices x 8 B + 30 indices x 4 B per building.
+  assert.ok(buf.byteLength < (d.vertexCount * VERTEX_BYTES + d.indices.length * 4) / 4, `${buf.byteLength} B`);
+});
+
+test('decode refuses a file with the wrong magic, encode refuses coordinates beyond 16 bits', () => {
+  const buf = encode(EDGES, [box]);
+  new Uint8Array(buf)[0] = 0x58;
+  assert.throws(() => decode(buf), /magic/);
+  assert.throws(() => encode(EDGES, [{ ...box, polys: [{ rings: [[4000, 0, 4001, 0, 4001, 1]], roof: [0, 1, 2] }] }]), /16 bit/);
 });

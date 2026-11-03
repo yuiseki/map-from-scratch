@@ -1,10 +1,7 @@
-// Bake side: a PLATEAU LOD1 solid becomes footprint rings in local metres
-// and then an extruded prism (bottom and top vertex per corner, two
-// triangles per wall edge, earcut roof). The height is not baked into z:
-// each vertex carries the building's height and the top flag, and the
-// shader raises the top (format.ts).
+// Bake side: a PLATEAU LOD1 solid becomes footprint rings in local metres,
+// a height and an earcut roof (format.ts ships them; decode() extrudes).
 import earcut from '../../../vendor/earcut/earcut.js';
-import { bandOf, type Vertex } from './format.ts';
+import { bandOf, type Building } from './format.ts';
 import type { Poly } from './gml.ts';
 
 // Metres per degree at the centre latitude (WGS84 series), good to 0.1%
@@ -59,30 +56,20 @@ export function footprints(lod1: Poly[], lat0: number, lon0: number): Footprint 
   return { rings, height: zmax - zmin, cx, cy };
 }
 
-export function extrude(f: Footprint, edges: ArrayLike<number>, verts: Vertex[], idx: number[]): void {
-  const band = bandOf(f.cx, f.cy, edges);
-  for (const poly of f.rings) {
-    const base = verts.length;
-    const m = poly.reduce((s, r) => s + r.length / 2, 0);
-    const flat: number[] = [], holes: number[] = [];
-    for (const r of poly) {
-      if (flat.length) holes.push(flat.length / 2);
-      for (let i = 0; i < r.length; i += 2) {
-        verts.push({ x: r[i], y: r[i + 1], h: f.height, band, top: 0 });
-        flat.push(r[i], r[i + 1]);
+// The footprint as format.ts ships it: rings, earcut roof triangles as
+// corner indices of the polygon, the band of its centroid. Walls and top
+// vertices are rebuilt by decode() at load.
+export function toBuilding(f: Footprint, edges: ArrayLike<number>): Building {
+  return {
+    height: f.height,
+    band: bandOf(f.cx, f.cy, edges),
+    polys: f.rings.map((rings) => {
+      const flat: number[] = [], holes: number[] = [];
+      for (const r of rings) {
+        if (flat.length) holes.push(flat.length / 2);
+        flat.push(...r);
       }
-    }
-    for (let k = 0; k < m; k++) verts.push({ ...verts[base + k], top: 1 });
-    // Walls: every edge of every ring, outer and holes.
-    let start = 0;
-    for (const r of poly) {
-      const n = r.length / 2;
-      for (let i = 0; i < n; i++) {
-        const b0 = base + start + i, b1 = base + start + ((i + 1) % n);
-        idx.push(b0, b1, b1 + m, b0, b1 + m, b0 + m);
-      }
-      start += n;
-    }
-    for (const k of earcut(flat, holes.length ? holes : undefined, 2)) idx.push(base + m + k);
-  }
+      return { rings, roof: earcut(flat, holes.length ? holes : undefined, 2) };
+    }),
+  };
 }

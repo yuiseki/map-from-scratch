@@ -34,8 +34,8 @@ requirements:
   - id: quick-and-light
     need: すぐ出て、外部依存なしで小さい
     rationale: >-
-      dance.bin (4.2 MB、gzip 1.34 MB) の取得から最初の 1 フレームの GPU 完了まで p50 600 ms。
-      転送 4,300 KB 以下 (データ 4,108 KB とコード)、配るコード gzip 13 KB 以下、JS ヒープ 64 MB 以下
+      dance.bin (0.83 MB、gzip -9 320 KB) の取得と展開から最初の 1 フレームの GPU 完了まで p50 600 ms。
+      転送 950 KB 以下 (データ 812 KB とコード)、データ gzip 340 KB 以下 (実測の約 1.06 倍)、配るコード gzip 13 KB 以下、JS ヒープ 64 MB 以下
 
 evaluation:
   budgets:
@@ -46,9 +46,9 @@ evaluation:
     - {metric: gpu_ms, stat: p95, max: 4, unit: ms, requirement: smooth-camera}
     - {metric: whole_frame_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-camera}
     - {metric: first_frame_ms, stat: p50, max: 600, unit: ms, requirement: quick-and-light}
-    - {metric: transfer_kb, stat: max, max: 4300, unit: KB, requirement: quick-and-light}
+    - {metric: transfer_kb, stat: max, max: 950, unit: KB, requirement: quick-and-light}
     - {metric: code_gzip_bytes, max: 13000, unit: B, requirement: quick-and-light}
-    - {metric: data_gzip_bytes, max: 1400000, unit: B, requirement: quick-and-light}
+    - {metric: data_gzip_bytes, max: 340000, unit: B, requirement: quick-and-light}
     - {metric: js_heap_mb, stat: p95, max: 64, unit: MB, requirement: quick-and-light}
   gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
 
@@ -61,7 +61,7 @@ benchmarks:
   scenarios:
     - id: first-frame
       what: >-
-        ナビゲーション開始 (performance.now() の 0) から、dance.bin を取得・解読して GPU に上げ、レベル 0 (本当の高さ) で
+        ナビゲーション開始 (performance.now() の 0) から、dance.bin を取得して頂点と壁を展開し (format.ts decode)、GPU に上げ、レベル 0 (本当の高さ) で
         最初のフレームを描いて 1 px の readPixels で GPU の完了を待った時刻まで (main.ts の firstFrameMs)。bench.ts はそのあとで読む
       metrics: [first_frame_ms]
     - id: rhythm
@@ -99,18 +99,27 @@ datasets:
   preparation:
     - 3 次メッシュ 53394600〜53394622 の 9 枚の建物 GML (合計 1.2 GB) を流し読みし、bldg:Building ごとに lod1Solid の多角形、gml:name、bldg:measuredHeight だけを取る (gml.ts)。13,051 棟、外形のない建物は 0
     - 外形は lod1Solid のうち全頂点が立体の最低高さにある面 (底面)、高さは立体の最高と最低の差。緯度経度は東京駅 (35.6812, 139.7671) を原点とする東西南北のメートルに (WGS84 の級数、2.4 km で 0.1% 以内)
-    - measuredHeight との差は p50 0.90 m (measuredHeight が -9999 の 470 棟を除く)。最も高いのはグラントウキョウサウスタワー (LOD1 199.3 m、measuredHeight 209.5 m)。描くのは LOD1 の高さ
+    - measuredHeight との差は p50 0.70 m、p99 13.7 m (measuredHeight が -9999 の 470 棟を除く)。最も高いのはグラントウキョウサウスタワー (LOD1 199.3 m、measuredHeight 209.5 m)。描くのは LOD1 の高さ
     - 帯 (16) は東京駅からの距離の輪。輪の境は建物の重心の距離の 16 分位で、どの帯も 815〜816 棟 (境は 630, 867, 977 … 1,962, 2,405 m)。低い周波数が中心、高い周波数が外側
-    - 建物を中心から近い順に並べ、外形の角ごとに地面と屋上の 2 頂点 (8 バイト: x, y を 0.1 m の int16、高さを 0.1 m の uint16、帯、屋上かどうか)、壁は辺ごとに 2 三角形、屋根は earcut (穴あり)。173,806 頂点、234,719 三角形、32 bit インデックス。dance.bin 4.21 MB (gzip 1.34 MB)
+    - 建物を中心から近い順に並べ、外形の角 (0.1 m の int16、前の角との差、x をすべて並べてから y)、輪の長さ、屋根の earcut の三角形 (多角形の中の角の番号、穴あり)、建物ごとの高さ (0.1 m) と帯だけを書く (format.ts)。屋上の頂点と壁の三角形は書かず、ページの decode が作る。dance.bin 0.83 MB (gzip -9 320 KB)
+    - decode が作るのは角ごとに地面と屋上の 2 頂点 (8 バイト: x, y、高さ、帯、屋上かどうか) と、辺ごとに 2 枚の壁、屋根。173,806 頂点、234,719 三角形、32 bit インデックス。旧形式 (頂点とインデックスをそのまま書いた 4.21 MB) と頂点・インデックスがバイト単位で一致することをベイクのあとに確かめた
     - truth.json (計測用) に最も高い建物の名前、高さ、重心、外周、帯、帯ごとの棟数を書く
 
 performance_knowledge:
   - id: height-in-the-shader-not-the-vertex
     finding: 頂点に z を持たせず、建物の高さと「屋上かどうか」と帯を持たせると、踊る高さは頂点シェーダで height * (1 + GAIN * level[band]) になり、毎フレーム送るのは 16 個の float の uniform だけになる
     evidence: >-
-      playwright の headless Chromium (SwiftShader) で 240 フレームの bufferData/bufferSubData/texImage は 0 バイト、
-      フレームの JS 時間は 0.05〜0.15 ms。ハードウェア GPU での frame_ms と gpu_ms はまだ測っていない (bench 未実行)
+      240 フレームの bufferData/bufferSubData/texImage は 0 バイト。最初の GPU のサイト検査 (RTX 3060、ANGLE Vulkan、1 回) で
+      23.5 万三角形の踊る周回が frame_ms p95 0.79 ms、gpu_ms p95 0.29 ms、cpu_ms p95 0.045 ms、遠景 whole_frame_ms p95 0.69 ms
     applies_when: 物ごとに少数のパラメータで形が変わるアニメーション (押し出し高さ、拡大率) を、形を送り直さずに描くとき
+  - id: ship-corners-rebuild-walls
+    finding: >-
+      頂点とインデックスをそのまま書くと 4.21 MB (gzip -9 1.45 MB) で、その 2.8 MB は 32 bit のインデックスだった。屋上の頂点は地面の頂点の写し、
+      壁は輪の隣り合う角なので、角 (差分符号化)、輪の長さ、屋根の三角形だけを書き、ページで作り直すと 0.83 MB (gzip -9 320 KB) になった
+    evidence: >-
+      最初の GPU のサイト検査 (RTX 3060) で data_gzip_bytes 1.45e6 が予算 1,400,000 を超えた。予算は手元の gzip -6 (1,339,833 B) から決めていて、
+      ハーネスは gzip -9 で数える。新形式で gzip -9 320,017 B、転送 4,148 KB → 約 850 KB。展開した頂点とインデックスは旧形式とバイト単位で同じ
+    applies_when: 押し出し建物のように、頂点やインデックスの大半が少ない入力から決まるメッシュを配るとき
   - id: offline-suspend-is-slow
     finding: >-
       AnalyserNode を OfflineAudioContext.suspend() で 16 ms ごとに止めて読む方法は、1 回止めるたびに約 100 ms かかり使えなかった。

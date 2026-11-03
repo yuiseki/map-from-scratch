@@ -96,7 +96,7 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
   const top = topOf(x);
   const [lo90, hi90] = roofRange(LOW, hBaked * 0.9);
   const pass = top >= Math.floor(lo) - 2 && top <= Math.ceil(hi) + 2 && (top < lo90 - 2 || top > hi90 + 2);
-  emit({ check: 'real-height-at-zero', pass, detail: { building: T.name, height: hBaked, column: x, top, expected: [lo, hi], at90pct: [lo90, hi90] } });
+  emit({ check: 'real-height-at-zero', pass, detail: JSON.stringify({ building: T.name, height: hBaked, column: x, top, expected: [lo, hi], at90pct: [lo90, hi90] }) });
 }
 {
   const L = 0.4, one = new Float32Array(BANDS);
@@ -108,7 +108,7 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
   const top1 = topOf(x);
   const [lo, hi] = roofRange(LOW, hBaked * (1 + GAIN * L));
   const pass = top1 < top0 - 20 && top1 >= Math.floor(lo) - 2 && top1 <= Math.ceil(hi) + 2;
-  emit({ check: 'roof-rises-with-level', pass, detail: { band: T.band, level: L, top0, top1, expected: [lo, hi] } });
+  emit({ check: 'roof-rises-with-level', pass, detail: JSON.stringify({ band: T.band, level: L, top0, top1, expected: [lo, hi] }) });
 }
 {
   // Two frames of the dance 3 s apart: the hue has turned 30 degrees and the levels differ.
@@ -122,7 +122,7 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
   let d = 0;
   for (let i = 0; i < p.length; i += 4) d += Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]);
   const mean = d / (p.length / 4) / 3;
-  emit({ check: 'colours-change', pass: mean > 6, detail: { rows: [a, b], meanAbsDiff: Math.round(mean * 10) / 10 } });
+  emit({ check: 'colours-change', pass: mean > 6, detail: JSON.stringify({ rows: [a, b], meanAbsDiff: Math.round(mean * 10) / 10 }) });
 }
 {
   D.draw(START, zero, 0);
@@ -131,7 +131,7 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
   for (let i = 0; i < top.length; i += 4) if (near(top, i, sky, 3)) s++;
   for (let i = 0; i < bottom.length; i += 4) if (near(bottom, i, ground, 3)) g++;
   const sf = s / (top.length / 4), gf = g / (bottom.length / 4);
-  emit({ check: 'ground-and-sky', pass: sf > 0.5 && gf > 0.03, detail: { skyTop4pct: Math.round(sf * 1000) / 1000, groundBottomHalf: Math.round(gf * 1000) / 1000 } });
+  emit({ check: 'ground-and-sky', pass: sf > 0.5 && gf > 0.03, detail: JSON.stringify({ skyTop4pct: Math.round(sf * 1000) / 1000, groundBottomHalf: Math.round(gf * 1000) / 1000 }) });
 }
 {
   // The fallback is the same on every run and moves every band.
@@ -143,7 +143,7 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
     for (let k = 0; k < LOOP_FRAMES; k++) m = Math.max(m, levelsAt(table, rowTime(k), lv)[band]);
     moved.push(Math.round(m * 100) / 100);
   }
-  emit({ check: 'rhythm-reproducible', pass: same && moved.every((m) => m > 0.1), detail: { same, maxLevelPerBand: moved } });
+  emit({ check: 'rhythm-reproducible', pass: same && moved.every((m) => m > 0.1), detail: JSON.stringify({ same, maxLevelPerBand: moved }) });
 }
 {
   // A synthetic drag: the ground under the pointer follows it.
@@ -158,6 +158,6 @@ const hBaked = Math.round(T.height / UNIT_M) * UNIT_M;
   ev('pointerup', to[0], to[1]);
   const p = project(D.view(), [g[0], g[1], 0])!;
   const ex = (to[0] - r.left) * k, ey = (to[1] - r.top) * k;
-  emit({ check: 'drag-pans', pass: Math.hypot(p[0] - ex, p[1] - ey) < 2, detail: { now: p.map(Math.round), expected: [ex, ey] } });
+  emit({ check: 'drag-pans', pass: Math.hypot(p[0] - ex, p[1] - ey) < 2, detail: JSON.stringify({ now: p.map(Math.round), expected: [ex, ey] }) });
 }
 emit({ done: true });
