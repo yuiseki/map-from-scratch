@@ -19,7 +19,7 @@ const LOW = [43, 111, 214];
 const HIGH = [255, 179, 64];
 
 export async function mount(canvas: HTMLCanvasElement, pointsUrl: string): Promise<ScatterMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const res = await fetch(pointsUrl);

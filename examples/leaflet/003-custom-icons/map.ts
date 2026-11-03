@@ -95,7 +95,7 @@ function drawIcon(ctx: CanvasRenderingContext2D, icon: MapIcon, x: number, y: nu
 const ICON_TOP = 26;
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<CustomIconsMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const res = await fetch(landUrl);

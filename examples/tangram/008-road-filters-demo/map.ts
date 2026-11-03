@@ -27,7 +27,7 @@ function projectMercator(lon: number, lat: number): [number, number] {
 }
 
 export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<TangramRoadMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('Failed to get 2D context');
 
   const res = await fetch(dataUrl);

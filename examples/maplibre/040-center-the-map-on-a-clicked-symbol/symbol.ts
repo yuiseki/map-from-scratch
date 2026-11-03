@@ -45,7 +45,7 @@ const defaultCenterMx = mercX(DEFAULT_LNG);
 const defaultCenterMy = mercY(DEFAULT_LAT);
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<SymbolCentreMap> {
-  const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
+  const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
 

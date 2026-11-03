@@ -33,7 +33,7 @@ export async function mount(
   maineUrl: string,
   landUrl: string,
 ): Promise<GeoJsonPolygonMap> {
-  const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
+  const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
 

@@ -76,7 +76,7 @@ const mercY = (lat: number): number =>
 const mercX = (lon: number): number => (lon + 180) / 360;
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<MarkerPopupMap> {
-  const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
+  const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
 

@@ -21,7 +21,7 @@ const targetMx = (DC_LNG + 180) / 360;
 const targetMy = mercY(DC_LAT);
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<MarkerMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const res = await fetch(landUrl);

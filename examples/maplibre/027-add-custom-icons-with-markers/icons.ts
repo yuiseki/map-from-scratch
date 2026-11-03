@@ -82,7 +82,7 @@ function makePinSprite(color: string, scale: number): HTMLCanvasElement {
 }
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<CustomIconsMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   let tileJson: TileJSON | null = null;

@@ -32,7 +32,7 @@ export async function mount(
   landUrl: string,
   featuresUrl: string,
 ): Promise<GeoJsonMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const [landRes, featureRes] = await Promise.all([fetch(landUrl), fetch(featuresUrl)]);

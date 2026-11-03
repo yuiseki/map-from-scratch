@@ -36,7 +36,7 @@ const POLYGON_COORDS: [number, number][] = [
 ];
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<QuickStartMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const res = await fetch(landUrl);

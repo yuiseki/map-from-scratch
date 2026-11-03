@@ -25,7 +25,7 @@ interface TileData {
 }
 
 export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Promise<OpfsMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) throw new Error('Failed to get 2D canvas context');
 
   let networkRequests = 0;

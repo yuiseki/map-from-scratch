@@ -59,7 +59,7 @@ export async function mount(
   routeUrl: string,
   landUrl: string,
 ): Promise<FitLineMap> {
-  const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
+  const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
 

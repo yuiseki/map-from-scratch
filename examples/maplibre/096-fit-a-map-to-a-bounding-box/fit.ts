@@ -58,7 +58,7 @@ const defaultCenterMx = mercX(START_CENTER[0]);
 const defaultCenterMy = mercY(START_CENTER[1]);
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<FitBoundsMap> {
-  const rawCtx = canvas.getContext('2d', { willReadFrequently: true });
+  const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
   const ctx: CanvasRenderingContext2D = rawCtx;
 

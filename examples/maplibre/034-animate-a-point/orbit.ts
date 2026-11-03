@@ -31,7 +31,7 @@ const centerMx0 = mercX(CENTER_LNG);
 const centerMy0 = mercY(CENTER_LAT);
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<AnimatePointMap> {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
 
   const res = await fetch(landUrl);
