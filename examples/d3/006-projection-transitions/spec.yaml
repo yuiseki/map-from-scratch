@@ -1,0 +1,91 @@
+id: d3-006-projection-transitions
+request: >-
+  D3.js の残りのTODOから派手な3D地球儀の例を専用描画器で再実装する。
+requirements:
+  - id: independent-renderer
+    need: 元例の目的を実行時ライブラリなしで再現する
+    rationale: 描画対象をベイク済みの陸地テクスチャと専用GPU処理に絞る
+  - id: immediate-globe
+    need: 初回表示で内容のある3D地球または比較図を表示する
+    rationale: 空描画を画素読み戻しで検出する
+  - id: smooth-render
+    need: 60fpsを目標にGPUで地球儀を再描画する
+    rationale: フレーム時間を計測し、p95 20ms以内を目標にする
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: independent-renderer}
+    - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: independent-renderer}
+    - {metric: first_frame_ms, stat: p50, max: 700, unit: ms, requirement: immediate-globe}
+    - {metric: cpu_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-render}
+    - {metric: frame_ms, stat: p95, max: 30, unit: ms, requirement: smooth-render}
+  gates: [画面チェックがすべて通る, WebGLエラーがない]
+
+benchmarks:
+  runtime: browser
+  page: examples/d3/006-projection-transitions/index.html
+  display: xvfb
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 陸地データを取得しGPUテクスチャを作って初回描画する
+      metrics: [first_frame_ms]
+    - id: steady-globe
+      what: 同じカメラで60回描画しCPU発行時間とGPU同期時間を測定する
+      metrics: [cpu_ms, frame_ms]
+
+datasets:
+  bake: [node, examples/d3/006-projection-transitions/bake.ts]
+  sources:
+    - id: natural-earth-110m-land
+      origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+      license: Public domain
+  outputs:
+    - data/baked/d3-006-projection-transitions/land.json
+  preparation:
+    - Natural Earth land を d3-005-world-map の日付変更線処理済みベイク結果から専用公開パスへ複製
+    - 実行時に陸地ポリゴンを一度だけGPU用の白黒テクスチャへラスタライズ
+
+performance_knowledge:
+  - id: sample-static-land-on-gpu
+    finding: 全球の同じ陸地を動く地球儀で何度も使う場合、陸地を一度だけテクスチャ化してGPUで球面座標を逆算すると、フレームごとのポリゴン投影を避けられる
+    evidence: RTX 3060 / 1280×800 の3反復で gpu_ms p95 0.03891 ms、cpu_ms p95 0.015 ms、frame_ms p95 0.265 ms
+    applies_when: 天体表面が固定でカメラまたは投影だけが動く地球儀
+  - id: one-on-demand-frame
+    finding: 入力またはアニメーションの更新時だけ描画し、待機中は連続描画しない
+    evidence: 対話時は requestAnimationFrame を更新箇所から要求する
+    applies_when: ブラウザ上のインタラクティブな地球儀
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 fragment shader and a pre-rasterized land texture
+    language: TypeScript (type-stripped)
+    gpu: hardware
+    code: [examples/d3/006-projection-transitions/index.html, examples/d3/006-projection-transitions/main.ts, examples/d3/006-projection-transitions/globe.ts]
+    dependencies: []
+    why: 球面の陰影・奥行き・大気縁と投影変形をGPUの単一フラグメント処理で描く
+  alternatives:
+    - option: D3 SVG paths
+      rejected_because: 元投影ライブラリと毎フレームの多数パス描画が目的外
+    - option: Canvas 2D polygon reprojection
+      rejected_because: ドラッグ・回転のたびに全球ポリゴンを再投影する
+  not_doing: [国境とラベルの完全再現, 任意の投影選択, タイル取得, 地理情報の編集]
+
+verification:
+  checks:
+    - id: surface-visible
+      what: 初期画面に地球面の画素が存在する
+      how: WebGL framebuffer の中央付近の画素を読み戻す
+      expected: 青・緑チャンネルが地球面の色しきい値を超える
+    - id: equator-ocean-facing
+      what: 初期視点が赤道と経度0度の海面を向いている
+      how: 中央のフレームバッファ画素の赤チャンネルを地理的な海面色と比較
+      expected: 赤チャンネルが80未満
+      by: bench
+    - id: webgl-clean
+      what: WebGL描画でエラーが発生しない
+      how: gl.getError を確認する
+      expected: NO_ERROR

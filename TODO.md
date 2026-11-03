@@ -234,7 +234,7 @@
 - [ ] `d3-003-us-state-choropleth` → `examples/d3/003-us-state-choropleth/` — [State choropleth](https://observablehq.com/@d3/us-state-choropleth/2)
 - [ ] `d3-004-world-choropleth` → `examples/d3/004-world-choropleth/` — [World choropleth](https://observablehq.com/@d3/world-choropleth/2)
 - [x] `d3-005-world-map` → `examples/d3/005-world-map/` — [World map](https://observablehq.com/@d3/world-map)
-- [ ] `d3-006-projection-transitions` → `examples/d3/006-projection-transitions/` — [Projection transitions](https://observablehq.com/@d3/projection-transitions)
+- [x] `d3-006-projection-transitions` → `examples/d3/006-projection-transitions/` — [Projection transitions](https://observablehq.com/@d3/projection-transitions)
 - [ ] `d3-007-projection-comparison` → `examples/d3/007-projection-comparison/` — [Projection comparison](https://observablehq.com/@d3/projection-comparison)
 - [ ] `d3-008-antimeridian-cutting` → `examples/d3/008-antimeridian-cutting/` — [Antimeridian cutting](https://observablehq.com/@d3/antimeridian-cutting)
 - [ ] `d3-009-tissots-indicatrix` → `examples/d3/009-tissots-indicatrix/` — [Tissot’s indicatrix](https://observablehq.com/@d3/tissots-indicatrix)
@@ -930,4 +930,4 @@
 
 ## 進捗
 
-- 対象: **832 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2）。実装済み **88 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **832 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2）。実装済み **89 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、010、016、019、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。

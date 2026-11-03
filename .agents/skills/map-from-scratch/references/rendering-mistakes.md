@@ -397,6 +397,12 @@ between examples.
   Its legend also said "Administrative Country Boundaries" over coastline
   data; it now says what is drawn.
 
+### The globe faces a pole instead of a geographic location (D3 006)
+
+- Screen: Antarctica sat at the centre of an otherwise convincing sphere, while the bench only checked that the pixel was non-empty.
+- Why: the view-space depth axis was treated as geographic latitude. At the centre of an orthographic view the unit vector must point to the chosen geographic centre (here lon 0, lat 0); screen-right and screen-up become east and north.
+- Fix: map the visible hemisphere as `[depth, east, north]`, then rotate in geographic space. Check a known ocean pixel at the equator and inspect the screenshot; a coloured centre pixel alone cannot validate the orientation.
+
 ### A template highlight that contradicts the sun (cesium 209)
 
 209 lights the globe from a sun the slider moves, but kept the template's
