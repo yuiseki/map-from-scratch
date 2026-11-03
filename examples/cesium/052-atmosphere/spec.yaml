@@ -1,0 +1,80 @@
+id: cesium-052-atmosphere
+request: >-
+  CesiumJS の showcase である「Atmosphere」のように、Rayleigh 散乱と Mie 散乱による
+  リアルな青空散乱・夕焼けターミネーター減衰・宇宙から見た大気リム（Limb）発光を伴う
+  3D 地球大気散乱レンダリングを行いたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 大気散乱の描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 地球と大気散乱が現れる
+  - id: 3d-planetary-atmosphere
+    need: 深宇宙背景の中に地球球体と大気リム光が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-planetary-atmosphere}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/052-atmosphere/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期大気メッシュ構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 惑星オービットアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に球体メッシュジオメトリと大気シェル VBO をメモリ内で動的生成
+
+performance_knowledge:
+  - id: analytical-atmospheric-scattering-shell
+    finding: 二重球体構造（地球球体＋1.04倍半径の大気シェル）とシェーダー内レイリー／ミー位相関数計算により、高価な多重レイマーチングを行うことなく高品質なリム散乱とターミネーター減衰を軽量に表現可能
+    evidence: 単一パスの大気シェル描画で 60 fps を維持
+    applies_when: 宇宙視点地球・大気エフェクト描画
+  - id: procedural-planet-texturing
+    finding: 頂点 UV とフラグメントシェーダー内の低オクターブ fbm ノイズにより、外部画像テクスチャを一切ダウンロードすることなく大陸・大洋・極冠氷床・夜間都市光をプロシージャル生成可能
+    evidence: テクスチャ不要でゼロアセット・極小バンドルサイズを実現
+    applies_when: 惑星・地形プロシージャル描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/052-atmosphere/index.html
+      - examples/cesium/052-atmosphere/main.ts
+      - examples/cesium/052-atmosphere/render.ts
+      - examples/cesium/052-atmosphere/atmosphere.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部衛星写真テクスチャ画像のロード（シェーダー内プロシージャルテクスチャ生成）
+
+verification:
+  checks:
+    - id: deep-space-cleared
+      what: 画面四隅が深宇宙の黒色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 深宇宙クリア色と一致すること
+    - id: globe-rendered
+      what: 画面中央に地球表面が描画されている
+      how: gl.readPixels で画面中央ピクセルを取得して確認
+      expected: 地球サーフェスピクセルが描画されていること
+    - id: atmosphere-limb-glow
+      what: 惑星の輪郭境界に大気散乱による青色リム発光が描画されている
+      how: gl.readPixels で大気境界領域のピクセル青色成分を確認
+      expected: 大気リム散乱光が検出されること
