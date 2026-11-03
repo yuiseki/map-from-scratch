@@ -1,10 +1,11 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, glRenderer } from '../../../harness/page/bench.ts';
 import type { CanyonRenderer } from './render.ts';
 
 const renderer = (window as unknown as { __mfsRenderer: CanyonRenderer }).__mfsRenderer;
 
 export async function run(): Promise<void> {
   const gl = renderer.gl;
+  emit({ info: { gpu: glRenderer(gl) } });
   gl.canvas.addEventListener('webglcontextlost', () => emit({ error: 'webglcontextlost' }));
 
   await new Promise(requestAnimationFrame);
@@ -55,6 +56,7 @@ export async function run(): Promise<void> {
   }
 
   emit({ metric: 'frame_interval_ms', values: frameIntervals });
+  emit({ done: true });
 }
 
 run();
