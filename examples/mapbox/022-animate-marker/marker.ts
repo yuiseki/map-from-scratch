@@ -27,6 +27,10 @@ const BOUNCE_AMP = 26;
 const BOUNCE_MS = 700;
 const PIN_W = 26;
 const PIN_H = 38;
+export function bounceOffset(elapsedMs: number): number {
+  const u = ((elapsedMs % BOUNCE_MS) + BOUNCE_MS) % BOUNCE_MS / BOUNCE_MS;
+  return BOUNCE_AMP * Math.abs(Math.sin(Math.PI * u));
+}
 
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
@@ -63,8 +67,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function bouncePx(): number {
-    const u = (elapsedMs % BOUNCE_MS) / BOUNCE_MS;
-    return BOUNCE_AMP * Math.abs(Math.sin(Math.PI * u));
+    return bounceOffset(elapsedMs);
   }
 
   function getAnchorScreenPos(): [number, number] {

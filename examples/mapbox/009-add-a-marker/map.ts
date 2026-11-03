@@ -9,6 +9,14 @@ export interface Marker {
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
+export function projectMapPoint(lon: number, lat: number, centerLon: number, centerLat: number,
+  zoom: number, width: number, height: number): { x: number; y: number } {
+  const scale = 256 * 2 ** zoom;
+  return {
+    x: width / 2 + (mercX(lon) - mercX(centerLon)) * scale,
+    y: height / 2 + (mercY(lat) - mercY(centerLat)) * scale,
+  };
+}
 
 export class MarkerMap {
   canvas: HTMLCanvasElement;
@@ -105,16 +113,7 @@ export class MarkerMap {
   getScreenCoords(lon: number, lat: number): { x: number; y: number } {
     const w = this.canvas.width / this.dpr;
     const h = this.canvas.height / this.dpr;
-    const scale = 256 * Math.pow(2, this.zoom);
-    const centerMx = mercX(this.center.lon);
-    const centerMy = mercY(this.center.lat);
-    const mx = mercX(lon);
-    const my = mercY(lat);
-
-    return {
-      x: w / 2 + (mx - centerMx) * scale,
-      y: h / 2 + (my - centerMy) * scale,
-    };
+    return projectMapPoint(lon, lat, this.center.lon, this.center.lat, this.zoom, w, h);
   }
 
   draw(): void {

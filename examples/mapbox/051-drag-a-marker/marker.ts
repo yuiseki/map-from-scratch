@@ -19,6 +19,9 @@ type Polygon = Ring[];
 
 const PIN_W = 32;
 const PIN_H = 44;
+export function markerHitTest(dx: number, dy: number): boolean {
+  return Math.abs(dx) <= PIN_W / 2 + 2 && dy >= -PIN_H - 2 && dy <= 6;
+}
 
 const mercX = (lon: number) => (lon + 180) / 360;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
@@ -162,7 +165,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function hitsMarker(x: number, y: number): boolean {
     const [mx, my] = getMarkerScreenPos();
-    return Math.abs(x - mx) <= PIN_W / 2 + 2 && y >= my - PIN_H - 2 && y <= my + 6;
+    return markerHitTest(x - mx, y - my);
   }
 
   function onPointerDown(e: PointerEvent): void {
