@@ -24,10 +24,10 @@ export const STYLES: StyleRef[] = [
 const BACKGROUND = '#e9eef2';
 const MAX_IN_FLIGHT = 6;
 
-const mercX = (lon: number): number => (lon + 180) / 360;
-const mercY = (lat: number): number =>
+export const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const invMercY = (my: number): number =>
+export const invMercY = (my: number): number =>
   (2 * Math.atan(Math.exp((0.5 - my) * 2 * Math.PI)) - Math.PI / 2) * (180 / Math.PI);
 
 interface TileEntry {

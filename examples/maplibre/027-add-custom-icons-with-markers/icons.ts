@@ -35,7 +35,7 @@ const TILE_STYLE = 'https://tile.yuiseki.net/styles/512/osm-carto.json';
 const MAX_IN_FLIGHT = 6;
 
 // The three custom pins of the MapLibre example, around lower Manhattan.
-const MARKERS = [
+export const MARKERS = [
   { lng: -73.98, lat: 40.75, color: '#1b8a3a', name: 'green' },
   { lng: -73.88, lat: 40.81, color: '#e8590c', name: 'orange' },
   { lng: -74.08, lat: 40.69, color: '#b3125c', name: 'magenta' },
@@ -47,7 +47,11 @@ const PIN_H = 48;
 const mercX = (lon: number) => (lon + 180) / 360;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
 
-const targets = MARKERS.map((m) => ({ mx: mercX(m.lng), my: mercY(m.lat) }));
+export const markerWorldPosition = ({ lng, lat }: { lng: number; lat: number }): [number, number] => [mercX(lng), mercY(lat)];
+const targets = MARKERS.map((m) => {
+  const [mx, my] = markerWorldPosition(m);
+  return { mx, my };
+});
 
 // Three pin sprites, drawn once per DPR. The tip of the pin is the anchor.
 function makePinSprite(color: string, scale: number): HTMLCanvasElement {

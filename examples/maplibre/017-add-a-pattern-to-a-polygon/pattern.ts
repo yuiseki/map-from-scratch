@@ -54,6 +54,8 @@ const COLOR_B = '#2b6cb0';
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
+export const wrappedTileX = (x: number, n: number): number => ((x % n) + n) % n;
+export const tileKey = (z: number, x: number, y: number): string => `${z}/${x}/${y}`;
 
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
@@ -149,9 +151,6 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     };
   }
 
-  const wrapX = (x: number, n: number): number => ((x % n) + n) % n;
-  const tileKey = (z: number, x: number, y: number): string => `${z}/${x}/${y}`;
-
   function requestTile(zi: number, wx: number, y: number): void {
     const key = tileKey(zi, wx, y);
     if (tiles.has(key) || queued.has(key)) return;
@@ -212,7 +211,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     let ready = 0;
     for (let x = L.x0; x <= L.x1; x++) {
       for (let y = L.y0; y <= L.y1; y++) {
-        if (tiles.get(tileKey(L.zi, wrapX(x, L.n), y))?.state === 'ready') ready++;
+        if (tiles.get(tileKey(L.zi, wrappedTileX(x, L.n), y))?.state === 'ready') ready++;
       }
     }
     return ready;
@@ -278,14 +277,14 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
         for (let y = L.y0; y <= L.y1; y++) {
           const Y0 = Math.round(L.originY + y * L.tile);
           const Y1 = Math.round(L.originY + (y + 1) * L.tile);
-          const entry = tiles.get(tileKey(L.zi, wrapX(x, L.n), y));
+          const entry = tiles.get(tileKey(L.zi, wrappedTileX(x, L.n), y));
           if (entry?.state === 'ready' && entry.bitmap) {
             ctx.drawImage(entry.bitmap, X0, Y0, X1 - X0, Y1 - Y0);
           }
         }
       }
       for (let x = L.x0; x <= L.x1; x++) {
-        for (let y = L.y0; y <= L.y1; y++) requestTile(L.zi, wrapX(x, L.n), y);
+        for (let y = L.y0; y <= L.y1; y++) requestTile(L.zi, wrappedTileX(x, L.n), y);
       }
     }
 
