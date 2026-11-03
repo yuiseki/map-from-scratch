@@ -1,0 +1,70 @@
+id: deckgl-032-globe-view
+request: >-
+  deck.gl の公式サンプル「GlobeView」のように、宇宙空間に浮かぶ 3D 球体地球儀の上に
+  大陸を展開し、主要大都市間を結ぶ高高度 3D 放物線フライトアークを大気リムグローとともに描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D 地球儀・フライトアーク描画に重厚な deck.gl および luma.gl バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 地球儀と航路が現れる
+  - id: 3d-globe-and-arcs
+    need: 暗黒宇宙の中に青い地球儀・大気散乱リム・高高度 3D アークが正しく立体描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-globe-and-arcs}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/deckgl/032-globe-view/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期地球儀メッシュと大圏フライトアークの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 地球儀回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 世界の主要大都市（東京、サンフランシスコ、ロンドン、ニューヨーク等）の経緯度座標および大圏球面補間 3D 放物線アークデータを生成
+
+performance_knowledge:
+  - id: spherical-great-circle-arc-batching
+    finding: 大圏補間された 3D 放物線アーク群をラインバッファにバッチ化し、単位球体地球儀メッシュと深度テストで同時に描画することで、地球規模の交通フローを 60 fps で瞬時に描画可能
+    evidence: 2 ドローコールで地球儀と全大陸間フライトアークを描画
+    applies_when: 3D 地球儀および空間アーク描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/deckgl/032-globe-view/index.html
+      - examples/deckgl/032-globe-view/main.ts
+      - examples/deckgl/032-globe-view/render.ts
+      - examples/deckgl/032-globe-view/globe.ts
+  not_doing:
+    - deck.gl および luma.gl ライブラリ全体のバンドル
+
+verification:
+  checks:
+    - id: globe-rendered-in-space
+      what: 画面中央部に 3D 地球儀が宇宙空間の中に描画されていること
+      how: readPixels で四隅の宇宙空間ピクセルと中央地球儀ピクセルを読み出し比較
+      expected: 四隅が暗黒宇宙色であり中央地球儀が青/緑の惑星色であること
+    - id: atmosphere-and-arcs-detected
+      what: 地球儀の縁に大気散乱リムグローまたは高高度フライトアークが検出されること
+      how: readPixels で地球儀縁部ピクセルの輝度を検証
+      expected: 縁部において散乱光または発光アークが検出される

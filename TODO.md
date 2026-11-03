@@ -217,7 +217,7 @@
 - [ ] `deckgl-029-google-maps` → `examples/deckgl/029-google-maps/` — [Google Maps](https://deck.gl/examples/google-maps)
 - [ ] `deckgl-030-mapbox` → `examples/deckgl/030-mapbox/` — [Mapbox](https://deck.gl/examples/mapbox)
 - [ ] `deckgl-031-maplibre` → `examples/deckgl/031-maplibre/` — [MapLibre](https://deck.gl/examples/maplibre)
-- [ ] `deckgl-032-globe-view` → `examples/deckgl/032-globe-view/` — [GlobeView](https://deck.gl/examples/globe-view)
+- [x] `deckgl-032-globe-view` → `examples/deckgl/032-globe-view/` — [GlobeView](https://deck.gl/examples/globe-view)
 - [ ] `deckgl-033-orthographic-view` → `examples/deckgl/033-orthographic-view/` — [OrthographicView](https://deck.gl/examples/orthographic-view)
 - [ ] `deckgl-034-collision-filter-extension` → `examples/deckgl/034-collision-filter-extension/` — [CollisionFilterExtension](https://deck.gl/examples/collision-filter-extension)
 - [ ] `deckgl-035-data-filter-extension` → `examples/deckgl/035-data-filter-extension/` — [DataFilterExtension](https://deck.gl/examples/data-filter-extension)
