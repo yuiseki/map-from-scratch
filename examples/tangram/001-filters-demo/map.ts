@@ -1,17 +1,17 @@
 type Polygon = [number, number][][];
 type Line = [number, number][];
-type RoadType = 'SR' | 'US' | 'I';
+export type RoadType = 'SR' | 'US' | 'I';
 
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
 
-const STYLE: Record<RoadType, { color: string; width: number }> = {
+export const ROAD_STYLE: Record<RoadType, { color: string; width: number }> = {
   SR: { color: '#ff7f2a', width: 2 },
   US: { color: '#2e9e5b', width: 3 },
   I: { color: '#3b6fd4', width: 3 },
 };
-const DRAW_ORDER: RoadType[] = ['SR', 'US', 'I'];
+export const ROAD_DRAW_ORDER: RoadType[] = ['SR', 'US', 'I'];
 
 export class FiltersMap {
   canvas: HTMLCanvasElement;
@@ -180,9 +180,9 @@ export class FiltersMap {
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (const type of DRAW_ORDER) {
+    for (const type of ROAD_DRAW_ORDER) {
       if (!this.visible[type]) continue;
-      const style = STYLE[type];
+      const style = ROAD_STYLE[type];
       ctx.strokeStyle = style.color;
       ctx.lineWidth = style.width;
       ctx.beginPath();

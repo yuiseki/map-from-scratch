@@ -25,6 +25,10 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
 
+export function consumeDisabledScrollZoom(event: Pick<WheelEvent, 'preventDefault'>): void {
+  event.preventDefault();
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<ScrollZoomMap> {
   const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
@@ -138,7 +142,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   // Scroll zoom is off: consume the wheel event so the page does not scroll,
   // but leave the camera where it is.
   function onWheel(e: WheelEvent): void {
-    e.preventDefault();
+    consumeDisabledScrollZoom(e);
   }
 
   // Double-click zoom is still on, anchored at the pointer.
