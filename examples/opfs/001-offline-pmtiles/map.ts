@@ -20,8 +20,32 @@ export interface OpfsMap {
   onTileLoaded?: () => void;
 }
 
+// A tile's rings as paths in tile units [0, 1], built once when it arrives:
+// a frame only sets the tile's transform. Each ring is filled on its own, as
+// before; the coast (every edge not on the tile border, where the bake cut
+// the polygon) is one path.
 interface TileData {
-  rings: Float32Array[];
+  rings: Path2D[];
+  coast: Path2D;
+}
+
+function tilePaths(rings: Float32Array[]): TileData {
+  const coast = new Path2D();
+  const fills = rings.filter((ring) => ring.length >= 6).map((ring) => {
+    const p = new Path2D();
+    p.moveTo(ring[0], ring[1]);
+    for (let i = 2; i < ring.length; i += 2) p.lineTo(ring[i], ring[i + 1]);
+    p.closePath();
+    const m = ring.length;
+    for (let i = 0; i < m; i += 2) {
+      const j = (i + 2) % m, ax = ring[i], ay = ring[i + 1], bx = ring[j], by = ring[j + 1];
+      if ((ax === bx && (ax <= 0 || ax >= 1)) || (ay === by && (ay <= 0 || ay >= 1))) continue;
+      coast.moveTo(ax, ay);
+      coast.lineTo(bx, by);
+    }
+    return p;
+  });
+  return { rings: fills, coast };
 }
 
 export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Promise<OpfsMap> {
@@ -71,7 +95,7 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
     if (msg.type === 'tile') {
       const key = `${msg.z}/${msg.x}/${msg.y}`;
       inFlight.delete(key);
-      tileCache.set(key, { rings: msg.rings });
+      tileCache.set(key, tilePaths(msg.rings));
       if (pendingRequests.has(msg.id)) {
         pendingRequests.get(msg.id)!(msg.rings);
         pendingRequests.delete(msg.id);
@@ -141,36 +165,19 @@ export async function mount(canvas: HTMLCanvasElement, archiveUrl: string): Prom
           continue;
         }
 
-        // Draw tile land polygons
-        ctx.save();
+        // Tile land: the tile's paths at its place and size
+        ctx.setTransform(dpr * tileSize, 0, 0, dpr * tileSize, dpr * tileLeft, dpr * tileTop);
         ctx.fillStyle = '#1e293b';
         ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 1;
-
-        for (const ring of cached.rings) {
-          if (ring.length < 6) continue;
-          const X = (i: number) => tileLeft + ring[i] * tileSize, Y = (i: number) => tileTop + ring[i + 1] * tileSize;
-          ctx.beginPath();
-          ctx.moveTo(X(0), Y(0));
-          for (let i = 2; i < ring.length; i += 2) ctx.lineTo(X(i), Y(i));
-          ctx.closePath();
-          ctx.fill();
-          // Stroke the coast only: an edge lying on the tile border is where
-          // the bake clipped the polygon, not a shore.
-          ctx.beginPath();
-          const m = ring.length;
-          for (let i = 0; i < m; i += 2) {
-            const j = (i + 2) % m, ax = ring[i], ay = ring[i + 1], bx = ring[j], by = ring[j + 1];
-            const cut = (ax === bx && (ax <= 0 || ax >= 1)) || (ay === by && (ay <= 0 || ay >= 1));
-            if (!cut) { ctx.moveTo(X(i), Y(i)); ctx.lineTo(X(j), Y(j)); }
-          }
-          ctx.stroke();
-        }
+        ctx.lineWidth = 1 / tileSize;
+        for (const ring of cached.rings) ctx.fill(ring);
+        ctx.stroke(cached.coast);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         // Tile boundary
         ctx.strokeStyle = 'rgba(71, 85, 105, 0.2)';
+        ctx.lineWidth = 1;
         ctx.strokeRect(tileLeft, tileTop, tileSize, tileSize);
-        ctx.restore();
       }
     }
   }
