@@ -1,26 +1,5 @@
 // examples/opfs/001-offline-pmtiles/worker.ts
-
-// Hilbert tile id calculator
-const TZ = [0, 1, 5, 21, 85, 341, 1365];
-function zxyToTileId(z: number, x: number, y: number): number {
-  const n = 1 << z;
-  let d = 0, xx = x, yy = y;
-  for (let s = n >> 1; s >= 1; s >>= 1) {
-    const rx = (xx & s) ? 1 : 0;
-    const ry = (yy & s) ? 1 : 0;
-    d += s * s * ((3 * rx) ^ ry);
-    if (ry === 0) {
-      if (rx === 1) { xx = s - 1 - xx; yy = s - 1 - yy; }
-      const t = xx; xx = yy; yy = t;
-    }
-  }
-  return TZ[z] + d;
-}
-
-interface TileEntry {
-  offset: number;
-  length: number;
-}
+import { parseDirectory, zxyToTileId, type TileEntry } from './pmtiles-data.ts';
 
 let syncHandle: any = null;
 let dataOffset = 0;
@@ -29,51 +8,6 @@ const tileEntries = new Map<number, TileEntry>();
 let totalSyncReads = 0;
 let totalSyncLatencyMs = 0;
 let opfsSize = 0;
-
-function readVarint(u8: Uint8Array, p: { pos: number }): number {
-  let v = 0, shift = 1, b: number;
-  do {
-    b = u8[p.pos++];
-    v += (b & 0x7f) * shift;
-    shift *= 128;
-  } while (b & 0x80);
-  return v;
-}
-
-function parseDirectory(u8: Uint8Array): Map<number, TileEntry> {
-  const p = { pos: 0 };
-  const n = readVarint(u8, p);
-  const map = new Map<number, TileEntry>();
-  const ids: number[] = [];
-  const runLengths: number[] = [];
-  const lengths: number[] = [];
-  const offsets: number[] = [];
-
-  let last = 0;
-  for (let i = 0; i < n; i++) {
-    last += readVarint(u8, p);
-    ids.push(last);
-  }
-  for (let i = 0; i < n; i++) {
-    runLengths.push(readVarint(u8, p));
-  }
-  for (let i = 0; i < n; i++) {
-    lengths.push(readVarint(u8, p));
-  }
-  for (let i = 0; i < n; i++) {
-    const v = readVarint(u8, p);
-    if (v === 0 && i > 0) {
-      offsets.push(offsets[i - 1] + lengths[i - 1]);
-    } else {
-      offsets.push(v - 1);
-    }
-  }
-
-  for (let i = 0; i < n; i++) {
-    map.set(ids[i], { offset: offsets[i], length: lengths[i] });
-  }
-  return map;
-}
 
 self.onmessage = async (e: MessageEvent) => {
   const msg = e.data;
