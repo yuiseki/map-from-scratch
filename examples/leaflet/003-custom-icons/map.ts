@@ -41,6 +41,7 @@ const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.P
 const latFromMercY = (my: number) => (Math.atan(Math.exp((1 - 2 * my) * Math.PI)) - Math.PI / 4) * 360 / Math.PI;
 
 const HIT_RADIUS = 18;
+export const iconHitTest = (dx: number, dy: number): boolean => Math.hypot(dx, dy) <= HIT_RADIUS;
 
 function drawIcon(ctx: CanvasRenderingContext2D, icon: MapIcon, x: number, y: number): void {
   ctx.save();
@@ -235,7 +236,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   function clickAtScreen(sx: number, sy: number): void {
     for (const icon of ICONS) {
       const [x, y] = getScreenPos(icon.lat, icon.lng);
-      if (Math.hypot(sx - x, sy - (y - 16)) <= HIT_RADIUS) {
+      if (iconHitTest(sx - x, sy - (y - 16))) {
         activePopup = { text: icon.text, lat: icon.lat, lng: icon.lng, lift: ICON_TOP + 12 };
         draw();
         return;

@@ -28,6 +28,10 @@ const MARKER_LNG = -0.09;
 const CIRCLE_LAT = 51.508;
 const CIRCLE_LNG = -0.11;
 const CIRCLE_RADIUS_METERS = 500;
+export function circleRadiusPixels(radiusMeters: number, latitude: number, zoom: number): number {
+  const metersPerUnit = 40075016.68557849 * Math.cos(latitude * Math.PI / 180);
+  return (radiusMeters / metersPerUnit) * 256 * 2 ** zoom;
+}
 
 const POLYGON_COORDS: [number, number][] = [
   [51.509, -0.08],
@@ -134,8 +138,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
     // 1. Circle (500m at [51.508, -0.11])
     const [cx, cy] = getScreenPos(CIRCLE_LAT, CIRCLE_LNG);
-    const metersPerUnit = 40075016.68557849 * Math.cos(CIRCLE_LAT * Math.PI / 180);
-    const circleRadiusPx = (CIRCLE_RADIUS_METERS / metersPerUnit) * scale;
+    const circleRadiusPx = circleRadiusPixels(CIRCLE_RADIUS_METERS, CIRCLE_LAT, zoom);
 
     ctx.beginPath();
     ctx.arc(cx, cy, Math.max(1, circleRadiusPx), 0, Math.PI * 2);
@@ -277,8 +280,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     // 2. Check circle
     const [cx, cy] = getScreenPos(CIRCLE_LAT, CIRCLE_LNG);
     const scale = 256 * Math.pow(2, zoom);
-    const metersPerUnit = 40075016.68557849 * Math.cos(CIRCLE_LAT * Math.PI / 180);
-    const circleRadiusPx = (CIRCLE_RADIUS_METERS / metersPerUnit) * scale;
+    const circleRadiusPx = circleRadiusPixels(CIRCLE_RADIUS_METERS, CIRCLE_LAT, zoom);
     if (Math.hypot(sx - cx, sy - cy) <= circleRadiusPx) {
       activePopup = { text: 'I am a circle.', lat: CIRCLE_LAT, lng: CIRCLE_LNG };
       draw();
