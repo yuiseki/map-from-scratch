@@ -838,7 +838,7 @@
 - [ ] `cesium-288-terrain-performance-dev` → `examples/cesium/288-terrain-performance-dev/` — [Terrain Performance Dev](https://sandcastle.cesium.com/?src=terrain-performance-dev)
 - [ ] `cesium-289-terrain-tweaks-dev` → `examples/cesium/289-terrain-tweaks-dev/` — [Terrain Tweaks Dev](https://sandcastle.cesium.com/?src=terrain-tweaks-dev)
 - [ ] `cesium-290-time-dependent-path-graphics` → `examples/cesium/290-time-dependent-path-graphics/` — [Time Dependent Path Graphics](https://sandcastle.cesium.com/?src=time-dependent-path-graphics)
-- [ ] `cesium-291-time-dynamic-point-cloud` → `examples/cesium/291-time-dynamic-point-cloud/` — [Time Dynamic Point Cloud](https://sandcastle.cesium.com/?src=time-dynamic-point-cloud)
+- [x] `cesium-291-time-dynamic-point-cloud` → `examples/cesium/291-time-dynamic-point-cloud/` — [Time Dynamic Point Cloud](https://sandcastle.cesium.com/?src=time-dynamic-point-cloud)
 - [ ] `cesium-292-time-dynamic-wheels` → `examples/cesium/292-time-dynamic-wheels/` — [Time Dynamic Wheels](https://sandcastle.cesium.com/?src=time-dynamic-wheels)
 - [ ] `cesium-293-timeline` → `examples/cesium/293-timeline/` — [Timeline](https://sandcastle.cesium.com/?src=timeline)
 - [ ] `cesium-294-underground-color` → `examples/cesium/294-underground-color/` — [Underground Color](https://sandcastle.cesium.com/?src=underground-color)

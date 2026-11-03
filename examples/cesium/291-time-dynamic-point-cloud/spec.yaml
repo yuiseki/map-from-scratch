@@ -1,0 +1,80 @@
+id: cesium-291-time-dynamic-point-cloud
+request: >-
+  CesiumJS の showcase である「Time Dynamic Point Cloud」のように、
+  数千〜数万の点群（Point Cloud）が時間経過に伴って調和波動（Harmonic Surface Waves）を描いて
+  4次元的に脈動・うねり、標高に応じた科学的カラーパレットで輝く 3D 点群サーフェスを対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 4D 動的点群の描画に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 点群サーフェスが現れる
+  - id: dynamic-point-cloud
+    need: 3D 空間で点群が時間発展して波打ち、標高段彩カラーで正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: dynamic-point-cloud}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/291-time-dynamic-point-cloud/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 点群グリッドバッファ生成と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 波動アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 2D ポイントグリッド座標をメモリ内で動的生成
+
+performance_knowledge:
+  - id: gpu-harmonic-wave-displacement
+    finding: 毎フレームの全点座標更新を CPU で行わず頂点シェーダー内で時間パラメータ u_time に基づく合成正弦波として評価することで、毎フレームの GPU バッファ転送を完全ゼロ化
+    evidence: 毎フレームの bufferSubData ゼロ、CPU 負荷極小で 60 fps を維持
+    applies_when: 波動点群・海洋シミュレーション・動的変形サーフェス
+  - id: distance-attenuated-point-splats
+    finding: gl_PointSize をクリップ空間深度 gl_Position.w で除算してサイズ減衰させ、フラグメントシェーダー内で円形フェードを適用することで自然な 3D 点群ボリューム感を表現
+    evidence: ビルボードクアッド展開なしに gl.POINTS 1 コールで高品質スプラット描画
+    applies_when: LiDAR 点群・海洋レーダー・パーティクルボリューム
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/291-time-dynamic-point-cloud/index.html
+      - examples/cesium/291-time-dynamic-point-cloud/main.ts
+      - examples/cesium/291-time-dynamic-point-cloud/wave.ts
+      - examples/cesium/291-time-dynamic-point-cloud/render.ts
+  not_doing:
+    - CesiumJS や Potree などの重量点群エンジンの読み込み
+    - CPU 側での毎フレーム全点座標再計算・VBO 再転送
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が暗い宇宙空間色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 暗い背景色（r < 30, g < 30, b < 45）であること
+    - id: point-cloud-surface-rendered
+      what: 画面中央付近に点群サーフェス粒子が描画されている
+      how: gl.readPixels で中央領域をスキャンして粒子色を確認
+      expected: 点群粒子色（r > 20 || g > 25 || b > 35）が存在すること
+    - id: wave-crests-illuminated
+      what: 波動の波頂部または斜面粒子が発光描画されている
+      how: gl.readPixels で波面領域をスキャンして粒子色を確認
+      expected: 有効な波動点群色（r > 20 || g > 25 || b > 35）が存在すること
