@@ -1,0 +1,27 @@
+# Unit tests and type checks (bin/mfs test) on every push and pull request.
+#
+# Benchmarks, bakes and the Pages deploy stay on the machine that has the GPU
+# and the local sources (tools/deploy-pages.sh): a GitHub-hosted runner has
+# neither, so the examples cannot be measured or built here.
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # The base of docker/base/Dockerfile. tsconfig.node.json reads @types from
+    # /usr/local/lib/node_modules, where npm -g installs in this image.
+    container: node:24-trixie-slim
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the type checker at the versions of docker/base/Dockerfile
+        run: npm install -g --no-audit --no-fund $(grep -oE '(typescript|@types/node)@[0-9.]+' docker/base/Dockerfile)
+      - name: Unit tests and type checks
+        run: node --disable-warning=ExperimentalWarning harness/cli.ts test

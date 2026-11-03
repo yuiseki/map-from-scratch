@@ -61,8 +61,10 @@ bin/mfs bench <id> --site       # GitHub Pages 用ビルド済みサイト (.cac
 bin/mfs report                  # results/<id>/latest.json から Markdown の結果表を出力
 bin/mfs serve [port]            # 開発用ローカルサーバ起動 (デフォルト 8080, TS 型ストリップ対応)
 bin/mfs probe [lifetime]        # コンテナ内の GPU / WebGL コンテキスト生存確認
-tools/deploy-pages.sh           # サイト構築・全ページ検証・gh-pages へのデプロイ
+tools/deploy-pages.sh           # サイト構築・前回デプロイから変わった例の検証・gh-pages へのデプロイ (--all で全例)
 ```
+
+GitHub Actions (`.github/workflows/test.yml`) は、push とプルリクエストのたびに `bin/mfs test` と同じ単体テストと型検査を `node:24-trixie-slim` で実行します。GitHub が用意するマシンには GPU も手元の元データもないので、計測・ベイク・デプロイはこのマシンで `bin/mfs` と `tools/deploy-pages.sh` を使って行います。
 
 ### 主な環境変数（`bin/mfs`）
 - `MFS_TOOLCHAIN` : ツールチェーン用イメージ `mfs-<toolchain>:latest` (`docker/Dockerfile.<toolchain>`) で実行する。例: `MFS_TOOLCHAIN=emscripten bin/mfs build <id>`。spec.yaml の `architecture_selection.chosen.toolchain` を持つ例のビルドに必要
