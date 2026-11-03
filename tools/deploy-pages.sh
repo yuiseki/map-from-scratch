@@ -2,7 +2,15 @@
 # Publish the browser examples to GitHub Pages.
 #
 #   tools/deploy-pages.sh            build, check, push to gh-pages
+#   tools/deploy-pages.sh --all      check every example, not only the changed
 #   tools/deploy-pages.sh --no-check skip the browser check of the built site
+#
+# The check runs only the examples that changed since the commit the current
+# gh-pages was built from (tools/changed-examples.ts: an example's own files,
+# examples that read it, or every example when the harness, tools, kits,
+# vendor, docker or bin changed). Checking the unchanged ones again only
+# measured them again, and one of them over its time budget by load stopped
+# the deploy.
 #
 # The data is baked on this machine (the sources are local), so the site is
 # built here and pushed as a single-commit gh-pages branch: each deploy
@@ -16,7 +24,25 @@ REPO=$(echo "$REMOTE" | sed -E 's#.*github.com[:/]##; s#\.git$##')
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$ROOT:$ROOT" -w "$ROOT" mfs-base \
   node --disable-warning=ExperimentalWarning tools/build-site.ts
 if [[ "${1:-}" != --no-check ]]; then
-  for id in $(bin/mfs list | grep -E '^[0-9a-z]' ); do
+  ids=$(bin/mfs list | grep -E '^[0-9a-z]')
+  git fetch -q origin gh-pages 2>/dev/null || true
+  base=$(git log -1 --format=%s FETCH_HEAD 2>/dev/null | sed -n 's/^Site built from \([0-9a-f]*\)$/\1/p')
+  if [[ "${1:-}" != --all && -n "$base" ]] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+    changed=$(mktemp "$ROOT/.cache/mfs-changed-XXXXXXXX")
+    { git diff --name-only "$base"; git ls-files --others --exclude-standard; } > "$changed"
+    selected=$(docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$ROOT:$ROOT" -w "$ROOT" mfs-base \
+      node --disable-warning=ExperimentalWarning tools/changed-examples.ts "$changed")
+    rm -f "$changed"
+    if [[ "$selected" != all ]]; then
+      ids=$(comm -12 <(echo "$ids" | sort) <(echo "$selected" | sort))
+      echo "site check: $(echo "$ids" | grep -c . || true) examples changed since $base"
+    else
+      echo "site check: every example (shared code changed since $base)"
+    fi
+  else
+    echo "site check: every example"
+  fi
+  for id in $ids; do
     site_dir=".cache/site/examples/$id"
     for source in maplibre leaflet deckgl d3 mapbox cesium openglobus tangram forge3d kepler luma webgpu opfs wasm htmlcanvas; do
       [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
@@ -26,7 +52,7 @@ if [[ "${1:-}" != --no-check ]]; then
     # time out here (08-10, 18-24).
     spec=$(grep -l "^id: $id\$" examples/*/spec.yaml examples/*/*/spec.yaml baselines/*/spec.yaml 2>/dev/null | head -1)
     [[ -n "$spec" ]] && grep -q '^  scenarios: \[\]' "$spec" && { echo "site check skipped (no bench scenarios): $id"; continue; }
-    bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 || { cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1; }
+    bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 </dev/null || { cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1; }
   done
 fi
 
