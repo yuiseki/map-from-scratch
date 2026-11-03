@@ -66,6 +66,10 @@ performance_knowledge:
     finding: equirectangularテクスチャの継ぎ目は両端に別頂点を持たせ、u=0とu=1に分ける
     evidence: unit tests verify duplicated seam positions with u=0/1 and outward winding; 3 browser runs read actual pixels successfully
     applies_when: longitude seamを持つ球面テクスチャのメッシュを作る場合
+  - id: texture-row-convention
+    finding: equirectangular画像は UNPACK_FLIP_Y_WEBGL を使わずにアップロードし、v=(90-lat)/180 で北極を v=0 (画像の先頭行) にする。FLIP_Y=1 と v=0=北を組み合わせると南北が反転する
+    evidence: 2026-11-03 までの版は FLIP_Y=1 で、90N が画像の1023行目 (南端) を読んでいた。開始画面ではサハラが赤道の南側に、地中海がさらにその下に描かれていた。修正後は Sahara (5E,25N) の画面ピクセルが 173,151,123、Atlantic (5E,25S) が 16,27,43 で、南北反転した変異版では値が入れ替わる (18,31,50 / 150,131,106)。単体テスト texelForLonLat / imageRowForTextureV が 90N→0行、90S→1023行、赤道→512行を固定する
+    applies_when: 画像ファイルの行順のまま地図画像をWebGLテクスチャにする場合
 
 architecture_selection:
   chosen:
@@ -96,9 +100,13 @@ verification:
       what: 地球の縁に青い大気が描画される
       how: 球面の外側、シルエット付近の色を readPixels で確認する
       expected: rim pixel の青チャンネルが赤より8以上大きい
+    - id: north-up
+      what: テクスチャの南北が地理と一致する
+      how: 開始カメラで Sahara (5E,25N) と Atlantic (5E,25S) を projectLonLat で画面へ投影し、5x5近傍の平均色を readPixels する
+      expected: Sahara の赤が Atlantic の赤より40以上大きく、Sahara は赤>青、Atlantic は青>赤
     - id: globe-rotates
       what: yawの変更で地球のテクスチャが回る
-      how: 同じ画面中央を二つのyawで描き、実画面ピクセルを比較する
+      how: 同じ画面中央を yaw 0.15 (Gulf of Guinea, 8.6W 6.9S) と yaw 0.70 (north-east Brazil, 40.1W 6.9S) で描き、実画面ピクセルを比較する。以前の yaw 0.95 (54W) は Amazon の暗い森に当たり海との距離が10で、テクスチャが南北反転していたあいだだけ通っていた
       expected: 中央RGB距離が12を超える
     - id: zoom-changes-scale
       what: カメラ距離で地球の見かけの大きさが変わる

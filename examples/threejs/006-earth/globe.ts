@@ -15,6 +15,51 @@ export function lonLatToUnitSphere(longitudeDeg: number, latitudeDeg: number): [
   return [Math.sin(lon) * cosLat, Math.sin(lat), Math.cos(lon) * cosLat];
 }
 
+/**
+ * Whether the renderer uploads the image with UNPACK_FLIP_Y_WEBGL. Without
+ * it, the first row of the image (its top, the north edge of an
+ * equirectangular map) becomes texture t = 0, so v = 0 must be latitude 90N.
+ */
+export const TEXTURE_UNPACK_FLIP_Y = false;
+
+/** Texture coordinate of a point: u = 0 at 180W rising eastward, v = 0 at 90N. */
+export function lonLatToUv(longitudeDeg: number, latitudeDeg: number): [number, number] {
+  return [(longitudeDeg + 180) / 360, (90 - latitudeDeg) / 180];
+}
+
+/** Image row (0 = top of the image file) sampled at texture coordinate v after upload. */
+export function imageRowForTextureV(v: number, imageHeight: number, flipY = TEXTURE_UNPACK_FLIP_Y): number {
+  const t = Math.min(imageHeight - 1, Math.max(0, Math.floor(v * imageHeight)));
+  return flipY ? imageHeight - 1 - t : t;
+}
+
+/** Image column and row the renderer samples for a longitude and latitude. */
+export function texelForLonLat(longitudeDeg: number, latitudeDeg: number, imageWidth: number, imageHeight: number): [number, number] {
+  const [u, v] = lonLatToUv(longitudeDeg, latitudeDeg);
+  const column = Math.min(imageWidth - 1, Math.max(0, Math.floor(u * imageWidth)));
+  return [column, imageRowForTextureV(v, imageHeight)];
+}
+
+/**
+ * CSS pixel of a point on the globe, using the same rotation and projection as
+ * the vertex shader; null when the point is on the far side.
+ */
+export function projectLonLat(longitudeDeg: number, latitudeDeg: number, yaw: number, pitch: number,
+  distance: number, width: number, height: number): [number, number] | null {
+  const [x, y, z] = lonLatToUnitSphere(longitudeDeg, latitudeDeg);
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const rx = cy * x + sy * z;
+  const rz = -sy * x + cy * z;
+  const qy = cp * y - sp * rz;
+  const qz = sp * y + cp * rz;
+  if (qz <= 1 / distance) return null;
+  const depth = distance - qz;
+  const f = 1.75;
+  const ndcX = rx * f / (width / height) / depth;
+  const ndcY = qy * f / depth;
+  return [(ndcX + 1) / 2 * width, (1 - ndcY) / 2 * height];
+}
+
 export interface SphereGrid {
   positions: Float32Array;
   uvs: Float32Array;
@@ -35,8 +80,9 @@ export function createSphereGrid(latitudeSegments: number, longitudeSegments: nu
       const index = row * columns + column;
       const lon = -180 + column * 360 / longitudeSegments;
       positions.set(lonLatToUnitSphere(lon, lat), index * 3);
-      uvs[index * 2] = column / longitudeSegments;
-      uvs[index * 2 + 1] = row / latitudeSegments;
+      const [u, v] = lonLatToUv(lon, lat);
+      uvs[index * 2] = column === longitudeSegments ? 1 : u;
+      uvs[index * 2 + 1] = row === latitudeSegments ? 1 : v;
     }
   }
   const indices = new Uint32Array(latitudeSegments * longitudeSegments * 6);
@@ -160,7 +206,7 @@ export class EarthRenderer {
     this.indexCount = mesh.indices.length;
     this.texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, TEXTURE_UNPACK_FLIP_Y ? 1 : 0);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, image);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
