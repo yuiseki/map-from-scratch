@@ -1,0 +1,100 @@
+id: openglobus-076-mapterhorn
+request: >-
+  OpenGlobus の Mapterhorn Terrain 例のように、Mapterhorn の標高データから斜面陰影と標高段彩のある
+  立体地形を表示し、ドラッグで回転、ホイールでズームしたい。
+requirements:
+  - id: terrain-rendered
+    need: 標高タイルが立体的な地形メッシュとして表示される
+    unmeasured: 形状の正しさはterrain-visibleの実画面ピクセル検証で確かめる。フレーム描画量は初回フレーム予算に含める
+  - id: shaded-relief
+    need: 標高段彩と斜面陰影で地形の起伏を読める
+    unmeasured: 高さデコードは単体テストで確認し、画面の地形と空のピクセル差をverificationで読む
+  - id: navigation
+    need: 地形をドラッグで回転し、ホイールで拡大縮小できる
+    rationale: yaw変更で実画面ピクセルが変わり、回転中のframe p95が16.7ms以内
+  - id: quick-start
+    need: 標高データの読み込み後にすぐ地形が出る
+    rationale: 初回フレーム p50 1,500ms以内
+  - id: compact
+    need: 地図エンジンをランタイムで読み込まず、静的ファイルだけで動く
+    rationale: コードgzip 15KB以内、入力タイル500KB以内
+  - id: hardware
+    need: PCのブラウザでハードウェアGPU描画する
+    unmeasured: bench結果にGPU名を記録し、ユーザー所有の端末では未測定
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 15000, unit: B, requirement: compact}
+    - {metric: data_bytes, max: 500000, unit: B, requirement: compact}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: cpu_ms, stat: p95, max: 5, unit: ms, requirement: navigation}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+  gates: [WebGL2 で描画, 全ての実画面ピクセル検査が通る, WebGL context loss がない]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/076-mapterhorn/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-relief
+      what: 標高画像のデコードから初回の地形フレームまで
+      metrics: [first_frame_ms]
+    - id: rotating-relief
+      what: yawを変えながら40フレーム描き、readPixelsでGPU完了まで待つ
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+
+datasets:
+  sources:
+    - id: mapterhorn-terrarium
+      origin: https://tiles.mapterhorn.com/12/3627/1615.webp
+      license: Mapterhorn attribution.jsonにあるGSI数値標高モデルの帰属・使用承認 (R 8JHs 131) を画面表示
+  outputs:
+    - examples/openglobus/076-mapterhorn/terrain.webp
+  preparation:
+    - z12 x3627 y1615の512×512 Terrarium WebPタイルを同梱し、ブラウザ内で整数RGBをメートル標高へ戻す
+    - 512×512標高を128×128格子へサンプリングし、標高差・標高色を頂点属性として事前配置する
+
+performance_knowledge:
+  - id: one-static-mesh
+    finding: 一枚の標高ラスタを初期化時にだけ128×128 meshにし、フレームあたり一回のdrawElementsで描く
+    evidence: 32,768三角形を単一 indexed draw call にまとめる。RTX 3060で初回p50 72.97ms、frame p95 1.035ms、GPU p95 0.04915ms (3 runs)
+    applies_when: 表示範囲と解像度が固定された地形プレビュー
+  - id: terrarium-decode
+    finding: Terrarium RGBをCPU上でメートルに戻し、段彩と高さをGPU用typed arrayへ直接ベイクする
+    evidence: main threadで解読する画素数は262,144、GPU格子は16,384頂点。地形表示・回転の実画面チェックが3回ずつ成功
+    applies_when: 1～数枚のWebP Terrarium標高タイルを固定画角で使うとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (type stripped by the local server and Pages builder)
+    gpu: hardware
+    code:
+      - examples/openglobus/076-mapterhorn/index.html
+      - examples/openglobus/076-mapterhorn/main.ts
+      - examples/openglobus/076-mapterhorn/terrain.ts
+      - examples/openglobus/076-mapterhorn/render.ts
+    dependencies: []
+    why: 1枚の高さラスタを事前に格子へ変換し、色と斜面光を頂点・フラグメント shader で描く。
+  alternatives:
+    - option: OpenGlobus / MapLibre GL JS
+      rejected_because: 汎用地図エンジンは本依頼の単一の地形タイル表示に不要な機能も実行時に持つ
+    - option: Canvas 2D
+      rejected_because: 斜めから見る地形の透視投影と深度を描けない
+  not_doing: [全球, タイルLOD, 地形上の衛星画像, 建物, 地名ラベル, 時系列やレイヤー切替]
+
+verification:
+  checks:
+    - id: terrain-visible
+      what: 画面中央に立体地形が描かれている
+      how: WebGL canvasの中央と背景ピクセルを同じフレームからreadPixelsする
+      expected: 中央が不透明で背景と20以上のRGB距離がある
+    - id: terrain-rotates
+      what: yawを変えると地形の画面色が変わる
+      how: 同じカメラ位置でyawを変えた中央画素の距離を読む
+      expected: 色距離が10を超える

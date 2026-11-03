@@ -360,7 +360,7 @@
 - [ ] `openglobus-073-free-navigation` → `examples/openglobus/073-free-navigation/` — [Free Navigation](https://sandbox.openglobus.org/examples/freeNavigation/freeNavigation.html)
 - [ ] `openglobus-074-idle-mode` → `examples/openglobus/074-idle-mode/` — [Idle Mode](https://sandbox.openglobus.org/examples/idleMode/idleMode.html)
 - [ ] `openglobus-075-wind-farm` → `examples/openglobus/075-wind-farm/` — [Wind Farm Instanced Objects Animation](https://sandbox.openglobus.org/examples/windFarm/windFarm.html)
-- [ ] `openglobus-076-mapterhorn` → `examples/openglobus/076-mapterhorn/` — [Mapterhorn Terrain](https://sandbox.openglobus.org/examples/mapterhorn/mapterhorn.html)
+- [x] `openglobus-076-mapterhorn` → `examples/openglobus/076-mapterhorn/` — [Mapterhorn Terrain](https://sandbox.openglobus.org/examples/mapterhorn/mapterhorn.html)
 - [ ] `openglobus-077-bil-terrain` → `examples/openglobus/077-bil-terrain/` — [BIL Terrain](https://sandbox.openglobus.org/examples/bilTerrain/bilTerrain.html)
 - [ ] `openglobus-078-disable-layer-picking` → `examples/openglobus/078-disable-layer-picking/` — [Disable Layer Picking](https://sandbox.openglobus.org/examples/disableLayerPicking/disableLayerPicking.html)
 - [ ] `openglobus-079-layer-picking` → `examples/openglobus/079-layer-picking/` — [Layer Picking](https://sandbox.openglobus.org/examples/layerPicking/layerPicking.html)
@@ -944,4 +944,4 @@
 
 ## 進捗
 
-- 対象: **841 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 9）。実装済み **94 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005、threejs-006）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **841 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 9）。実装済み **95 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005、threejs-006、openglobus-076）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
