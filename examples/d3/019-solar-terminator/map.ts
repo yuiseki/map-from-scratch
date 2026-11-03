@@ -24,6 +24,12 @@ function solar(utcHours: number): { dec: number; eqTime: number } {
 
 const normLon = (lon: number): number => ((lon + 540) % 360) - 180;
 
+export function subsolarPosition(utcHour: number): { lon: number; lat: number } {
+  const hour = ((utcHour % 24) + 24) % 24;
+  const { dec, eqTime } = solar(hour);
+  return { lon: normLon(-15 * (hour + eqTime / 60 - 12)), lat: dec };
+}
+
 export class SolarTerminatorMap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
@@ -61,8 +67,7 @@ export class SolarTerminatorMap {
   }
 
   subsolar(): { lon: number; lat: number } {
-    const { dec, eqTime } = solar(this.hour);
-    return { lon: normLon(-15 * (this.hour + eqTime / 60 - 12)), lat: dec };
+    return subsolarPosition(this.hour);
   }
 
   private resize(): void {
