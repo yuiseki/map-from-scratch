@@ -12,6 +12,12 @@ export class TangramHighwaysMap {
   highways: Line[] = [];
   // 10m land for the area of the opening view, drawn over the 110m land.
   coast: { bbox: number[]; polygons: Polygon[] } = { bbox: [0, 0, 0, 0], polygons: [] };
+  // Each layer as one Path2D, built once in Mercator units relative to an
+  // origin near the data: a frame only sets the transform. Relative, so that
+  // float32 path coordinates stay well under a pixel at z14 (4.2M px/unit).
+  // The glow keeps one path per line: overlapping lines (both directions of
+  // a road) add up their translucent glow, as they did when drawn one by one.
+  private paths: { land: Path2D; coast: Path2D; roads: Path2D; glows: Path2D[]; o: [number, number] } | null = null;
   center = { lon: -122.4194, lat: 37.7749 };
   zoom = 8;
   dpr = 1;
@@ -44,6 +50,20 @@ export class TangramHighwaysMap {
     this.polygons = (await landRes.json()) as Polygon[];
     this.highways = (await hwRes.json()) as Line[];
     this.coast = (await coastRes.json()) as typeof this.coast;
+    const [bx0, by0, bx1, by1] = this.coast.bbox;
+    const o: [number, number] = [(bx0 + bx1) / 2, (by0 + by1) / 2];
+    const build = (lines: [number, number][][], closed: boolean): Path2D => {
+      const p = new Path2D();
+      for (const line of lines) {
+        line.forEach(([x, y], i) => (i ? p.lineTo(x - o[0], y - o[1]) : p.moveTo(x - o[0], y - o[1])));
+        if (closed) p.closePath();
+      }
+      return p;
+    };
+    this.paths = {
+      land: build(this.polygons.flat(), true), coast: build(this.coast.polygons.flat(), true),
+      roads: build(this.highways, false), glows: this.highways.map((l) => build([l], false)), o,
+    };
     this.draw();
   }
 
@@ -131,80 +151,50 @@ export class TangramHighwaysMap {
     const centerMx = mercX(this.center.lon);
     const centerMy = mercY(this.center.lat);
 
-    // 1. Draw Land Polygons
+    if (!this.paths) { ctx.restore(); return; }
+    const { land, coast, roads, glows, o } = this.paths;
+    // Mercator (relative to o) to CSS px, shifted by whole worlds
+    const at = (wrap: number): void => ctx.setTransform(
+      this.dpr * scale, 0, 0, this.dpr * scale,
+      this.dpr * (w / 2 + (o[0] - centerMx + wrap) * scale), this.dpr * (h / 2 + (o[1] - centerMy) * scale));
+
+    // 1. Land, one copy per world the screen spans, or it ends at 180°
     ctx.fillStyle = '#1e2430';
     ctx.strokeStyle = '#2e3846';
-    ctx.lineWidth = 1;
-
-    const drawLand = (polygons: Polygon[]): void => {
-      // One copy of the land per world the screen spans, or it ends at 180°.
-      const wrapMin = Math.floor(centerMx - w / 2 / scale), wrapMax = Math.floor(centerMx + w / 2 / scale);
-      for (let wrap = wrapMin; wrap <= wrapMax; wrap++) {
-        for (const poly of polygons) {
-          ctx.beginPath();
-          for (const ring of poly) {
-            for (let i = 0; i < ring.length; i++) {
-              const rx = w / 2 + (ring[i][0] - centerMx) * scale + wrap * scale;
-              const ry = h / 2 + (ring[i][1] - centerMy) * scale;
-              if (i === 0) ctx.moveTo(rx, ry);
-              else ctx.lineTo(rx, ry);
-            }
-          }
-          ctx.fill();
-          ctx.stroke();
-        }
-      }
-    };
-    drawLand(this.polygons);
+    ctx.lineWidth = 1 / scale;
+    const wrapMin = Math.floor(centerMx - w / 2 / scale), wrapMax = Math.floor(centerMx + w / 2 / scale);
+    for (let wrap = wrapMin; wrap <= wrapMax; wrap++) {
+      at(wrap);
+      ctx.fill(land);
+      ctx.stroke(land);
+    }
 
     // 1b. Inside the detail box, sea first and then the 10m land. The baked
     // polygons reach past the box, so their cut edges are clipped away.
-    const [x0, y0, x1, y1] = this.coast.bbox.map((v, i) => (i % 2 ? h / 2 + (v - centerMy) * scale : w / 2 + (v - centerMx) * scale));
+    const [bx0, by0, bx1, by1] = this.coast.bbox;
+    at(0);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(x0, y0, x1 - x0, y1 - y0);
+    ctx.rect(bx0 - o[0], by0 - o[1], bx1 - bx0, by1 - by0);
     ctx.clip();
     ctx.fillStyle = '#151922';
-    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fill();
     ctx.fillStyle = '#1e2430';
-    drawLand(this.coast.polygons);
+    ctx.fill(coast);
+    ctx.stroke(coast);
     ctx.restore();
 
-    // 2. Draw Highways (Zoom-dependent line width)
-    // Scale line width exponentially with zoom (z6 -> ~1px, z8 -> ~2.2px, z10 -> ~4.5px)
+    // 2. Highways (zoom-dependent width: z6 ~1 px, z8 ~2.2 px, z10 ~4.5 px),
+    // a glow pass and a core pass
     const coreWidth = Math.max(1.0, Math.pow(1.5, this.zoom - 6.0));
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    // Glow pass
     ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
-    ctx.lineWidth = coreWidth * 2.8;
-    for (const line of this.highways) {
-      ctx.beginPath();
-      for (let i = 0; i < line.length; i++) {
-        const [mx, my] = line[i];
-        const sx = w / 2 + (mx - centerMx) * scale;
-        const sy = h / 2 + (my - centerMy) * scale;
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
-      }
-      ctx.stroke();
-    }
-
-    // Core neon pass
+    ctx.lineWidth = (coreWidth * 2.8) / scale;
+    for (const glow of glows) ctx.stroke(glow);
     ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = coreWidth;
-    for (const line of this.highways) {
-      ctx.beginPath();
-      for (let i = 0; i < line.length; i++) {
-        const [mx, my] = line[i];
-        const sx = w / 2 + (mx - centerMx) * scale;
-        const sy = h / 2 + (my - centerMy) * scale;
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
-      }
-      ctx.stroke();
-    }
+    ctx.lineWidth = coreWidth / scale;
+    ctx.stroke(roads);
 
     ctx.restore();
     if (this.onRender) this.onRender();

@@ -8,6 +8,10 @@ export class TangramMap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   polygons: Polygon[] = [];
+  // A Path2D per land polygon in Mercator units, built once: a frame only
+  // sets the transform of each world copy. (One path for all of the land
+  // drew faster but rasterised slower: frame interval p95 15-17 ms, not 12-13.)
+  private land: Path2D[] = [];
   center = { lon: 0, lat: 20 };
   zoom = 1;
   dpr = 1;
@@ -34,6 +38,11 @@ export class TangramMap {
   async load(baseDir = '../../..'): Promise<void> {
     const res = await fetch(`${baseDir}/data/baked/tangram-010-simple-demo/land.json`);
     this.polygons = (await res.json()) as Polygon[];
+    this.land = this.polygons.map((poly) => {
+      const p = new Path2D();
+      for (const ring of poly) ring.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y)));
+      return p;
+    });
     this.draw();
   }
 
@@ -126,25 +135,16 @@ export class TangramMap {
     // Land styling: Tangram dark slate
     ctx.fillStyle = '#2e3440';
     ctx.strokeStyle = '#434c5e';
-    ctx.lineWidth = 1.2;
+    // The path is in world units, so the 1.2 px line is 1.2 / scale of them.
+    ctx.lineWidth = 1.2 / scale;
 
     const minWrap = Math.floor(centerMx - w / (2 * scale));
     const maxWrap = Math.ceil(centerMx + w / (2 * scale));
-
     for (let wrap = minWrap; wrap <= maxWrap; wrap++) {
-      const offsetX = w / 2 + (wrap - centerMx) * scale;
-      for (const poly of this.polygons) {
-        ctx.beginPath();
-        for (const ring of poly) {
-          for (let i = 0; i < ring.length; i++) {
-            const rx = offsetX + ring[i][0] * scale;
-            const ry = h / 2 + (ring[i][1] - centerMy) * scale;
-            if (i === 0) ctx.moveTo(rx, ry);
-            else ctx.lineTo(rx, ry);
-          }
-        }
-        ctx.fill();
-        ctx.stroke();
+      ctx.setTransform(this.dpr * scale, 0, 0, this.dpr * scale, this.dpr * (w / 2 + (wrap - centerMx) * scale), this.dpr * (h / 2 - centerMy * scale));
+      for (const p of this.land) {
+        ctx.fill(p);
+        ctx.stroke(p);
       }
     }
 
