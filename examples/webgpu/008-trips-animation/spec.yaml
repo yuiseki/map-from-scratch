@@ -1,0 +1,91 @@
+id: webgpu-008-trips-animation
+request: >-
+  マンハッタンのイエローキャブとグリーンキャブの移動を、建物の間を通る軌跡として WebGPU で時間とともに再生したい。
+  （deckgl-025-trips-layer のデータを WebGPU の Vertex Pulling と Reversed-Z 深度で描く）
+
+requirements:
+  - id: trips-trail-playback
+    need: マンハッタンのタクシー軌跡を時刻に合わせて光るアニメーションとして再生する
+    unmeasured: verification.checks の trips-visible と time-advances-trails で確かめる
+  - id: buildings-depth
+    need: 3D 建築物が正しく立体表示され、タクシーが建物の陰を通過する奥行きを再現する
+    unmeasured: verification.checks の buildings-rendered で確かめる
+  - id: smooth-animation
+    need: アニメーション再生およびカメラ操作が 60 fps で滑らかに動作する
+    rationale: 60 Hz の 1 フレーム 16.7 ms 以内
+  - id: fast-startup
+    need: 軌跡および建物データの読み込みと初期化が高速に完了する
+    rationale: バイナリ読み込みと GPU パイプライン初期化が 1.5 秒以内
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: fast-startup}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: fast-startup}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-animation}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/008-trips-animation/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 1
+  scenarios:
+    - id: first-frame
+      what: ページの読み込みから、軌跡・建物データのアップロードと初回描画完了まで
+      metrics: [first_frame_ms]
+    - id: orbit-path
+      what: マンハッタンを旋回しながらタクシーが走るアニメーションの 300 フレーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+
+datasets:
+  bake: [node, examples/deckgl/025-trips-layer/bake.ts]
+  sources:
+    - id: deckgl-trips-nyc
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/trips
+      license: NYC Taxi and Limousine Commission / Open Data
+    - id: deckgl-trips-buildings
+      origin: https://github.com/visgl/deck.gl-data/tree/master/examples/trips
+      license: OpenStreetMap contributors / ODbL
+  outputs:
+    - data/baked/deckgl-025-trips-layer/trips.bin
+    - data/baked/deckgl-025-trips-layer/buildings.bin
+  preparation:
+    - deckgl-025-trips-layer と同一の trips.bin (479 KB) および buildings.bin (590 KB) を利用
+
+performance_knowledge:
+  - 毎フレームのアニメーション更新で GPU バッファを再転送せず、Uniforms の currentTime のみを更新する。
+  - セグメントの太さ展開は頂点シェーダー内で実行し、現在時刻から trailLength までの時間減衰（fade）を評価することで、CPU コストを完全ゼロ化する。
+  - 建物（996棟）の 3D メッシュとタクシー軌跡を同一の Reversed-Z depth32float 深度バッファで描画し、オクルージョン関係をハードウェアで正確に解決する。
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/webgpu/008-trips-animation/index.html
+      - examples/webgpu/008-trips-animation/main.ts
+      - examples/webgpu/008-trips-animation/render.ts
+    dependencies: []
+    why: 軌跡の太さ展開・時間減衰・建物の深度遮蔽を単一の WebGPU パイプラインで 60 fps 再生する
+  alternatives:
+    - WebGL2 での描画に比べ、より自由な頂点プルや最新のシェーダー構文（WGSL）を活用できる
+  not_doing: [ストリートビュー, 車両 3D モデルの配置, 交通信号シミュレーション]
+
+verification:
+  checks:
+    - id: buildings-rendered
+      what: 画面内にマンハッタンの 3D 建物が描画されていること
+      how: 画面読み戻しにより建物の陰影ピクセル（グレー系）を検出
+      expected: building_pixels >= 10000
+    - id: trips-visible
+      what: イエローおよびグリーンの光るタクシートレイルが画面上に描画されていること
+      how: 画面読み戻しにより黄色系 (R>180, G>180, B<50) および緑色系 (R<50, G>180, B>120) の画素を検出
+      expected: yellow_pixels >= 50 && green_pixels >= 50
+    - id: time-advances-trails
+      what: 時刻を進めるとタクシーの描画位置・ピクセルが変化すること
+      how: 時刻 t=500 と t=1500 の画面を比較し、ピクセル差分を検証
+      expected: diff_ratio >= 0.005
