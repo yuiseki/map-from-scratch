@@ -83,16 +83,8 @@ test('elevationColor maps elevation in meters to natural terrain colors', () => 
 });
 
 test('getL3ChunkOrder returns all 9 chunks sorted by Morton order', () => {
-  const order = getL3ChunkOrder();
-  assert.equal(order.length, 9);
-  // Check that all 9 (row, col) pairs in 3x3 are unique and present
-  const set = new Set(order.map(([r, c]) => `${r}_${c}`));
-  assert.equal(set.size, 9);
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      assert.ok(set.has(`${r}_${c}`));
-    }
-  }
+  // Z order: the 2x2 block first, then the third column and the third row.
+  assert.deepEqual(getL3ChunkOrder(), [[0, 0], [0, 1], [1, 0], [1, 1], [0, 2], [1, 2], [2, 0], [2, 1], [2, 2]]);
 });
 
 test('generateGridIndices creates standard triangle list for NxN grid', () => {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createUnitCubeMesh, decodeGridCells, gridToWorld, treeDensityColor } from './grid.ts';
 
-test('gridToWorld maps integer cell indices to meters centered on cell', () => {
+test('gridToWorld maps integer cell indices to meters at the cell corner', () => {
   assert.deepEqual(gridToWorld(0, 0, 100), [0, 0]);
   assert.deepEqual(gridToWorld(5, -3, 200), [1000, -600]);
 });
@@ -23,16 +23,22 @@ test('createUnitCubeMesh generates 30 vertices with correct normal components', 
 });
 
 test('treeDensityColor maps count to smooth gradient and non-zero alpha', () => {
-  const c0 = treeDensityColor(0, 100);
+  assert.deepEqual(treeDensityColor(0, 100), [0.2, 0.4, 0.3, 0.8]); // empty cell
+  const c1 = treeDensityColor(1, 100);
   const cMid = treeDensityColor(50, 100);
   const cMax = treeDensityColor(100, 100);
 
-  assert.equal(c0.length, 4);
-  assert.equal(cMax.length, 4);
-  assert.ok(c0[3] > 0);
-  assert.ok(cMax[3] > 0);
-  // High density should have more blue/cyan than low density
-  assert.ok(cMax[2] > c0[2]);
+  // The top of the log scale is the last stop of the gradient.
+  [0.29, 0.13, 0.95, 0.92].forEach((v, i) => assert.ok(Math.abs(cMax[i] - v) < 1e-9, `cMax[${i}]`));
+  // Blue grows with density through the middle of the gradient.
+  assert.ok(c1[2] < cMid[2] && cMid[2] < cMax[2]);
+  assert.ok(c1[3] > 0);
+  // No jumps at the stops: neighbouring counts get nearly the same colour.
+  // From 10 up the log scale moves less than 0.01 per count, across both stops.
+  for (let n = 10; n < 100000; n++) {
+    const a = treeDensityColor(n, 100000), b = treeDensityColor(n + 1, 100000);
+    assert.ok(a.every((v, i) => Math.abs(v - b[i]) < 0.05), `count ${n}`);
+  }
 });
 
 test('decodeGridCells parses GC01 binary buffer correctly', () => {

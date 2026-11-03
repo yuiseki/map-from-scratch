@@ -12,6 +12,8 @@ test('selected county shows only its outgoing records ordered by magnitude', () 
 
 test('selected county keeps only the strongest 200 flows while overview is capped at 300', () => {
   const flows = Array.from({ length: 350 }, (_, i) => ({ s: 1, t: i, v: i + 1 }));
-  assert.equal(selectCountyFlows(flows, 1).length, 200);
+  const selected = selectCountyFlows(flows, 1);
+  assert.equal(selected.length, 200);
+  assert.equal(Math.min(...selected.map((f) => f.v)), 151);
   assert.equal(selectCountyFlows(flows, -1).length, 300);
 });

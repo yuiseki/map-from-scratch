@@ -56,8 +56,16 @@ describe('cesium-231-particle-system', () => {
 
     assert.equal(sys.particles.length, 250);
 
+    // A fire particle at rest on the emitter, and one at the end of its life.
+    const rising = sys.particles.find((p) => p.kind === 0)!;
+    rising.pos = [0, 0, 0]; rising.vel = [0, 1, 0]; rising.age = 0;
+    const dying = sys.particles.find((p) => p.kind === 1)!;
+    dying.pos = [50, 50, 50]; dying.age = dying.life - 0.01;
+
     // Initial step
     updateParticleSystem(sys, 0.1, [0, 0, 0]);
+    assert.ok(rising.pos[1] > 0, 'velocity is integrated into the position');
+    assert.ok(dying.age < 0.1 && Math.hypot(...dying.pos) < 5, 'a dead particle restarts at the emitter');
 
     // Check buffer layout: 8 floats per particle (x, y, z, size, r, g, b, a)
     const buf = sys.buffer;

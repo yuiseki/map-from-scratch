@@ -40,6 +40,11 @@ test('FireworkSimulation updates physics, applies gravity and cleans dead partic
   const p0 = sim.particles[0];
   assert.notEqual(p0.position[1], 400);
 
+  // Gravity pulls a particle at rest downward, then drag slows it.
+  p0.velocity = [0, 0, 0];
+  sim.update(0.1);
+  assert.ok(Math.abs(p0.velocity[1] - -90 * 0.1 * (1 - 0.55 * 0.1)) < 1e-9);
+
   // Advance past lifetime (e.g. 5 seconds)
   sim.update(5.0);
   // Dead particles should be removed

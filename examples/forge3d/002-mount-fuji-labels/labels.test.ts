@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { blockSize, planLabels, type Label } from './labels.ts';
-import { parseRelief, viewFrom } from '../007-camera-flyover/terrain.ts';
+import { makeView, parseRelief } from './terrain.ts';
 
 const label = (name: string): Label => ({ name, en: 'Peak', ele: 100, u: 0.5, v: 0.5, rank: 1 });
 
 function relief(): ReturnType<typeof parseRelief> {
   const buffer = new ArrayBuffer(62);
   const view = new DataView(buffer);
-  for (const [i, c] of [...'RAIN'].entries()) view.setUint8(i, c.charCodeAt(0));
+  for (const [i, c] of [...'FUJI'].entries()) view.setUint8(i, c.charCodeAt(0));
   view.setUint16(6, 2, true); view.setUint16(8, 2, true);
   view.setFloat32(10, -1, true); view.setFloat32(14, -1, true);
   view.setFloat32(18, 1, true); view.setFloat32(22, 1, true);
@@ -25,7 +25,8 @@ test('label block sizing uses the wider line and omits the English line when emp
 
 test('label planner places non-overlapping labels and rejects extras as collisions', () => {
   const r = relief();
-  const view = viewFrom([1000, 0, 1000], [0, 0, 100], 800, 600);
+  // The eye at (1000, 0, 1000): due east of the target, 900 m above it.
+  const view = makeView({ az: 90, el: Math.atan2(900, 1000) * 180 / Math.PI, radius: Math.hypot(1000, 900) }, [0, 0, 100], 800, 600, () => 100);
   const labels = Array.from({ length: 5 }, (_, i) => label(`peak-${i}`));
   const plan = planLabels(r, view, 1, labels, labels.map(() => [50, 25]));
   assert.equal(plan.placed.length, 2);

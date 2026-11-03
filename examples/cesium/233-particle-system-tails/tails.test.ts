@@ -31,7 +31,9 @@ test('EmitterTrail spawns particles and updates their lifetime and dispersion', 
   trail.update(0.1);
   const p = trail.getParticles()[0];
   assert.ok(p.age > 0, 'Particle age increases');
-  assert.ok(p.size > 2, 'Particle expands over time');
+  const size = p.size;
+  trail.update(0.5);
+  assert.ok(p.size > size, 'Particle expands over time');
 });
 
 test('packTailParticles converts particles into packed Float32Array with position, size, and RGBA', () => {

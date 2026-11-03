@@ -41,6 +41,11 @@ test('updateWeather moves particles, applies wind, and wraps at bottom to top', 
   // Advance by 0.1s -> falls by 20 -> y becomes -10 -> wraps to top
   updateWeather(particles, 0.1, 'rain', [50, 0, 0], volume, 1.0);
   assert.ok(particles[0].y >= 250); // Wrapped near volume height
+
+  // Away from the bottom, wind carries the particle sideways.
+  const still: WeatherParticle[] = [{ x: 0, y: 200, z: 0, vx: 0, vy: -10, vz: 0, size: 4 }];
+  updateWeather(still, 0.1, 'rain', [50, 0, -20], volume, 1.0);
+  assert.ok(Math.abs(still[0].x - 5) < 1e-9 && Math.abs(still[0].y - 199) < 1e-9 && Math.abs(still[0].z - -2) < 1e-9);
 });
 
 test('packWeatherBuffer outputs correct stride and floats for GPU drawing', () => {
