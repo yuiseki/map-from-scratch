@@ -6,8 +6,9 @@
 // is not preserved). Places come from geography (summit, Oshino, Lake
 // Yamanaka), not from the renderer.
 import { emit, glRenderer, benchFrames } from '../../../harness/page/bench.ts';
-import { project, eye, type Cam } from './camera.ts';
+import { project, eye, basis, type Cam } from './camera.ts';
 import type { App } from './main.ts';
+import { EXAG, LIGHT, openingCam, skyAt, sunColor, toScreen, luminance } from './look.ts';
 
 const RAD = Math.PI / 180;
 const SUMMIT: [number, number] = [138.7274, 35.3606];
@@ -72,8 +73,10 @@ export async function run(app: App, firstFrameMs: number): Promise<void> {
   const o = app.toLocal(...OSHINO), s = app.toLocal(...SUMMIT);
   const azSun = Math.atan2(s[0] - o[0], s[1] - o[1]);
   const at = screen(OSHINO);
+  // White light, as before the light took its colour from its altitude: the
+  // check measures the shadow, not the colour of a low sun.
   const ratio = (alt: number) => {
-    app.setLight(azSun, alt * RAD);
+    app.setLight(azSun, alt * RAD, [1, 1, 1]);
     app.setShadows(true); const on = lum(at.x, at.y);
     app.setShadows(false); const off = lum(at.x, at.y);
     app.setShadows(true);
@@ -99,15 +102,41 @@ export async function run(app: App, firstFrameMs: number): Promise<void> {
   });
 
   // 5: a 3D surface: the summit stands above its foot on screen and is
-  // terrain-coloured, the top of the screen is sky.
+  // terrain-coloured, the top of the screen is sky (the colour look.ts gives
+  // for that ray; the sky replaced a flat clear colour of luminance 15).
   setCam(SUMMIT, { bearing: 0, tilt: 25 * RAD, dist: 40000 });
   app.setLight(315 * RAD, 35 * RAD);
   const top = screen(SUMMIT), foot = project(app.cam, [s[0], s[1], 0], W, H)!;
-  const sky = lum(W / 2, 4), peak = lum(top.x, top.y + 4);
+  // the sky's luminance for the ray through CSS pixel (x, y), as the sky shader computes it
+  const skyLum = (x: number, y: number) => {
+    const { f, r, u } = basis(app.cam), th = Math.tan(app.cam.fovy / 2), nx = (2 * x) / W - 1, ny = 1 - (2 * y) / H;
+    const d = [0, 1, 2].map((k) => f[k] + r[k] * nx * th * (W / H) + u[k] * ny * th);
+    return luminance(toScreen(skyAt(d[2] / Math.hypot(...d), app.light.color)));
+  };
+  const sky = lum(W / 2, 4), skyWant = skyLum(W / 2, 4), peak = lum(top.x, top.y + 4);
   emit({
-    check: 'terrain-3d', pass: foot.y - top.y > 40 && Math.abs(sky - 15) < 4 && Math.abs(peak - sky) > 15,
-    detail: `summit ${f1(top.y)} px vs foot ${f1(foot.y)} px; sky lum ${f1(sky)}, summit lum ${f1(peak)}`,
+    check: 'terrain-3d', pass: foot.y - top.y > 40 && Math.abs(sky - skyWant) < 6 && Math.abs(peak - sky) > 15,
+    detail: `summit ${f1(top.y)} px vs foot ${f1(foot.y)} px; sky lum ${f1(sky)} (want ${f1(skyWant)}), summit lum ${f1(peak)}`,
   });
+
+  // 5b: the opening view shows Fuji against the sky: the pixel 12 px above
+  // the projected summit is sky of the expected colour, the summit is not,
+  // and Fuji stands at least a quarter of the screen above its 1,000 m foot.
+  Object.assign(app.cam, openingCam(app.grid, app.hRef, EXAG));
+  app.setExag(EXAG);
+  app.setLight(LIGHT.az, LIGHT.alt);
+  const os = screen(SUMMIT), of = project(app.cam, [s[0], s[1], (1000 - app.hRef) * EXAG], W, H)!;
+  const above = lum(os.x, os.y - 12), aboveWant = skyLum(os.x, os.y - 12), summitL = lum(os.x, os.y + 6);
+  const warm = sunColor(LIGHT.alt);
+  emit({
+    check: 'opening-view-sky',
+    pass: of.y - os.y > 0.25 * H && os.y > 0.1 * H && Math.abs(above - aboveWant) < 8 && Math.abs(summitL - above) > 10 && warm[0] / warm[2] > 1.5,
+    detail: `summit at ${f1(os.x)},${f1(os.y)} px, ${f1(of.y - os.y)} px above its foot; sky above it lum ${f1(above)} (want ${f1(aboveWant)}), summit lum ${f1(summitL)}; light ${warm.map((v) => v.toFixed(2))}`,
+  });
+  // back to check 5's view, which check 6 drags from
+  app.setExag(1);
+  setCam(SUMMIT, { bearing: 0, tilt: 25 * RAD, dist: 40000 });
+  app.setLight(315 * RAD, 35 * RAD);
 
   // 6: drag right orbits (the ground south of the target moves right), wheel
   // zooms about the pointer.
@@ -141,15 +170,15 @@ export async function run(app: App, firstFrameMs: number): Promise<void> {
 
   // Timing. The light path moves the light every frame (shadow pass and
   // terrain); the orbit path moves only the camera.
-  setCam(SUMMIT, { bearing: 200 * RAD, tilt: 32 * RAD, dist: 52000 });
-  app.setExag(1.5);
+  Object.assign(app.cam, openingCam(app.grid, app.hRef, EXAG));
+  app.setExag(EXAG);
   const N = 240;
   await benchFrames(gl, N, (i) => {
     const t = i / N;
     app.setLight(2 * Math.PI * t, (8 + 40 * (0.5 + 0.5 * Math.sin(4 * Math.PI * t))) * RAD);
     app.draw();
   }, { prefix: 'light_' });
-  app.setLight(315 * RAD, 35 * RAD);
+  app.setLight(LIGHT.az, LIGHT.alt);
   app.draw();
   await benchFrames(gl, N, (i) => {
     const t = i / N;

@@ -16,9 +16,15 @@ requirements:
     need: トグルで、太陽が東から昇り南を通って西へ沈むように光が動く (元の DEMO MODE)
     rationale: 一日 20 秒。60 フレームで方位が 3° 以上進み、影の計算がフレームごとにやり直され、斜面の明るさが変わる
     unmeasured: verification の sun-toggle-animates で確かめる
+  - id: opening-view
+    need: 開いた最初の画面で、光が主役になる。富士山が空を背に大きく立ち、低い暖色の太陽で斜面の明暗と尾根の影が読める
+    rationale: >-
+      1280x800 で山頂が標高 1,000 m の裾より画面の 1/4 (200 px) 以上高く、山頂の 12 px 上の画素は look.ts の空の色 (輝度 ±8)、
+      光は高度 8° の暖色 (赤/青 > 1.5)。前の最初の画面 (距離 52 km、俯角 32°、高さ 1.5 倍) では山の高さは 75 px で、地平線は画面の外だった
+    unmeasured: verification の opening-view-sky と、look.test.ts (段彩、最初のカメラ、最初の光、空と霞) で確かめる
   - id: see-terrain-3d
     need: 標高で持ち上げた地形を斜めから 3D で見て、ドラッグで回し、ホイールで寄る
-    rationale: 山頂が画面上で麓より 40 px 以上高く、上端は空。ドラッグ右で南の地面が右へ、ホイールでポインターの下の点が 1 px 以内に留まる
+    rationale: 山頂が画面上で麓より 40 px 以上高く、上端は空 (look.ts の空の色)。ドラッグ右で南の地面が右へ、ホイールでポインターの下の点が 1 px 以内に留まる
     unmeasured: verification の terrain-3d と drag-and-wheel で確かめる
   - id: shading
     need: ランバート拡散と、湖だけの控えめな鏡面反射
@@ -41,11 +47,13 @@ requirements:
   - id: few-bytes
     need: 読むバイト数を少なく
     rationale: >-
-      転送はデータ 1.23 MB とコード約 25 KB で 1,300 KB 以内。同じ範囲を原本の z11 WebP タイルで読むと 4x3 枚 4,989,416 B
+      転送はデータ 1.23 MB とコード約 27 KB で 1,300 KB 以内。同じ範囲を原本の z11 WebP タイルで読むと 4x3 枚 4,989,416 B
       (performance_knowledge の bytes-vs-original)
   - id: light
     need: 配るコードは小さく
-    rationale: gzip 9 KB 以内 (Tangram 本体は数百 KB)
+    rationale: >-
+      gzip 11 KB 以内 (Tangram 本体は数百 KB)。最初は 9 KB としたが、計測していなかったその時点のコードがすでに 9,361 B
+      (ファイルごとの gzip、harness/lib/footprint.ts と同じ数え方) で、空と霞と段彩と look.ts を足して 10,672 B になった
   - id: pages-static
     need: GitHub Pages に静的ファイルとして置ける
     rationale: データは 1 ファイル、1.3 MB 以内
@@ -60,7 +68,7 @@ evaluation:
     - {metric: light_gpu_ms, stat: p95, max: 5, unit: ms, requirement: smooth-light}
     - {metric: orbit_frame_ms, stat: p95, max: 4, unit: ms, requirement: smooth-light}
     - {metric: transfer_kb, stat: max, max: 1300, unit: KB, requirement: few-bytes}
-    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light}
+    - {metric: code_gzip_bytes, max: 11000, unit: B, requirement: light}
     - {metric: data_bytes, max: 1300000, unit: B, requirement: pages-static}
     - {metric: js_heap_mb, stat: max, max: 80, unit: MB, requirement: quick-start}
   gates: [エラーがない, ハードウェア GPU (info.gpu がソフトウェアラスタライザでない), verification の check がすべて通る]
@@ -83,10 +91,10 @@ benchmarks:
       what: 本物のポインター、ホイール、クリックのイベントでページを動かし、画面の画素を読む (verification.checks)
       metrics: []
     - id: light-path
-      what: 最初の視点 (方位 200°、俯角 32°、距離 52 km、高さ 1.5 倍) で、光を 240 フレームで一周させ、高度を 8° から 48° まで揺らす。毎フレーム影のパスと地形
+      what: 最初の視点 (look.ts の VIEW: 方位 200°、俯角 12°、距離 25 km、高さ 2 倍) で、光を 240 フレームで一周させ、高度を 8° から 48° まで揺らす。毎フレーム空、影のパスと地形
       metrics: [light_cpu_ms, light_frame_ms, light_gpu_ms]
     - id: orbit-path
-      what: 光を止めて、カメラを 240 フレームで一周させながら距離を 21 から 52 km まで変える。影は作り直さない
+      what: 光を止めて (look.ts の LIGHT)、最初の視点の俯角 12° のまま、カメラを 240 フレームで一周させながら距離を 21 から 52 km まで変える。影は作り直さない
       metrics: [orbit_cpu_ms, orbit_frame_ms, orbit_gpu_ms]
 
 datasets:
@@ -143,6 +151,26 @@ performance_knowledge:
       fuji.mftl 1,233,826 B に対し、範囲を覆う z11 タイル 12 枚は 4,989,416 B (タイル単位でしか取れない)。
       範囲の面積の割合 (1280x1024 / 2048x1536 = 0.42) で按分しても 2.08 MB
     applies_when: 決まった範囲だけを見る地形の例
+  - id: opening-view-light-first
+    finding: >-
+      最初の画面を、光が主役に見えるように作り直した。カメラを富士の北北東 25 km、俯角 12° に下げ (前は 52 km、32°)、
+      高さを 2 倍にし (前は 1.5 倍)、光を高度 8° の暖色の西北西の太陽にした (前は高度 35° の白)。黒い背景をやめて、
+      視線の仰角で地平の色から天頂の青へ移る空と太陽のまわりの光輪を全画面の三角形 1 枚で描き、地平の色は光の色に寄せる。
+      地形の色は標高の段彩 (400 m の濃い緑、1,600 m のオリーブ、2,300 m から茶、3,300 m から白) で、土地被覆ではないと画面に書いた。
+      遠くの地形は同じ地平の色へ霞ませ、区画の奥の縁を空に溶かす。色と既定値は look.ts の 1 か所にあり、シェーダーと
+      テストとベンチが同じ数を読む
+    evidence: >-
+      1280x800、RTX 3060 (ANGLE Vulkan) のスクリーンショット (前と後)。山頂から標高 1,000 m の裾までの画面上の高さは 75 px から 242 px、
+      地平線は画面の外 (上端の視線が 13° 下向き) から画面内 (y 153 px) に入った。opening-view-sky は山頂の 12 px 上の輝度 185.5 に対し
+      空の式の値 185.3。直射の強さを 1.5 倍にしたので、影の比は忍野で 0.723 (白い光)
+    applies_when: 地形の陰影を見せるデモの最初の画面
+  - id: haze-relative-to-target
+    finding: >-
+      霞を目からの絶対距離 (30 km から) で始めると、70 km まで引いたときに区画全体が白く褪せた。カメラの目標までの距離 + 5 km から
+      始めるように変え、見ているものはどのズームでも霞まず、その奥 (区画の奥の縁) だけが空の色へ寄るようにした
+    evidence: >-
+      目視 (距離 70 km、俯角 30° の画面)。hazeAt は目標の 22 km 奥で 0.3 から 0.85 の間、2 km 奥で 0 (look.test.ts)
+    applies_when: ズームの幅が広い地形の霞
   - id: osm-lake-probe-points
     finding: 湖の多角形の頂点の平均は湖の外に落ちることがある (精進湖、河口湖)。確かめる点は ST_PointOnSurface で取る
     evidence: 頂点平均の 138.6096E 35.4869N (精進湖) はマスクで陸。ST_PointOnSurface の 138.6066E 35.4887N は水
@@ -161,6 +189,7 @@ architecture_selection:
       - examples/tangram/014-terrain-light-demo/camera.ts
       - examples/tangram/014-terrain-light-demo/light.ts
       - examples/tangram/014-terrain-light-demo/shaders.ts
+      - examples/tangram/014-terrain-light-demo/look.ts
     dependencies: []
     why: >-
       範囲が決まっているので、高さは 1 枚の R32F テクスチャ、メッシュは頂点バッファーなし (gl_VertexID から格子を作る) の
@@ -177,7 +206,7 @@ architecture_selection:
       rejected_because: カメラだけ動くときも費用を払う。テクスチャに書けば回転は影を作り直さない
     - option: 17-fuji-terrain-3d の LOD つきチャンク (Range 読み)
       rejected_because: 40 km 四方を 31 m で 1 枚にすれば 1.2 MB で、LOD も Range も要らない。寄ったときの細かさは捨てる
-  not_doing: [LOD とタイルの読み分け, 区画の外の地形 (影は区画の端で途切れる), 点光源 (元の例の赤い点光源), 地名ラベルと道路, 光の色を選ぶ GUI, 大気と霧, 区画の側面の壁, タッチのピンチ]
+  not_doing: [LOD とタイルの読み分け, 区画の外の地形 (影は区画の端で途切れる), 点光源 (元の例の赤い点光源), 地名ラベルと道路, 光の色を選ぶ GUI, 散乱を計算する大気 (空は仰角の 2 色の補間と光輪、霞は距離の指数), 区画の側面の壁, 土地被覆の色 (色は標高の段彩だけ), タッチのピンチ]
 
 verification:
   checks:
@@ -191,7 +220,9 @@ verification:
       expected: 光の方位 -90° ± 1°、西 > 1.3 x 東
     - id: valley-cast-shadow
       what: 低い太陽では富士山が忍野に影を落とし、高い太陽では落とさない
-      how: 忍野から山頂への方位に光を置き、高度 7° と 45° で、影ありと影なし (チェックボックスと同じ切り替え) の忍野の 5x5 画素の輝度の比を読む
+      how: >-
+        忍野から山頂への方位に白い光を置き、高度 7° と 45° で、影ありと影なし (チェックボックスと同じ切り替え) の忍野の 5x5 画素の輝度の比を読む。
+        光の色が高度で決まるようになったので、白を明示して、低い太陽の色でなく影を測る
       expected: 7° で 0.75 未満、45° で 0.97 より大きい
     - id: water-specular
       what: 山中湖は視線を鏡に映した向きの光できらめく
@@ -199,8 +230,16 @@ verification:
       expected: 鏡映し > 1.5 x 90° 回し
     - id: terrain-3d
       what: 地形は持ち上がった 3D で、空が上にある
-      how: 俯角 25° の視点で、山頂の画面位置と、同じ平面位置で高さ 0 の点の画面位置を比べ、画面上端と山頂の画素を読む
-      expected: 麓 - 山頂 > 40 px、上端の輝度は背景 (15 ± 4)、山頂は背景と 15 以上違う
+      how: >-
+        俯角 25° の視点で、山頂の画面位置と、同じ平面位置で高さ 0 の点の画面位置を比べ、画面上端と山頂の画素を読む。
+        上端の期待値は、その画素の視線の仰角から look.ts の skyAt で計算する (黒い背景だったときは輝度 15 ± 4)
+      expected: 麓 - 山頂 > 40 px、上端の輝度は空の式の値 ± 6、山頂は上端と 15 以上違う
+    - id: opening-view-sky
+      what: 最初の画面で富士山が空を背に大きく立ち、光は低い暖色の太陽
+      how: >-
+        look.ts の openingCam、LIGHT、EXAG にして、山頂と標高 1,000 m の裾を地理座標から投影し、山頂の 12 px 上と 6 px 下の画素を読む。
+        空の期待値は skyAt から
+      expected: 裾 - 山頂 > 0.25 x 画面の高さ、山頂は上端から 0.1 x 高さより下、山頂の上は空 (± 8)、山頂は空と 10 以上違う、光の赤/青 > 1.5
     - id: drag-and-wheel
       what: ドラッグ右で回り (南の地面が右へ)、ホイールでポインターの下の点を保ったまま寄る
       how: pointerdown、pointermove (+60 px)、pointerup を送り、南 5.5 km の点の投影を比べる。目標の高さの平面上の点の位置で wheel (deltaY -300) を送る

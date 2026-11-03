@@ -1,18 +1,37 @@
-// GLSL, built from the constants the tests read (light.ts SHADOW_STEPS).
+// GLSL, built from the constants the tests read (light.ts SHADOW_STEPS,
+// look.ts for every colour, the sky and the haze).
 import { SHADOW_STEPS } from './light.ts';
+import {
+  ALBEDO, WATER, AMBIENT, SPECULAR, SHININESS, SUN_INTENSITY, ZENITH, HORIZON, SKY_TINT, SKY_EXPONENT, GLOW, GLOW_POWER,
+  HAZE_SCALE, HAZE_MAX,
+} from './look.ts';
 
 // Half width of the shadow edge in tan(altitude): 0.012 ~ 0.7° of sun, a
 // little wider than the real sun's 0.53° so 31 m texels do not stair-step.
 export const SHADOW_SOFT = 0.012;
-// Hypsometric albedo (metres, linear RGB): lowland forest to bare scoria.
-// Kept pale so the light, not the tint, carries the relief (the original
-// draws a white surface).
-export const ALBEDO: [number, [number, number, number]][] = [
-  [700, [0.30, 0.36, 0.25]], [1500, [0.34, 0.38, 0.27]], [2300, [0.45, 0.40, 0.34]], [3200, [0.55, 0.50, 0.47]], [3800, [0.70, 0.68, 0.66]],
-];
-export const WATER = [0.05, 0.10, 0.16], SKY = [0.16, 0.19, 0.25], SPECULAR = 1.4, SHININESS = 120;
-
 const v3 = (c: readonly number[]) => `vec3(${c.map((x) => x.toFixed(4)).join(', ')})`;
+const f1 = (x: number) => x.toFixed(4);
+
+// The horizon colour tinted by the light, shared by the sky and the haze.
+const horizonGlsl = `vec3 horizon(vec3 col) { return ${v3(HORIZON)} * (${f1(1 - SKY_TINT)} + ${f1(SKY_TINT)} * col); }`;
+
+// Sky behind the terrain: one fullscreen triangle, drawn first. The view ray
+// of each pixel comes from the camera basis (camera.ts basis()): forward f,
+// right r, up u, th = tan(fovy / 2).
+export const skyFragment = () => `#version 300 es
+precision highp float;
+uniform vec3 u_f, u_r, u_u, u_L, u_col;
+uniform vec2 u_res;
+uniform float u_th;
+out vec4 o;
+${horizonGlsl}
+void main() {
+  vec2 ndc = gl_FragCoord.xy / u_res * 2.0 - 1.0;
+  vec3 d = normalize(u_f + u_r * ndc.x * u_th * u_res.x / u_res.y + u_u * ndc.y * u_th);
+  vec3 c = mix(horizon(u_col), ${v3(ZENITH)}, pow(max(d.z, 0.0), ${f1(SKY_EXPONENT)}));
+  c += u_col * ${f1(GLOW)} * pow(max(dot(d, u_L), 0.0), ${GLOW_POWER.toFixed(1)});
+  o = vec4(pow(c, vec3(1.0 / 2.2)), 1.0);
+}`;
 
 export const fullscreenVertex = () => `#version 300 es
 void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
@@ -69,11 +88,12 @@ export const terrainFragment = () => {
 precision highp float;
 uniform sampler2D u_g, u_s;
 uniform vec3 u_L, u_col, u_eye;
-uniform float u_exag, u_shadowOn;
+uniform float u_exag, u_shadowOn, u_hazeStart;
 in vec2 v_uv;
 in vec3 v_pos;
 in float v_h;
 out vec4 o;
+${horizonGlsl}
 vec3 albedo(float h) {
   ${ramp}
   return a;
@@ -84,11 +104,15 @@ void main() {
   bool water = g.z > 0.5;
   float lit = mix(1.0, texture(u_s, v_uv).r, u_shadowOn);
   float diff = max(dot(n, u_L), 0.0) * lit;
-  vec3 c = (water ? ${v3(WATER)} : albedo(v_h)) * (${v3(SKY)} * (0.6 + 0.4 * n.z) + u_col * diff);
+  vec3 c = (water ? ${v3(WATER)} : albedo(v_h)) * (${v3(AMBIENT)} * (0.6 + 0.4 * n.z) + u_col * ${f1(SUN_INTENSITY)} * diff);
   if (water) {
     vec3 hv = normalize(u_L + normalize(u_eye - v_pos));
     c += u_col * ${SPECULAR.toFixed(2)} * pow(max(dot(n, hv), 0.0), ${SHININESS.toFixed(1)}) * lit;
   }
+  // haze towards the light-tinted horizon, past u_hazeStart metres from the
+  // eye (look.ts hazeAt: the camera distance + HAZE_BEYOND)
+  float d = length(u_eye - v_pos);
+  c = mix(c, horizon(u_col), ${f1(HAZE_MAX)} * (1.0 - exp(-max(0.0, d - u_hazeStart) / ${HAZE_SCALE.toFixed(1)})));
   o = vec4(pow(c, vec3(1.0 / 2.2)), 1.0);
 }`;
 };

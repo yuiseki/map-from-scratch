@@ -4,12 +4,13 @@
 // texture built once at load, cast shadows from a height-field march into an
 // R8 texture that is redone only when the light (or exaggeration) changes.
 import { decodeGrid, gradients, meshSize, gridIndices, lonLatToTexel, texelToLocal, type Grid } from './grid.ts';
-import { type Cam, eye, viewProj, orbit, zoomAt, lightFromPointer } from './camera.ts';
+import { type Cam, basis, eye, viewProj, orbit, zoomAt, lightFromPointer } from './camera.ts';
 import { lightDir, sunAt, sunPhase, marchGrowth, SHADOW_STEPS, type RGB } from './light.ts';
-import { fullscreenVertex, shadowFragment, terrainVertex, terrainFragment } from './shaders.ts';
+import { fullscreenVertex, shadowFragment, skyFragment, terrainVertex, terrainFragment } from './shaders.ts';
+import { VIEW, EXAG, LIGHT, HAZE_BEYOND, sunColor, openingCam } from './look.ts';
 
 const FILE = '../../../data/baked/tangram-014-terrain-light-demo/fuji.mftl';
-const MESH_STEP = 2, TARGET_H = 1000, WHITE: RGB = [1, 1, 1];
+const MESH_STEP = 2;
 const RAD = Math.PI / 180;
 
 export interface App {
@@ -69,6 +70,7 @@ gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sha
 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 const shadowProg = program(fullscreenVertex(), shadowFragment()), su = uniforms(shadowProg);
+const skyProg = program(fullscreenVertex(), skyFragment()), ku = uniforms(skyProg);
 const terrainProg = program(terrainVertex(), terrainFragment()), tu = uniforms(terrainProg);
 const { nx, ny } = meshSize(w, h, MESH_STEP);
 const indices = gridIndices(nx, ny);
@@ -79,17 +81,16 @@ gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 gl.bindVertexArray(null);
 const growth = marchGrowth(SHADOW_STEPS, Math.hypot(w, h));
 
-const centre = lonLatToTexel(138.735, 35.435, grid), c0 = texelToLocal(centre.i, centre.j, grid);
 let shadowDirty = true, pending = 0;
 
 const app: App = {
   gl, canvas, grid, hRef,
-  cam: { tx: c0.x, ty: c0.y, tz: 0, bearing: 200 * RAD, tilt: 32 * RAD, dist: 52000, fovy: 38 * RAD },
-  light: { az: 315 * RAD, alt: 35 * RAD, color: WHITE },
-  exag: 1.5, shadows: true, sun: false, shadowPasses: 0,
+  cam: openingCam(grid, hRef),
+  light: { ...LIGHT, color: sunColor(LIGHT.alt) },
+  exag: EXAG, shadows: true, sun: false, shadowPasses: 0,
   draw,
   request() { if (!pending) pending = requestAnimationFrame(() => { pending = 0; draw(); }); },
-  setLight(az, alt, color = WHITE) { app.light = { az, alt, color }; shadowDirty = true; app.request(); },
+  setLight(az, alt, color = sunColor(alt)) { app.light = { az, alt, color }; shadowDirty = true; app.request(); },
   setSun(on) {
     app.sun = on;
     $('sun').setAttribute('aria-pressed', String(on));
@@ -106,7 +107,7 @@ const app: App = {
 
 function draw(): void {
   const { light, cam, exag } = app;
-  cam.tz = (TARGET_H - hRef) * exag;
+  cam.tz = (VIEW.targetH - hRef) * exag;
   gl.disable(gl.DEPTH_TEST);
   if (shadowDirty) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
@@ -124,8 +125,14 @@ function draw(): void {
     app.shadowPasses++;
   }
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0.05, 0.06, 0.08, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  const L = lightDir(light.az, light.alt), { f, r, u } = basis(cam);
+  gl.useProgram(skyProg);
+  gl.uniform3fv(ku.u_f, f); gl.uniform3fv(ku.u_r, r); gl.uniform3fv(ku.u_u, u);
+  gl.uniform3fv(ku.u_L, L); gl.uniform3fv(ku.u_col, light.color);
+  gl.uniform2f(ku.u_res, canvas.width, canvas.height);
+  gl.uniform1f(ku.u_th, Math.tan(cam.fovy / 2));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.enable(gl.DEPTH_TEST);
   gl.useProgram(terrainProg);
   const e = eye(cam);
@@ -134,9 +141,10 @@ function draw(): void {
   gl.uniform1f(tu.u_cell, cell); gl.uniform1f(tu.u_exag, exag); gl.uniform1f(tu.u_href, hRef);
   gl.uniform3f(tu.u_eye, e[0], e[1], e[2]);
   gl.uniformMatrix4fv(tu.u_vp, false, viewProj(cam, canvas.width / canvas.height));
-  gl.uniform3fv(tu.u_L, lightDir(light.az, light.alt));
+  gl.uniform3fv(tu.u_L, L);
   gl.uniform3fv(tu.u_col, light.color);
   gl.uniform1f(tu.u_shadowOn, app.shadows ? 1 : 0);
+  gl.uniform1f(tu.u_hazeStart, cam.dist + HAZE_BEYOND);
   gl.bindVertexArray(vao);
   gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
   gl.bindVertexArray(null);
@@ -185,6 +193,9 @@ canvas.addEventListener('wheel', (ev) => {
 }, { passive: false });
 $('sun').addEventListener('click', () => app.setSun(!app.sun));
 ($('shadows') as HTMLInputElement).addEventListener('change', (ev) => app.setShadows((ev.target as HTMLInputElement).checked));
+// The slider starts at look.ts EXAG and the panel says the heights are exaggerated.
+($('exag') as HTMLInputElement).value = String(EXAG);
+$('exagv').textContent = `${EXAG.toFixed(1)}x`;
 ($('exag') as HTMLInputElement).addEventListener('input', (ev) => {
   const v = Number((ev.target as HTMLInputElement).value);
   $('exagv').textContent = `${v.toFixed(1)}x`;
