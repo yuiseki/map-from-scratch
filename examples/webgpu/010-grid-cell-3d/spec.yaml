@@ -1,0 +1,55 @@
+id: webgpu-010-grid-cell-3d
+request: >-
+  パリ市内の約 20 万本の街路樹密度データを、WebGPU の 3D 直方体グリッド（GridCellLayer / 3D Grid Columns）としてリアルタイム立体描画したい。
+
+requirements:
+  - id: grid-3d-cubes
+    need: 樹木密度に応じた高さを持つ 3D 直方体キューブを WGSL ライティング付きで描く
+    unmeasured: verification.checks の check-rendered-grid で確かめる
+  - id: smooth-grid
+    need: 3D グリッド柱の描画とカメラ回転・ズームが 60 fps で滑らかに動作する
+    rationale: 60 Hz の 1 フレーム 16.7 ms 以内
+  - id: fast-startup
+    need: グリッドデータの読み込みと初回描画が速やかに完了する
+    rationale: 3D グリッドメッシュの初期化と初回描画が 2 秒以内
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 15000, unit: B, requirement: fast-startup}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: fast-startup}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-grid}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/010-grid-cell-3d/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+
+datasets:
+  served:
+    - data/baked/deckgl-010-grid-layer/grid-256.bin
+
+performance_knowledge:
+  - "単位キューブジオメトリ（30頂点）を共有し、セルごとの位置・高さ・色をインスタンスバッファで渡すことで、CPU バッファ転送量とドローコール数を最小化できる。"
+  - "Reversed-Z による深度比較と法線ベースの太陽光ディレクショナルライティングにより、重なり合う直方体の前後関係と立体感が自然に表現される。"
+
+architecture_selection:
+  chosen:
+    api: webgpu
+    shading: wgsl
+    pipeline: instanced-cubes
+    code:
+      - examples/webgpu/010-grid-cell-3d/index.html
+      - examples/webgpu/010-grid-cell-3d/main.ts
+      - examples/webgpu/010-grid-cell-3d/render.ts
+      - examples/webgpu/010-grid-cell-3d/grid.ts
+  not_doing:
+    - "セル毎の個別メッシュ構築: インスタンス描画で行うため不要"
+    - "外部地図ライブラリ: WebGPU API を直接利用"
+
+verification:
+  checks:
+    - id: check-rendered-grid
+      what: 画面中央部にグリッド柱の色（ライム・グリーン・シアンなど）が描画されていることを検証
+      how: 画面ピクセルを読み戻し、グリッド柱ピクセル数をカウント
+      expected: 50 ピクセル以上のグリッド柱色が検出される
