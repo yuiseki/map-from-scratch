@@ -33,10 +33,10 @@
 - `bin/mfs` : Docker コンテナ内でハーネスを実行するラッパースクリプト。
 - `harness/` : 依存ゼロの TypeScript 製 CLI (`cli.ts`)、ブラウザ計測ランナー（自作 CDP クライアント `runners/browser.ts`）、ネイティブ計測ランナー (`runners/native.ts`, `native/mfs-exec.c`)、ブラウザ側計測ヘルパ (`page/bench.ts`)。
 - `examples/<nn>-<slug>/` : 各依頼に対する描画器（`spec.yaml`, `REQUEST.md`, `bake.ts`, `index.html`, `main.ts`, `bench.ts`、ネイティブの場合は C ソース等）。
+- テストは、テストするコードの隣に `<module>.test.ts` として置く（`examples/23-taito-point-cloud/decode.ts` の隣に `decode.test.ts`）。`bin/mfs test` と CI は、リポジトリの `*.test.ts` をすべて実行する（`node:test`）。先にテストを書き、ブラウザなしで確かめられる処理（投影、デコード、タイル、間引き、当たり判定など）はモジュールに分けてテストする。CI には `data/` がないので、テストは自分で小さな入力を持つ。
 - `baselines/` : 汎用エンジンとの比較用ベースライン（例: `b02-maplibre`）。
 - `tools/` : ベイク時・サイト構築時の共通ツール（`sources.ts`, `geo.ts`, `pmtiles.ts`, `build-site.ts`, `deploy-pages.sh`）。
 - `kits/` : 描画器にコピーして使える最小限の自前リーダー・デコーダー（`kits/geoparquet/` の Thrift / Zstd など）とその単体テスト。
-- `tests/` : 個別の例に対する追加テスト。
 - `vendor/earcut/` : ベンダー同梱された earcut。
 - `.agents/skills/`（`.claude/skills`, `skills/map-from-scratch` からリンク）:
   - `map-from-scratch/` : 全体の手順 (`SKILL.md`)、`spec.yaml` 仕様 (`references/spec-yaml.md`)、設計パターン (`references/patterns.md`)、計測の落とし穴 (`references/pitfalls.md`)。
@@ -53,7 +53,7 @@
 bin/mfs image                   # ベース Docker イメージ (mfs-base:latest) のビルド
 bin/mfs image emscripten        # ツールチェーン用イメージ (mfs-emscripten:latest) のビルド (docker/README.md)
 bin/mfs list                    # 全 example / baseline と依頼内容の一覧
-bin/mfs test                    # ハーネス・tools・kits の単体テストと tsc 型検査 (node / web)
+bin/mfs test                    # リポジトリのすべての *.test.ts と tsc 型検査 (node / web / test)
 bin/mfs bake <id|all>           # spec.yaml の datasets.bake に従いデータを生成
 bin/mfs build <id|all>          # ネイティブ等のビルドを実行
 bin/mfs bench <id|all> [-n N]   # 計測と予算・検証チェックの合否判定 (結果は results/<id>/)
@@ -99,7 +99,7 @@ GitHub Actions (`.github/workflows/test.yml`) は、push とプルリクエス�
 2. **データ準備**: `bake.ts` を書き、`bin/mfs bake <id>` で地物数・頂点数・バイト数を確認する（外れ値や想定外のファイルサイズはベイクのバグを疑う）。
 3. **描画器と検証の実装**: 最小の1フレーム描画から作り、操作系と `bench.ts` を実装する。画面への描画結果をピクセル読み戻しで検証するチェックを入れる。
 4. **テストと計測**:
-   - `bin/mfs test` を実行し、ユニットテストと `tsc`（Node / Web 両方）が通ることを確認する。
+   - `bin/mfs test` を実行し、すべての `*.test.ts` と `tsc`（Node / Web / テストの 3 つ）が通ることを確認する。
    - 計測対象の環境では `bin/mfs bench <id>` を実行し、`results/<id>/screenshot.png` と `latest.json` を確認する（[計測の落とし穴](.agents/skills/map-from-scratch/references/pitfalls.md) に注意）。
    - ブラウザでページを開き、[visual-review](.agents/skills/visual-review/SKILL.md) の手順で目視レビューする（検査がすべて通っても、潰れた地図・上下逆のカメラ・180°線で切れた陸地が残った実例がある）。
 5. **知見の記録**: 分かったこと（失敗した試みや計測ミスを含む）を数値とともに `spec.yaml` の `performance_knowledge` と `REQUEST.md` に記録する。

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { readRange } from '../../examples/24-osm-planet/pmtiles.ts';
+import { readRange } from './pmtiles.ts';
 
 test('HTTP 200 is cancelled before retrying a byte range', async () => {
   let calls = 0, cancelled = false;

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { fallbackTiles, planTiles } from '../../examples/23-taito-point-cloud/tiles.ts';
+import { fallbackTiles, planTiles } from './tiles.ts';
 
 test('visible tiles precede the central tiles of both neighboring zoom levels', () => {
   const plan = planTiles(17, 0.888321, 0.393675, true);

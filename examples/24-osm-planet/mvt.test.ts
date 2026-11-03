@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { decodeMvt } from '../../examples/24-osm-planet/mvt.ts';
+import { decodeMvt } from './mvt.ts';
 
 const varint = (n: number): number[] => {
   const out: number[] = [];

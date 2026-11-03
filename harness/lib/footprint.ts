@@ -22,7 +22,8 @@ export function expandFiles(root: string, files: string[]): string[] {
   const out: string[] = [];
   const walk = (rel: string): void => {
     const abs = join(root, rel);
-    if (statSync(abs).isDirectory()) for (const f of readdirSync(abs).sort()) walk(join(rel, f));
+    // A listed directory ships its files, not the tests kept next to them.
+    if (statSync(abs).isDirectory()) for (const f of readdirSync(abs).sort()) { if (!f.endsWith('.test.ts')) walk(join(rel, f)); }
     else out.push(rel);
   };
   for (const f of files) {

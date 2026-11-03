@@ -117,8 +117,14 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
    and look at them: an outlier bounding box or a 10x larger file than
    expected is a bug in the bake, not a fact about the data. Write the steps
    in `datasets.preparation`.
-7. **Write the renderer**, smallest first: get one frame on screen, then add
-   interaction. Patterns that worked are in references/patterns.md; the
+7. **Write the renderer**, test first and smallest first. Logic that can be
+   checked without a browser (projection, decoding, tiling, culling,
+   picking, layout) goes in its own module, with `<module>.test.ts` beside
+   it (`decode.ts` and `decode.test.ts`) written before the module, using
+   `node:test`. `bin/mfs test` and CI run every `*.test.ts` in the
+   repository; CI has no `data/`, so give a test small inputs of its own.
+   The checks in `bench.ts` are the integration tests on top. Then get one
+   frame on screen, and add interaction. Patterns that worked are in references/patterns.md; the
    browser plumbing (DPR-aware ResizeObserver, pointer to device pixels,
    one pending rAF) is easiest to copy from 02 or 07.
    Mistakes that drew the wrong map here, by feature (world wrapping,

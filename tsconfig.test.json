@@ -1,0 +1,20 @@
+{
+  // Tests: every *.test.ts, next to the code it tests. They run under Node
+  // (node:test) and may import browser modules, so both sides' types apply.
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "typeRoots": ["/usr/local/lib/node_modules/@types"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.test.ts", "vendor/earcut/*.d.ts"],
+  "exclude": ["node_modules", "data", "results", "build", "ref-repos", ".cache"]
+}

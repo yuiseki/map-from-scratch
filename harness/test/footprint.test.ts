@@ -62,3 +62,12 @@ test('a listed directory counts every file under it', async () => {
   writeFileSync(join(d, 'tiles/index.bin'), Buffer.alloc(5));
   assert.equal(measureFootprint(d, { code: [], data: ['tiles'] }).data_bytes, 35);
 });
+
+test('a listed directory does not count the tests kept next to the code', async () => {
+  const { mkdirSync } = await import('node:fs');
+  const d = mkdtempSync(join(tmpdir(), 'fp-'));
+  mkdirSync(join(d, 'src'));
+  writeFileSync(join(d, 'src/decode.ts'), 'x'.repeat(100));
+  writeFileSync(join(d, 'src/decode.test.ts'), 'y'.repeat(1000));
+  assert.equal(measureFootprint(d, { code: ['src'], data: [] }).code_bytes, measureFootprint(d, { code: ['src/decode.ts'], data: [] }).code_bytes);
+});

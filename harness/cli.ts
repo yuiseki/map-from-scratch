@@ -6,7 +6,7 @@
 //   bench <id|all> [-n N] [--site]  measure and check budgets (--site: the built Pages site)
 //   report                     latest results of every example, as Markdown
 //   serve [port]               serve the repo for interactive use
-//   test                       harness unit tests
+//   test                       every *.test.ts, then tsc on the Node, browser and test sides
 import { readdirSync, existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import { summarize } from './lib/stats.ts';
 import { checkBudgets, checkVerification } from './lib/budget.ts';
 import { serve } from './lib/serve.ts';
 import { measureFootprint, measureElf, checkDependencies, isSoftwareGpu } from './lib/footprint.ts';
+import { findTests } from './lib/tests.ts';
 import { benchNative } from './runners/native.ts';
 import { benchBrowser } from './runners/browser.ts';
 import type { Summary } from './lib/types.ts';
@@ -211,15 +212,14 @@ async function main(argv: string[]): Promise<number> {
       return r.errors.length ? 1 : 0;
     }
     case 'test': {
-      // Unit tests, then type checks of the Node side and the browser side.
-      // kits/<name>/*.test.ts: the from-scratch readers that renderers copy from.
-      const kitDirs = existsSync(join(root, 'kits')) ? readdirSync(join(root, 'kits')).map((k) => `kits/${k}`) : [];
-      const tests = ['harness/test', 'tools/test', ...kitDirs].filter((d) => existsSync(join(root, d))).flatMap((d) =>
-        readdirSync(join(root, d)).filter((f) => f.endsWith('.test.ts')).map((f) => join(root, d, f)));
+      // Unit tests (every *.test.ts, next to the code it tests), then type
+      // checks of the Node side, the browser side and the tests.
+      const tests = findTests(root).map((f) => join(root, f));
       const steps: [string, string[]][] = [
         [process.execPath, ['--test', ...tests]],
         ['tsc', ['-p', 'tsconfig.node.json']],
         ['tsc', ['-p', 'tsconfig.web.json']],
+        ['tsc', ['-p', 'tsconfig.test.json']],
       ];
       for (const [cmd, args] of steps) {
         const r = spawnSync(cmd, args, { cwd: root, stdio: 'inherit' });

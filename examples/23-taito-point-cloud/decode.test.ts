@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { decodePcpng } from '../../examples/23-taito-point-cloud/decode.ts';
+import { decodePcpng } from './decode.ts';
 
 test('point cloud PNG decodes columnar signed coordinates, offsets, height and RGB', () => {
   const pixels: number[][] = [
