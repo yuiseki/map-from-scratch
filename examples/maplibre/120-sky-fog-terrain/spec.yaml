@@ -1,0 +1,196 @@
+id: maplibre-120-sky-fog-terrain
+request: >-
+  MapLibre GL JS の公式サンプル「Sky, Fog, Terrain」(https://maplibre.org/maplibre-gl-js/docs/examples/sky-fog-terrain/) のように、
+  本物の山を 75〜80 度ほど傾けた 3D 地形で見て、空と地平線まで画面に入れたい。空は上の sky-color から地平線の horizon-color への
+  グラデーション (sky-horizon-blend)、地形は遠くほど fog-color に溶ける霧 (horizon-fog-blend、fog-ground-blend)。
+  元例と同じ操作パネル (enabled、色 3 つ、ブレンドのスライダー 3 つ) で、変えたらすぐ描き直したい。
+  ドラッグで回転と傾き、ホイールでズーム、カメラは地面の下に入らない。地形は手元の Mapterhorn (北アルプス 槍ヶ岳・穂高)。
+
+requirements:
+  - id: steep-terrain-horizon
+    need: 75〜80 度に傾けた本物の山岳地形で、近い稜線・遠い稜線・地平線と空が同時に画面に入る
+    rationale: >-
+      初期の傾き 78 度、MapLibre と同じ縦の画角 36.87 度で、平らな地球の地平線は画面上端から 15% (800 px 中 122 px) に来る。
+      目の高さ (約 5 km) はデータ中の最高点 (富士山、z7 平均で 3,662 m) より高いので、地平線の行は空のまま
+    unmeasured: verification の top-rows-sky-color と horizon-row-horizon-color で、画面に出たピクセルとして確かめる
+  - id: sky-gradient
+    need: 空は上の sky-color から地平線の horizon-color へのグラデーションで、sky-horizon-blend で帯の幅が変わる
+    unmeasured: top-rows-sky-color、horizon-row-horizon-color、controls-change-only-their-pixels で確かめる
+  - id: fog
+    need: 地形は遠いほど fog-color へ、さらに地平線の近くでは horizon-color へ溶ける (horizon-fog-blend、fog-ground-blend)
+    unmeasured: distant-terrain-fog-color と controls-change-only-their-pixels で確かめる
+  - id: controls
+    need: 元例と同じパネルで、どの操作も 1 フレーム以内に描き直され、変えるべきピクセルだけが変わる。enabled を外すと空の部分が変わる
+    rationale: 60 Hz の 1 フレーム 16.7 ms。input イベントから描かれた画面の読み戻しまでを control_redraw_ms で測り、最大 16.7 ms
+  - id: navigation
+    need: ドラッグで回転と傾き、ホイールでズーム、カメラは地形の下に入らない
+    rationale: >-
+      回転中のフレームは 60 Hz の 16.7 ms に収める (frame_ms p95)。GPU は他のエージェントと共有なので 8 ms (gpu_ms p95)。
+      地形の下に入らないことは camera-above-terrain (地面から 150 m 以上) で確かめる
+  - id: quick-start
+    need: 開いてすぐ山が出る
+    rationale: >-
+      2 つの高さ格子 (gzip で計 2.25 MB) の取得と展開とアップロードを含めて、ページ遷移から最初のフレームまで p50 2,000 ms 以内
+      (ローカルサーバー。回線の想定はなし)
+  - id: few-bytes
+    need: 配る量を控えめに
+    rationale: >-
+      転送量 (ハーネスが数える全レスポンスの非圧縮バイト。データは自分で gzip 済み) 2,700 KB 以内 (見積もり 2,280 KB)。
+      コードは gzip で 14 KB 以内 (書いた時点で 6 ファイル個別 gzip の合計 11,974 B)
+  - id: hardware
+    need: PC のブラウザで、ハードウェア GPU で描く
+    unmeasured: info.gpu に GPU 名を記録する。端末は benchmarks の画面 (1280x800、DPR 1) で代わりに測る
+
+evaluation:
+  budgets:
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: quick-start}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+    - {metric: whole_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: control_redraw_ms, stat: max, max: 16.7, unit: ms, requirement: controls}
+    - {metric: transfer_kb, stat: max, max: 2700, unit: KB, requirement: few-bytes}
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: few-bytes}
+  gates: [エラーがない, ハードウェア GPU で描画 (info.gpu), verification の check がすべての反復で通る, WebGL のコンテキストを失わない]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/120-sky-fog-terrain/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: first-frame
+      what: >-
+        index.html の head のインラインスクリプト (__mfsPageStart) から、2 つの高さ格子を取得・展開・テクスチャにして
+        最初の draw() が戻るまで (GPU の完了は待たない)。bench.ts の読み込みは含まない
+      metrics: [first_frame_ms]
+    - id: controls
+      what: 6 つの操作それぞれで input イベントを送り、次の rAF の後で画面を読み戻して変化を確かめるまでの時間
+      metrics: [control_redraw_ms]
+    - id: orbit
+      what: 180 フレームで方位を 1 周、傾きを 74±5 度、距離を ±40% 動かす (benchFrames、各フレームで readPixels 1 画素で GPU を待つ)
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: fixed-view
+      what: 初期画角を 60 フレーム
+      metrics: [whole_cpu_ms, whole_frame_ms, whole_gpu_ms]
+
+datasets:
+  bake: [node, examples/maplibre/120-sky-fog-terrain/bake.ts]
+  sources:
+    - id: mapterhorn-planet
+      origin: >-
+        Mapterhorn の全球標高 PMTiles (2026-01-06 版、z0-12、512 px の WebP lossless、Terrarium)。
+        手元の /sata_hdd_24tb/www/html/static/mapterhorn/2026-01-06/planet.pmtiles を tools/pmtiles.ts で読む
+        (z:mapterhorn/2026-01-06/planet.pmtiles。tools/sources.ts には未登録、17 と同じ)
+      license: >-
+        表示は "© Mapterhorn"。download.mapterhorn.com/attribution.json (2026-11-03 に取得) では、この範囲の元データは
+        国土交通省国土地理院 基盤地図情報 数値標高モデル (jpdem1a/5a/5b/5c/10a/10b)、
+        "国土地理院コンテンツ利用規約／測量法に基づく国土地理院長承認（使用）R 8JHs 131"。
+        画面右下に Mapterhorn、国土地理院、承認番号、再標本化したことを表示する
+  outputs:
+    - data/baked/maplibre-120-sky-fog-terrain/near.mfsh.gz
+    - data/baked/maplibre-120-sky-fog-terrain/far.mfsh.gz
+  preparation:
+    - 中心 137.65E 36.33N (槍ヶ岳・穂高)。近景は z11 のタイル 4x4 枚 (6.96 MB) から 1281x1281 標本 (30.79 m 間隔、39.4 km 四方)
+    - 遠景は z7 のタイル 2x2 枚 (1.13 MB) から 513x513 標本 (492.6 m 間隔、253 km 四方。富士山、日本海の海岸まで入る)
+    - WebP は GDAL の WEBP ドライバー (libwebp) で VRT モザイクにして生のバイトへ (gdal_translate -of ENVI)。Terrarium の整数 RGB を bake.ts で m に戻す
+    - 高さは近景 0.25 m、遠景 1 m で量子化し、行内の差分 (行頭は上の行頭との差分) の int16 にして gzip -9 (heights.ts)。ベイクで往復を確かめる
+    - 結果。近景 540.6〜3,181.3 m (最高点 137.6484E 36.2894N = 奥穂高岳 3,190 m)、raw 3,281,954 B、gzip 1,958,869 B。遠景 -4.8〜3,662.5 m (最高点は富士山)、raw 526,370 B、gzip 286,297 B
+
+performance_knowledge:
+  - id: no-vertex-buffers
+    finding: 2 つの格子を 64x64 セルのチャンクの instanced draw (近景 400、遠景 64 インスタンス) で描き、頂点は gl_VertexID と gl_InstanceID から、高さは R32F テクスチャの texelFetch から作る。GPU に載るのはテクスチャ 2 枚と 16 bit の共有インデックス 1 本 (24,576 個)
+    evidence: >-
+      三角形 3,801,088 (近景 3,276,800 + 遠景 524,288)、draw call 2 + 空 1。GPU メモリはテクスチャ 6.56 MB + 1.05 MB とインデックス 49 KB。
+      時間はまだ測っていない (ユーザーの指示で bench は後回し)
+    applies_when: 規則格子の地形を、格子ごとに 1 回の draw call で描くとき
+  - id: two-grids-for-the-horizon
+    finding: 地平線まで見せるのに細かい格子を遠くまで伸ばさず、近景 z11 (39 km) と遠景 z7 (253 km) の 2 枚にした。遠景のうち近景と重なる頂点は 600 m 沈めて隠す
+    evidence: >-
+      z11 で 253 km 四方を覆うと 8,200 x 8,200 標本 (gzip の見積もり 80 MB)。2 枚なら gzip 計 2.25 MB。
+      playwright の chromium (SwiftShader) の画面で、近景と遠景の境目は初期画角では見えなかった
+    applies_when: 傾きが大きく、遠くは霧に溶ける地形
+  - id: horizon-from-the-camera
+    finding: 空のグラデーションの基準行は MapLibre の getMercatorHorizon (0.85 倍の補正つき) ではなく、平らな地球で目の高さの真正面の方向が映る行 (horizonY) にした。データの端より先で地形が無い所は horizon-color で埋め、霧の遠い端も horizon-color になるので継ぎ目が出ない
+    evidence: camera.test.ts で、1e7 m 先の目の高さの点の投影と horizonY が 0.5 px 以内で一致 (pitch 60、77、80)
+    applies_when: 地形の外側を描かない局所地図で空を描くとき
+  - id: drag-sign-caught
+    finding: 最初の drag は dx で方位を減らしていて、手前の地面がポインターと逆に動いた。camera.test.ts の「右へドラッグすると手前の地面が右へ動く」が 640 → 478.7 px で失敗して見つかり、符号を直した
+    evidence: 修正後は同じテストで右へ動く
+    applies_when: 周回カメラのドラッグを書くとき
+  - id: host-browser-without-webgl
+    finding: playwright-cli の既定の chromium (headless) は WebGL のコンテキストを作った直後に失った (CONTEXT_LOST_WEBGL)。--use-angle=swiftshader --enable-unsafe-swiftshader を渡すと描けた
+    evidence: 目視レビュー用のスクリーンショットは SwiftShader で撮った。GPU の時間ではない
+    applies_when: ハーネスの外で手早く画面を見るとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 (instanced draw、R32F テクスチャの頂点フェッチ)
+    language: TypeScript (ローカルサーバーと Pages のビルドが型を剥がす)
+    gpu: hardware
+    code:
+      - examples/maplibre/120-sky-fog-terrain/index.html
+      - examples/maplibre/120-sky-fog-terrain/main.ts
+      - examples/maplibre/120-sky-fog-terrain/heights.ts
+      - examples/maplibre/120-sky-fog-terrain/camera.ts
+      - examples/maplibre/120-sky-fog-terrain/sky.ts
+      - examples/maplibre/120-sky-fog-terrain/render.ts
+    dependencies: []
+    why: >-
+      依頼は 1 つの山域を急な傾きで眺め、空と霧の 6 つの値を変えること。タイルの選択も LOD も要らず、ベイクした 2 枚の格子を
+      GPU に一度載せ、カメラと空・霧は uniform だけを変える。空と霧の式は MapLibre の sky.fragment.glsl と terrain.fragment.glsl
+      (BSD-3-Clause) から取った
+  alternatives:
+    - option: MapLibre GL JS (raster-dem + setSky)
+      rejected_because: 元例そのもの。汎用エンジンは実行時依存にしない (baselines/ のみ)。比較は未計測
+    - option: 陰影と段彩をベイクしたテクスチャを貼る
+      rejected_because: 30 m の段彩画像を JPEG で足すと 1 MB 前後増える。法線は高さから頂点シェーダーで求まるので、高さだけを配る
+    - option: z11 の 1 枚で地平線まで覆う
+      rejected_because: 253 km 四方で約 80 MB (gzip 見積もり)。遠くは霧に溶けるので z7 で足りる
+  not_doing:
+    - パン (ターゲットは槍ヶ岳に固定。依頼は回転・傾き・ズーム)
+    - タイルの読み込みと LOD (2 枚の格子を最初に全部読む)
+    - 地球の丸み (平らな地球。126 km 先で 1.2 km 下がるが霧の中)
+    - 緯度による縮尺の違い (中心 36.33N の 1 つの縮尺。端で約 1.4%)
+    - OSM などの背景地図 (公開 OSM サーバーは使わない。地表色は標高段彩と陰影)
+    - 地球儀表示 (GlobeControl) と地形の ON/OFF (TerrainControl)、ナビゲーションのボタン
+    - 大気 (atmosphere-blend) と太陽の位置
+
+verification:
+  checks:
+    - id: top-rows-sky-color
+      what: 画面の上端の行が sky-color
+      how: 描画直後に既定のフレームバッファーを readPixels し、y=1,3,5 の行を 32 点
+      expected: すべて sky-color から RGB 距離 12 以内、かつ地平線の行が上から 30 px より下
+    - id: horizon-row-horizon-color
+      what: 地平線のすぐ上の行が horizon-color
+      how: horizonY - 2 の行を 64 点。目の高さがデータの最高点 (3,662 m) を超えることも確かめる
+      expected: 95% 以上が horizon-color から 12 以内
+    - id: distant-terrain-fog-color
+      what: 遠くの地形が fog-color に近づく
+      how: fog-color を #ff0000、horizon-fog-blend を 0.99 にし、地平線の 6% 下の帯と画面下端の帯の、赤からの平均距離を比べる
+      expected: 遠い帯の距離が下端の半分未満、かつ 120 未満
+    - id: controls-change-only-their-pixels
+      what: 6 つの操作がそれぞれ変えるべきピクセルだけを変える
+      how: >-
+        sky-horizon-blend を 0.1 にした画面を基準に、空 (地平線より上)、霧の帯 (地平線から 15% 下まで)、手前 (下端 3%、霧の近い面より手前)
+        の標本を、1 つずつ値を変えた画面と比べる。sky-color は空だけ、horizon-color は空と霧の帯、fog-color・horizon-fog-blend・
+        fog-ground-blend は霧の帯だけ、sky-horizon-blend は空だけ
+      expected: 変えるべき領域の 30% 以上が変わり (距離 3 超)、それ以外の領域は 1 点も変わらない
+    - id: sky-disabled-changes-sky
+      what: enabled を外すと空の部分が変わり、霧も消える
+      how: 外す前後で、空の 3 行 x 32 点と、地平線の 5% 下の 32 点を比べる
+      expected: 空の 95% 以上が 30 超変わってページの背景色 (#ffffff) になり、霧の帯の半分以上が変わる
+    - id: controls-redraw-next-frame
+      what: どの操作も次のフレームで描き直される
+      how: 7 つの入力それぞれに input イベントを送り、rAF を 1 回待って readPixels し、前の画面と比べる
+      expected: 7 つすべてで変化した標本が 20 を超える
+    - id: camera-above-terrain
+      what: カメラは地面の下に入らない
+      how: 方位 15 度ごとに、最大の傾き 85 度で距離 800 m〜80 km を設定し (clampCamera が通る setCam)、目の位置の CPU の高さと比べる
+      expected: 目は常に地面から 149 m 以上上
+  harness: >-
+    ハーネスは first_frame_ms、transfer_kb、code_gzip_bytes を集め、info.gpu がソフトウェアラスタライザーなら失敗にする。
+    2026-11-03 時点で bench は未実行 (ユーザーの指示で計測は後でまとめて行う)。チェックと予算は書いたが一度も走っていない
