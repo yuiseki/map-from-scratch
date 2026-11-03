@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全世界 Kontur H3 人口 3D (WebGPU) | map from scratch</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.45 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0e1620; color: #f0f6f8; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #panel { position: fixed; top: 14px; left: 14px; max-width: min(425px, calc(100vw - 28px)); padding: 15px; border-radius: 13px; border: 1px solid #ffffff30; background: #10212de6; backdrop-filter: blur(10px); box-shadow: 0 12px 32px #0007; }
+  h1 { margin: 0 0 4px; font-size: 19px; }
+  p { margin: 0 0 9px; color: #c0d0d8; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 9px 0; }
+  button { padding: 6px 10px; border: 1px solid #87abb461; border-radius: 7px; background: #294756; color: inherit; font: inherit; cursor: pointer; transition: background 0.15s; }
+  button:hover, button:focus-visible { background: #416674; }
+  label { display: flex; align-items: center; gap: 10px; margin: 8px 0; color: #c0d0d8; }
+  input { flex: 1; accent-color: #70c5bc; }
+  #ramp { width: 100%; height: 12px; border-radius: 6px; margin: 8px 0 4px; background: linear-gradient(to right, #26598c, #409973, #a6d933, #f2aa1a, #e62640, #ffffff); }
+  .ramp-labels { display: flex; justify-content: space-between; font-size: 11px; color: #9bb0be; margin-bottom: 8px; }
+  #detail, #status { color: #bfd2dc; font-variant-numeric: tabular-nums; }
+  #detail { margin-top: 6px; padding-top: 8px; border-top: 1px solid #ffffff20; font-size: 13px; min-height: 2.8em; }
+  #detail strong { font-size: 15px; color: #ffffff; display: block; }
+  #status { font-size: 12px; margin-top: 6px; overflow-wrap: anywhere; }
+  #credit { position: fixed; right: 12px; bottom: 10px; max-width: min(620px, calc(100vw - 24px)); padding: 6px 9px; border-radius: 6px; background: #0b1722e8; font-size: 11px; }
+  a { color: #a9e0da; }
+  @media(max-width:600px) { #panel { top: 8px; left: 8px; padding: 11px; max-width: calc(100vw - 16px); } }
+</style>
+<canvas id="map" aria-label="全世界のKontur H3人口データをWebGPUで3D立体表示"></canvas>
+<section id="panel">
+  <h1>Kontur 人口 3D (WebGPU)</h1>
+  <p>世界 71,283 セルの推計人口を、H3 六角柱の高さと色で立体可視化します。</p>
+  <div class="row" aria-label="視点プリセット">
+    <button data-place="world">世界全景</button>
+    <button data-place="tokyo">東京首都圏</button>
+    <button data-place="india">北インド</button>
+    <button data-place="europe">西欧</button>
+    <button data-place="nile">ナイル・カイロ</button>
+    <button data-place="us_east">北米東海岸</button>
+  </div>
+  <label for="height-scale">高さ倍率 <input id="height-scale" type="range" min="0.2" max="3.5" value="1.4" step="0.1"><span id="height-val">1.4×</span></label>
+  <div id="ramp"></div>
+  <div class="ramp-labels"><span>〜100人</span><span>1万人</span><span>10万人</span><span>100万人</span><span>1000万人</span></div>
+  <p style="font-size: 12px; margin: 4px 0;">ドラッグで回転、右ドラッグで移動、ホイールでズーム</p>
+  <div id="detail"><strong>セルにカーソルを合わせると詳細表示</strong><small>H3 解像度4 (約22km)</small></div>
+  <div id="status" role="status">人口データを読み込み中…</div>
+</section>
+<div id="credit">データ: <a href="https://huggingface.co/datasets/yuiseki/kontur-population-2023-11-01-22km">Kontur Population 2023-11-01 (22km)</a> / <a href="https://www.kontur.io/datasets/population-dataset/">© Kontur (CC BY 4.0)</a></div>
+<script type="module" src="./main.ts"></script>

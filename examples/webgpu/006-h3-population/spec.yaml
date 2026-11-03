@@ -1,0 +1,88 @@
+id: webgpu-006-h3-population
+request: >-
+  全世界の Kontur H3 人口データ (71,283 セル) を WebGPU で人口に応じた高さの 3D 六角柱として可視化したい。
+  （19-kontur-h3-population のデータを WebGPU の 3D 押し出し・ライティングで描く）
+
+requirements:
+  - id: h3-extrusion
+    need: 全世界 71,283 個の H3 セルを人口に応じた高さの 3D 六角柱として描く
+    unmeasured: verification.checks の cells-rendered と screen-covered で確かめる
+  - id: smooth-navigation
+    need: 拡大・縮小・回転・高さスライダー変更が 60 fps で滑らかに動作する
+    rationale: 60 Hz の 1 フレーム 16.7 ms 以内
+  - id: fast-startup
+    need: データの取得・メッシュ構築・初回 3D 描画が速やかに完了する
+    rationale: 2.7 MB のバイナリ読み込みと約 385 万頂点のバッファ構築・GPU アップロードが 2 秒以内
+  - id: cell-identification
+    need: カーソル下のセルの H3 ID と人口を確認できる
+    unmeasured: verification.checks の hover-picking で確かめる
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: fast-startup}
+    - {metric: first_frame_ms, stat: p50, max: 3000, unit: ms, requirement: fast-startup}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-navigation}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/006-h3-population/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 1
+  scenarios:
+    - id: first-frame
+      what: ページの読み込みから、71,283 セルのメッシュ構築・GPU アップロードと初回 3D 描画の完了まで
+      metrics: [first_frame_ms]
+    - id: orbit-path
+      what: 東京・デリー・欧州を巡るカメラ旋回・ズームの 300 フレーム
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+
+datasets:
+  bake: [node, examples/19-kontur-h3-population/bake.ts]
+  sources:
+    - id: kontur-population-r4
+      origin: https://huggingface.co/datasets/yuiseki/kontur-population-2023-11-01-22km
+      license: Creative Commons Attribution（CC BY）。Kontur Population dataset © Kontur。
+  outputs: [data/baked/19-kontur-h3-population/cells.bin]
+  preparation:
+    - 19-kontur-h3-population と同一のベイク出力（H3 ID、推計人口、16-bit メルカトル外周リング）を利用
+
+performance_knowledge:
+  - 71,283 個の多角形セルから上面 6 三角形 + 側面 12 三角形 = 18 三角形 (54 頂点) を構築し、全体で約 385 万頂点の単一頂点バッファとしてアップロードする。
+  - 各頂点に高さ比率 (0.0 または 1.0) を持たせることで、頂点シェーダー内で uniform の heightScale を乗算し、頂点バッファの再送なしにスライダー操作によるリアルタイム高さ伸縮を実現する。
+  - 1 回の draw 呼び出しで全セルを描画するため、CPU オーバーヘッドはほぼゼロであり、GPU 側でも 60 fps (数 ms) で安定描画できる。
+  - Reversed-Z (depth32float, depthCompare: greater) により、広域表示から都市接近時までの極端な深度比率でも z-fighting が発生しない。
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/webgpu/006-h3-population/index.html
+      - examples/webgpu/006-h3-population/main.ts
+      - examples/webgpu/006-h3-population/render.ts
+    dependencies: []
+    why: 71,283 セルの 3D 六角柱（約 385 万頂点）を 1 ドローコールで押し出し描画し、ライティングとリアルタイム高さ伸縮を両立する
+  alternatives:
+    - Canvas 2D では 3D 押し出しやカメラ回転・ライティングが困難
+    - インスタンス描画はメルカトル図法による緯度方向の形状歪み（アスペクト比）の再現が複雑になるため、事前ベイク形状を直接頂点展開する単一バッファ方式を採用
+  not_doing: [動的タイル分割, 年次推移比較, 外部地図ライブラリ, 地形 DEM]
+
+verification:
+  checks:
+    - id: screen-covered
+      what: 背景色以外のピクセルが画面の 20% 以上を占めていること
+      how: 画面の中央 1280x800 画素を読み戻し、背景色 [14, 22, 32] 以外の画素比率を検査
+      expected: ratio >= 0.2
+    - id: cells-rendered
+      what: 人口に応じた複数系統のカラー（青・緑・黄・橙・赤）が画面に描画されていること
+      how: 画面内のユニークな色相・輝度分布を判定
+      expected: color_diversity >= 4
+    - id: hover-picking
+      what: 東京付近の座標に対するピッキングで H3 セルが正しく識別されること
+      how: 東京座標 (139.767, 35.681) を含む H3 セルを検索し、人口が 100 万人以上であること
+      expected: population >= 1000000
