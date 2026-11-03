@@ -1,3 +1,5 @@
+import { parsePointCloud } from './point-cloud-data.ts';
+
 const VERT = `#version 300 es
 precision highp float;
 precision highp int;
@@ -47,14 +49,10 @@ export class PointCloud {
   private readonly locations: Record<string, WebGLUniformLocation | null>;
   constructor(canvas: HTMLCanvasElement, data: ArrayBuffer) {
     this.canvas = canvas;
-    const view = new DataView(data);
-    if (String.fromCharCode(...new Uint8Array(data, 0, 4)) !== 'PC01') throw new Error('invalid point-cloud header');
-    this.count = view.getUint32(4, true);
-    if (data.byteLength !== 32 + this.count * 4) throw new Error('invalid point-cloud length');
-    const mins = [0, 1, 2].map((i) => view.getFloat32(8 + i * 4, true));
-    const maxs = [0, 1, 2].map((i) => view.getFloat32(20 + i * 4, true));
-    this.lo = mins.map((v, i) => v - (v + maxs[i]) / 2);
-    this.span = maxs.map((v, i) => v - mins[i]);
+    const cloud = parsePointCloud(data);
+    this.count = cloud.count;
+    this.lo = cloud.lo;
+    this.span = cloud.span;
     const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true, alpha: false });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.gl = gl;
