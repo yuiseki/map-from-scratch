@@ -1,0 +1,70 @@
+id: maplibre-001-3d-terrain
+request: >-
+  MapLibre GL JS の公式サンプル「3D Terrain」のように、標高データから
+  立体山岳地形メッシュを生成し、太陽光ライティング・高度段彩・大気フォグを伴う透視投影で描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D 地形描画に重厚な MapLibre バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 立体山岳が現れる
+  - id: 3d-terrain-shading
+    need: 山頂火口・斜面陰影・高度段彩・大気フォグが立体的に描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-terrain-shading}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/maplibre/001-3d-terrain/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期地形メッシュの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 視点回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 富士山（標高 3,776m）の成層火山地形モデル（火口お鉢、大沢崩れ等の放射状谷、山麓丘陵）を $128 \times 128$ グリッド（32,768 三角形）として生成
+
+performance_knowledge:
+  - id: indexed-terrain-mesh-drawing
+    finding: 地形グリッドの頂点・法線・段彩色を共有インデックスバッファで単一ドローコール（drawElements）描画することにより、毎フレーム 3 万以上の三角形を 60 fps で瞬時に描画可能
+    evidence: 単一ドローコールで富士山 3D 地形を描画
+    applies_when: 3D 地形メッシュ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/maplibre/001-3d-terrain/index.html
+      - examples/maplibre/001-3d-terrain/main.ts
+      - examples/maplibre/001-3d-terrain/render.ts
+      - examples/maplibre/001-3d-terrain/terrain.ts
+  not_doing:
+    - MapLibre GL JS ライブラリ全体のバンドル
+
+verification:
+  checks:
+    - id: terrain-3d-rendered
+      what: 画面中央部に 3D 山岳地形が透視投影で描画されていること
+      how: readPixels で中央ピクセルと上部青空ピクセルを読み出し比較
+      expected: 中央ピクセルが山岳色であり上部青空ピクセルと異なる
+    - id: hypsometric-elevation-contrast
+      what: 山頂冠雪・岩肌と山麓緑地の間で高度段彩と陰影コントラストが存在すること
+      how: readPixels で山頂ピクセルと山麓緑地ピクセルの色差を検証
+      expected: 山頂と山麓で高度段彩コントラストが検出される

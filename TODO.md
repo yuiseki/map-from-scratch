@@ -20,7 +20,7 @@
 
 出典: [MapLibre GL JS Examples](https://maplibre.org/maplibre-gl-js/docs/examples/)。掲載されている141件をすべて対象とする。
 
-- [ ] `maplibre-001-3d-terrain` → `examples/maplibre/001-3d-terrain/` — [3D Terrain](https://maplibre.org/maplibre-gl-js/docs/examples/3d-terrain/)
+- [x] `maplibre-001-3d-terrain` → `examples/maplibre/001-3d-terrain/` — [3D Terrain](https://maplibre.org/maplibre-gl-js/docs/examples/3d-terrain/)
 - [ ] `maplibre-002-add-3d-terrain-from-quantized-mesh-tiles` → `examples/maplibre/002-add-3d-terrain-from-quantized-mesh-tiles/` — [Add 3D terrain from quantized-mesh tiles](https://maplibre.org/maplibre-gl-js/docs/examples/add-3d-terrain-from-quantized-mesh-tiles/)
 - [ ] `maplibre-003-add-3d-tiles-3d-objects-and-models-using-threejs` → `examples/maplibre/003-add-3d-tiles-3d-objects-and-models-using-threejs/` — [Add 3D Tiles, 3D objects and models using Three.js](https://maplibre.org/maplibre-gl-js/docs/examples/add-3d-tiles-3d-objects-and-models-using-threejs/)
 - [ ] `maplibre-004-add-a-3d-model-with-babylonjs` → `examples/maplibre/004-add-a-3d-model-with-babylonjs/` — [Add a 3D model with babylon.js](https://maplibre.org/maplibre-gl-js/docs/examples/add-a-3d-model-with-babylonjs/)

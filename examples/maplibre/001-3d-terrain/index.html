@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MapLibre - 3D Terrain</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #89b4d8;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #info {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      color: #222;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <strong>MapLibre GL JS - 3D Terrain</strong><br />
+    Mt. Fuji 3D elevation digital terrain model with hypsometric tinting & atmospheric sky fog.<br />
+    Drag to rotate / pitch, scroll to zoom.
+  </div>
+  <canvas id="map"></canvas>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
