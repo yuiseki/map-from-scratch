@@ -8,6 +8,7 @@
 // uploads occur per frame.
 
 import { openArchive } from './pmtiles.ts';
+import { labelScreenRect } from './geometry.ts';
 
 export interface MapLabelItem {
   id: string;
@@ -768,12 +769,7 @@ export async function mount(
 
   function getLabelScreenPos(index: number): { x: number; y: number; width: number; height: number } {
     const lm = landmarks[index];
-    const scale = getScale();
-    const screenX = canvas.width / 2 + (lm.mx - centerMx) * scale;
-    const screenY = canvas.height / 2 + (lm.my - centerMy) * scale;
-    const px = Math.round(screenX - labelCardWidth / 2);
-    const py = Math.round(screenY - labelCardHeight - 12);
-    return { x: px, y: py, width: labelCardWidth, height: labelCardHeight };
+    return labelScreenRect(lm.mx, lm.my, centerMx, centerMy, zoom, canvas.width, canvas.height, labelCardWidth, labelCardHeight);
   }
 
   async function updateLabelContent(
