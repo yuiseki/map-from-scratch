@@ -1,0 +1,80 @@
+id: cesium-233-particle-system-tails
+request: >-
+  CesiumJS の showcase である「Particle System Tails」のように、惑星の周囲を楕円軌道で周回する
+  天体および探査機から射出される 3D 煙条パーティクルテイル（黄金の火花テールとシアンのプラズマテール）、
+  粒子の経時膨張・拡散・減衰をレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: パーティクルテイルの描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 惑星と軌道テールが現れる
+  - id: 3d-particle-tails
+    need: 宇宙空間に中心惑星と軌道周回パーティクルテールが正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-particle-tails}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/233-particle-system-tails/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期惑星メッシュと軌道エミッターの初期化と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 軌道周回テールアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に球体メッシュおよびパーティクルエミッターバッファをメモリ内で動的生成
+
+performance_knowledge:
+  - id: ring-buffer-particle-emitter
+    finding: 生存粒子配列をリングバッファ構造で再利用し単一動的 VBO にパックすることで、GC 停止なしに数千の軌道煙粒子を 60 fps で連続生成・描画可能
+    evidence: 動的メモリ確保ゼロで安定したフレーム間隔を維持
+    applies_when: 煙・航跡・ロケット噴煙・パーティクルテール描画
+  - id: additive-depth-sort-omission
+    finding: 発光煙パーティクルに加算合成（SRC_ALPHA, ONE）を適用することで、高価な距離ソートを行うことなく自然な光の重なりを表現可能
+    evidence: パーティクルソート処理の完全省略
+    applies_when: 炎・発光ガス・プラズマエフェクト描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/233-particle-system-tails/index.html
+      - examples/cesium/233-particle-system-tails/main.ts
+      - examples/cesium/233-particle-system-tails/render.ts
+      - examples/cesium/233-particle-system-tails/tails.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部テクスチャ画像のロード（ポイントスプライトシェーダー内計算）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が宇宙空間の暗色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 宇宙空間クリア色と一致すること
+    - id: central-globe-rendered
+      what: 画面中央に中心惑星球体が描画されている
+      how: gl.readPixels で中心ピクセルを取得して確認
+      expected: 惑星サーフェスピクセルが描画されていること
+    - id: particle-tails-rendered
+      what: 周回天体から射出されたパーティクルテールが描画されている
+      how: エミッターの活性テール粒子数を確認
+      expected: 50 個以上のテール粒子が生成されていること
