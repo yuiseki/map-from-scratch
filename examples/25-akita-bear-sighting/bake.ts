@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { source } from '../../tools/sources.ts';
 import { simplify, triangulatePolygon, polygonsOf, type Ring } from '../../tools/geo.ts';
+import { BASE_DATE, MS_PER_DAY, parseCSV, parseDateToDays } from './data.ts';
 
 const OUT = 'data/baked/25-akita-bear-sighting';
 mkdirSync(OUT, { recursive: true });
@@ -11,45 +12,6 @@ mkdirSync(OUT, { recursive: true });
 // Geographical bounds covering Akita prefecture with surrounding context
 const MIN_LON = 139.5, MAX_LON = 141.0;
 const MIN_LAT = 38.8, MAX_LAT = 40.6;
-const BASE_DATE = new Date('2022-04-01T00:00:00Z').getTime();
-const MS_PER_DAY = 86400 * 1000;
-
-function parseDateToDays(dateStr: string): number {
-  // Format: "YYYY/M/D H:m" or "YYYY/MM/DD ..."
-  const m = dateStr.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
-  if (!m) return 0;
-  const y = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, d = parseInt(m[3], 10);
-  const t = Date.UTC(y, mo, d);
-  return Math.max(0, Math.floor((t - BASE_DATE) / MS_PER_DAY));
-}
-
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cur = '';
-  let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      if (inQ && text[i + 1] === '"') { cur += '"'; i++; }
-      else { inQ = !inQ; }
-    } else if (c === ',' && !inQ) {
-      row.push(cur);
-      cur = '';
-    } else if ((c === '\r' || c === '\n') && !inQ) {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(cur);
-      cur = '';
-      if (row.length > 1 || row[0] !== '') rows.push(row);
-      row = [];
-    } else {
-      cur += c;
-    }
-  }
-  if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
-  return rows;
-}
-
 // 1. Bake Background Map (Akita + neighbor prefectures)
 console.log('Baking prefecture boundaries...');
 type PrefFeature = {
