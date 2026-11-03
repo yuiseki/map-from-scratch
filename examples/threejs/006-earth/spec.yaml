@@ -1,0 +1,106 @@
+id: threejs-006-earth
+request: >-
+  Three.js の Earth 例のように、地球画像を貼った球を大気の縁とともに表示して回転させたい。
+  ドラッグで向きを変え、ホイールで距離を調整できるようにする。
+requirements:
+  - id: textured-globe
+    need: 地球画像を球面に貼り、球体として描画する
+    unmeasured: 球面形状とテクスチャが正しいことは verification の earth-visible と単体テストで確認する
+  - id: atmosphere
+    need: 青い大気の縁を付ける
+    unmeasured: 大気の縁の見た目は verification の blue-atmosphere で実画面ピクセルを確認する
+  - id: rotate-and-zoom
+    need: 回転し、ドラッグとホイールで視点を操作できる
+    rationale: yawと距離を変更すると球面の実画面ピクセルが変わり、回転フレームを16.7ms以内に描画すること
+  - id: quick-start
+    need: 初回フレームを素早く表示する
+    rationale: 同梱画像を含む静的配信で初回フレームを1秒以内に出す
+  - id: compact
+    need: Three.js や他の地図ライブラリを実行時に読み込まない
+    rationale: コードを18KB gzip以内、テクスチャを600KB以内に収める
+  - id: hardware
+    need: PC のブラウザで動く
+    unmeasured: ハーネス環境のGPUを記録し、ユーザー端末では未測定とする
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 18000, unit: B, requirement: compact}
+    - {metric: data_bytes, max: 600000, unit: B, requirement: compact}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: cpu_ms, stat: p95, max: 4, unit: ms, requirement: rotate-and-zoom}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: rotate-and-zoom}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: rotate-and-zoom}
+  gates: [WebGL2 で描画, 実画面ピクセルの検証がすべて通る, WebGL context loss がない]
+
+benchmarks:
+  runtime: browser
+  page: examples/threejs/006-earth/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-globe
+      what: ページ初期化から地球が描画される最初のフレームまで
+      metrics: [first_frame_ms]
+    - id: rotating-globe
+      what: yaw を変えながら球体と大気を40フレーム描画し、readPixelsでGPU完了まで待つ
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+
+datasets:
+  sources:
+    - id: earth-texture
+      origin: Three.js examples/textures/planets/earth_atmos_2048.jpg; Earth texture by Solar System Scope
+      license: CC BY 4.0 (Solar System Scope attribution is shown on screen)
+  outputs:
+    - examples/threejs/006-earth/earth.jpg
+  preparation:
+    - Three.js 公式 Earth example が参照する2048×1024 equirectangular Earth画像を同梱する。ローカル配信にし、実行時の外部リクエストをなくす。
+
+performance_knowledge:
+  - id: indexed-sphere
+    finding: 緯度経度グリッドをインデックス付きで一度GPUへ渡し、描画中はyaw・pitch・距離だけをuniformで変える
+    evidence: 96×192グリッド、36,864三角形、1つのEarth draw callと1つのatmosphere draw call。RTX 3060でframe p95 1.30 ms / GPU p95 0.0553 ms (3 runs, harness 1280×800)
+    applies_when: 球面テクスチャを貼った回転地球儀を表示する場合
+  - id: mesh-seam
+    finding: equirectangularテクスチャの継ぎ目は両端に別頂点を持たせ、u=0とu=1に分ける
+    evidence: unit tests verify duplicated seam positions with u=0/1 and outward winding; 3 browser runs read actual pixels successfully
+    applies_when: longitude seamを持つ球面テクスチャのメッシュを作る場合
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (browser uses the repository's type stripper)
+    gpu: hardware
+    code:
+      - examples/threejs/006-earth/index.html
+      - examples/threejs/006-earth/main.ts
+      - examples/threejs/006-earth/globe.ts
+    dependencies: []
+    why: Sphere mesh data is generated once, then a small pair of shader passes handles the textured body and atmospheric rim.
+  alternatives:
+    - option: Three.js WebGPU / TSL
+      rejected_because: 元例の描画目的を、実行時依存なしで再実装するため
+    - option: Canvas 2D
+      rejected_because: 透視投影の球面と大気のリムを毎フレーム滑らかに描く用途に合わない
+  not_doing: [地理境界線やラベル, 標高地形, 国データの選択, 衛星・雲の個別レイヤー]
+
+verification:
+  checks:
+    - id: earth-visible
+      what: 中央に地球が描画され背景と区別できる
+      how: 実際の WebGL canvas の中央と角の色を readPixels する
+      expected: 中央は不透明で、背景色と15以上のRGB距離がある
+    - id: blue-atmosphere
+      what: 地球の縁に青い大気が描画される
+      how: 球面の外側、シルエット付近の色を readPixels で確認する
+      expected: rim pixel の青チャンネルが赤より8以上大きい
+    - id: globe-rotates
+      what: yawの変更で地球のテクスチャが回る
+      how: 同じ画面中央を二つのyawで描き、実画面ピクセルを比較する
+      expected: 中央RGB距離が12を超える
+    - id: zoom-changes-scale
+      what: カメラ距離で地球の見かけの大きさが変わる
+      how: 同じ横位置を近距離・遠距離で描き、alphaをreadPixelsする
+      expected: 近距離では地球の不透明画素、遠距離では背景の透明画素

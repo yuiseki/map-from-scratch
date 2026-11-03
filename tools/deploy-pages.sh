@@ -44,7 +44,7 @@ if [[ "${1:-}" != --no-check ]]; then
   fi
   for id in $ids; do
     site_dir=".cache/site/examples/$id"
-    for source in maplibre leaflet deckgl d3 mapbox cesium openglobus tangram forge3d kepler luma webgpu opfs wasm htmlcanvas; do
+    for source in maplibre leaflet deckgl d3 mapbox cesium openglobus tangram forge3d kepler luma threejs webgpu opfs wasm htmlcanvas; do
       [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
     done
     [[ -d "$site_dir" || -d ".cache/site/baselines/$id" ]] || continue

@@ -915,7 +915,7 @@
 - [ ] `threejs-003-terrain` → `examples/threejs/003-terrain/` — [Terrain + fog](https://threejs.org/examples/webgl_geometry_terrain.html)
 - [ ] `threejs-004-terrain-raycast` → `examples/threejs/004-terrain-raycast/` — [Terrain raycasting](https://threejs.org/examples/webgl_geometry_terrain_raycast.html)
 - [ ] `threejs-005-pcd-point-cloud` → `examples/threejs/005-pcd-point-cloud/` — [PCD point cloud](https://threejs.org/examples/webgl_loader_pcd.html)
-- [ ] `threejs-006-earth` → `examples/threejs/006-earth/` — [Earth](https://threejs.org/examples/webgpu_tsl_earth.html)
+- [x] `threejs-006-earth` → `examples/threejs/006-earth/` — [Earth](https://threejs.org/examples/webgpu_tsl_earth.html)
 - [ ] `threejs-007-procedural-terrain` → `examples/threejs/007-procedural-terrain/` — [Procedural terrain](https://threejs.org/examples/webgpu_tsl_procedural_terrain.html)
 - [ ] `threejs-008-xyz-point-cloud` → `examples/threejs/008-xyz-point-cloud/` — [XYZ point cloud](https://threejs.org/examples/webgl_loader_xyz.html)
 - [ ] `threejs-009-tiff-raster-texture` → `examples/threejs/009-tiff-raster-texture/` — [TIFF texture](https://threejs.org/examples/webgl_loader_texture_tiff.html)
@@ -944,4 +944,4 @@
 
 ## 進捗
 
-- 対象: **841 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 9）。実装済み **93 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
+- 対象: **841 件**（MapLibre 141、Mapbox 168、Cesium 310、OpenGlobus 85、deck.gl 38、D3 31、Leaflet 15、Tangram 15、forge3d 10、kepler.gl 17、luma.gl 2、Three.js 9）。実装済み **94 件**（maplibre-010、011、012、013、017、018、025、027、032、034、039、040、041、045、048、049、053、054、056、061、069、070、071、072、073、084、096、097、102、114、115、128、mapbox-009、011、012、013、017、018、019、022、027、038、045、049、051、127、cesium-180、209、213、244、openglobus-002、004、009、050、062、tangram-001、004、008、010、forge3d-001、002、003、004、005、006、007、008、009、010、deckgl-001、006、007、008、010、011、012、014、015、016、018、025、d3-005、006、007、010、016、019、024、025、027、leaflet-001、003、005、threejs-006）。- 各項目の完了時には、元例との差分、計測結果、画面検証結果、データ出典をその例の `REQUEST.md` と `spec.yaml` に残す。
