@@ -1,6 +1,7 @@
 // WebGPU Manhattan Taxi Trips Animator.
 // Renders 3D OSM buildings and taxi trajectories with trail fading animation,
 // additive neon glow blending and reversed-Z depth.
+import { decodeBuildingVertices, decodeTripSegments } from './render-data.ts';
 
 export interface Camera {
   x: number;          // center X in normalized Mercator [0, 1]
@@ -273,14 +274,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
     buildingIndexCount = data.indices.length;
 
     // Convert raw 8B building vertices: [u16 x, u16 y, u16 height, u8 shade, u8 pad]
-    const rawView = new DataView(data.buffer, 32, data.count * 8);
-    const converted = new Float32Array(data.count * 4); // [x, y, height, shade]
-    for (let i = 0; i < data.count; i++) {
-      converted[i * 4] = rawView.getUint16(i * 8, true);
-      converted[i * 4 + 1] = rawView.getUint16(i * 8 + 2, true);
-      converted[i * 4 + 2] = rawView.getUint16(i * 8 + 4, true);
-      converted[i * 4 + 3] = rawView.getUint8(i * 8 + 6) / 255.0;
-    }
+    const converted = decodeBuildingVertices(data);
 
     buildingVertexBuffer = device.createBuffer({
       size: converted.byteLength,
@@ -304,38 +298,8 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
   function uploadTrips(data: TripsData) {
     if (tripSegmentBuffer) tripSegmentBuffer.destroy();
 
-    const rawView = new DataView(data.buffer, 32);
     tripSegmentsCount = data.count - 1;
-
-    // Each segment has: p0(x, y, t0), p1(x, y, t1), meta(vendor, gap) -> 8 uint32 (32 bytes)
-    const segments = new Uint32Array(tripSegmentsCount * 8);
-
-    for (let i = 0; i < tripSegmentsCount; i++) {
-      const o0 = i * 10;
-      const o1 = (i + 1) * 10;
-
-      const x0 = rawView.getUint8(o0) + rawView.getUint8(o0 + 1) * 256 + rawView.getUint8(o0 + 2) * 65536;
-      const y0 = rawView.getUint8(o0 + 3) + rawView.getUint8(o0 + 4) * 256 + rawView.getUint8(o0 + 5) * 65536;
-      const t0 = rawView.getUint16(o0 + 6, true);
-      const vendor = rawView.getUint8(o0 + 8);
-      const gap = rawView.getUint8(o0 + 9);
-
-      const x1 = rawView.getUint8(o1) + rawView.getUint8(o1 + 1) * 256 + rawView.getUint8(o1 + 2) * 65536;
-      const y1 = rawView.getUint8(o1 + 3) + rawView.getUint8(o1 + 4) * 256 + rawView.getUint8(o1 + 5) * 65536;
-      const t1 = rawView.getUint16(o1 + 6, true);
-
-      const idx = i * 8;
-      segments[idx] = x0;
-      segments[idx + 1] = y0;
-      segments[idx + 2] = t0;
-
-      segments[idx + 3] = x1;
-      segments[idx + 4] = y1;
-      segments[idx + 5] = t1;
-
-      segments[idx + 6] = vendor;
-      segments[idx + 7] = gap;
-    }
+    const segments = decodeTripSegments(data);
 
     tripSegmentBuffer = device.createBuffer({
       size: segments.byteLength,
