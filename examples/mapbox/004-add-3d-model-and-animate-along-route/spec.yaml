@@ -1,0 +1,103 @@
+id: mapbox-004-add-3d-model-and-animate-along-route
+request: >-
+  Mapbox GL JS の "Add 3D model and animate along route" 例のように、地球上の経路に沿って
+  飛行機をアニメーションさせたい。地球儀を回転・拡大縮小でき、飛行機の向き・プロペラ・灯火を
+  時間に合わせて動かす。実行時の地図ライブラリ依存なしで表示する。
+requirements:
+  - id: earth-and-route
+    need: 地球とサンフランシスコからニューヨークへの大圏航路を表示する
+    unmeasured: 地球と航路が重なって見えることを実画面の WebGL・Canvas ピクセルで検証する
+  - id: animated-aircraft
+    need: 飛行機が航路に沿って進み、進行方向・プロペラ・灯火がアニメーションする
+    unmeasured: 時刻を変えた実画面のピクセル検査と飛行姿勢の単体テストで検証する
+  - id: navigation
+    need: ドラッグで地球を回転し、ホイールでズームする
+    rationale: 回転フレームを 16.7 ms 以内に描画する
+  - id: small-static-page
+    need: Mapbox GL JS、Three.js、Turf などの実行時依存なしで動く
+    rationale: 配信コード gzip 20 KB 以内、画像アセット 600 KB 以内
+  - id: quick-start
+    need: 初回フレームを 1 秒以内に表示する
+    rationale: 同梱画像のデコードと WebGL2 初期化を含めても短時間で利用できる
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: small-static-page}
+    - {metric: data_bytes, max: 600000, unit: B, requirement: small-static-page}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+  gates: [WebGL2 で地球を描画, 航路・飛行機の実画面ピクセル検査が通る, WebGL context loss がない]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/004-add-3d-model-and-animate-along-route/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-earth-flight
+      what: Earth texture decode, WebGL2 initialization, and initial route drawing
+      metrics: [first_frame_ms]
+    - id: flight-animation
+      what: 40 rendered frames with an animated aircraft and route overlay
+      metrics: [frame_ms, gpu_ms]
+
+datasets:
+  sources:
+    - id: earth-texture
+      origin: Three.js examples/textures/planets/earth_atmos_2048.jpg; Earth texture by Solar System Scope
+      license: CC BY 4.0 (attribution is displayed on page)
+  outputs: [examples/mapbox/004-add-3d-model-and-animate-along-route/earth.jpg]
+  preparation:
+    - Bundle the equirectangular Earth image locally, so the page performs no external asset request.
+    - Calculate the route between SFO (-122.379, 37.621) and JFK (-73.778, 40.641) with spherical interpolation.
+    - Generate the airplane glyph from Canvas path commands and animate its position, heading, propeller, and strobe phase.
+
+performance_knowledge:
+  - id: project-only-route-points
+    finding: A 97-point route and one procedural aircraft silhouette are projected onto a 2D overlay; route points on the far hemisphere are skipped.
+    evidence: RTX 3060: first frame p50 95.08 ms, frame p95 1.145 ms, GPU p95 0.1321 ms. Three browser runs read actual cyan route and gold aircraft pixels and confirm the aircraft centroid moves after 4.5 seconds.
+    applies_when: A globe-scale route needs an animated model marker without a general 3D model loader.
+  - id: slerp-for-global-path
+    finding: Spherical interpolation keeps route samples on the unit sphere and the aircraft pose uses the local tangent and surface normal.
+    evidence: Unit tests check both route endpoints, unit radius, orthonormal aircraft axes, and looped animation state.
+    applies_when: Animating a route across a globe instead of interpolating longitude and latitude independently.
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 + Canvas 2D overlay
+    language: TypeScript (type stripped by local server and Pages builder)
+    gpu: hardware
+    code:
+      - examples/mapbox/004-add-3d-model-and-animate-along-route/index.html
+      - examples/mapbox/004-add-3d-model-and-animate-along-route/main.ts
+      - examples/mapbox/004-add-3d-model-and-animate-along-route/globe.ts
+      - examples/mapbox/004-add-3d-model-and-animate-along-route/flight.ts
+      - examples/mapbox/004-add-3d-model-and-animate-along-route/bench.ts
+    dependencies: []
+    why: A static sphere and small procedural flight overlay need no model loader, general map engine, or runtime geospatial package.
+  alternatives:
+    - option: Mapbox GL JS with Turf and a glTF aircraft
+      rejected_because: The single globe, route and aircraft animation can be drawn without those runtime libraries.
+    - option: Download and parse a glTF model
+      rejected_because: A compact procedural aircraft silhouette communicates the animated route with less data and loading work.
+  not_doing: [city basemap, detailed aircraft mesh, airports and labels, route editing, multiple flights, terrain]
+
+verification:
+  checks:
+    - id: globe-visible
+      what: Globe center is drawn as an opaque Earth pixel
+      how: Read the center pixel from the WebGL framebuffer
+      expected: alpha is 255
+    - id: route-and-aircraft-visible
+      what: The visible route and airplane are drawn on the globe
+      how: Count cyan and gold pixels read from the transparent overlay canvas
+      expected: more than 20 route pixels and at least one aircraft pixel
+    - id: aircraft-animates
+      what: Route content remains visible after the aircraft advances along the route
+      how: Read overlay pixels at progress 0 and 0.25 of the 18-second loop
+      expected: route and aircraft pixels exist in both images
+  harness: [webglcontextlost が起きたらエラーにする]
