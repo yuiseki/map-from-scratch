@@ -897,7 +897,7 @@
 - [ ] `kepler-014-movement-pittsburgh` → `examples/kepler/014-movement-pittsburgh/` — [Travel Times From Uber Movement](https://kepler.gl/demo/movement_pittsburgh)（データ: [kepler.gl-data/movement_pittsburgh](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/movement_pittsburgh)）
 - [x] `kepler-015-nyc-population` → `examples/kepler/015-nyc-population/` — [New York City Population by Census Tract](https://kepler.gl/demo/nyc_census)（データ: [kepler.gl-data/nyc_census](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/nyc_census)）
 - [ ] `kepler-016-sf-street-trees` → `examples/kepler/016-sf-street-trees/` — [San Francisco Street Tree Map](https://kepler.gl/demo/sftrees)（データ: [kepler.gl-data/sftrees](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/sftrees)）
-- [ ] `kepler-017-uk-commute` → `examples/kepler/017-uk-commute/` — [Commute Pattern in England and Wales](https://kepler.gl/demo/ukcommute)（データ: [kepler.gl-data/ukcommute](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/ukcommute)）
+- [x] `kepler-017-uk-commute` → `examples/kepler/017-uk-commute/` — [Commute Pattern in England and Wales](https://kepler.gl/demo/ukcommute)（データ: [kepler.gl-data/ukcommute](https://github.com/keplergl/kepler.gl-data/tree/49c310155666fa3c7404b35de9ad7e8abc79d2b6/ukcommute)）
 
 ## luma.gl: 2 件
 

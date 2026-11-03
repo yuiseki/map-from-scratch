@@ -1,0 +1,70 @@
+id: kepler-017-uk-commute
+request: >-
+  kepler.gl のショーケースデモ「Commute Pattern in England and Wales」のように、イギリスの主要都市間を結ぶ
+  通勤フローを、通勤量に基づく発光カラーと 3D 放物線アークで描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D フローアーク描画に重厚な kepler.gl / deck.gl バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 通勤アーク群が現れる
+  - id: 3d-commute-arcs
+    need: 暗夜背景の上に高高度 3D 放物線アークが通勤量グラデーションと立体配置で正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-commute-arcs}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/017-uk-commute/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期通勤フローアークの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 視点回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - イギリス主要 17 都市間の通勤フローデータ（160 ペア）を生成
+
+performance_knowledge:
+  - id: parabolic-arc-batch-drawing
+    finding: 全都市間アークの 3D 放物線セグメントを頂点バッファに一括集約し、加算ブレンドと Z-バッファを組み合わせて単一ドローコールで描画することで、数千の空間ラインを 60 fps で瞬時に描画可能
+    evidence: 1 ドローコールで全英通勤アークを描画
+    applies_when: 3D 空間フロー・放物線アーク描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/kepler/017-uk-commute/index.html
+      - examples/kepler/017-uk-commute/main.ts
+      - examples/kepler/017-uk-commute/render.ts
+      - examples/kepler/017-uk-commute/commute.ts
+  not_doing:
+    - kepler.gl および React / Redux バンドル
+
+verification:
+  checks:
+    - id: dark-base-rendered
+      what: 暗夜の地表面ベースが正しく描画されていること
+      how: readPixels で四隅の地表面ピクセル色を検証
+      expected: 地表面が暗夜スレート色であること
+    - id: commute-arcs-rendered
+      what: イギリス上空に 3D 通勤放物線アークが描画されていること
+      how: readPixels で中央部ピクセルを検証
+      expected: 中央部で発光アークピクセルが検出されること
