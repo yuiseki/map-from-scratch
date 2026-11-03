@@ -828,7 +828,7 @@
 - [ ] `cesium-278-sphere-outline-dev` → `examples/cesium/278-sphere-outline-dev/` — [Sphere Outline Dev](https://sandcastle.cesium.com/?src=sphere-outline-dev)
 - [ ] `cesium-279-spheres-and-ellipsoids` → `examples/cesium/279-spheres-and-ellipsoids/` — [Spheres And Ellipsoids](https://sandcastle.cesium.com/?src=spheres-and-ellipsoids)
 - [ ] `cesium-280-splitdirection` → `examples/cesium/280-splitdirection/` — [Splitdirection](https://sandcastle.cesium.com/?src=splitdirection)
-- [ ] `cesium-281-star-burst` → `examples/cesium/281-star-burst/` — [Star Burst](https://sandcastle.cesium.com/?src=star-burst)
+- [x] `cesium-281-star-burst` → `examples/cesium/281-star-burst/` — [Star Burst](https://sandcastle.cesium.com/?src=star-burst)
 - [ ] `cesium-282-styled-gltf-lines-dev` → `examples/cesium/282-styled-gltf-lines-dev/` — [Styled Gltf Lines Dev](https://sandcastle.cesium.com/?src=styled-gltf-lines-dev)
 - [ ] `cesium-283-styled-gltf-points-dev` → `examples/cesium/283-styled-gltf-points-dev/` — [Styled Gltf Points Dev](https://sandcastle.cesium.com/?src=styled-gltf-points-dev)
 - [ ] `cesium-284-terrain` → `examples/cesium/284-terrain/` — [Terrain](https://sandcastle.cesium.com/?src=terrain)

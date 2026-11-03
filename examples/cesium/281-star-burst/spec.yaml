@@ -1,0 +1,80 @@
+id: cesium-281-star-burst
+request: >-
+  CesiumJS の showcase である「Star Burst」のように、放射状に広がる数千の 3D 星条光跡、
+  相対論的光速ワープ表現（速度に比例したストリーク伸長）、加算合成による高輝度発光コア、
+  ドップラー分光カラーをレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: スターバーストエフェクトの描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D スターバーストが現れる
+  - id: 3d-star-burst
+    need: 暗黒宇宙空間背景の中に放射状スターバースト光線と星コアが正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-star-burst}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/281-star-burst/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期星間バッファ構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: ワープアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 2,000 個の 3D 放射星子シミュレーションバッファをメモリ内で動的生成
+
+performance_knowledge:
+  - id: dual-pass-streak-and-core
+    finding: 動的ラインバッファ（LINES）によるストリーク光条とポイントスプライト（POINTS）による発光コアを単一 VBO 更新で組み合わせることで、GPU 負荷を最小化しながら迫力あるワープ航法光跡を 60 fps 描画可能
+    evidence: わずか 2 ドローコールで数千の光芒を描画
+    applies_when: スターバースト・ワープ・流星雨・軌跡描画
+  - id: additive-streak-blending
+    finding: 深度書き込みを無効化した加算ブレンド（SRC_ALPHA, ONE）により、数千本の光線が密集する中心領域でも Z-fighting なしに自然な露出オーバー白飛び発光を実現可能
+    evidence: 高密度パーティクルでの高輝度表現
+    applies_when: 発光・レーザー・星条表現
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/281-star-burst/index.html
+      - examples/cesium/281-star-burst/main.ts
+      - examples/cesium/281-star-burst/render.ts
+      - examples/cesium/281-star-burst/starburst.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部テクスチャ画像のロード（シェーダー内計算）
+
+verification:
+  checks:
+    - id: hyperspace-black-cleared
+      what: 画面隅が宇宙空間の黒色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 宇宙クリア色と一致すること
+    - id: starburst-streaks-rendered
+      what: 放射状スターバースト光条が描画されている
+      how: gl.readPixels で放射領域のピクセル輝度および星数を検証
+      expected: スターバースト光条ピクセルまたは活性星数が検出されること
+    - id: star-cores-rendered
+      what: 星核ポイントスプライトが描画されている
+      how: 星バッファの活性星数を確認
+      expected: 1,000 個以上の星核が保持されていること
