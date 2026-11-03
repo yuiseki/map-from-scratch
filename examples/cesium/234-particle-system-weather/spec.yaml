@@ -68,7 +68,7 @@ verification:
   checks:
     - id: overcast-sky-cleared
       what: 画面上部が曇天の大気色でクリアされている
-      how: gl.readPixels で上端ピクセルを取得して確認
+      how: gl.readPixels で画面左上の 3×3 標本を取り、中央値で雨滴の一時的な重なりを除いて確認
       expected: 曇天クリア色と一致すること
     - id: ground-plane-rendered
       what: 画面下部に地表面グリッドプレーンが描画されている

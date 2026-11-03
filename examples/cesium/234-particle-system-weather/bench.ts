@@ -1,5 +1,6 @@
 import { emit, glRenderer } from '../../../harness/page/bench.ts';
 import type { WeatherRenderer } from './render.ts';
+import { medianPixel } from './weather.ts';
 
 const renderer = (window as unknown as { __mfsRenderer: WeatherRenderer }).__mfsRenderer;
 
@@ -21,8 +22,12 @@ export async function run(): Promise<void> {
   const h = gl.canvas.height;
   const cx = Math.floor(w / 2);
 
-  // Check 1: Overcast sky background in upper corner
-  const cornerPixel = renderer.readPixel(10, h - 10);
+  // Check a 3x3 patch: a single animated rain streak must not mask the clear color.
+  const skySamples: Uint8Array[] = [];
+  for (const offset of [8, 32, 56]) {
+    for (const x of [8, 32, 56]) skySamples.push(renderer.readPixel(x, h - offset));
+  }
+  const cornerPixel = medianPixel(skySamples);
   // Default is rain mode: clearColor is (0.20, 0.24, 0.28) ~ RGB(51, 61, 71)
   const isSky = cornerPixel[0] >= 35 && cornerPixel[0] <= 70 && cornerPixel[2] >= 50;
   emit({

@@ -110,3 +110,16 @@ export function packWeatherBuffer(particles: WeatherParticle[]): Float32Array {
 
   return buf;
 }
+
+/** Robustly samples a mostly uniform render region without letting a transient particle dominate it. */
+export function medianPixel(samples: readonly Uint8Array[]): Uint8Array {
+  if (samples.length === 0 || samples.some((sample) => sample.length < 4)) {
+    throw new RangeError('medianPixel requires non-empty RGBA samples');
+  }
+  const pixel = new Uint8Array(4);
+  for (let channel = 0; channel < 4; channel++) {
+    const values = samples.map((sample) => sample[channel]).sort((a, b) => a - b);
+    pixel[channel] = values[Math.floor(values.length / 2)];
+  }
+  return pixel;
+}

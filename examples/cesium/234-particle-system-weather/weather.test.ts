@@ -4,6 +4,7 @@ import {
   createWeatherParticles,
   updateWeather,
   packWeatherBuffer,
+  medianPixel,
   type WeatherParticle,
 } from './weather.ts';
 
@@ -55,4 +56,15 @@ test('packWeatherBuffer outputs correct stride and floats for GPU drawing', () =
   assert.equal(buf[1], 20);
   assert.equal(buf[2], 30);
   assert.equal(buf[3], 6); // size
+});
+
+test('median sky sample rejects a bright weather particle outlier', () => {
+  const samples: Uint8Array[] = [
+    new Uint8Array([51, 61, 71, 255]),
+    new Uint8Array([51, 61, 71, 255]),
+    new Uint8Array([104, 119, 134, 255]),
+    new Uint8Array([51, 61, 71, 255]),
+    new Uint8Array([51, 61, 71, 255]),
+  ];
+  assert.deepEqual([...medianPixel(samples)], [51, 61, 71, 255]);
 });
