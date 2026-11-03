@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cesium: Japan Buildings</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #05070d; color: #e6edf3; font: 13px/1.45 system-ui, sans-serif; }
+  #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #map:active { cursor: grabbing; }
+  #panel { position: fixed; top: 12px; left: 12px; max-width: min(380px, calc(100vw - 24px)); padding: 10px 12px; border-radius: 8px; background: #0d1620e6; border: 1px solid #ffffff26; }
+  h1 { margin: 0 0 4px; font-size: 15px; }
+  .places { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 6px; }
+  button { padding: 4px 9px; border-radius: 6px; border: 1px solid #8fb3c455; background: #1f3a4a; color: inherit; font: inherit; cursor: pointer; }
+  button:hover, button:focus-visible { background: #2f5568; }
+  #status { font-size: 12px; color: #b9cad6; font-variant-numeric: tabular-nums; min-height: 1.4em; }
+  .scale { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b9cad6; margin-top: 4px; }
+  #legend { height: 9px; flex: 1; border-radius: 3px; }
+  .hint { font-size: 11px; color: #8ea3b2; margin-top: 4px; }
+  #credit { position: fixed; right: 8px; bottom: 6px; max-width: min(640px, calc(100vw - 16px)); padding: 4px 8px; border-radius: 5px; background: #0d1620d9; font-size: 11px; color: #b9cad6; }
+  #credit a { color: #9fd3e6; }
+</style>
+</head>
+<body>
+<canvas id="map" aria-label="東京都心の PLATEAU 建物を地球儀の上に表示した 3D 地図"></canvas>
+<section id="panel">
+  <h1>Japan Buildings: 東京都心の建物</h1>
+  <div class="places" aria-label="移動先">
+    <button data-place="kanto">関東平野</button><button data-place="tokyo">東京都心</button><button data-place="shinjuku">新宿副都心</button><button data-place="marunouchi">東京駅・丸の内</button><button data-place="roppongi">六本木・虎ノ門</button><button data-place="shibuya">渋谷</button><button data-place="odaiba">お台場・湾岸</button>
+  </div>
+  <div class="scale"><span>0 m</span><div id="legend" aria-label="建物の高さの色: 0 m 石色、12 m 砂色、30 m 橙、80 m 赤、150 m 赤紫、250 m 以上 紫"></div><span>250 m</span></div>
+  <div id="status" role="status">読み込み中…</div>
+  <div class="hint">ドラッグで移動、右ドラッグか Shift+ドラッグで向きと傾き、ホイールで高度</div>
+</section>
+<div id="credit">建物: <a href="https://www.geospatial.jp/ckan/dataset/plateau-tokyo23ku-2022">3D都市モデル（Project PLATEAU）東京23区（2022年度）</a> © 東京都23区 (<a href="https://www.mlit.go.jp/plateau/site-policy/">PLATEAU サイトポリシー: PDL1.0 / CC BY 4.0</a>)、LOD1 を加工 · 陸地: <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain)</div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

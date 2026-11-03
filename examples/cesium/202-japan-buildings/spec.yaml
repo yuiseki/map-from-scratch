@@ -1,0 +1,209 @@
+id: cesium-202-japan-buildings
+request: >-
+  CesiumJS Sandcastle の「Japan Buildings」のように、日本の建物を地球儀の上に 3D で流し込み、
+  名所のあいだを飛んで見たい。PLATEAU の建物で、少なくとも東京の都心区を、画面の詳細度に応じて読み込み、
+  高い斜めの視点から数万棟が見えること。関東平野の上空から東京の高層ビル群へ降りていき、
+  いくつかの場所へボタンで滑らかに飛べること。建物は太陽で陰影を付け、高さで色分けし、地面の上に建つ。
+  出典 (Project PLATEAU と自治体) を画面に出す。
+
+requirements:
+  - id: japan-buildings
+    need: PLATEAU の建物で、少なくとも東京の都心区を数万棟、高い斜めの視点から見せる
+    rationale: >-
+      都心区 (千代田・中央・港・新宿・渋谷・文京・台東ほか) を覆う 140 の 3 次メッシュ、331,302 棟をベイクした。
+      東京都心の視点 (高度約 4.2 km、pitch -28) で描く棟数 20,000 以上 (drawn_buildings、tens-of-thousands)
+  - id: globe-flight
+    need: 関東平野の上空から東京のビル群へ降り、ボタンで名所へ滑らかに飛ぶ
+    rationale: >-
+      飛行中は 60 Hz を保つ: フレーム間隔 p95 16.7 ms 以下、最大 100 ms 未満 (flight-never-blocks)。
+      ボタンで視点が移ることは preset-moves-view で見る。航路の形 (大円、高度の幾何補間、向きの最短回転) は flight.test.ts
+  - id: lit-and-coloured
+    need: 建物は太陽で陰影を付け、高さで色分けする。空と地面が見える
+    rationale: >-
+      色は ramp.ts の STOPS (0 m 石色、12 m 砂、30 m 橙、80 m 赤、150 m 赤紫、250 m 以上 紫) をシェーダーが使う。
+      真上から見た屋根の 70% 以上がその高さの色 (colour-follows-height)、都庁が投影位置に高い色で出る (tocho-at-projection)、
+      空と陸と海が地理どおり (sky-and-ground)
+    unmeasured: 太陽の向き (方位 150 度、高度 40 度) の見え方は目視レビューで確かめる
+  - id: streaming-lod
+    need: タイルごとの画面上の誤差で読むものを選び、通信でフレームを止めず、遠いタイルはメモリ予算で捨てる
+    rationale: >-
+      ADD 細分化の 6 段の四分木 (lod.ts)、最大誤差 3 px。1 フレームのタイル処理は 6 ms まで (decode_upload_ms p95 6 ms)。
+      GPU は既定 192 MiB の予算 (gpu_bytes 最大 192 MiB)。16 MiB に絞ると古いタイルを捨てる (memory-budget)
+  - id: see-soon
+    need: 開いたらすぐ地球儀と最も高い建物が見える
+    rationale: >-
+      index.json と陸地マスク 3 枚 (計 111 KB) と根タイル (30 KB) で最初の建物の描画まで p50 1,500 ms 以下 (first_frame_ms)。
+      東京都心の視点まで落ち着くまでに読むバイト数を 12 MB 以下 (tile_bytes、ベイク後 8.3 MB が全量)
+  - id: light-page
+    need: GitHub Pages の静的ファイルで配る
+    rationale: 配るコード gzip 20 KB 以下、データ 1 ファイル 100 MB 未満 (最大 88 KB)、外部依存なし
+  - id: attribution
+    need: 出典 (Project PLATEAU と自治体) を画面に出す
+    rationale: attribution の check で DOM の文言を見る
+    unmeasured: 文言の有無は check で見るので予算はない
+
+evaluation:
+  budgets:
+    - {metric: drawn_buildings, stat: min, min: 20000, requirement: japan-buildings}
+    - {metric: flight_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: globe-flight}
+    - {metric: flight_work_ms, stat: p95, max: 10, unit: ms, requirement: globe-flight}
+    - {metric: tokyo_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: japan-buildings}
+    - {metric: skyline_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: lit-and-coloured}
+    - {metric: decode_upload_ms, stat: p95, max: 6, unit: ms, requirement: streaming-lod}
+    - {metric: gpu_bytes, stat: max, max: 201326592, unit: B, requirement: streaming-lod}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: see-soon}
+    - {metric: tokyo_settle_ms, stat: p50, max: 8000, unit: ms, requirement: see-soon}
+    - {metric: tile_bytes, stat: max, max: 12000000, unit: B, requirement: see-soon}
+    - {metric: transfer_kb, stat: max, max: 14000, unit: KB, requirement: see-soon}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: light-page}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/202-japan-buildings/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  network: {name: fast, latency_ms: 20, download_mbps: 50}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 300000
+  scenarios:
+    - id: first-frame
+      what: >-
+        ナビゲーション開始 (performance.now() の 0) から、関東平野の視点で地球儀と根タイル (100 m 以上の 370 棟) を
+        描いたフレームの終わりまで (first_frame_ms)。地球儀だけの最初のフレームは globe_frame_ms。bench.ts はその後に読む
+      metrics: [first_frame_ms, globe_frame_ms]
+    - id: opening-flight
+      what: >-
+        訪問者と同じ冒頭の飛行 (関東平野 -> 東京都心、約 4 秒) の rAF 間隔 (flight_frame_ms) と、各フレームの
+        選択・アップロード・描画の CPU 時間 (flight_work_ms)。タイルは飛行中に流れ込む
+      metrics: [flight_frame_ms, flight_work_ms]
+    - id: tokyo-view
+      what: >-
+        東京都心の視点で読み込みが落ち着くまで (飛行の終わりから、tokyo_settle_ms) と、その固定視点の 120 フレーム
+        (benchFrames、GPU 完了まで)。描いた棟数とそれまでに読んだタイルのバイト数
+      metrics: [tokyo_settle_ms, tokyo_frame_ms, tokyo_gpu_ms, drawn_buildings]
+    - id: skyline-view
+      what: 新宿副都心の視点 (高度約 410 m、pitch -14) で落ち着いたあと 120 フレーム
+      metrics: [skyline_frame_ms, skyline_gpu_ms]
+    - id: totals
+      what: 全場面を通したタイルのバイト数とリクエスト数、GPU バッファの最大、タイル 1 枚の展開とアップロードの時間
+      metrics: [tile_bytes, tile_requests, gpu_bytes, decode_upload_ms, transfer_kb]
+
+datasets:
+  bake: [node, examples/cesium/202-japan-buildings/bake.ts]
+  sources:
+    - id: plateau-tokyo23ku-2022
+      origin: >-
+        3D都市モデル（Project PLATEAU）東京23区（2022年度）CityGML（v2）、13100_tokyo23-ku_2022_citygml_1_2_op.zip
+        (5,854,342,265 B)。https://www.geospatial.jp/ckan/dataset/plateau-tokyo23ku-2022 。ローカルの写し
+        /sata_hdd_24tb/hf_data/plateau-citygml-jp/data/raw/13100_tokyo23ku/2022/ (tools/sources.ts にはない。bake.ts が直接読む)
+      license: PLATEAU サイトポリシー 3 (著作権は東京都23区、PDL1.0、CC BY 4.0 互換)
+    - id: natural-earth-5.1.2
+      origin: >-
+        Natural Earth 5.1.2 の ne_50m_land / ne_50m_lakes / ne_10m_land / ne_10m_lakes (GeoParquet)。
+        /sata_hdd_24tb/hf_data/__published/natural-earth/data/parquet/v5.1.2/ (hf:yuiseki/natural-earth)
+      license: パブリックドメイン
+  outputs:
+    - data/baked/cesium-202-japan-buildings/index.json
+    - data/baked/cesium-202-japan-buildings/t
+    - data/baked/cesium-202-japan-buildings/land-world.bin
+    - data/baked/cesium-202-japan-buildings/land-kanto.bin
+    - data/baked/cesium-202-japan-buildings/land-city.bin
+  bench_only:
+    - data/baked/cesium-202-japan-buildings/truth.json
+  preparation:
+    - zip の中央ディレクトリから 139.6875-139.8125E、35.625-35.7333N の 3 次メッシュ 140 枚の建物 GML (4.50 GB) を選び、zlib でストリーム展開する
+    - citygml.ts で Building と BuildingPart の lod1Solid だけを読み、底面 (最も低い z の面、中庭の内周を含む) を足形、最高 z - 最低 z を高さにする (331,323 立体、32 秒)。data/raw/ に ndjson でキャッシュ
+    - 東京駅 (35.68124, 139.76712) の東・北・上の局所座標 (WGS84、ECEF の剛体変換) で足形を m にし、0.3 m の Douglas-Peucker (頂点 2,219,917 -> 2,021,524)。高さ 0.5 m 未満か面積 1 m² 未満の 21 棟を捨てる
+    - 高さで 6 段に分ける (100 m 以上 / 60 / 30 / 15 / 7 / それ未満: 370、552、14,666、41,185、164,538、109,991 棟)。段 L は一辺 13,200 / 2^L m の四分木タイルに、足形の重心で入れる (ADD 細分化、親は子を待たずに描ける)。誤差は段の下限の高さ
+    - タイルの 2 倍の正方形で座標を u16 に量子化し、量子化後の座標で earcut して屋根を作る (作れなかった三角形 189)。壁と法線は送らない。JBT1 形式 (tile.ts、列ごとの zigzag 差分) を deflate-raw。1,146 タイル、18.6 MB -> 8.3 MB。全部を GPU に載せると 65 MB
+    - 陸地マスク (mask.ts): 世界 0.1 度 (50m land - lakes、2x2 標本)、関東 0.002 度と都心 0.0004 度 (10m land - lakes、3x3 標本)。都心には PLATEAU の各建物の周り 60 m を陸として足す (1:1000 万の海岸線は湾岸の埋立地を欠くため)
+    - truth.json: 都庁第一本庁舎 (外部の座標と 243 m) に最も近い最も高い建物 (233.2 m、15 m の距離)、全棟の 97 棟おきの重心と高さ
+
+performance_knowledge:
+  - id: plateau-towers-absent
+    finding: 東京タワーと東京スカイツリーは PLATEAU 2022 の 23 区 LOD1 建物に無い (半径 150 m の最高は 41.3 m と 27.6 m)。名所のボタンは建物のある場所 (六本木・虎ノ門など) にした
+    evidence: bake の landmark 出力。都庁は 233.2 m で入っている (公称 243 m、塔屋を除く屋上の高さ)
+    applies_when: PLATEAU の建物 (bldg) だけで名所を見せるとき。塔は別の地物か未整備
+  - id: lod1-is-small
+    finding: 都心 331,302 棟の LOD1 は足形と高さと屋根の三角形だけなら deflate 後 8.3 MB、GPU 65 MB (u16 頂点 8 B、u16 添字) で、全部載せても予算 192 MiB に収まる。例 22 の配信 3D Tiles は東京駅の 1 視点で 233 MiB
+    evidence: bake の出力 (tiles 1,146、18.6 MB raw -> 8.3 MB)。例 22 の REQUEST.md
+    applies_when: LOD1 の箱で足りる広域表示。テクスチャや LOD2 が要るなら当たらない
+  - id: unmeasured
+    finding: >-
+      bin/mfs bench は未実施 (実装を先に済ませる指示)。手元の Chromium (SwiftShader、ソフトウェア描画) で ?bench を 1 回通しただけで、
+      時間の数字は GPU のものではない。check は 8 件中 6 件が通り、flight-never-blocks (SwiftShader で最大 200 ms) は GPU で測り直す。
+      sky-and-ground はもやで遠景の陸が青みがかり (99,135,149) 絶対値の判定に落ちたので、同じ画面の海との比較に直した
+    evidence: >-
+      SwiftShader 1 回: 東京都心で 44,587 棟 (57 タイル、画素の 80.6% が建物色)、tokyo_settle_ms 3,323、都庁 25/25 画素が 80 m 以上の色、
+      屋根 124/135 がランプ色、ボタンで 3.5 秒で渋谷に着き画素の 94% が変化、16 MiB 予算で 322 タイルを捨てた。
+      全場面で tile_bytes 5.09 MB / 481 リクエスト、gpu_bytes 最大 23.9 MB、first_frame_ms 205 (ローカル、回線制限なし)
+    applies_when: 計測前の動作確認としてだけ。数値は bin/mfs bench で置き換える
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 (MSAA、深度 24 bit、画面全体の 1 パスで地球儀、gl_FragDepth)
+    language: TypeScript (型を外して配信)
+    gpu: hardware
+    code:
+      - examples/cesium/202-japan-buildings/index.html
+      - examples/cesium/202-japan-buildings/main.ts
+      - examples/cesium/202-japan-buildings/geo.ts
+      - examples/cesium/202-japan-buildings/flight.ts
+      - examples/cesium/202-japan-buildings/camera.ts
+      - examples/cesium/202-japan-buildings/lod.ts
+      - examples/cesium/202-japan-buildings/stream.ts
+      - examples/cesium/202-japan-buildings/tile.ts
+      - examples/cesium/202-japan-buildings/render.ts
+      - examples/cesium/202-japan-buildings/ramp.ts
+    dependencies: []
+    why: >-
+      建物は自前の ADD 四分木で画面誤差から選び、目の位置を引いた座標 (RTC) で float32 のまま描く。地面は東京駅で楕円体に接する球で、
+      画素ごとにレイを当てて陸地マスクを引くので、メッシュの分割も地形タイルも要らず、宇宙から 60 m まで同じパスで描ける
+  alternatives:
+    - option: CesiumJS と Cesium ion の Japan Buildings (OSM 由来) と地形
+      rejected_because: 汎用エンジン全体と ion のトークンが要る。比較はしていない
+    - option: 例 22 のように PLATEAU 配信の 3D Tiles (b3dm + Draco) を実行時に読む
+      rejected_because: 東京駅の 1 視点で 233 MiB と Draco 復号器が要る (例 22 の観測)。LOD1 なら自前形式で全量 8.3 MB
+    - option: 地球儀を三角形メッシュで描く
+      rejected_because: 都心で建物の足元に合わせるには数 km 間隔の分割が要る (50 km の辺は 49 m 沈む)。比較はしていない
+  not_doing: [東京都心以外の都市 (原典の広島・京都・札幌・箱根など), LOD2 とテクスチャ, 地形 (地面は平らな球、建物の基部は高さ 0), 東京タワー・スカイツリー (データに無い), 影, 建物の選択と属性, worker でのデコード, ラベル]
+
+verification:
+  checks:
+    - id: flight-never-blocks
+      what: 冒頭の飛行の間、rAF が 60 回以上回り、最大の間隔が 100 ms 未満
+      how: bench が rAF の間隔を数える
+      expected: 最大 < 100 ms
+    - id: tens-of-thousands
+      what: 東京都心の視点で落ち着いたあと、描いた棟数が 20,000 以上で、画面の 20% 以上が建物の色
+      how: 描いたタイルの棟数の和と、全画面の読み戻し (7 画素おき) で空・陸・海のどれとも色度が違う画素の割合
+      expected: 20,000 棟以上、20% 以上
+    - id: tocho-at-projection
+      what: 都庁第一本庁舎 (外部の座標 35.68963N 139.69179E と公称 243 m) のデータが 5% 以内の高さで 40 m 以内にあり、新宿副都心の視点でその 85% の高さの点を投影した 5x5 画素の 13 以上が 80 m 以上の色
+      how: truth.json の建物を geo.ts の dropAt を足して投影し、gl.readPixels で読む
+      expected: 高さの差 5% 未満、13/25 画素以上
+    - id: colour-follows-height
+      what: 真上 (高度 1,500 m) から 4 か所を見て、画面に入った見本の建物の屋根の重心の画素が、その高さのランプ色と色度 0.035 以内
+      how: truth.json の 97 棟おきの見本を投影して 1 画素読む。手前の建物や縁で外れるので 70% 以上
+      expected: 40 棟以上を試し、70% 以上
+    - id: sky-and-ground
+      what: 関東平野の視点で、画面上端は空 (青が赤より 30 以上大きい)、東京湾と相模湾の地点は海 (青が最大)、さいたま市と千葉市の地点は陸 (遠景のもやで青みがかるので、同じ画面の海の地点より緑 - 青が 15 以上大きく、明るい)
+      how: 地点を投影して 1 画素読む
+      expected: すべて満たす
+    - id: preset-moves-view
+      what: 東京都心の視点から「渋谷」のボタンを押すと、10 秒以内にカメラが渋谷のプリセットに着き、画面の 30% 以上の画素が変わる
+      how: ボタンの click()、前後の全画面を読み戻して比べる
+      expected: 到着し 30% 以上
+    - id: memory-budget
+      what: GPU 予算を 16 MiB に絞って 5 か所を回ると、タイルが捨てられ、落ち着いた後の合計が予算の 3 倍未満
+      how: stream の evicted と lru.bytes
+      expected: 捨てたタイル 1 以上、48 MiB 未満
+    - id: attribution
+      what: DOM に PLATEAU のデータセット名、東京23区、PDL1.0、Natural Earth がある
+      how: document.body.textContent
+      expected: すべてある
+  harness:
+    - webglcontextlost が起きたらエラーにする
+    - info.gpu がソフトウェア描画ならエラーにする
