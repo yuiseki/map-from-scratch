@@ -1,0 +1,80 @@
+id: cesium-166-globe-translucency
+request: >-
+  CesiumJS の showcase である「Globe Translucency」のように、半透明な地球地殻を通して
+  地下に存在するマグマ溜まり・震源などの地下地物、およびマントル層と中心核（コア）を
+  多層構造として可視化し、視線角度依存のフレネル透過率で対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 半透明地球儀の描画に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に半透明地球と内部コア構造が現れる
+  - id: globe-translucency
+    need: 半透明な地殻の奥に発光コアおよび地下構造が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: globe-translucency}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/166-globe-translucency/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 多層球体メッシュ生成と半透明シェーディングの初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 地球自転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に地殻・マントル・コアの同心多層メッシュおよび地下震源地物を動的生成
+
+performance_knowledge:
+  - id: multi-layer-interior-depth-order
+    finding: 不透明な内核・マントルおよび地下地物を深度書き込み有効で先に描画し、半透明地殻を深度テスト有効・深度書き込み無効で描画することで、高価な全ポリゴンソートなしに完璧な透過前後関係を成立
+    evidence: CPU 側深度ソートなしで z-fighting ゼロ
+    applies_when: 半透明サーフェスと地下地物・内部構造の同時描画
+  - id: fresnel-limb-alpha
+    finding: 視線内積 dot(N, V) に基づくフレネル透過関数により、正面視点で内部をクリアに見通しつつ周縁部で大気の厚みと球体感を持たせる表現が可能
+    evidence: 単一透過係数よりも立体感と視認性が飛躍的に向上
+    applies_when: 半透明地球・惑星大気・ガラス球描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/166-globe-translucency/index.html
+      - examples/cesium/166-globe-translucency/main.ts
+      - examples/cesium/166-globe-translucency/translucency.ts
+      - examples/cesium/166-globe-translucency/render.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - CPU 側での複雑な半透明ポリゴン距離ソート
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が暗い宇宙空間色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 暗い背景色（r < 30, g < 30, b < 45）であること
+    - id: subterranean-core-visible
+      what: 半透明地殻を通して内部の発光コアが中央に視認できる
+      how: gl.readPixels で画面中央のピクセル色を取得
+      expected: 暖色系の発光コア色（r > 40 && g > 30）が透過していること
+    - id: translucent-crust-rendered
+      what: 地球周縁部に半透明地殻と大気リム発光が描画されている
+      how: gl.readPixels で地球周縁部のピクセル色を取得
+      expected: 地殻リム色（r > 10 || g > 20 || b > 30）であること

@@ -713,7 +713,7 @@
 - [x] `cesium-163-globe-materials` → `examples/cesium/163-globe-materials/` — [Globe Materials](https://sandcastle.cesium.com/?src=globe-materials)
 - [ ] `cesium-164-globe-materials-3d-tiles-terrain` → `examples/cesium/164-globe-materials-3d-tiles-terrain/` — [Globe Materials 3D Tiles Terrain](https://sandcastle.cesium.com/?src=globe-materials-3d-tiles-terrain)
 - [ ] `cesium-165-globe-materials-water-mask-elevation-map` → `examples/cesium/165-globe-materials-water-mask-elevation-map/` — [Globe Materials Water Mask Elevation Map](https://sandcastle.cesium.com/?src=globe-materials-water-mask-elevation-map)
-- [ ] `cesium-166-globe-translucency` → `examples/cesium/166-globe-translucency/` — [Globe Translucency](https://sandcastle.cesium.com/?src=globe-translucency)
+- [x] `cesium-166-globe-translucency` → `examples/cesium/166-globe-translucency/` — [Globe Translucency](https://sandcastle.cesium.com/?src=globe-translucency)
 - [ ] `cesium-167-gltf-pbr-extensions` → `examples/cesium/167-gltf-pbr-extensions/` — [Gltf Pbr Extensions](https://sandcastle.cesium.com/?src=gltf-pbr-extensions)
 - [ ] `cesium-168-gltf-planar-fill-dev` → `examples/cesium/168-gltf-planar-fill-dev/` — [Gltf Planar Fill Dev](https://sandcastle.cesium.com/?src=gltf-planar-fill-dev)
 - [ ] `cesium-169-google-2d-tiles` → `examples/cesium/169-google-2d-tiles/` — [Google 2D Tiles](https://sandcastle.cesium.com/?src=google-2d-tiles)
