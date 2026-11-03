@@ -33,8 +33,10 @@ export const galleryGroups = [
 
 // The numbered examples (examples/01-*) and the baselines have no gallery
 // directory of their own; their page is examples/legacy/.
-export const galleryOf = (dir: string): GalleryId =>
-  galleries.find(({ id }) => dir.startsWith(`examples/${id}/`))?.id ?? 'legacy';
+export const galleryOf = (dir: string): GalleryId => {
+  const norm = dir.replaceAll('\\', '/');
+  return galleries.find(({ id }) => norm.startsWith(`examples/${id}/`))?.id ?? 'legacy';
+};
 
 // Technologies, read from architecture_selection.chosen.api (free text) and
 // from the experiment directory an example sits in. Listed in display order.

@@ -81,6 +81,7 @@ performance_knowledge:
 
 architecture_selection:
   chosen:
+    api: WebGPU
     language: TypeScript (erasableSyntaxOnly)
     runtime: browser
     graphics: WebGPU (WGSL compute + fullscreen raster pass)

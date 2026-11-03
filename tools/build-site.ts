@@ -225,7 +225,7 @@ for (const base of ['examples', 'baselines']) {
         for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
         for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
       }
-      rows.push({ id: spec.id, dir: relative(root, dir), api: spec.definition!.architecture_selection.chosen.api, spec });
+      rows.push({ id: spec.id, dir: relative(root, dir).replaceAll('\\', '/'), api: spec.definition!.architecture_selection.chosen.api, spec });
     }
   }
 }

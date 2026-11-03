@@ -12,6 +12,7 @@ const rows = [
 
 test('an example belongs to the gallery of its directory, others to legacy', () => {
   assert.equal(galleryOf('examples/maplibre/010-add-a-default-marker'), 'maplibre');
+  assert.equal(galleryOf('examples\\maplibre\\010-add-a-default-marker'), 'maplibre');
   assert.equal(galleryOf('examples/01-prefecture-picker'), 'legacy');
   assert.equal(galleryOf('baselines/01-prefecture-picker-maplibre'), 'legacy');
 });
