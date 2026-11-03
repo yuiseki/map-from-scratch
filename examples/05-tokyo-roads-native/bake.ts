@@ -12,6 +12,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { source } from '../../tools/sources.ts';
+import { classOf, projectRoad, roadClassAt } from './road-data.ts';
 
 const OUT = 'data/baked/05-tokyo-roads-native';
 const pbf = source('osm-tokyo23');
@@ -19,19 +20,6 @@ const roadsPbf = 'data/raw/tokyo23-highways.osm.pbf';
 if (!existsSync(roadsPbf)) execFileSync('osmium', ['tags-filter', '-o', roadsPbf, pbf, 'w/highway'], { stdio: 'inherit' });
 
 // 0 motorway/trunk, 1 primary, 2 secondary/tertiary, 3 local, 4 paths
-const CLASS: Record<string, number> = {
-  motorway: 0, trunk: 0, motorway_link: 0, trunk_link: 0,
-  primary: 1, primary_link: 1,
-  secondary: 2, secondary_link: 2, tertiary: 2, tertiary_link: 2,
-  residential: 3, unclassified: 3, living_street: 3, service: 3, road: 3,
-};
-const classOf = (h: string): number => CLASS[h] ?? 4;
-
-const [W, S, E, N] = [139.50, 35.48, 139.98, 35.85];
-const k = Math.cos((((S + N) / 2) * Math.PI) / 180);
-const span = Math.max((E - W) * k, N - S);
-const q = (v: number): number => Math.max(0, Math.min(65535, Math.round(v * 65535)));
-
 // One road is its quantized points, [x, y] each.
 type Road = [number, number][];
 // The fields of an osmium geojsonseq line that the bake reads.
@@ -46,7 +34,7 @@ let skipped = 0;
 for await (const line of createInterface({ input: exp.stdout })) {
   const f: Feature = JSON.parse(line.replace(/^\x1e/, ''));
   if (!f.properties?.highway || f.geometry?.type !== 'LineString') { skipped++; continue; }
-  const pts: Road = f.geometry.coordinates.map(([lon, lat]) => [q(((lon - W) * k) / span), q((N - lat) / span)]);
+  const pts: Road = f.geometry.coordinates.map(([lon, lat]) => projectRoad(lon, lat));
   if (pts.length >= 2) byClass[classOf(f.properties.highway)].push(pts);
 }
 
@@ -57,7 +45,7 @@ for (let c = 4; c >= 0; c--) {
     roads++;
     pts.forEach(([x, y], i) => {
       xy.push(x, y);
-      cls.push(i === pts.length - 1 ? 255 : c);
+      cls.push(roadClassAt(i, pts.length, c));
     });
   }
 }

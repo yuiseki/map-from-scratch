@@ -1,5 +1,6 @@
 // A single-purpose Canvas map for locating a named prefecture.
 // Reuses 01's baked Natural Earth paths, but keeps its own draw and pick loop.
+import { answerQuiz, shuffledIndices } from './quiz.ts';
 export {};
 interface Data { w: number; h: number; p: [string, string, string][] }
 const data: Data = await (await fetch('../../data/baked/01-prefecture-picker/prefectures.json')).json();
@@ -34,11 +35,7 @@ function resize() {
 }
 
 function start() {
-  order = prefs.map((_, i) => i);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
+  order = shuffledIndices(prefs.length);
   current = 0;
   mistake = -1;
   target.textContent = `第 1 問: ${prefs[order[0]].name} はどこ？`;
@@ -52,15 +49,15 @@ canvas.addEventListener('click', (event) => {
   const x = (event.clientX - rect.left) * devicePixelRatio;
   const y = (event.clientY - rect.top) * devicePixelRatio;
   const picked = prefs.findIndex(({ path }) => ctx.isPointInPath(path, x, y));
-  if (picked < 0) return;
-  if (picked !== order[current]) {
-    mistake = picked;
+  const answer = answerQuiz(order, { current, mistake }, picked);
+  current = answer.state.current;
+  mistake = answer.state.mistake;
+  if (answer.result === 'ignored') return;
+  if (answer.result === 'wrong') {
     statusEl.textContent = `${prefs[picked].name}です。もう一度選んでください。`;
     draw();
     return;
   }
-  mistake = -1;
-  current++;
   statusEl.textContent = `正解！ ${current} / ${prefs.length} 問正解`;
   target.textContent = current < order.length
     ? `第 ${current + 1} 問: ${prefs[order[current]].name} はどこ？`
