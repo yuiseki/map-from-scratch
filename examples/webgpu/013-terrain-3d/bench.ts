@@ -25,15 +25,16 @@ export async function run(io: BenchIo): Promise<void> {
   const h = io.camera.height ?? 800;
 
   let terrainPixelCount = 0;
-  // Background sky color: r ~ 25, g ~ 38, b ~ 56
-  // Terrain has forest green (g > 60), volcanic brown (r > 60, g > 50), or summit snow (r > 150, g > 150)
+  // Background sky color: r ~ 184, g ~ 207, b ~ 230 (b > 190 and b - r > 25)
+  // Terrain has distinct non-sky landscape pixels (forest green, volcanic brown, snow)
   for (let y = Math.floor(h * 0.2); y < Math.floor(h * 0.9); y++) {
     for (let x = Math.floor(w * 0.2); x < Math.floor(w * 0.8); x++) {
       const idx = (y * w + x) * 4;
       const r = pixels[idx];
       const g = pixels[idx + 1];
       const b = pixels[idx + 2];
-      if ((g > 60 && r < 100) || (r > 80 && g > 60) || (r > 150 && g > 150 && b > 150)) {
+      const isSky = b > 190 && (b - r > 25);
+      if (!isSky && (r > 30 || g > 30 || b > 30)) {
         terrainPixelCount++;
       }
     }

@@ -40,6 +40,24 @@ export function parseTerrHeader(u8: Uint8Array): TerrHeader {
   };
 }
 
+export function morton(i: number, j: number): number {
+  let m = 0;
+  for (let b = 0; b < 8; b++) m |= (((j >> b) & 1) << (2 * b)) | (((i >> b) & 1) << (2 * b + 1));
+  return m;
+}
+
+// Return (row, col) coordinates of L3 (3x3) chunks in file (Morton) order
+export function getL3ChunkOrder(): [number, number][] {
+  const cells: [number, number, number][] = [];
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      cells.push([morton(i, j), i, j]);
+    }
+  }
+  cells.sort((a, b) => a[0] - b[0]);
+  return cells.map(([, i, j]) => [i, j]);
+}
+
 const predict = (o: ArrayLike<number>, r: number, c: number, base: number): number => {
   const t = r * S + c;
   return r && c ? o[t - 1] + o[t - S] - o[t - S - 1] : r ? o[t - S] : c ? o[t - 1] : base;
@@ -126,27 +144,27 @@ export function decodeChunk(src: Uint8Array, out: Uint16Array, block = 32): void
 }
 
 export function elevationColor(h: number): [number, number, number, number] {
-  // Fuji elevation palette:
-  // < 600m: Rich lowland forest green
-  // 600 - 1800m: Subalpine forest green-brown
-  // 1800 - 2800m: Volcanic scoria / basalt dark reddish-brown
-  // 2800 - 3400m: Mountain rock grey-brown
-  // > 3400m: Snow white / summit ice
-  if (h < 600) {
-    const t = Math.max(0, h) / 600;
-    return [0.15 + 0.1 * t, 0.35 + 0.1 * t, 0.18 + 0.05 * t, 1.0];
-  } else if (h < 1800) {
-    const t = (h - 600) / 1200;
-    return [0.25 + 0.2 * t, 0.45 - 0.1 * t, 0.23 - 0.05 * t, 1.0];
-  } else if (h < 2800) {
-    const t = (h - 1800) / 1000;
-    return [0.45 + 0.15 * t, 0.35 - 0.05 * t, 0.25 - 0.05 * t, 1.0];
-  } else if (h < 3400) {
-    const t = (h - 2800) / 600;
-    return [0.60 + 0.25 * t, 0.50 + 0.3 * t, 0.45 + 0.35 * t, 1.0];
+  // Fuji elevation palette matching 17-fuji-terrain-3d:
+  // < 700m: lowland rich forest green
+  // 700 - 1500m: subalpine forest
+  // 1500 - 2500m: volcanic scoria / reddish brown
+  // 2500 - 3300m: dark mountain basalt rock
+  // > 3300m: snow white summit
+  if (h < 700) {
+    const t = Math.max(0, h) / 700;
+    return [0.28 + 0.05 * t, 0.42 + 0.06 * t, 0.23 + 0.04 * t, 1.0];
+  } else if (h < 1500) {
+    const t = (h - 700) / 800;
+    return [0.33 + 0.14 * t, 0.48 + 0.03 * t, 0.27 + 0.04 * t, 1.0];
+  } else if (h < 2500) {
+    const t = (h - 1500) / 1000;
+    return [0.47 + 0.06 * t, 0.51 - 0.07 * t, 0.31 + 0.03 * t, 1.0];
+  } else if (h < 3300) {
+    const t = (h - 2500) / 800;
+    return [0.53 - 0.08 * t, 0.44 - 0.05 * t, 0.34 + 0.04 * t, 1.0];
   } else {
-    const t = Math.min(1.0, (h - 3400) / 376);
-    return [0.85 + 0.15 * t, 0.88 + 0.12 * t, 0.90 + 0.10 * t, 1.0];
+    const t = Math.min(1.0, (h - 3300) / 476);
+    return [0.45 + 0.55 * t, 0.39 + 0.61 * t, 0.38 + 0.62 * t, 1.0];
   }
 }
 

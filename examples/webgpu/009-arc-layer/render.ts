@@ -59,15 +59,30 @@ fn vs(v: VertexIn, inst: InstanceIn) -> VertexOut {
   let delta = inst.dst - inst.src;
   let dist = length(delta);
   let dir = select(vec2f(1.0, 0.0), delta / dist, dist > 0.00001);
-  let norm = vec2f(-dir.y, dir.x);
 
   // Parabolic elevation arch: peak at midpoint t = 0.5
-  let maxH = clamp(dist * 0.45 * u.heightScale, 0.005, 0.4);
+  let maxH = clamp(dist * 0.35 * u.heightScale, 0.008, 0.35);
   let z = 4.0 * maxH * t * (1.0 - t);
+  let centerPos = vec3f(inst.src + delta * t, z);
 
-  // 2D position along line + normal width offset
-  let p2d = inst.src + delta * t + norm * (side * u.width * 0.001);
-  let world = vec3f(p2d.x, p2d.y, z);
+  // Tangent along curve in 3D
+  let dzdt = 4.0 * maxH * (1.0 - 2.0 * t);
+  let tangent = normalize(vec3f(delta, dzdt));
+
+  // View vector from vertex to camera eye
+  let toEye = normalize(u.eye - centerPos);
+
+  // Ribbon normal perpendicular to tangent and facing camera (camera-facing billboard ribbon)
+  var ribbonNorm = cross(tangent, toEye);
+  let normLen = length(ribbonNorm);
+  if (normLen > 0.001) {
+    ribbonNorm = ribbonNorm / normLen;
+  } else {
+    ribbonNorm = vec3f(-dir.y, dir.x, 0.0);
+  }
+
+  let halfWidth = side * (u.width * 0.0014);
+  let world = centerPos + ribbonNorm * halfWidth;
 
   out.clipPos = u.viewProj * vec4f(world, 1.0);
   out.color = mix(inst.color0, inst.color1, t);
@@ -95,7 +110,7 @@ fn vs(@location(0) pos: vec2f) -> @builtin(position) vec4f {
 
 @fragment
 fn fs() -> @location(0) vec4f {
-  return vec4f(0.12, 0.17, 0.24, 0.85); // dark navy coastline
+  return vec4f(0.28, 0.38, 0.52, 0.9); // clear distinct coastline
 }
 `;
 
@@ -161,7 +176,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
       }],
     },
     primitive: { topology: 'triangle-strip' },
-    depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'greater' },
+    depthStencil: { format: 'depth32float', depthWriteEnabled: false, depthCompare: 'greater-equal' },
     multisample: { count: SAMPLES },
   });
 
@@ -210,13 +225,11 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
 
     for (let i = 0; i < arcInstanceCount; i++) {
       const f = flows[i];
-      const sLon = centroids[f.s * 2], sLat = centroids[f.s * 2 + 1];
-      const tLon = centroids[f.t * 2], tLat = centroids[f.t * 2 + 1];
+      // Centroids are already pre-projected into Mercator [0, 1] in bake.ts
+      const sxM = centroids[f.s * 2], syM = centroids[f.s * 2 + 1];
+      const txM = centroids[f.t * 2], tyM = centroids[f.t * 2 + 1];
 
-      const [sxM, syM] = projectMercator(sLon, sLat);
-      const [txM, tyM] = projectMercator(tLon, tLat);
-
-      // Convert [0, 1] Mercator to [-1, 1] WebGPU space
+      // Convert [0, 1] Mercator to [-1, 1] WebGPU space (North is +Y)
       const sx = sxM * 2 - 1, sy = (1 - syM) * 2 - 1;
       const tx = txM * 2 - 1, ty = (1 - tyM) * 2 - 1;
 
@@ -253,7 +266,8 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
       const n = r.length / 2;
       landRanges.push({ start: offset, count: n });
       for (let i = 0; i < n; i++) {
-        const [mx, my] = projectMercator(r[i * 2], r[i * 2 + 1]);
+        // Land ring points are already pre-projected into Mercator [0, 1] in bake.ts
+        const mx = r[i * 2], my = r[i * 2 + 1];
         data[(offset + i) * 2] = mx * 2 - 1;
         data[(offset + i) * 2 + 1] = (1 - my) * 2 - 1;
       }
@@ -282,7 +296,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
     offscreenTexture = device.createTexture({ size: [w, h], format, usage: RENDER_ATTACHMENT | TEX_COPY_SRC });
   }
 
-  function buildViewProj(cam: Camera): Float32Array {
+  function buildViewProj(cam: Camera): { vp: Float32Array; eye: [number, number, number] } {
     const aspect = cam.width / cam.height;
     const fov = 45 * Math.PI / 180;
     const tanHalf = Math.tan(fov / 2);
@@ -330,19 +344,19 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
         vp[j * 4 + i] = sum;
       }
     }
-    return vp;
+    return { vp, eye: [eyeX, eyeY, eyeZ] };
   }
 
   function draw(cam: Camera, toOffscreen = false) {
     const dpr = Math.min(2, devicePixelRatio || 1);
     resize(Math.max(1, Math.round(cam.width * dpr)), Math.max(1, Math.round(cam.height * dpr)));
 
-    const viewProj = buildViewProj(cam);
+    const { vp: viewProj, eye } = buildViewProj(cam);
 
     // Write arc uniforms
     const arcData = new Float32Array(24);
     arcData.set(viewProj, 0); // 16 floats
-    arcData[16] = cam.x; arcData[17] = cam.y; arcData[18] = cam.distance;
+    arcData[16] = eye[0]; arcData[17] = eye[1]; arcData[18] = eye[2];
     arcData[19] = cam.heightScale;
     arcData[20] = cam.lineWidth * dpr;
     arcData[21] = performance.now() * 0.001;

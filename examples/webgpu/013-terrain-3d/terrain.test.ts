@@ -6,6 +6,7 @@ import {
   encodeChunk,
   elevationColor,
   generateGridIndices,
+  getL3ChunkOrder,
   S,
 } from './terrain.ts';
 
@@ -79,6 +80,19 @@ test('elevationColor maps elevation in meters to natural terrain colors', () => 
   // High peak (Fuji summit > 3500m): snow white
   const peak = elevationColor(3776);
   assert.ok(peak[0] > 0.8 && peak[1] > 0.8 && peak[2] > 0.8);
+});
+
+test('getL3ChunkOrder returns all 9 chunks sorted by Morton order', () => {
+  const order = getL3ChunkOrder();
+  assert.equal(order.length, 9);
+  // Check that all 9 (row, col) pairs in 3x3 are unique and present
+  const set = new Set(order.map(([r, c]) => `${r}_${c}`));
+  assert.equal(set.size, 9);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      assert.ok(set.has(`${r}_${c}`));
+    }
+  }
 });
 
 test('generateGridIndices creates standard triangle list for NxN grid', () => {

@@ -4,6 +4,7 @@ import {
   decodeChunk,
   elevationColor,
   generateGridIndices,
+  getL3ChunkOrder,
   CS,
   S,
   HEADER_BYTES,
@@ -37,6 +38,8 @@ struct Uniforms {
   viewProj: mat4x4<f32>,
   sunDir: vec3<f32>,
   ambient: f32,
+  eye: vec3<f32>,
+  pad: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
@@ -70,9 +73,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let sun = normalize(u.sunDir);
   let diff = max(0.0, dot(norm, sun));
 
-  // Shading combination: ambient + directional diffuse + soft rim light
-  let light = u.ambient + diff * (1.0 - u.ambient);
-  let rgb = in.color.rgb * light;
+  // Lambertian diffuse + ambient
+  let light = u.ambient + 0.85 * diff;
+  var rgb = in.color.rgb * light;
+
+  // Soft atmospheric perspective towards sky blue
+  let dist = distance(in.worldPos, u.eye);
+  let sky = vec3<f32>(0.72, 0.81, 0.90);
+  let fogFactor = clamp(1.0 - exp(-dist * 0.000018), 0.0, 0.65);
+  rgb = mix(rgb, sky, fogFactor);
 
   return vec4<f32>(rgb, 1.0);
 }
@@ -108,7 +117,7 @@ export class WebGPUTerrainRenderer {
     });
 
     this.uniformBuffer = this.device.createBuffer({
-      size: 80, // mat4x4 (64B) + vec3 (12B) + f32 (4B)
+      size: 96, // mat4x4 (64B) + vec3 (12B) + f32 (4B) + vec3 (12B) + f32 (4B)
       usage: UNIFORM | COPY_DST,
     });
 
@@ -149,7 +158,7 @@ export class WebGPUTerrainRenderer {
       },
       primitive: {
         topology: 'triangle-list',
-        cullMode: 'back',
+        cullMode: 'none',
       },
       depthStencil: {
         format: 'depth24plus',
@@ -182,10 +191,12 @@ export class WebGPUTerrainRenderer {
     const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
 
     // Read Level 3 (the coarse full-area 3x3 chunks)
-    // In file order, L3 chunks come first
+    // In file order, L3 chunks come first, arranged in Morton code order
     const l3Side = 3;
     const l3Chunks = l3Side * l3Side; // 9 chunks
-    const chunkSpacing = header.cellSpacing * (1 << 3); // Spacing at L3 = 8 * cellSpacing (~240m)
+    const l3Order = getL3ChunkOrder();
+    const cellSpacing = header.cellSpacing;
+    const chunkSpacing = cellSpacing * (1 << 3); // Spacing at L3 = 8 * cellSpacing (~124.6m)
 
     // Full grid dimensions for 3x3 chunks, each having CS=128 cells
     const fullCols = l3Side * CS;
@@ -208,14 +219,14 @@ export class WebGPUTerrainRenderer {
 
       decodeChunk(chunkBytes, chunkDecoded);
 
-      // Morton to (i, j)
-      const ci = Math.floor(c / l3Side);
-      const cj = c % l3Side;
+      // Morton order gives chunk row ci and col cj
+      const [ci, cj] = l3Order[c];
 
       // Copy inner CS x CS samples into fullHeights
+      // For level 3, the quantization multiplier q = 0.25 * 2^3 = 2.0 metres per unit
       for (let r = 0; r <= CS; r++) {
         for (let col = 0; col <= CS; col++) {
-          const sample = chunkDecoded[(r + 1) * S + (col + 1)] / 4.0; // decode stored height / 4
+          const sample = chunkDecoded[(r + 1) * S + (col + 1)] * 2.0;
           const gi = ci * CS + r;
           const gj = cj * CS + col;
           fullHeights[gi * fullVerticesW + gj] = sample;
@@ -225,25 +236,29 @@ export class WebGPUTerrainRenderer {
 
     // Build mesh vertex attributes: [x, y, z, nx, ny, nz, r, g, b, a] * totalVertices
     const vertexData = new Float32Array(totalVertices * 10);
-    const originX = -((fullCols * chunkSpacing) / 2);
-    const originY = -((fullRows * chunkSpacing) / 2);
+    const halfN0 = 1536; // L0 center pixel
 
     for (let r = 0; r < fullVerticesH; r++) {
       for (let c = 0; c < fullVerticesW; c++) {
         const idx = r * fullVerticesW + c;
         const h = fullHeights[idx];
-        const wx = originX + c * chunkSpacing;
-        const wy = originY + (fullRows - r) * chunkSpacing;
+
+        // L0 pixel from NW corner: 8 px per L3 step
+        const px = c * 8;
+        const py = r * 8;
+        const wx = (px - halfN0) * cellSpacing;
+        const wy = (halfN0 - py) * cellSpacing;
         const wz = h;
 
         // Normal calculation via central differences
+        // c increases East (+X), r increases South (-Y)
         const hL = c > 0 ? fullHeights[r * fullVerticesW + (c - 1)] : h;
         const hR = c < fullCols ? fullHeights[r * fullVerticesW + (c + 1)] : h;
-        const hD = r > 0 ? fullHeights[(r - 1) * fullVerticesW + c] : h;
-        const hU = r < fullRows ? fullHeights[(r + 1) * fullVerticesW + c] : h;
+        const hNorth = r > 0 ? fullHeights[(r - 1) * fullVerticesW + c] : h;
+        const hSouth = r < fullRows ? fullHeights[(r + 1) * fullVerticesW + c] : h;
 
         const dzdx = (hR - hL) / (2 * chunkSpacing);
-        const dzdy = (hD - hU) / (2 * chunkSpacing);
+        const dzdy = (hNorth - hSouth) / (2 * chunkSpacing);
         const len = Math.hypot(-dzdx, -dzdy, 1.0) || 1.0;
         const nx = -dzdx / len;
         const ny = -dzdy / len;
@@ -287,7 +302,7 @@ export class WebGPUTerrainRenderer {
     this.isLoaded = true;
   }
 
-  private buildViewProj(cam: Camera): Float32Array {
+  private buildViewProj(cam: Camera): { vp: Float32Array; eye: [number, number, number] } {
     const width = cam.width || 1280;
     const height = cam.height || 800;
     const aspect = width / height;
@@ -341,7 +356,7 @@ export class WebGPUTerrainRenderer {
         vp[j * 4 + i] = sum;
       }
     }
-    return vp;
+    return { vp, eye: [eyeX, eyeY, eyeZ] };
   }
 
   render(cam: Camera): void {
@@ -355,18 +370,22 @@ export class WebGPUTerrainRenderer {
     this.ensureDepthTexture(width, height);
     if (!this.depthTextureView) return;
 
-    const vp = this.buildViewProj(cam);
+    const { vp, eye } = this.buildViewProj(cam);
 
-    // Sun light direction (slanted from South-East)
-    const sunX = 0.6, sunY = -0.5, sunZ = 0.75;
+    // Sun light direction (NW at 40 degrees, matching 17-fuji-terrain-3d)
+    const sunX = -0.5417, sunY = 0.5417, sunZ = 0.6428;
     const sLen = Math.hypot(sunX, sunY, sunZ);
 
-    const uniformData = new Float32Array(20);
-    uniformData.set(vp, 0); // 16 floats
+    const uniformData = new Float32Array(24);
+    uniformData.set(vp, 0); // 16 floats (0..15)
     uniformData[16] = sunX / sLen;
     uniformData[17] = sunY / sLen;
     uniformData[18] = sunZ / sLen;
     uniformData[19] = 0.35; // ambient light intensity
+    uniformData[20] = eye[0];
+    uniformData[21] = eye[1];
+    uniformData[22] = eye[2];
+    uniformData[23] = 0.0;
 
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
 
@@ -375,7 +394,7 @@ export class WebGPUTerrainRenderer {
       colorAttachments: [
         {
           view: this.context.getCurrentTexture().createView(),
-          clearValue: { r: 0.10, g: 0.15, b: 0.22, a: 1.0 }, // Sky blue-grey
+          clearValue: { r: 0.72, g: 0.81, b: 0.90, a: 1.0 }, // Sky blue
           loadOp: 'clear',
           storeOp: 'store',
         },

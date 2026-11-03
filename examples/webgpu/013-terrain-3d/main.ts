@@ -37,14 +37,20 @@ async function init() {
 
   const renderer = new WebGPUTerrainRenderer(device, context);
 
-  // Initial camera: looking toward Mt. Fuji summit (3776m) from south-east
+  // Summit coordinates: col 1233.5, row 1739.5 in L0 px from NW corner
+  // 4.7 km west and 3.2 km south of the area centre (matching 17-fuji-terrain-3d)
+  const cell = 15.578601873;
+  const sx = (1233.5 - 1536) * cell;
+  const sy = (1536 - 1739.5) * cell;
+
+  // Initial camera: looking toward Mt. Fuji summit (3,776m) from North looking SSW
   const camera: Camera = {
-    yaw: 215,
+    yaw: 200,
     pitch: parseFloat(pitchInput.value) || 28,
-    dist: 38000, // 38 km
-    tx: 0,
-    ty: 0,
-    tz: 2000,
+    dist: 36000, // 36 km
+    tx: sx,
+    ty: sy,
+    tz: 1800,
     width: canvas.width,
     height: canvas.height,
   };
@@ -55,13 +61,16 @@ async function init() {
     renderer.render(camera);
   }
 
-  statusEl.textContent = 'Loading Mt. Fuji .terr data...';
   try {
+    console.log('Fetching fuji.terr...');
+    statusEl.textContent = 'Loading Mt. Fuji .terr data...';
     const res = await fetch('../../../data/baked/17-fuji-terrain-3d/fuji.terr');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const bin = await res.arrayBuffer();
+    console.log(`Loaded fuji.terr (${bin.byteLength} bytes)`);
     renderer.loadTerrain(new Uint8Array(bin));
     statusEl.textContent = 'Ready (Mt. Fuji 3,776 m)';
+    console.log('Terrain loaded and ready');
   } catch (err: unknown) {
     statusEl.textContent = `Failed to load terrain: ${err instanceof Error ? err.message : String(err)}`;
     return;
@@ -128,4 +137,8 @@ async function init() {
   }
 }
 
-init();
+init().catch((err) => {
+  console.error('init failed:', err);
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
+});
