@@ -1,0 +1,70 @@
+id: kepler-010-nyc-cab-rides
+request: >-
+  kepler.gl のショーケースデモ「NYC Taxi Trips」のように、マンハッタンを疾走する
+  タクシーの時系列軌跡を、発光コメット流線と加算合成による 3D アニメーションとして描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D タクシー流線アニメーション描画に巨大な kepler.gl / deck.gl バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内にアニメーションが開始する
+  - id: 3d-trips-animation
+    need: 時間経過に伴い発光コメットテールを引くタクシー流線が滑らかに描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-trips-animation}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/kepler/010-nyc-cab-rides/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期タクシー流線データの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 時間進行アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - マンハッタンの主要ハブ間を移動するタクシー 160 系統の時系列 GPS 軌跡データを生成
+
+performance_knowledge:
+  - id: timestamp-trips-shader-animation
+    finding: 軌跡の全セグメントをタイムスタンプ属性付きバッファとして GPU に常駐させ、現在時刻ユニフォームのみを毎フレーム更新してシェーダー内で時間差ディスカード・減衰計算を行うことで、CPU-GPU 転送ゼロで 60 fps の流線アニメーションを実現可能
+    evidence: CPU 転送なしで常時 60 fps を維持
+    applies_when: 時系列トリップス・動態流線描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/kepler/010-nyc-cab-rides/index.html
+      - examples/kepler/010-nyc-cab-rides/main.ts
+      - examples/kepler/010-nyc-cab-rides/render.ts
+      - examples/kepler/010-nyc-cab-rides/trips.ts
+  not_doing:
+    - kepler.gl および React / Redux バンドル
+
+verification:
+  checks:
+    - id: dark-base-rendered
+      what: 暗夜のマンハッタン地表面がベースとして描画されていること
+      how: readPixels で四隅の地表面ピクセル色を検証
+      expected: 地表面が暗夜スレート色であること
+    - id: luminous-cab-trails-detected
+      what: シミュレーション進行に伴い発光タクシーコメット流線が画面上に描画されること
+      how: readPixels で時系列進行中の発光ピクセルを検証
+      expected: 発光コメットピクセルが検出される
