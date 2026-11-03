@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lighting Control — map-from-scratch</title>
+  <meta name="description" content="A WebGL2 globe lit by the real sun, with ambient, diffuse, specular, shininess and night-light controls.">
+  <script>window.__mfsPageStart = performance.now();</script>
+  <style>
+    :root { color-scheme: dark; font: 12px/1.35 system-ui, sans-serif; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #02040a; color: #dbe6f5; }
+    #globe { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab;
+      background: radial-gradient(ellipse at 50% 50%, #0a1424 0, #040811 55%, #02040a 100%); }
+    #panel { position: fixed; top: 12px; right: 12px; width: 250px; max-height: calc(100% - 110px); overflow: auto;
+      padding: 10px 12px; border: 1px solid #23324a; border-radius: 8px; background: #08101ccc; }
+    #panel h1 { margin: 0 0 6px; font-size: 14px; font-weight: 650; }
+    #panel summary { cursor: pointer; font-weight: 600; margin-bottom: 4px; }
+    #sliders label, .row { display: grid; grid-template-columns: 74px 1fr 36px; gap: 6px; align-items: center; margin: 2px 0; }
+    #sliders output { text-align: right; color: #9fb3cc; font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; margin: 0; }
+    #timebar { position: fixed; left: 12px; right: 12px; bottom: 30px; display: flex; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid #23324a; border-radius: 8px; background: #08101ccc; }
+    #timebar input[type=range] { flex: 1; min-width: 80px; }
+    #time-label { min-width: 132px; font-variant-numeric: tabular-nums; }
+    button { background: #142238; color: #dbe6f5; border: 1px solid #2e4566; border-radius: 6px; padding: 3px 9px; font: inherit; cursor: pointer; }
+    #play { width: 36px; }
+    #credit { position: fixed; left: 12px; right: 12px; bottom: 8px; color: #7d8fa8; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #credit a { color: inherit; }
+    @media (max-width: 600px) {
+      #panel { left: 12px; right: 12px; width: auto; max-height: 40%; }
+      #time-label { min-width: 0; }
+      #date { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="globe" aria-label="Globe lit by the sun"></canvas>
+  <div id="panel">
+    <h1>Lighting</h1>
+    <details open>
+      <summary>Light parameters</summary>
+      <div id="sliders"></div>
+      <div class="row"><span>Atmosphere</span><input id="atmosphere" type="checkbox" checked><span></span></div>
+    </details>
+  </div>
+  <div id="timebar">
+    <button id="play" type="button" aria-label="Play time" aria-pressed="false">▶</button>
+    <input id="date" type="date" aria-label="Date (UTC)">
+    <input id="time" type="range" min="0" max="1439" step="1" aria-label="Time of day (UTC)">
+    <span id="time-label"></span>
+    <button id="now" type="button">Now</button>
+  </div>
+  <div id="credit">
+    Day: <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a> (CC BY 4.0) ·
+    Night glow: populated places weighted by population from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0), not satellite night imagery ·
+    Water mask: <a href="https://www.naturalearthdata.com/">Natural Earth</a> · Sun: NOAA solar position formulae
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

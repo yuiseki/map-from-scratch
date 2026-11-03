@@ -1,0 +1,218 @@
+id: openglobus-043-lighting
+request: >-
+  OpenGlobus の Lighting Control 例のように、太陽に照らされた地球儀を表示し、ambient・diffuse・specular・
+  shininess・夜側の明かりなどのライティングパラメータをスライダーで操作したい。太陽の向きは実際の日時
+  （太陽赤緯と時角）から求め、時刻スライダーと再生ボタンで昼夜の境界を地球上に走らせる。海の鏡面反射、
+  柔らかな昼夜境界、大気の縁、夜側だけに滑らかに現れる街の明かりを描き、ドラッグで回転、ホイールでズームする。
+
+requirements:
+  - id: real-imagery
+    need: 地球は実データの画像で描き、夜側の街明かりも実データから作る。出典を画面に出す
+    unmeasured: >-
+      画像の正しさは bake の検算（東京の明かり > 0、太平洋 0、サハラは陸）と verification の
+      night-city-glows（東京の画素）で確かめる。出典は index.html に表示する
+  - id: real-sun
+    need: 太陽の向きを実際の日時から計算する（赤緯と時角）
+    unmeasured: sun.test.ts で夏至・冬至・春分・11月の均時差を既知の値と照合し、画面では subsolar-brightest で太陽直下点が最も明るいことを読む
+  - id: lighting-effects
+    need: 海の鏡面反射、柔らかな昼夜境界、大気の縁、夜側だけに滑らかに現れる街明かり
+    unmeasured: >-
+      specular-at-reflection-point、night-city-glows、city-dark-by-day、atmosphere-rim の実画面ピクセルで検証。
+      境界の柔らかさと明かりのフェード幅は shading.test.ts がシェーダーに埋め込む定数で確かめる
+  - id: slider-control
+    need: 元例と同じライティングパラメータのスライダーがあり、動かすと1フレーム以内に描き直す
+    rationale: 60 Hz の1フレームで描き直す → 入力イベントの次の rAF で描き直す（1 フレーム）。時間は次の vsync を待つ分を含むので 2 フレーム分の 33.4 ms 以内
+  - id: time-playback
+    need: 時刻スライダーと再生ボタンで昼夜の境界が動き、再生中も滑らかに描く
+    rationale: 60 Hz → 再生中のフレーム p95 を 16.7 ms の半分の 8 ms 以内（GPU 4 ms 以内）
+  - id: navigation
+    need: ドラッグで回転し、ホイールでズームする
+    unmeasured: drag-follows-pointer と wheel-zooms の実画面ピクセルで検証。描画コストは time-playback の予算と同じフレームで測る
+  - id: quick-start
+    need: ページを開いてすぐ照らされた地球が出る
+    rationale: 3枚のテクスチャ（約 0.87 MB）を同一ホストから取得し、デコードとミップマップ生成をして初回フレームまで 1,500 ms 以内
+  - id: compact
+    need: 地図エンジンを読み込まず静的ファイルだけで動く
+    rationale: コード gzip 14 KB 以内、データ 1.2 MB 以内、全転送 1,300 KB 以内
+  - id: hardware
+    need: PC のブラウザでハードウェア GPU を使う
+    unmeasured: bench 結果に GPU 名を記録する。ユーザーの端末では未測定
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 14000, unit: B, requirement: compact}
+    - {metric: data_bytes, max: 1200000, unit: B, requirement: compact}
+    - {metric: transfer_kb, max: 1300, unit: KB, requirement: compact}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: cpu_ms, stat: p95, max: 2, unit: ms, requirement: time-playback}
+    - {metric: frame_ms, stat: p95, max: 8, unit: ms, requirement: time-playback}
+    - {metric: gpu_ms, stat: p95, max: 4, unit: ms, requirement: time-playback}
+    - {metric: play_frame_interval_ms, stat: p95, max: 20, unit: ms, requirement: time-playback}
+    - {metric: slider_redraw_frames, stat: max, max: 1, unit: frames, requirement: slider-control}
+    - {metric: slider_redraw_ms, stat: p95, max: 33.4, unit: ms, requirement: slider-control}
+  gates: [WebGL2 で描画, ハードウェア GPU, 実画面ピクセルの検証がすべて通る, WebGL context loss がない]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/043-lighting/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: first-frame
+      what: >-
+        index.html の head にある inline script（window.__mfsPageStart）から、3枚のテクスチャを取得・デコードして
+        照らされた地球を初めて描き終えた時点（gl.drawElements 発行直後、rAF コールバック内）まで。bench.ts の読み込みは含まない
+      metrics: [first_frame_ms]
+    - id: time-plays
+      what: >-
+        2026-06-21 00:00 UTC から 12 分ずつ時刻を進めながら 120 フレームを描く（1日で一周、昼夜境界が地球を一周する）。
+        カメラは経度を 3 度ずつ回し緯度 20 度。各フレームを 1 画素の readPixels で GPU 完了まで待つ
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+    - id: play-button
+      what: 再生ボタンを押して 90 rAF の間隔を測る（ページ本体の再生ループ、時刻表示と時刻スライダーの更新を含む）
+      metrics: [play_frame_interval_ms]
+    - id: slider-redraw
+      what: >-
+        13本のライティングスライダーそれぞれに input イベントを送り、何回目の rAF で描き直されたか（描画カウンタ）と、
+        イベント送出から描き直し完了までの時間を測る
+      metrics: [slider_redraw_frames, slider_redraw_ms]
+
+datasets:
+  bake: [node, examples/openglobus/043-lighting/bake.ts]
+  sources:
+    - id: earth-day-texture
+      origin: >-
+        examples/threejs/006-earth/earth.jpg（Three.js examples/textures/planets/earth_atmos_2048.jpg、2048×1024、
+        sha256 2faa400d…）。Earth texture by Solar System Scope
+      license: CC BY 4.0（Solar System Scope、画面に表示）
+    - id: geonames-2026-10-01
+      origin: hf:yuiseki/geonames（/sata_hdd_24tb/hf_data/__published/geonames/data/parquet/20261001/geoname/part-*.parquet）
+      license: CC BY 4.0, "GeoNames (https://www.geonames.org/)"（画面に表示）
+    - id: natural-earth-10m-land-lakes
+      origin: hf:yuiseki/natural-earth v5.1.2 10m_physical/ne_10m_land.parquet, ne_10m_lakes.parquet
+      license: Natural Earth パブリックドメイン（画面に表示）
+  outputs:
+    - data/baked/openglobus-043-lighting/earth.jpg
+    - data/baked/openglobus-043-lighting/water.png
+    - data/baked/openglobus-043-lighting/lights.png
+  preparation:
+    - 昼の画像は threejs-006 の earth.jpg を sha256 を確かめて複製する（経度 -180 が左端の正距円筒図法）
+    - Natural Earth 10m の陸と湖を 2048×1024 の正距円筒にラスタ化し（tools/land-mask.ts）、海と湖を 255 とする鏡面反射マスク water.png（グレースケール PNG）にする
+    - >-
+      GeoNames の feature_class P で人口のある地点（区画 PPLX と歴史的・廃村 PPLH/PPLQ/PPLW/PPLCH を除く）を、
+      人口^0.6 の重みと人口で広がる幅（σ 6 km〜42 km、経線方向は 1/cos(緯度) で伸ばす）のガウス関数で 2048×1024 に加算する。
+      明るい側 0.5 % の画素が飽和近くになる尺度で 1-exp(-x) に圧縮し、平方根で 8 bit にした lights.png にする。衛星の夜間光ではない
+
+performance_knowledge:
+  - id: textures-not-geometry
+    finding: 昼の色・水域・街明かりの3つはどれも正距円筒のテクスチャで渡し、球面メッシュは1つ（128×256 格子、65,536 三角形）、描画は地球と大気の2回の drawElements にする
+    evidence: >-
+      bin/mfs bench は未実行。開発中に ?bench ページを手元の headless Chromium（RTX 3060、ANGLE Vulkan）で1回開いた参考値:
+      時刻を進める 120 フレームで frame 約 0.5 ms、gpu 約 0.08 ms、再生ボタン中の rAF 間隔 16.67 ms、初回フレーム 879〜1,076 ms（3回）
+    applies_when: 昼夜・鏡面・夜間光を合成する地球儀
+  - id: glint-from-geometry
+    finding: 鏡面反射の検証位置は描画結果からではなく、太陽方向と視点から反射の法則で解いた点（入射角 = 反射角、同一平面）を投影して決める
+    evidence: shading.test.ts で反射の法則と共面性を 1e-6 で確認。参考実行で差分の最大が反射点から 10 px
+    applies_when: 光源と視点が決まっている鏡面ハイライトをピクセル読み戻しで検証するとき
+  - id: fit-not-argmax
+    finding: 「太陽直下点が最も明るい」を画素の最大で調べると、頂点付近の照度が平らなため（13 度離れても cos 0.97）画像と JPEG のノイズで外れる。照度 = c + n·v の当てはめなら v の向きで判定できる
+    evidence: >-
+      参考実行で、1点ごとの最大は太陽直下から 59.9 度（グリーンランドの氷と海の境）、次に 13.4 度ずれた。当てはめは 1.37 度。
+      光を視点に付けて回す誤りを入れると当てはめは 31.2 度ずれて失敗し、night-city-glows、specular、sliders、time の check も失敗した
+    applies_when: 照明の向きを実画面から確かめるとき
+  - id: night-fade-by-sun-elevation
+    finding: 街明かりは N·L の -0.08〜0.02（太陽高度 -4.6〜1.1 度）で消し、昼は夜間光スライダー最大でも画素が変わらない
+    evidence: 参考実行で東京の正午、夜間光 5 と 0 の差 0.00。フェードを外すと 117.86 の差で city-dark-by-day が失敗
+    applies_when: 夜側だけに発光テクスチャを出すとき
+  - id: bake-lights-from-places
+    finding: 衛星の夜間光の代わりに GeoNames の人口地点 472,711 件を人口^0.6 のガウス関数で 2048×1024 に加算すると、主要都市と人口分布が夜景らしく出る
+    evidence: lights.png 329,806 B、water.png 29,808 B、earth.jpg 512,606 B（合計 872,220 B）。地点の人口合計 44.1 億人。東京 255、カイロ 254、太平洋 0N150W 0
+    applies_when: 再配布できる夜景らしい発光テクスチャが要るとき（衛星画像ではないと明記する）
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (browser uses the repository's type stripper)
+    gpu: hardware
+    code:
+      - examples/openglobus/043-lighting/index.html
+      - examples/openglobus/043-lighting/main.ts
+      - examples/openglobus/043-lighting/globe.ts
+      - examples/openglobus/043-lighting/camera.ts
+      - examples/openglobus/043-lighting/shading.ts
+      - examples/openglobus/043-lighting/sun.ts
+      - examples/openglobus/043-lighting/timeline.ts
+    dependencies: []
+    why: >-
+      ライティングはすべてフラグメントシェーダーの uniform で表せるので、スライダーも時刻も uniform を1つ変えて1回描き直すだけで済む。
+      太陽位置は NOAA の簡略式で CPU 側に 1 フレーム 1 回計算する
+  alternatives:
+    - option: openglobus 本体（Globe + control.Lighting + TimelineControl）
+      rejected_because: 汎用エンジンと地形・タイル取得を伴い、この依頼には過大（比較は未実施）
+    - option: Canvas 2D の地球儀に昼夜マスクを重ねる（cesium-209 の方式）
+      rejected_because: 画素ごとの鏡面反射と夜間光のテクスチャ合成を毎フレーム CPU で行うことになる（未比較）
+    - option: 大気散乱の物理モデル（openglobus control/atmosphere）
+      rejected_because: 依頼は縁の表現まで。光路積分の LUT を作らず、視線と中心の最近接距離で縁を描く
+  not_doing: [地形の起伏, タイル画像の切り替え, レイヤー選択と不透明度, トーンマッピングの方式選択と whitepoint, 雲, 月や星の位置, 大気散乱の物理計算, 衛星の夜間光画像]
+
+verification:
+  checks:
+    - id: globe-visible
+      what: 地球が描かれ、背景と区別できる
+      how: 画面中央と左上隅を readPixels で読む
+      expected: 中央の alpha 255、隅との RGB 距離 > 20
+    - id: subsolar-brightest
+      what: 太陽直下点が昼側で最も明るい（照度の最大が太陽直下にある）
+      how: >-
+        2026-06-21 12:00 UTC、太陽直下点（約 23.4N 0.5E）から 30 度西・緯度 10 度に向けたカメラ（視点に光が付いて回る誤りも捕まえるため中心から外す）で、
+        鏡面・ambient・夜間光・大気を 0 にして描く。視点から 55 度以内で日の当たる 2 度間隔の格子点について、3×3 画素の輝度を
+        昼画像（bench が 2D canvas で読む earth.jpg、5×5 テクセルが一様な所だけ）の輝度で割り、2.2 乗して照度に戻す。
+        照度 = c + n·v を最小二乗で当てはめ、v の向きを最も明るい点とする（1 点ごとの最大は画像のノイズで 13 度ずれた）
+      expected: 当てはめた最も明るい点が太陽直下点から 5 度以内、標本 100 点超
+    - id: night-city-glows
+      what: 夜側の都市の画素が光る
+      how: >-
+        2026-06-21 15:00 UTC（東京は真夜中）、東京（35.69N 139.69E）に向けて描き、東京の画面位置の 5×5 画素の最大輝度を
+        夜間光スライダー既定値と 0 で比べる
+      expected: 既定値の輝度が 0 のときより 40 以上明るく、R > B（暖色）
+    - id: city-dark-by-day
+      what: 同じ都市の画素は昼には光らない
+      how: 2026-06-21 03:00 UTC（東京は正午）に同じ 5×5 画素を夜間光スライダー 5（最大）と 0 で描き比べる
+      expected: 最大輝度の差が 2 以下
+    - id: specular-at-reflection-point
+      what: 海の鏡面ハイライトが反射点の近くにある
+      how: >-
+        2026-12-21 20:00 UTC（太陽直下は 120W 23S）、カメラを 170W 25N に向ける（反射点は太平洋、東アジアは夜）。shading.ts の glintPoint で
+        太陽方向と視点から反射点を解いて投影し、鏡面の既定値と 0 の差分画像（16 px 格子）の最大位置と比べる
+      expected: 差分の最大が反射点から 40 px 以内、差分の最大値 > 30
+    - id: sliders-change-pixels
+      what: 13本のスライダーそれぞれが画面を変える
+      how: >-
+        昼夜境界・鏡面・夜の都市が同時に見える上と同じ視点で、スライダーごとに input イベントで最小値と最大値にして描き、
+        画面全体を 8 px 間隔で読んで RGB 差を求める
+      expected: どのスライダーも標本あたりの RGB 差の平均 > 1.0
+    - id: time-moves-terminator
+      what: 時刻を進めると昼夜が入れ替わり、再生ボタンで時刻が進む
+      how: >-
+        経度 0 緯度 0 に向けたカメラで、画面中央 5×5 画素の輝度を 2026-06-21 12:00 と 00:00 UTC で比べる。再生ボタンを押して 30 rAF 後に時刻が進んだかを読む
+      expected: 12:00 の輝度が 00:00 より 40 以上明るい、再生で時刻が 10 分以上進む
+    - id: atmosphere-rim
+      what: 昼側の地球の縁の外に青い大気が見え、夜側の縁は暗い
+      how: >-
+        2026-06-21 12:00 UTC、太陽直下点から 90 度東の赤道に向けたカメラ（太陽は画面左）で、地球の縁から 3 px 外の画素を
+        左（昼側）と右（夜側）で読む。大気オフ（チェックボックス）と比べる
+      expected: 昼側の縁は B > R + 20 かつ大気オフより B が 30 以上大きい、夜側の縁の輝度は昼側の半分未満
+    - id: drag-follows-pointer
+      what: ドラッグした方向に地表が動く
+      how: canvas に pointerdown / pointermove(+60, +40) / pointerup を送り、元の中央の地点（経緯度）の投影位置を前後で比べ、描画後の画素も比べる
+      expected: 右へ 30 px 以上、下へ 20 px 以上動き、中央の画素が変わる
+    - id: wheel-zooms
+      what: ホイールで地球の見かけの大きさが変わる
+      how: 中央から地球半径の 1.1 倍右の画素の alpha を、ホイールで近づける前後で読む
+      expected: 近づける前は背景（alpha < 32）、後は地球（alpha 255）
+  harness:
+    - webglcontextlost が起きたらエラーにする
+    - info.gpu に GPU 名を記録し、ソフトウェアラスタライザなら失敗
