@@ -134,7 +134,7 @@ export interface GlobeState {
 }
 
 export class GlobeRenderer {
-  private gl: WebGL2RenderingContext;
+  public readonly gl: WebGL2RenderingContext;
   private earthProgram: WebGLProgram;
   private atmoProgram: WebGLProgram;
   private earthVao: WebGLVertexArrayObject;
@@ -353,6 +353,12 @@ export class GlobeRenderer {
 
     gl.depthMask(true);
     gl.disable(gl.BLEND);
+  }
+
+  public readPixel(x: number, y: number): Uint8Array {
+    const pixel = new Uint8Array(4);
+    this.gl.readPixels(x, y, 1, 1, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixel);
+    return pixel;
   }
 
   // --- Math utilities ---

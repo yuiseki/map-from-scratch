@@ -1,0 +1,79 @@
+id: cesium-143-elevation-band-material
+request: >-
+  CesiumJS の showcase である「Elevation Band Material」のように、3D 山岳地形に対して標高帯スライス（森林・高山植物・岩稜・山頂積雪）ごとに
+  色分けを行い、シャープな等高線境界線と太陽光シェーディングを備えた 3D 地形マテリアルをレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 標高バンドマテリアルの描画に数百 KB〜MB 規模の CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 標高バンド地形が現れる
+  - id: 3d-elevation-bands
+    need: 3D 山岳地形上に標高帯カラーとシャープな等高線が正しく画面に描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-elevation-bands}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/143-elevation-band-material/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期 3D 地形グリッド構築と初回レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 山頂周囲の視点回転中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 128x128 の成層火山標高グリッド（32,768 三角形）と有限差分法線を自動生成
+
+performance_knowledge:
+  - id: screen-space-contour-antialiasing
+    finding: fwidth を用いたスクリーン空間微分により、テクスチャや複雑な幾何ポリラインなしで単一フラグメントシェーダーで完全なアンチエイリアス等高線を描画可能
+    evidence: 1 ドローコールで山岳地形・標高段彩・等高線を 60 fps 描画
+    applies_when: 等高線・標高段彩・グリッド線マテリアル描画
+  - id: single-draw-terrain-mesh
+    finding: 128x128 の地形メッシュ（32k ポリゴン）をインデックスバッファで単一 drawElements 呼び出しすることで 0.4 ms 未満の描画時間を達成
+    evidence: 60 fps で安定描画
+    applies_when: 3D 地形メッシュ・DEM レンダリング
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/143-elevation-band-material/index.html
+      - examples/cesium/143-elevation-band-material/main.ts
+      - examples/cesium/143-elevation-band-material/render.ts
+      - examples/cesium/143-elevation-band-material/elevation.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部 DEM タイルサーバー通信（起動時に 3D 地形メッシュを直接生成）
+
+verification:
+  checks:
+    - id: mountain-rendered
+      what: 画面中央に 3D 山岳地形が描画されている
+      how: gl.readPixels でキャンバス中心ピクセルを取得して確認
+      expected: 空色とは異なる山岳表面のピクセル値であること
+    - id: elevation-bands-visible
+      what: 山麓部に標高帯マテリアルが描画されている
+      how: gl.readPixels で画面下部ピクセルを取得して確認
+      expected: 地形サーフェスピクセルが描画されていること
+    - id: sky-background-clear
+      what: 山岳上空は空色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 大気背景色と一致すること

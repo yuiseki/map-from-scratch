@@ -7,7 +7,7 @@ const sunAngleRange = document.getElementById('sunAngle') as HTMLInputElement;
 const distanceRange = document.getElementById('distance') as HTMLInputElement;
 
 const renderer = new GlobeRenderer(canvas);
-(window as unknown as { __renderer: GlobeRenderer }).__renderer = renderer;
+(window as unknown as { __mfsRenderer: GlobeRenderer }).__mfsRenderer = renderer;
 
 autoRotateCheck.addEventListener('change', () => {
   renderer.state.autoRotate = autoRotateCheck.checked;
@@ -45,5 +45,5 @@ function frame(now: number): void {
 requestAnimationFrame(frame);
 
 if (location.search.includes('bench')) {
-  import('./bench.ts').then((mod) => mod.runBench(renderer));
+  import('./bench.ts').then((mod) => mod.run());
 }

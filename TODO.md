@@ -690,7 +690,7 @@
 - [ ] `cesium-140-drawing-on-terrain` → `examples/cesium/140-drawing-on-terrain/` — [Drawing On Terrain](https://sandcastle.cesium.com/?src=drawing-on-terrain)
 - [ ] `cesium-141-earth-at-night` → `examples/cesium/141-earth-at-night/` — [Earth At Night](https://sandcastle.cesium.com/?src=earth-at-night)
 - [ ] `cesium-142-edge-visibility-dev` → `examples/cesium/142-edge-visibility-dev/` — [Edge Visibility Dev](https://sandcastle.cesium.com/?src=edge-visibility-dev)
-- [ ] `cesium-143-elevation-band-material` → `examples/cesium/143-elevation-band-material/` — [Elevation Band Material](https://sandcastle.cesium.com/?src=elevation-band-material)
+- [x] `cesium-143-elevation-band-material` → `examples/cesium/143-elevation-band-material/` — [Elevation Band Material](https://sandcastle.cesium.com/?src=elevation-band-material)
 - [ ] `cesium-144-ellipse-dev` → `examples/cesium/144-ellipse-dev/` — [Ellipse Dev](https://sandcastle.cesium.com/?src=ellipse-dev)
 - [ ] `cesium-145-ellipse-outline-dev` → `examples/cesium/145-ellipse-outline-dev/` — [Ellipse Outline Dev](https://sandcastle.cesium.com/?src=ellipse-outline-dev)
 - [ ] `cesium-146-ellipsoid-dev` → `examples/cesium/146-ellipsoid-dev/` — [Ellipsoid Dev](https://sandcastle.cesium.com/?src=ellipsoid-dev)
