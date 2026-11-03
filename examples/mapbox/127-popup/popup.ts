@@ -35,6 +35,13 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 const defaultCenterMx = mercX(US_CENTER_LNG);
 const defaultCenterMy = mercY(US_CENTER_LAT);
 
+export function mapboxPopupBoundsAt(tipX: number, tipY: number): PopupBounds {
+  const bubbleW = 140, bubbleH = 44, tipH = 10;
+  const x = tipX - bubbleW / 2, y = tipY - tipH - bubbleH;
+  return { x, y, width: bubbleW, height: bubbleH,
+    closeBtn: { x: x + bubbleW - 20, y: y + 6, size: 16 } };
+}
+
 export async function mount(
   canvas: HTMLCanvasElement,
   landUrl = '../../../data/baked/mapbox-127-popup/land.json',
@@ -77,22 +84,7 @@ export async function mount(
 
   function getPopupBounds(): PopupBounds {
     const [tipX, tipY] = getScreenPos(popupLngLat[0], popupLngLat[1]);
-    const bubbleW = 140;
-    const bubbleH = 44;
-    const tipH = 10;
-    const bx = tipX - bubbleW / 2;
-    const by = tipY - tipH - bubbleH;
-    return {
-      x: bx,
-      y: by,
-      width: bubbleW,
-      height: bubbleH,
-      closeBtn: {
-        x: bx + bubbleW - 20,
-        y: by + 6,
-        size: 16,
-      },
-    };
+    return mapboxPopupBoundsAt(tipX, tipY);
   }
 
   function draw(): void {

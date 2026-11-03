@@ -16,6 +16,10 @@ const LAND = '#cccccc';
 const COAST = '#ffffff';
 const GRATICULE = '#a9bfca';
 
+export function equirectangularScreenPosition(lon: number, lat: number, width: number, height: number): [number, number] {
+  return [((lon + 180) / 360) * width, ((90 - lat) / 180) * height];
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<WorldMap> {
   const rawCtx = canvas.getContext('2d');
   if (!rawCtx) throw new Error('2D context not available');
@@ -86,7 +90,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function getScreenPos(lon: number, lat: number): [number, number] {
-    return [((lon + 180) / 360) * width, ((90 - lat) / 180) * height];
+    return equirectangularScreenPosition(lon, lat, width, height);
   }
 
   window.addEventListener('resize', resize);
