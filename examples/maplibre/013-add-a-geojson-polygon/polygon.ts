@@ -21,9 +21,9 @@ type Polygon = Ring[];
 const MAINE_CENTER_LNG = -68.13734351262877;
 const MAINE_CENTER_LAT = 45.137451890638886;
 
-const mercY = (lat: number): number =>
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercX = (lon: number): number => (lon + 180) / 360;
 
 const defaultCenterMx = mercX(MAINE_CENTER_LNG);
 const defaultCenterMy = mercY(MAINE_CENTER_LAT);

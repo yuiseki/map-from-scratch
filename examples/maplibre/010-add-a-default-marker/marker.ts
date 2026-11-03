@@ -16,8 +16,9 @@ type Polygon = Ring[];
 const DC_LNG = -77.0369;
 const DC_LAT = 38.9072;
 
-const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
-const targetMx = (DC_LNG + 180) / 360;
+export const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
+export const mercX = (lon: number) => (lon + 180) / 360;
+const targetMx = mercX(DC_LNG);
 const targetMy = mercY(DC_LAT);
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<MarkerMap> {

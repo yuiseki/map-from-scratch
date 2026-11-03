@@ -24,6 +24,10 @@ const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.P
 const targetMx = (ICON_LNG + 180) / 360;
 const targetMy = mercY(ICON_LAT);
 
+export function copyRedChannelToAlpha(data: Uint8ClampedArray): void {
+  for (let i = 0; i < data.length; i += 4) data[i + 3] = data[i];
+}
+
 // The original draws a red-to-blue vertical gradient on a 200x200 canvas and
 // then copies the red channel into alpha, which makes the blue end see-through.
 // We reproduce it at icon resolution so no image is ever requested.
@@ -39,7 +43,7 @@ function makeGradientSprite(scale: number): HTMLCanvasElement {
 
   const image = g.getImageData(0, 0, c.width, c.height);
   const data = image.data;
-  for (let i = 0; i < data.length; i += 4) data[i + 3] = data[i];
+  copyRedChannelToAlpha(data);
   g.putImageData(image, 0, 0);
   return c;
 }
