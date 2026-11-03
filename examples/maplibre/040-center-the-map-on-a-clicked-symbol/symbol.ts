@@ -37,6 +37,8 @@ const DEFAULT_LAT = 40;
 const DEFAULT_ZOOM = 2.5;
 const ANIM_MS = 600;
 
+export const easeInOutQuadratic = (u: number): number => u < 0.5 ? 2 * u * u : 1 - ((-2 * u + 2) ** 2) / 2;
+
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
@@ -161,7 +163,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
     if (!tween) return;
     tween.elapsed = Math.min(ANIM_MS, tween.elapsed + ms);
     const u = tween.elapsed / ANIM_MS;
-    const e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) * (-2 * u + 2) / 2;
+    const e = easeInOutQuadratic(u);
     centerMx = tween.fromMx + (tween.toMx - tween.fromMx) * e;
     centerMy = tween.fromMy + (tween.toMy - tween.fromMy) * e;
     if (u >= 1) tween = null;

@@ -30,7 +30,7 @@ architecture_selection:
     api: Canvas 2D と Path2D
     language: TypeScript
     gpu: none
-    code: [examples/08-prefecture-quiz/index.html, examples/08-prefecture-quiz/main.ts]
+    code: [examples/08-prefecture-quiz/index.html, examples/08-prefecture-quiz/main.ts, examples/08-prefecture-quiz/quiz.ts]
     dependencies: []
     why: 47 個の固定図形なので Canvas 2D の塗りと標準の当たり判定で足りる
   alternatives: []

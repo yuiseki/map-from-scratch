@@ -83,7 +83,7 @@ architecture_selection:
     api: WebGL2 (EXT_color_buffer_float と EXT_float_blend)
     language: TypeScript (ブラウザには型を除いた ES modules を配る。ビルドなし)
     gpu: hardware
-    code: [examples/04-osm-node-density/density.ts]
+    code: [examples/04-osm-node-density/density.ts, examples/04-osm-node-density/decode.ts]
     dependencies: []
     why: 966 万点を毎フレーム数え直すには、GPU の加算ブレンドで数えるのが最も短い。浮動小数点の加算ブレンドは WebGL2 の拡張で使える
   alternatives:

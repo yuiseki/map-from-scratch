@@ -9,6 +9,15 @@ export interface MouseFollowMap {
   readPixel(x: number, y: number): [number, number, number, number];
 }
 
+export function screenToLngLatInLayout(sx: number, sy: number, mapSize: number, offsetX: number, offsetY: number): [number, number] {
+  const mx = (sx - offsetX) / mapSize;
+  const my = (sy - offsetY) / mapSize;
+  const lon = mx * 360 - 180;
+  const clampedMy = Math.max(0.0001, Math.min(0.9999, my));
+  const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * clampedMy))) * 180) / Math.PI;
+  return [Math.round(lon * 1000) / 1000, Math.round(lat * 1000) / 1000];
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<MouseFollowMap> {
   const ctx = canvas.getContext('2d')!;
   const res = await fetch(landUrl);
@@ -39,16 +48,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function screenToLngLat(sx: number, sy: number): [number, number] {
     const { mapSize, offsetX, offsetY } = getMapLayout();
-    const mx = (sx - offsetX) / mapSize;
-    const my = (sy - offsetY) / mapSize;
-    const lon = mx * 360 - 180;
-    const clampedMy = Math.max(0.0001, Math.min(0.9999, my));
-    const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * clampedMy)));
-    const lat = (latRad * 180) / Math.PI;
-    return [
-      Math.round(lon * 1000) / 1000,
-      Math.round(lat * 1000) / 1000,
-    ];
+    return screenToLngLatInLayout(sx, sy, mapSize, offsetX, offsetY);
   }
 
   function draw() {

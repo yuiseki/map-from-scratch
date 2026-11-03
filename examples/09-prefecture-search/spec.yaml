@@ -30,7 +30,7 @@ architecture_selection:
     api: Canvas 2D と Path2D
     language: TypeScript
     gpu: none
-    code: [examples/09-prefecture-search/index.html, examples/09-prefecture-search/main.ts]
+    code: [examples/09-prefecture-search/index.html, examples/09-prefecture-search/main.ts, examples/09-prefecture-search/search.ts]
     dependencies: []
     why: 47 個の固定図形を検索で色分けするだけなので Canvas 2D で足りる
   alternatives: []
