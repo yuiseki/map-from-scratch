@@ -63,7 +63,11 @@ export class GmlReader {
   }
 
   end(): void {
-    if (this.buf.trim().length > 0 && this.buf.includes('<gml:posList')) throw new Error('gml: input ended inside a posList');
+    // push() holds back everything from the last '<'. A '<' that starts no
+    // tag lets it read the tags held back (the input may end on one, as in
+    // </bldg:Building>); what is left then is an unfinished posList or text.
+    if (this.buf) this.push('<');
+    if (this.buf.includes('<gml:posList')) throw new Error('gml: input ended inside a posList');
     this.buf = '';
   }
 

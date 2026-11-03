@@ -53,13 +53,18 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
 
-export function togglePanelRects(): { panel: Rect; rows: Rect[]; checkboxes: Rect[] } {
-  const panel: Rect = { x: PANEL_X, y: PANEL_Y, width: PANEL_W, height: PAD + HEADER_H + 3 * ROW_H + PAD };
-  const rows = Array.from({ length: 3 }, (_, i): Rect => ({
-    x: panel.x, y: panel.y + PAD + HEADER_H + i * ROW_H, width: panel.width, height: ROW_H,
-  }));
-  const checkboxes = rows.map((row): Rect => ({ x: row.x + 10, y: row.y + (ROW_H - BOX) / 2, width: BOX, height: BOX }));
-  return { panel, rows, checkboxes };
+// The panel holds one row per toggle; a row's checkbox sits at its left.
+export function panelRect(rowCount: number): Rect {
+  return { x: PANEL_X, y: PANEL_Y, width: PANEL_W, height: PAD + HEADER_H + rowCount * ROW_H + PAD };
+}
+
+export function rowRect(i: number): Rect {
+  return { x: PANEL_X, y: PANEL_Y + PAD + HEADER_H + i * ROW_H, width: PANEL_W, height: ROW_H };
+}
+
+export function checkboxRect(i: number): Rect {
+  const r = rowRect(i);
+  return { x: r.x + 10, y: r.y + (ROW_H - BOX) / 2, width: BOX, height: BOX };
 }
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<ToggleMap> {
@@ -108,15 +113,15 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function getPanelRect(): Rect {
-    return togglePanelRects().panel;
+    return panelRect(rows.length);
   }
 
   function getRowRect(i: number): Rect {
-    return togglePanelRects().rows[i] ?? { x: PANEL_X, y: PANEL_Y, width: 0, height: 0 };
+    return rowRect(i);
   }
 
   function getCheckboxRect(i: number): Rect {
-    return togglePanelRects().checkboxes[i] ?? { x: PANEL_X, y: PANEL_Y, width: 0, height: 0 };
+    return checkboxRect(i);
   }
 
   function drawPanel(): void {

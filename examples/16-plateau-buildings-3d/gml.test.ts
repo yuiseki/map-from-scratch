@@ -7,8 +7,7 @@ test('streaming CityGML reader preserves buildings and polygons across arbitrary
   const xml = '<bldg:Building gml:id="b-1"><bldg:lod1Solid><gml:Polygon><gml:posList>35 139 4 35 140 4</gml:posList></gml:Polygon></bldg:lod1Solid><bldg:boundedBy><bldg:RoofSurface><bldg:lod2MultiSurface><gml:Polygon><gml:posList>36 139 8 36 140 8</gml:posList></gml:Polygon></bldg:lod2MultiSurface></bldg:RoofSurface></bldg:boundedBy><bldg:BuildingInstallation><bldg:lod2Geometry><gml:MultiSurface><gml:Polygon><gml:posList>37 139 9</gml:posList></gml:Polygon></gml:MultiSurface></bldg:lod2Geometry></bldg:BuildingInstallation></bldg:Building>';
   const reader = new GmlReader((building) => buildings.push(building));
   for (let i = 0; i < xml.length; i += 7) reader.push(xml.slice(i, i + 7));
-  // The final closing tag remains buffered until a later chunk arrives.
-  reader.push('<gml:boundedBy>');
+  // The input ends right after </bldg:Building>: end() must read it.
   reader.end();
 
   assert.equal(reader.posLists, 3);

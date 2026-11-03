@@ -25,13 +25,12 @@ test('ECEF conversion and ENU normal rotation preserve expected axes', () => {
   assert.ok(local(...p).every((v) => Math.abs(v) < 1e-7));
 });
 
-test('region bounding sphere contains all eight transformed region corners', () => {
-  const region: [number, number, number, number, number, number] = [139.7, 35.6, 139.8, 35.7, 0, 120];
-  const sphere = regionSphere(region);
-  assert.ok(sphere.radius > 0);
-  for (const lon of [region[0], region[2]]) for (const lat of [region[1], region[3]]) for (const h of [region[4], region[5]]) {
-    const p = local(...ecef(lon, lat, h));
-    const d = Math.hypot(p[0] - sphere.center[0], p[1] - sphere.center[1], p[2] - sphere.center[2]);
-    assert.ok(d <= sphere.radius + 1e-8);
-  }
+test('a region (in radians, as 3D Tiles gives it) gets a sphere around its middle reaching its corners', () => {
+  // 0.1 deg by 0.1 deg around 35.65N: 9.05 km east-west by 11.1 km
+  // north-south, so half the diagonal is about 7.16 km.
+  const r = Math.PI / 180;
+  const sphere = regionSphere([139.7 * r, 35.6 * r, 139.8 * r, 35.7 * r, 0, 120]);
+  assert.ok(sphere.radius > 7100 && sphere.radius < 7230, `radius ${sphere.radius}`);
+  const middle = at(139.75, 35.65, 60);
+  assert.ok(Math.hypot(...sphere.center.map((v, i) => v - middle[i])) < 1, `center ${sphere.center}`);
 });

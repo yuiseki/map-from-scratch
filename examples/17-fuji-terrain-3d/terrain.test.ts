@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CS, decodeChunk, encodeChunk, ENTRY_BYTES, fileOrder, HEADER_BYTES, LEVELS, N0, parseTerr, perSide, ranges, S, type Terr } from './terrain.ts';
+import { CS, decodeChunk, encodeChunk, ENTRY_BYTES, fileOrder, HEADER_BYTES, LEVELS, parseTerr, perSide, ranges, S, type Terr } from './terrain.ts';
 
 test('terrain chunks encode and decode planar samples with signed residuals', () => {
   const samples = new Uint16Array(S * S);
@@ -60,5 +60,4 @@ test('terrain parser distinguishes bad format signatures and incompatible layout
   const dv = new DataView(bytes.buffer);
   dv.setUint16(4, 1, true); dv.setUint16(6, CS + 1, true); bytes[8] = 1; bytes[9] = LEVELS;
   assert.throws(() => parseTerr(bytes), /unexpected chunk layout/);
-  assert.ok(N0 > CS);
 });

@@ -17,10 +17,11 @@ test('density decoder cumulatively restores coordinates and scatters Morton orde
 });
 
 test('density coordinate deltas wrap at 16 bits', () => {
-  const bytes = new ArrayBuffer(44);
+  // Two points: x 65535, then +2 wraps to 1; y 2, then +65535 wraps to 1.
+  const bytes = new ArrayBuffer(40 + 2 * 4);
   const view = new DataView(bytes);
-  view.setUint32(0, 1, true);
-  view.setUint16(40, 65535, true);
-  view.setUint16(42, 2, true);
-  assert.deepEqual([...decodeDensityData(bytes, 1).positions], [65535, 2]);
+  view.setUint32(0, 2, true);
+  [65535, 2].forEach((v, i) => view.setUint16(40 + i * 2, v, true));
+  [2, 65535].forEach((v, i) => view.setUint16(44 + i * 2, v, true));
+  assert.deepEqual([...decodeDensityData(bytes, 1).positions], [65535, 2, 1, 1]);
 });
