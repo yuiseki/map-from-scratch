@@ -1,0 +1,80 @@
+id: cesium-234-particle-system-weather
+request: >-
+  CesiumJS の showcase である「Particle System Weather」のように、降雨（Rain）と降雪（Snow）の
+  3D 体積パーティクルシステムをシミュレーションし、雨の縦長ストリークや雪の揺らぎ・風ドリフト、
+  天候に連動した地面の質感と大気クリアカラーをレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: 天候パーティクルシステムの描画に CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 天候パーティクルが現れる
+  - id: 3d-particle-weather
+    need: 曇天大気背景の上に地表面と天候パーティクル（雨または雪）が正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-particle-weather}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/234-particle-system-weather/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期天候パーティクルバッファの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 天候パーティクルアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に数千個の 3D 天候パーティクルと動的ストライドバッファをメモリ内で生成
+
+performance_knowledge:
+  - id: toroidal-volume-wrapping
+    finding: 境界外に出たパーティクルを対向側へトーラス状にラップ再配置することで、固定粒子数で無限に続く降雨・降雪ボリュームを生成可能
+    evidence: 固定バッファメモリで長時間の天候シミュレーションを実現
+    applies_when: 天候エフェクト・パーティクルシステム
+  - id: dynamic-procedural-point-sprites
+    finding: ポイントスプライトシェーダー内で gl_PointCoord を伸縮・ぼかすことで、テクスチャをロードすることなく雨滴ストリークと雪の軟毛球を切り替え描画可能
+    evidence: テクスチャ不要でゼロアセット・超軽量配布
+    applies_when: 雨・雪・埃・火花パーティクル描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/234-particle-system-weather/index.html
+      - examples/cesium/234-particle-system-weather/main.ts
+      - examples/cesium/234-particle-system-weather/render.ts
+      - examples/cesium/234-particle-system-weather/weather.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部テクスチャ画像のロード（gl_PointCoord によるプロシージャル描画）
+
+verification:
+  checks:
+    - id: overcast-sky-cleared
+      what: 画面上部が曇天の大気色でクリアされている
+      how: gl.readPixels で上端ピクセルを取得して確認
+      expected: 曇天クリア色と一致すること
+    - id: ground-plane-rendered
+      what: 画面下部に地表面グリッドプレーンが描画されている
+      how: gl.readPixels で画面下部ピクセルを取得して確認
+      expected: 地表面サーフェスピクセルが描画されていること
+    - id: weather-particles-rendered
+      what: 空間内に天候パーティクルが描画されている
+      how: gl.readPixels で中央体積領域のピクセル輝度および生存パーティクル数を確認
+      expected: 天候パーティクルが検出されるか生存パーティクル数が正しく保持されていること
