@@ -1,6 +1,7 @@
 import { decodeTerrain, heightAt } from './terrain.ts';
 import { RotorState, hash01, rotorOmega } from './turbine.ts';
 import { orbitDrag, zoomDistance, orbitCamera, MAX_PITCH, type OrbitView } from './camera.ts';
+import { openingView } from './opening.ts';
 import { WindFarmRenderer, type TurbineInstance } from './render.ts';
 
 const pageStart = (window as unknown as { __mfsPageStart?: number }).__mfsPageStart ?? 0;
@@ -22,12 +23,9 @@ const radii = turbines.map((t) => t.diameter / 2);
 const rotors = new RotorState(radii, turbines.map((t) => hash01(t.id) * 2 * Math.PI), turbines.map((t) => 0.92 + 0.16 * hash01(t.id * 7 + 3)));
 const renderer = new WindFarmRenderer(canvas, terrain, turbines);
 
-// Opening view: low and oblique from north of Wind Farm Tsugaru (the
-// turbines north of 40.89N), looking south along the coast towards Mt Iwaki.
-const north = turbines.filter((t) => t.y > 4500);
-let cx = 0, cy = 0;
-for (const t of north) { cx += t.x / north.length; cy += t.y / north.length; }
-let view: OrbitView = { target: [cx, cy, heightAt(terrain, cx, cy)], heading: 185, pitch: 5, distance: 4500 };
+// Opening view: a low oblique shot down the rows of Wind Farm Tsugaru
+// towards Mt Iwaki, framed on one turbine (opening.ts).
+let view: OrbitView = openingView(turbines, (x, y) => heightAt(terrain, x, y));
 
 // Keep the eye above the ground: tilt down until it clears it by 40 m.
 function clampToGround(v: OrbitView): OrbitView {

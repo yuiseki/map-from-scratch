@@ -8,10 +8,22 @@ import { orbitCamera, type OrbitView, type CameraMatrices } from './camera.ts';
 export interface TurbineInstance { id: number; x: number; y: number; z: number; hub: number; diameter: number }
 export interface RenderOptions { terrain?: boolean; turbines?: boolean }
 
-// Light from the north-west, about 44 degrees up: the cartographic
-// convention for hillshade, so slopes facing the sea read lit.
-const SUN = (() => { const v = [-0.55, 0.45, 0.7], l = Math.hypot(...v); return v.map((c) => (c / l).toFixed(5)).join(', '); })();
-const SKY_ZENITH = '0.31, 0.53, 0.80', SKY_HORIZON = '0.84, 0.89, 0.93';
+// A low afternoon sun over the Sea of Japan: from the west-south-west
+// (azimuth 250 degrees), 14 degrees up. Seen from the opening view (looking
+// south-south-west) it lights the turbines from the right and rakes across
+// the dunes and the west face of Mt Iwaki, so the relief reads in long soft
+// light and shade.
+const SUN_AZ = 250, SUN_EL = 14;
+const SUN = (() => {
+  const a = (SUN_AZ * Math.PI) / 180, e = (SUN_EL * Math.PI) / 180;
+  return [Math.sin(a) * Math.cos(e), Math.cos(a) * Math.cos(e), Math.sin(e)].map((c) => c.toFixed(5)).join(', ');
+})();
+const SUN_Z = Math.sin((SUN_EL * Math.PI) / 180);
+const SKY_ZENITH = '0.30, 0.50, 0.78', SKY_HORIZON = '0.86, 0.87, 0.86', SUN_GLOW = '1.00, 0.86, 0.64';
+// Atmospheric perspective: the share of the haze colour after d metres,
+// 1 - exp(-d / HAZE). The far turbines (20 km) fade by about half, Mt
+// Iwaki (31 km) by two thirds; the same haze for terrain and turbines.
+const HAZE = 26000;
 const f = (n: number) => n.toFixed(4);
 
 const SKY_VS = `#version 300 es
@@ -30,7 +42,11 @@ void main() {
   vec4 a = uInv * vec4(vNdc, -1.0, 1.0), b = uInv * vec4(vNdc, 1.0, 1.0);
   vec3 d = normalize(b.xyz / b.w - a.xyz / a.w);
   float t = pow(clamp(d.z, 0.0, 1.0), 0.55);
-  o = vec4(mix(vec3(${SKY_HORIZON}), vec3(${SKY_ZENITH}), t), 1.0);
+  vec3 c = mix(vec3(${SKY_HORIZON}), vec3(${SKY_ZENITH}), t);
+  // warm glow towards the low sun
+  float g = max(dot(d, vec3(${SUN})), 0.0);
+  c = mix(c, vec3(${SUN_GLOW}), 0.45 * pow(g, 6.0) * (1.0 - 0.6 * t));
+  o = vec4(c, 1.0);
 }`;
 
 const TERRAIN_VS = `#version 300 es
@@ -52,7 +68,7 @@ void main() {
   vN = normalize(vec3((h(c - ivec2(1, 0)) - h(c + ivec2(1, 0))) / (2.0 * uGrid.z),
                       (h(c - ivec2(0, 1)) - h(c + ivec2(0, 1))) / (2.0 * uGrid.z), 1.0));
   vH = z;
-  vFog = 1.0 - exp(-distance(p, uEye) / 45000.0);
+  vFog = 1.0 - exp(-distance(p, uEye) / ${f(HAZE)});
   // fade the last 4 km of the grid into the horizon colour, so the edge of
   // the baked area does not read as a cliff against the sky
   vec2 e = min(vec2(c), vec2(uSize - 1 - c)) * uGrid.z;
@@ -70,7 +86,11 @@ void main() {
   vec3 c = mix(vec3(0.42, 0.55, 0.32), vec3(0.55, 0.58, 0.38), smoothstep(5.0, 200.0, vH));
   c = mix(c, vec3(0.52, 0.47, 0.38), smoothstep(300.0, 900.0, vH));
   c = mix(c, vec3(0.72, 0.70, 0.66), smoothstep(1100.0, 1500.0, vH));
-  c *= 0.35 + 0.85 * max(dot(n, vec3(${SUN})), 0.0);
+  // light relative to flat ground (1 on the flat), so the low sun keeps the
+  // plain bright and only the slopes swing: lit faces up to 1.6, faces
+  // turned away down to the sky light alone. Warm sun, cool sky.
+  float l = max(dot(n, vec3(${SUN})), 0.0) / ${f(SUN_Z)};
+  c *= vec3(0.40, 0.45, 0.52) + vec3(0.62, 0.56, 0.47) * min(l, 1.6);
   // the sea is 0 m in Mapterhorn; blend over the first metre so the coast
   // is not a staircase of 80 m cells
   c = mix(vec3(0.18, 0.32, 0.45), c, smoothstep(0.0, 1.0, vH));
@@ -104,7 +124,7 @@ void main() {
   vec2 r = vec2(uFwd.y, -uFwd.x);
   vec3 w = vec3(p.x * r + p.y * uFwd, p.z) + aBase;
   vN = vec3(n.x * r + n.y * uFwd, n.z);
-  vFog = 1.0 - exp(-distance(w, uEye) / 60000.0);
+  vFog = 1.0 - exp(-distance(w, uEye) / ${f(HAZE)});
   vPart = aPart;
   gl_Position = uVP * vec4(w, 1.0);
 }`;
@@ -117,9 +137,10 @@ out vec4 o;
 void main() {
   vec3 n = normalize(vN);
   float d = dot(n, vec3(${SUN}));
-  float shade = 0.55 + 0.45 * abs(d);     // thin blades are lit from either side
-  vec3 c = vec3(0.95, 0.96, 0.96) * shade;
-  o = vec4(mix(c, vec3(${SKY_HORIZON}), vFog * 0.8), 1.0);
+  // thin blades are lit from either side; the sun side warm, the other in
+  // cool sky light
+  vec3 c = vec3(0.93, 0.94, 0.95) * (vec3(0.62, 0.65, 0.70) + vec3(0.46, 0.40, 0.32) * abs(d));
+  o = vec4(mix(c, vec3(${SKY_HORIZON}), vFog), 1.0);
 }`;
 
 function program(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgram {

@@ -32,7 +32,7 @@ requirements:
     rationale: 初回フレーム p50 1,500 ms 以内 (ローカル配信、076 と同じ目安)
   - id: compact
     need: 地図エンジンなしの静的ファイルだけで、転送量を小さく保つ
-    rationale: 地形 80 m 格子 399×598 (477,244 B、gzip 186 KB) と風車 JSON (5,185 B) とコード。転送 700 KB 以内 (無圧縮配信で約 525 KB)、コード gzip 18 KB 以内 (型付きソースの gzip -9 で 13,999 B)
+    rationale: 地形 80 m 格子 399×598 (477,244 B、gzip 186 KB) と風車 JSON (5,185 B) とコード。転送 700 KB 以内 (無圧縮配信で約 525 KB)、コード gzip 18 KB 以内 (型付きソースの gzip -9 で 15,214 B、開幕カメラと低い太陽を入れる前は 13,999 B)
   - id: terrain-shaded
     need: 地形が陰影つきで風車の下に見え、空にはグラデーションがある
     rationale: 画面下部が空の色ではなく、陰影で明暗の幅があることを読み戻す
@@ -109,6 +109,32 @@ performance_knowledge:
     finding: 風向の検査で、ハブの高さの行を画面全幅で読むと地平線上の遠い風車まで拾い、正面向きも真横向きも幅 1,253 px と 1,257 px で区別できなかった
     evidence: 行をそのローターの外接範囲に限り、さらに背景に風車のない海側 (方位 290°) を向いた近景にすると 89 px と 21 px に分かれた。読み戻し範囲を 1 基の外接矩形に絞っても、地平の風車 (80 % 地点の矩形) が同じ行に入っていた
     applies_when: 同じ物が多数並ぶ画面で 1 個の形を読み戻すとき
+  - id: opening-shot-from-turbines
+    finding: >-
+      開幕カメラは風車群の重心から 4.5 km 引いた俯角 5° の画面で、最も近いローターが 35 px、画面の下半分が平らな畑だった。
+      北東角の風車 (OSM 7483531471) の 330 m 後ろ、地上 140 m (翼端高ほど)、方位 203°、俯角 10° に下ろすと、
+      そのローターが 360 px、塔の根元が画面の下 1/5 に入り、3 列の風車が岩木山へ向かって並び、右に日本海が開く
+    evidence: >-
+      opening.ts の OPENING (anchor, target = anchor からの東・北・地上高, heading, pitch, distance)。opening.test.ts が
+      北側 26 基の座標で、最も近いローター 150 px 以上、ハブが画面内 12 基以上、岩木山の山頂と沖の海の点が画面内、
+      を確かめる。旧カメラに戻すとローター 35 px で 3 件が落ちる
+    applies_when: 同じ物を多数並べた例の最初の画面を決めるとき。重心から引くと全部が小さく写る
+  - id: low-sun-and-haze
+    finding: >-
+      北西 44° の地図式の光をやめ、西南西 (方位 250°) 高度 14° の低い太陽にした。平地を 1 とした相対光で陰影をつけ
+      (日の当たる斜面は最大 1.6 倍、背を向けた面は空の光だけ)、空には太陽側に暖色の光を足した。霞は地形と風車で
+      同じ 1 - exp(-d / 26 km) にした (以前は地形 45 km、風車 60 km × 0.8 で遠い風車がほとんど薄れなかった)
+    evidence: >-
+      目視で砂丘の起伏と岩木山の西面が浮き、20 km 先の風車は約半分霞む。terrain-visible の岩木山の明るさの標準偏差は 12.83
+      (閾値 4)、turbines-at-known-positions の 17 km 先の 1 基は差 6 画素 (閾値 3)
+    applies_when: 平らな低地を低い視点で見せるとき
+  - id: isolation-by-footprint
+    finding: >-
+      近景にしたら、風車全体 (ローター幅 × 翼端から根元) の外接矩形が互いに重ならない風車が 2 基しか残らず
+      turbines-at-known-positions が落ちた。塔の矩形 (根元からハブ) が他の風車の塔の矩形にもローター円にも
+      当たらないものを孤立とすると 9 基残った
+    evidence: 開発中の ?bench 1 回で孤立 9 基、選んだ 3 基は 328 m (差 4,162 画素)、2,149 m (113)、17,049 m (6)
+    applies_when: 大きく写る物と小さく写る物が混ざる画面で 1 個ずつ読み戻すとき
   - id: sanity-run-not-bench
     finding: bin/mfs bench は未実行。開発中に GPU つきコンテナの Chromium で ?bench を 1 回開き、検査 4 件が通ることだけ確かめた
     evidence: >-
@@ -129,6 +155,7 @@ architecture_selection:
       - examples/openglobus/075-wind-farm/terrain.ts
       - examples/openglobus/075-wind-farm/turbine.ts
       - examples/openglobus/075-wind-farm/camera.ts
+      - examples/openglobus/075-wind-farm/opening.ts
     dependencies: []
     why: >-
       範囲が固定の一帯なので、地形は 1 枚の格子を 1 回の drawElements で、高さは R16UI テクスチャから頂点シェーダーで
@@ -141,13 +168,13 @@ architecture_selection:
       rejected_because: 92 × 2 回の draw call と uniform 更新になる。インスタンシングなら 1 回。比較は未計測
     - option: 全球の楕円体座標
       rejected_because: 32 × 43 km の範囲では局所メートルで誤差 0.1 % 未満、地球の曲率 (端で約 36 m の落ち込み) は描かない
-  not_doing: [全球表示, タイル LOD・ストリーミング, 航空写真, 風車の追加 (原典の Ctrl+クリック), 影, 時刻と太陽の位置, ピッキング, ラベル]
+  not_doing: [全球表示, タイル LOD・ストリーミング, 航空写真, 風車の追加 (原典の Ctrl+クリック), 影, 時刻による太陽の位置 (太陽は西南西 14° に固定), ピッキング, ラベル]
 
 verification:
   checks:
     - id: turbines-at-known-positions
-      what: 既知の風車 3 基 (他と外接矩形が重ならないもののうち、近い順で先頭・中央値・80 % 地点) の投影位置に風車の画素が出る
-      how: 同じカメラで風車あり・なしを描き、各風車の根元から翼端までの外接矩形を readPixels で読み、色が変わった画素を数える
+      what: 既知の風車 3 基 (塔の矩形が他の風車の塔の矩形にもローター円にも当たらないもののうち、近い順で先頭・中央値・80 % 地点) の投影位置に風車の画素が出る
+      how: 同じカメラで風車あり・なしを描き、各風車の根元からハブまでの塔の矩形を readPixels で読み、色が変わった画素を数える
       expected: 3 基とも変化した画素が 3 以上
     - id: blades-spin-tower-still
       what: 羽根は 2 フレームの間で動き、塔は動かない

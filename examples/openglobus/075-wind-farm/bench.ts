@@ -36,31 +36,39 @@ export async function run(c: Ctx): Promise<void> {
     const x1 = Math.min(W, Math.ceil(b.x + b.w)), y1 = Math.min(H, Math.ceil(b.y + b.h));
     return x1 - x >= 1 && y1 - y >= 1 ? { x, y, w: x1 - x, h: y1 - y } : null;
   };
-  // screen box of a whole turbine (base to blade tip, rotor width)
-  const turbineBox = (t: TurbineInstance, m: Float32Array): Box | null => {
-    const base = project(m, [t.x, t.y, t.z], W, H), top = project(m, [t.x, t.y, t.z + t.hub + t.diameter / 2], W, H);
-    const hub = project(m, [t.x, t.y, t.z + t.hub], W, H);
-    if (!base || !top || !hub) return null;
-    const r = Math.abs(base[1] - top[1]) * (t.diameter / 2) / (t.hub + t.diameter / 2) + 2;
-    return { x: hub[0] - r, y: top[1] - 2, w: 2 * r, h: base[1] - top[1] + 4 };
-  };
-
-  // 1. turbines-at-known-positions: three isolated turbines, near, middle, far
+  // 1. turbines-at-known-positions: three isolated turbines, near, middle,
+  //    far. Each turbine's footprint on screen is its tower (base to hub)
+  //    and its rotor disc; a turbine is isolated when its tower box meets no
+  //    other turbine's tower box or rotor disc. (The whole-turbine boxes
+  //    used before overlapped for all but 2 turbines once the opening view
+  //    came down to 330 m from the nearest rotor.)
   {
     renderer.render(view, WIND, angles);
     const m = renderer.camera!.viewProj, eye = renderer.camera!.eye;
-    const boxes = renderer.turbines.map((t) => ({ t, b: turbineBox(t, m) }));
-    const onScreen = boxes.filter((e) => e.b && e.b.x > 0 && e.b.y > 0 && e.b.x + e.b.w < W && e.b.y + e.b.h < H);
+    const foot = renderer.turbines.map((t) => {
+      const base = project(m, [t.x, t.y, t.z], W, H), hub = project(m, [t.x, t.y, t.z + t.hub], W, H);
+      const top = project(m, [t.x, t.y, t.z + t.hub + t.diameter / 2], W, H);
+      if (!base || !hub || !top) return { t, tower: null, disc: null };
+      const perM = Math.abs(base[1] - hub[1]) / t.hub;
+      const half = Math.max(2, 2.4 * (t.hub / 90) * perM + 1);
+      const tower: Box = { x: base[0] - half, y: hub[1], w: 2 * half, h: base[1] - hub[1] + 2 };
+      return { t, tower, disc: { x: hub[0], y: hub[1], r: Math.abs(hub[1] - top[1]) + 1 } };
+    });
     const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-    const isolated = onScreen.filter((e) => !boxes.some((o) => o !== e && o.b && overlaps(e.b!, o.b)));
+    const meetsDisc = (a: Box, d: { x: number; y: number; r: number }) => {
+      const nx = Math.max(a.x, Math.min(d.x, a.x + a.w)), ny = Math.max(a.y, Math.min(d.y, a.y + a.h));
+      return Math.hypot(nx - d.x, ny - d.y) < d.r;
+    };
+    const onScreen = foot.filter((e) => e.tower && e.tower.x > 0 && e.tower.y > 0 && e.tower.x + e.tower.w < W && e.tower.y + e.tower.h < H);
+    const isolated = onScreen.filter((e) => !foot.some((o) => o !== e && o.tower && (overlaps(e.tower!, o.tower) || meetsDisc(e.tower!, o.disc!))));
     const dist = (t: TurbineInstance) => Math.hypot(t.x - eye[0], t.y - eye[1]);
     isolated.sort((a, b) => dist(a.t) - dist(b.t));
     // near, median and the 80th percentile (the farthest are a few pixels
-    // tall at 24 km, under the fog)
+    // tall at 24 km, in the haze)
     const n = isolated.length;
     const picks = n >= 3 ? [isolated[0], isolated[n >> 1], isolated[Math.floor(n * 0.8)]] : isolated;
-    const res = picks.map(({ t, b }) => {
-      const box = clip(b!)!;
+    const res = picks.map(({ t, tower }) => {
+      const box = clip(tower!)!;
       renderer.render(view, WIND, angles, { turbines: false });
       const without = read(box);
       renderer.render(view, WIND, angles);
