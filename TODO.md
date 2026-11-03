@@ -710,7 +710,7 @@
 - [ ] `cesium-160-geometry-offset-attribute-box-cylinder-ellipsoid-dev` → `examples/cesium/160-geometry-offset-attribute-box-cylinder-ellipsoid-dev/` — [Geometry Offset Attribute Box Cylinder Ellipsoid Dev](https://sandcastle.cesium.com/?src=geometry-offset-attribute-box-cylinder-ellipsoid-dev)
 - [ ] `cesium-161-geometry-offset-attribute-dev` → `examples/cesium/161-geometry-offset-attribute-dev/` — [Geometry Offset Attribute Dev](https://sandcastle.cesium.com/?src=geometry-offset-attribute-dev)
 - [ ] `cesium-162-globe-interior` → `examples/cesium/162-globe-interior/` — [Globe Interior](https://sandcastle.cesium.com/?src=globe-interior)
-- [ ] `cesium-163-globe-materials` → `examples/cesium/163-globe-materials/` — [Globe Materials](https://sandcastle.cesium.com/?src=globe-materials)
+- [x] `cesium-163-globe-materials` → `examples/cesium/163-globe-materials/` — [Globe Materials](https://sandcastle.cesium.com/?src=globe-materials)
 - [ ] `cesium-164-globe-materials-3d-tiles-terrain` → `examples/cesium/164-globe-materials-3d-tiles-terrain/` — [Globe Materials 3D Tiles Terrain](https://sandcastle.cesium.com/?src=globe-materials-3d-tiles-terrain)
 - [ ] `cesium-165-globe-materials-water-mask-elevation-map` → `examples/cesium/165-globe-materials-water-mask-elevation-map/` — [Globe Materials Water Mask Elevation Map](https://sandcastle.cesium.com/?src=globe-materials-water-mask-elevation-map)
 - [ ] `cesium-166-globe-translucency` → `examples/cesium/166-globe-translucency/` — [Globe Translucency](https://sandcastle.cesium.com/?src=globe-translucency)

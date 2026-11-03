@@ -1,0 +1,81 @@
+id: cesium-163-globe-materials
+request: >-
+  CesiumJS の showcase である「Globe Materials」のように、3D 地球儀メッシュ表面上に
+  等高線（Topographic Contours）、標高段彩カラーランプ（Hypsometric Elevation Ramp）、
+  および回転レーダービームと距離リング（Radar Sweep）をプロシージャルに描画し、
+  大気フレネルリム発光を伴う惑星シェーダーを対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: プロシージャル地球マテリアルの描画に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 地球球体とマテリアルが現れる
+  - id: procedural-globe-materials
+    need: 等高線、標高段彩、レーダースイープが 3D 球体上で正しくシェーディング描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: procedural-globe-materials}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/163-globe-materials/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 地球球体メッシュ生成とプロシージャルシェーダーの初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: レーダースイープおよび自転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に球面調和関数 elevation を持つ 3D 地球メッシュを動的生成
+
+performance_knowledge:
+  - id: procedural-analytic-contours
+    finding: テクスチャサンプリングではなくフラグメントシェーダー内の fract と smoothstep により、極めてシャープかつズームレベルに依存しない等高線を描画可能
+    evidence: テクスチャメモリゼロでミリ秒未満のシェーダー評価
+    applies_when: 地形等高線・距離リング・等値線マテリアル
+  - id: screen-space-radar-sweep
+    finding: 法線ベクトルの方位角 atan2(z, x) と現在走査角の mod 差分による残光減衰計算で、動的レーダー走査を頂点変更なしにフラグメント単独で描画可能
+    evidence: 動的頂点 VBO 書き換えゼロ
+    applies_when: レーダー走査・セクター走査・スキャンエフェクト
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/163-globe-materials/index.html
+      - examples/cesium/163-globe-materials/main.ts
+      - examples/cesium/163-globe-materials/materials.ts
+      - examples/cesium/163-globe-materials/render.ts
+  not_doing:
+    - CesiumJS ライブラリの読み込み（WebGL2 を直接使用）
+    - 外部ラスターテクスチャ画像のロード（すべて数学的プロシージャル計算）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が暗い宇宙空間色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 暗い背景色（r < 30, g < 30, b < 45）であること
+    - id: globe-materials-rendered
+      what: 画面中央に地球球体表面が段彩カラーで描画されている
+      how: gl.readPixels で中心ピクセル色を取得
+      expected: 地球マテリアル色（r > 15 || g > 20 || b > 25）であること
+    - id: radar-sweep-active
+      what: 地球球体上のレーダースイープおよび等高線が描画されている
+      how: gl.readPixels で地球中腹のピクセル色を取得
+      expected: 有効な地球表面ピクセル色（r > 10 || g > 20 || b > 20）であること
