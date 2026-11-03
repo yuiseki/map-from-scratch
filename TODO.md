@@ -778,7 +778,7 @@
 - [ ] `cesium-228-panorama` → `examples/cesium/228-panorama/` — [Panorama](https://sandcastle.cesium.com/?src=panorama)
 - [ ] `cesium-229-parallels-and-meridians` → `examples/cesium/229-parallels-and-meridians/` — [Parallels And Meridians](https://sandcastle.cesium.com/?src=parallels-and-meridians)
 - [ ] `cesium-230-partial-ellipsoids` → `examples/cesium/230-partial-ellipsoids/` — [Partial Ellipsoids](https://sandcastle.cesium.com/?src=partial-ellipsoids)
-- [ ] `cesium-231-particle-system` → `examples/cesium/231-particle-system/` — [Particle System](https://sandcastle.cesium.com/?src=particle-system)
+- [x] `cesium-231-particle-system` → `examples/cesium/231-particle-system/` — [Particle System](https://sandcastle.cesium.com/?src=particle-system)
 - [x] `cesium-232-particle-system-fireworks` → `examples/cesium/232-particle-system-fireworks/` — [Particle System Fireworks](https://sandcastle.cesium.com/?src=particle-system-fireworks)
 - [x] `cesium-233-particle-system-tails` → `examples/cesium/233-particle-system-tails/` — [Particle System Tails](https://sandcastle.cesium.com/?src=particle-system-tails)
 - [x] `cesium-234-particle-system-weather` → `examples/cesium/234-particle-system-weather/` — [Particle System Weather](https://sandcastle.cesium.com/?src=particle-system-weather)

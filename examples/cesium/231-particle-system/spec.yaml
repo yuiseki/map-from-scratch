@@ -1,0 +1,80 @@
+id: cesium-231-particle-system
+request: >-
+  CesiumJS の showcase である「Particle System」のように、ロケットエンジンや噴出孔から立ち上る
+  高速な火炎コア・上昇する煙プルーム・舞い散る火の粉（エンバー）を 3D 空間でシミュレートし、
+  発熱する金属製発射パッドと共に対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: パーティクルシステムの描画に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D パッドと火炎パーティクルが現れる
+  - id: 3d-particle-system
+    need: 3D 空間に発射パッドと炎・煙・火の粉のパーティクルプルームが正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 25, unit: ms, requirement: 3d-particle-system}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/231-particle-system/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期発射パッドと火炎エミッターの初期化と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 火炎・煙プルームアニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に発射パッドジオメトリおよびパーティクルエミッターバッファをメモリ内で動的生成
+
+performance_knowledge:
+  - id: dual-blend-particle-passes
+    finding: 煙層（Alpha Blend）と火炎・火の粉層（Additive Blend）を 2 パスに分離しつつ単一 VBO からオフセット描画することで、深度ソートなしにリアルな噴煙と激しい発光コアを両立
+    evidence: 単一 VBO バインドで描画コール 2 回のみ
+    applies_when: 炎と煙が混在するパーティクルシミュレーション
+  - id: cone-emitter-vector-math
+    finding: 直交基底変換による均一立体角サンプリングで方向円錐内の初期速度を高速生成
+    evidence: 三角関数と乗算のみで安定した円錐噴射を実現
+    applies_when: ノズル噴射・指向性パーティクルエミッター
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/231-particle-system/index.html
+      - examples/cesium/231-particle-system/main.ts
+      - examples/cesium/231-particle-system/particle.ts
+      - examples/cesium/231-particle-system/render.ts
+  not_doing:
+    - CesiumJS や Three.js などの重量フレームワークの導入
+    - CPU 側での全粒子距離ソート（描画順の分離と加算合成で代替）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が暗い背景色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 暗い背景色（r < 40, g < 40, b < 50）であること
+    - id: ground-pad-rendered
+      what: 画面下部に発射パッドが描画されている
+      how: gl.readPixels で発射パッド領域のピクセル色を取得
+      expected: パッドの描画色（r > 10 || g > 15 || b > 20）であること
+    - id: fire-plume-rendered
+      what: 火炎コア領域に高温の炎パーティクルが描画されている
+      how: gl.readPixels で火炎プルーム中央のピクセル色を取得
+      expected: 強い赤黄発光（r > 60 && g > 30）を持つこと
