@@ -1,0 +1,55 @@
+id: webgpu-009-arc-layer
+request: >-
+  全米の郡（County）間の人口移動フローデータを、WebGPU の 3D 放物線リボン（ArcLayer）としてリアルタイム立体描画したい。
+
+requirements:
+  - id: arc-3d
+    need: 始点と終点の間の 3D 放物線リボン幾何を WGSL 頂点シェーダー内でリアルタイム生成する
+    unmeasured: verification.checks の check-rendered-arcs で確かめる
+  - id: smooth-arcs
+    need: 3,000 本以上の 3D アーク描画とカメラ回転が 60 fps で滑らかに動作する
+    rationale: 60 Hz の 1 フレーム 16.7 ms 以内
+  - id: fast-startup
+    need: アークデータの読み込みと初回描画が速やかに完了する
+    rationale: 3D 放物線リボンの初期化と初回描画が 2 秒以内
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 15000, unit: B, requirement: fast-startup}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: fast-startup}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-arcs}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/009-arc-layer/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+
+datasets:
+  served:
+    - data/baked/deckgl-001-arc-layer/arcs.bin
+
+performance_knowledge:
+  - "deck.gl の ArcLayer は 3D 放物線メッシュを CPU ではなく頂点シェーダーで評価する。WebGPU でも頂点シェーダーで t * (1 - t) を計算することで CPU 頂点生成コストをゼロに抑えられる。"
+  - "加算ブレンド（color: { srcFactor: 'src-alpha', dstFactor: 'one' }）により、重なり合う移動フローが鮮やかなネオングローとして表現される。"
+
+architecture_selection:
+  chosen:
+    api: webgpu
+    shading: wgsl
+    pipeline: instanced-triangle-strip
+    code:
+      - examples/webgpu/009-arc-layer/index.html
+      - examples/webgpu/009-arc-layer/main.ts
+      - examples/webgpu/009-arc-layer/render.ts
+      - examples/webgpu/009-arc-layer/arc.ts
+  not_doing:
+    - "CPU 側での放物線ポリゴン分割: GPU 頂点シェーダーで行うため不要"
+    - "外部地図ライブラリ: WebGPU API を直接利用"
+
+verification:
+  checks:
+    - id: check-rendered-arcs
+      what: 画面中央部にアークのネオンカラー（シアンまたはマゼンタ）が描画されていることを検証
+      how: 画面ピクセルを読み戻し、アーク色ピクセル数をカウント
+      expected: 50 ピクセル以上のアーク色が検出される

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全米人口移動 3D アーク (WebGPU) | map from scratch</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.45 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #060b13; color: #f0f6f8; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #panel { position: fixed; top: 14px; left: 14px; max-width: min(425px, calc(100vw - 28px)); padding: 15px; border-radius: 13px; border: 1px solid #ffffff30; background: #0b1522e8; backdrop-filter: blur(10px); box-shadow: 0 12px 32px #0008; }
+  h1 { margin: 0 0 4px; font-size: 19px; }
+  p { margin: 0 0 8px; color: #c0d0d8; font-size: 13px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+  button { padding: 5px 10px; border: 1px solid #87abb461; border-radius: 7px; background: #1f3748; color: inherit; font: inherit; cursor: pointer; transition: background 0.15s; }
+  button:hover, button:focus-visible { background: #325870; }
+  select { width: 100%; padding: 6px 10px; border: 1px solid #87abb461; border-radius: 7px; background: #152634; color: inherit; font: inherit; margin: 4px 0 8px; }
+  label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; color: #c0d0d8; font-size: 13px; }
+  input[type="range"] { flex: 1; accent-color: #70c5bc; }
+  .val { width: 45px; text-align: right; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 12px; }
+  .ramp { flex: 1; height: 10px; border-radius: 5px; background: linear-gradient(to right, #14c0ff, #ff387a); }
+  #detail, #status { color: #bfd2dc; font-variant-numeric: tabular-nums; font-size: 12px; }
+  #detail { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ffffff20; min-height: 2.5em; }
+  #status { margin-top: 4px; overflow-wrap: anywhere; }
+  #credit { position: fixed; right: 12px; bottom: 10px; max-width: min(620px, calc(100vw - 24px)); padding: 6px 9px; border-radius: 6px; background: #07101ae8; font-size: 11px; }
+  a { color: #a9e0da; }
+  @media(max-width:600px) { #panel { top: 8px; left: 8px; padding: 11px; max-width: calc(100vw - 16px); } }
+</style>
+<canvas id="map" aria-label="全米の郡間人口移動をWebGPUで3D立体放物線アーク表示"></canvas>
+<section id="panel">
+  <h1>全米人口移動 3D アーク (WebGPU)</h1>
+  <p>郡間の人口移動フローを 3D 放物線リボンとネオングローでリアルタイム描画します。</p>
+  <div class="row" aria-label="視点プリセット">
+    <button data-place="us">全米全景</button>
+    <button data-place="california">カリフォルニア</button>
+    <button data-place="texas">テキサス</button>
+    <button data-place="ny">ニューヨーク</button>
+  </div>
+  <label for="county-select" style="display:block; margin-bottom:2px;">表示対象の郡:</label>
+  <select id="county-select"></select>
+  <label for="height-scale">アークの高さ <input id="height-scale" type="range" min="0.3" max="3.0" value="1.2" step="0.1"><span id="height-val" class="val">1.2×</span></label>
+  <label for="line-width">アークの太さ <input id="line-width" type="range" min="1.0" max="6.0" value="2.2" step="0.2"><span id="width-val" class="val">2.2px</span></label>
+  <div class="legend"><span>流出元 (青)</span><div class="ramp"></div><span>流入先 (赤)</span></div>
+  <p style="font-size: 11px; margin: 4px 0;">ドラッグで回転、右ドラッグで移動、ホイールでズーム</p>
+  <div id="detail"><strong>全米 上位フロー</strong><small>国内の主要移動 3,000 アークを表示中</small></div>
+  <div id="status" role="status">アークデータを読み込み中…</div>
+</section>
+<div id="credit">データ: <a href="https://github.com/visgl/deck.gl-data/tree/master/examples/arc">US Census Bureau (2009-2013 5-Year ACS)</a> / <a href="https://deck.gl/examples/arc-layer">deck.gl ArcLayer</a></div>
+<script type="module" src="./main.ts"></script>
