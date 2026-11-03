@@ -74,6 +74,7 @@ architecture_selection:
       - examples/maplibre/053-create-a-heatmap-layer/index.html
       - examples/maplibre/053-create-a-heatmap-layer/main.ts
       - examples/maplibre/053-create-a-heatmap-layer/map.ts
+      - examples/maplibre/053-create-a-heatmap-layer/heatmap-data.ts
     dependencies: []
     why: ガウシアンスプライトの加算合成とカラーランプによる高速ヒートマップ描画に Canvas 2D が最適
   alternatives:

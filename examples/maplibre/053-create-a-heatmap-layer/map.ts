@@ -1,3 +1,4 @@
+import { decodeHeatmapData } from './heatmap-data.ts';
 type Polygon = [number, number][][];
 
 const mercX = (lon: number): number => (lon + 180) / 360;
@@ -129,9 +130,9 @@ export class MaplibreHeatmapMap {
 
     this.polygons = (await landRes.json()) as Polygon[];
     const eqBuf = await eqRes.arrayBuffer();
-    const count = new Uint32Array(eqBuf, 4, 1)[0];
+    const { count, points } = decodeHeatmapData(eqBuf);
     this.pointCount = count;
-    this.points = new Float32Array(eqBuf, 8, count * 3);
+    this.points = points;
 
     this.updateHeatmapCache();
     this.draw();

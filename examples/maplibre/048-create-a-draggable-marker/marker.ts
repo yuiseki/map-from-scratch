@@ -25,6 +25,8 @@ const invMercY = (my: number) => (Math.atan(Math.exp((1 - 2 * my) * Math.PI)) * 
 
 const START_LNG = 0;
 const START_LAT = 0;
+export const markerHit = (x: number, y: number, mx: number, my: number): boolean =>
+  Math.abs(x - mx) <= PIN_W / 2 + 2 && y >= my - PIN_H - 2 && y <= my + 6;
 
 function makePinSprite(scale: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
@@ -161,7 +163,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function hitsMarker(x: number, y: number): boolean {
     const [mx, my] = getMarkerScreenPos();
-    return Math.abs(x - mx) <= PIN_W / 2 + 2 && y >= my - PIN_H - 2 && y <= my + 6;
+    return markerHit(x, y, mx, my);
   }
 
   function onPointerDown(e: PointerEvent): void {

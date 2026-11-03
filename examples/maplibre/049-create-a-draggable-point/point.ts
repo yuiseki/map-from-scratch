@@ -29,6 +29,7 @@ const invMercY = (my: number): number =>
 
 const START_LNG = 0;
 const START_LAT = 0;
+export const pointHit = (x: number, y: number, px: number, py: number): boolean => Math.hypot(x - px, y - py) <= HIT_R;
 
 function makePointSprite(scale: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
@@ -152,7 +153,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function hitsPoint(x: number, y: number): boolean {
     const [px, py] = getPointScreenPos();
-    return Math.hypot(x - px, y - py) <= HIT_R;
+    return pointHit(x, y, px, py);
   }
 
   function onPointerDown(e: PointerEvent): void {
