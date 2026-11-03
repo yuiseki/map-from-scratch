@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { source } from '../../tools/sources.ts';
 import { equalEarth, simplify, polygonsOf } from '../../tools/geo.ts';
+import { morton, POP_MAX, radius10, R_MAX, R_MIN } from './city-encoding.ts';
 
 // The fields of the Natural Earth files this bake reads.
 interface LandCollection { features: { geometry: Parameters<typeof polygonsOf>[0] }[] }
@@ -47,12 +48,6 @@ const q = ([x, y]: number[]): [number, number] => [Math.round(((x + X) / (2 * X)
 const delta16 = (a: number[]): number[] => a.map((v, i) => (v - (i ? a[i - 1] : 0)) & 0xffff);
 const gz = (b: Uint8Array): number => gzipSync(b, { level: 9 }).length;
 const bytes = (...arrays: ArrayBufferView[]): Buffer => Buffer.concat(arrays.map((a) => Buffer.from(a.buffer, a.byteOffset, a.byteLength)));
-
-// Symbol radius in CSS px: area proportional to population, Tokyo (35.7 M)
-// gets R_MAX. Stored as radius * 10 in a byte. Places without a population
-// (POP_MAX <= 0) get the minimum.
-export const R_MAX = 18, R_MIN = 1.5, POP_MAX = 35676000;
-const radius10 = (pop: number): number => Math.round(10 * Math.max(R_MIN, R_MAX * Math.sqrt(Math.max(0, pop) / POP_MAX)));
 
 // --- land
 // Countries dissolved into land first: shared borders would otherwise be
@@ -160,11 +155,6 @@ Object.entries({ SSD: '南スーダン', SJM: 'スヴァールバル諸島およ
   .forEach(([k, v]) => jaCountry.set(k, v));
 const places = (JSON.parse(readFileSync(source('ne-populated-places'), 'utf8')) as PlaceCollection).features;
 const cnames: string[] = [], cindex = new Map<string, number>();
-const morton = (x: number, y: number): bigint => {
-  let m = 0n;
-  for (let b = 15; b >= 0; b--) m = (m << 2n) | BigInt(((y >> b) & 1) << 1 | ((x >> b) & 1));
-  return m;
-};
 const cities = places.map((f) => {
   const p = f.properties;
   const country = jaCountry.get(p.ADM0_A3) ?? p.ADM0NAME;

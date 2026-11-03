@@ -21,12 +21,12 @@ export interface CanvasMap {
   addCanvas(c: HTMLCanvasElement, corners: number[][]): void;
 }
 
-const merc = (lon: number, lat: number): [number, number] => {
+export const merc = (lon: number, lat: number): [number, number] => {
   const s = Math.sin((Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180);
   return [lon / 360 + 0.5, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)];
 };
 // Linear interpolation between the zoom stops of the demotiles style.
-const stops = (z: number, s: number[]): number => {
+export const stops = (z: number, s: number[]): number => {
   for (let i = 2; i < s.length; i += 2) if (z < s[i] || i + 2 >= s.length) {
     const t = Math.max(0, Math.min(1, (z - s[i - 2]) / (s[i] - s[i - 2])));
     return s[i - 1] + t * (s[i + 1] - s[i - 1]);

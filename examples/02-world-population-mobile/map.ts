@@ -33,6 +33,30 @@ const COLORS = ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#e34a33'
 export type CountryRow = [string, string, number];
 export interface Country { code: string; name: string; population: number }
 export interface Camera { x: number; y: number; zoom: number }
+export interface WorldGeometry { nv: number; nt: number; nr: number; pos: Uint16Array; idx: Uint32Array; ids: Uint16Array }
+
+// Decode the baked delta-coded geometry into the buffers used by WebGL.
+export function decodeWorldGeometry(bin: ArrayBuffer): WorldGeometry {
+  const [nv, nt, nr] = new Uint32Array(bin, 0, 3);
+  let o = 12;
+  const take = <A>(T: { new (b: ArrayBuffer, o: number, n: number): A; BYTES_PER_ELEMENT: number }, n: number): A => { const a = new T(bin, o, n); o += n * T.BYTES_PER_ELEMENT; return a; };
+  const dx = take(Uint16Array, nv), dy = take(Uint16Array, nv), ids = take(Uint16Array, nv);
+  o = (o + 3) & ~3;
+  const rings = take(Uint32Array, nr), dt = take(Uint32Array, nt);
+  const pos = new Uint16Array(nv * 2);
+  for (let i = 0, x = 0, y = 0; i < nv; i++) {
+    pos[2 * i] = x = (x + dx[i]) & 0xffff;
+    pos[2 * i + 1] = y = (y + dy[i]) & 0xffff;
+  }
+  const idx = new Uint32Array(nt + nv * 2);
+  for (let i = 0, t = 0; i < nt; i++) idx[i] = t = (t + dt[i]) >>> 0;
+  for (let r = 0, k = nt, s = 0; r < nr; s += rings[r++]) {
+    for (let j = 0; j < rings[r]; j++) { idx[k++] = s + j; idx[k++] = s + ((j + 1) % rings[r]); }
+  }
+  // Keep the baked per-vertex country id available to callers that need it.
+  return { nv, nt, nr, pos, idx, ids };
+}
+
 export interface WorldMap {
   gl: WebGL2RenderingContext;
   cam: Camera;
@@ -51,23 +75,8 @@ export async function mount(canvas: HTMLCanvasElement, base: string, onPick?: (c
   ]);
   // Undo the bake's delta coding (see bake.ts for the layout). Borders are
   // rebuilt from ring lengths: segments between consecutive ring vertices.
-  const [nv, nt, nr] = new Uint32Array(bin, 0, 3);
-  let o = 12;
-  const take = <A>(T: { new (b: ArrayBuffer, o: number, n: number): A; BYTES_PER_ELEMENT: number }, n: number): A => { const a = new T(bin, o, n); o += n * T.BYTES_PER_ELEMENT; return a; };
-  const dx = take(Uint16Array, nv), dy = take(Uint16Array, nv), ids = take(Uint16Array, nv);
-  o = (o + 3) & ~3;
-  const rings = take(Uint32Array, nr), dt = take(Uint32Array, nt);
-  const pos = new Uint16Array(nv * 2);
-  for (let i = 0, x = 0, y = 0; i < nv; i++) {
-    pos[2 * i] = x = (x + dx[i]) & 0xffff;
-    pos[2 * i + 1] = y = (y + dy[i]) & 0xffff;
-  }
+  const { nv, nt, pos, idx, ids } = decodeWorldGeometry(bin);
   const nl = nv * 2;
-  const idx = new Uint32Array(nt + nl);
-  for (let i = 0, t = 0; i < nt; i++) idx[i] = t = (t + dt[i]) >>> 0;
-  for (let r = 0, k = nt, s = 0; r < nr; s += rings[r++]) {
-    for (let j = 0; j < rings[r]; j++) { idx[k++] = s + j; idx[k++] = s + ((j + 1) % rings[r]); }
-  }
 
   const ctx = canvas.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: false });
   if (!ctx) throw new Error('WebGL2 is not available');
