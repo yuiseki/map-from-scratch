@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, glRenderer } from '../../../harness/page/bench.ts';
 import type { GlobeRenderer } from './render.ts';
 
 const renderer = (window as unknown as { __mfsRenderer: GlobeRenderer }).__mfsRenderer;
@@ -6,6 +6,8 @@ const renderer = (window as unknown as { __mfsRenderer: GlobeRenderer }).__mfsRe
 export async function run(): Promise<void> {
   const gl = renderer.gl;
   gl.canvas.addEventListener('webglcontextlost', () => emit({ error: 'webglcontextlost' }));
+
+  emit({ info: { gpu: glRenderer(gl) } });
 
   await new Promise(requestAnimationFrame);
   await new Promise(requestAnimationFrame);
@@ -48,10 +50,10 @@ export async function run(): Promise<void> {
     detail: `corner pixel RGB(${cornerPixel[0]}, ${cornerPixel[1]}, ${cornerPixel[2]})`,
   });
 
-  // Measure 30 frames
+  // Measure 15 frames
   const frameIntervals: number[] = [];
   let last = performance.now();
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 15; i++) {
     renderer.render(0.016);
     await new Promise(requestAnimationFrame);
     const now = performance.now();
@@ -62,4 +64,7 @@ export async function run(): Promise<void> {
   frameIntervals.sort((a, b) => a - b);
   const p95 = frameIntervals[Math.floor(frameIntervals.length * 0.95)];
   emit({ metric: 'frame_interval_ms', value: p95 });
+  emit({ done: true });
 }
+
+run();
