@@ -1,0 +1,164 @@
+id: openglobus-075-wind-farm
+request: >-
+  OpenGlobus の Wind Farm Instanced Objects Animation 例のように、たくさんの風車をインスタンス描画で
+  立体地形の上に並べ、ローターを回したい。風車の位置は OSM の実データ (power=generator,
+  generator:source=wind) で日本の密な風力発電所の一帯をすべて置き、地形は Mapterhorn の標高に
+  陰影をつけて敷く。全風車は共通の風向にヨー角を合わせ、風向と風速を画面の操作で変えられること。
+requirements:
+  - id: real-turbines
+    need: 津軽の海岸 (青森県つがる市・鰺ヶ沢町) の風車を OSM の実位置ですべて描き、高さとローター径はタグがあれば使う
+    rationale: ベイクが箱内の全 92 基を書き出し、画面には instance 数 92 の描画が出る。既知の風車 3 基の投影位置に風車の画素が出ることを読み戻しで確かめる
+    unmeasured: 数の一致はベイクのログと bench の info.turbines で記録する
+  - id: on-terrain
+    need: 風車の塔の根元が地形の高さに立つ
+    rationale: 根元の高さは描いたメッシュの面の高さ (heightAt) から取り、単体テストで面の平面上にあることを確かめる。ベイクは z12 DEM との差が 12 m 以内でなければ失敗する
+    unmeasured: 画素ではなく terrain.test.ts とベイクの検査で確かめる
+  - id: spinning
+    need: 羽根が風車ごとの位相と速さで回り、塔は動かない
+    rationale: 2 フレームで羽根の画素が変わり、塔の画素は変わらないことを読み戻す
+    unmeasured: 数値の予算ではなく verification の blades-spin-tower-still で確かめる。回転数の式は turbine.test.ts
+  - id: wind-control
+    need: 共通の風向に全風車が向き、風向と風速を操作で変えられる
+    rationale: 風向を変えるとローター面のシルエットの幅が変わることを読み戻す。風速は回転数を変える (turbine.test.ts)
+    unmeasured: 数値の予算ではなく verification の wind-direction-changes-rotor と turbine.test.ts で確かめる
+  - id: smooth
+    need: 全風車が回っている間、カメラを動かしても滑らかに描ける
+    rationale: 60 Hz で 16.7 ms。全風車アニメーション中のカメラ周回で frame_ms p95 16.7 ms 以内
+  - id: few-draw-calls
+    need: 風車は GPU インスタンシングで 1 回の draw call にまとめる
+    rationale: フレームあたりの draw call は空・地形・風車の 3 回。上限 3
+  - id: quick-start
+    need: ページを開いてすぐに風車と地形が出る
+    rationale: 初回フレーム p50 1,500 ms 以内 (ローカル配信、076 と同じ目安)
+  - id: compact
+    need: 地図エンジンなしの静的ファイルだけで、転送量を小さく保つ
+    rationale: 地形 80 m 格子 399×598 (477,244 B、gzip 186 KB) と風車 JSON (5,185 B) とコード。転送 700 KB 以内 (無圧縮配信で約 525 KB)、コード gzip 18 KB 以内 (型付きソースの gzip -9 で 13,999 B)
+  - id: terrain-shaded
+    need: 地形が陰影つきで風車の下に見え、空にはグラデーションがある
+    rationale: 画面下部が空の色ではなく、陰影で明暗の幅があることを読み戻す
+    unmeasured: 数値の予算ではなく verification の terrain-visible で確かめる
+  - id: hardware
+    need: PC のブラウザでハードウェア GPU 描画する
+    unmeasured: bench の info.gpu に記録する
+
+evaluation:
+  budgets:
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth}
+    - {metric: gpu_ms, stat: p95, max: 8, unit: ms, requirement: smooth}
+    - {metric: draw_calls, stat: max, max: 3, unit: calls, requirement: few-draw-calls}
+    - {metric: transfer_kb, stat: max, max: 700, unit: KB, requirement: compact}
+    - {metric: code_gzip_bytes, max: 18000, unit: B, requirement: compact}
+    - {metric: turbines_drawn, stat: min, min: 92, unit: turbines, requirement: real-turbines}
+  gates: [WebGL2 で描画, 全ての実画面ピクセル検査が通る, WebGL context loss がない, ハードウェア GPU]
+
+benchmarks:
+  runtime: browser
+  page: examples/openglobus/075-wind-farm/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: initial
+      what: >-
+        first_frame_ms はページの最初のスクリプト (index.html の inline script) から、terrain.bin と
+        turbines.json を読み終えて地形と全風車を描いた最初のフレームの描画命令を出し終えるまで。bench.ts の読み込みは含まない
+      metrics: [first_frame_ms, transfer_kb, draw_calls, turbines_drawn]
+    - id: orbit-animating
+      what: 全 92 基のローターを毎フレーム進めながら、カメラの方位を 120 フレームで 1 周、距離と俯角も揺らす。readPixels で GPU 完了を待つ
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+
+datasets:
+  bake: [node, examples/openglobus/075-wind-farm/bake.ts]
+  sources:
+    - id: osm-japan-src-2026-08
+      origin: /sata_hdd_24tb/hf_data/__published/osm-japan-src-2026-08/data/parquet/planet_osm_point.parquet (hf:yuiseki/osm-japan-src-2026-08)
+      license: ODbL 1.0, © OpenStreetMap contributors (画面に表示)
+    - id: mapterhorn-planet
+      origin: z:mapterhorn/2026-01-06/planet.pmtiles (/sata_hdd_24tb/www/html/static/mapterhorn/2026-01-06/planet.pmtiles)
+      license: Mapterhorn の帰属表示 (mapterhorn.com/attribution)。日本の標高は国土地理院の数値標高モデル。画面に「© Mapterhorn / 国土地理院」を表示
+  outputs:
+    - data/baked/openglobus-075-wind-farm/terrain.bin
+    - data/baked/openglobus-075-wind-farm/turbines.json
+  preparation:
+    - DuckDB で osm2pgsql の点テーブルから power=generator かつ generator:source=wind を取り、EPSG:3857 を経度緯度に戻して 140.10-140.45E 40.72-40.97N の 92 基を選ぶ
+    - 高さは OSM の height (翼端高)、height:hub、rotor:diameter から決める。height だけならローター径 = 0.69 × 翼端高 (ウィンドファームつがるの 98.3 m ハブ + 103 m ローター = 149.8 m から)、タグがなければ翼端高 120 m
+    - 経度緯度を (140.25E, 40.85N) 中心の局所メートル (正距円筒、cos 緯度) に変換
+    - Mapterhorn z10 の Terrarium WebP を GDAL で復号し、140.08-140.46E 40.60-41.03N を 80 m 格子に双線形で標本化、0.25 m 単位の uint16 にする (海は 0 m)
+    - z12 タイルも復号し、各風車で格子面の高さと z12 DEM の差を測る。12 m を超えたらベイク失敗
+
+performance_knowledge:
+  - id: one-instanced-draw
+    finding: 塔・ナセル・ハブ・3 枚の羽根を 1 つのメッシュにし、頂点属性 part で静止部と回転部を分けると、全風車が 1 回の drawArraysInstanced になる
+    evidence: 未計測 (bench はまだ走らせていない)。フレームの draw call は空・地形・風車の 3 回
+    applies_when: 同じ形の動く物体を多数置くとき
+  - id: rotor-angle-on-cpu
+    finding: ローター角は uniform の時刻×角速度ではなく、CPU で風車ごとに積分して 92 個の float を毎フレーム bufferSubData する
+    evidence: 時刻×角速度だと風速スライダーを動かした瞬間に全ローターの角度が跳ぶ。積分なら跳ばない (turbine.test.ts)。アップロードは 368 B/フレーム
+    applies_when: アニメーションの速さを利用者が連続に変えられるとき
+  - id: base-from-drawn-mesh
+    finding: 塔の根元の高さは DEM そのものではなく描いた三角形の面から取る
+    evidence: 面から取れば描いた地形に塔が埋まったり浮いたりしない。その面の高さと z12 DEM (14.5 m 画素) の差は 92 基で平均 1.15 m、最大 6.83 m (ベイクのログ)
+    applies_when: 地形メッシュの上に物を立てるとき
+  - id: grid-edge-fade
+    finding: 範囲を切った地形は、端の 4 km を地平の色へ溶かさないと空の前に崖のような直線が出る
+    evidence: 最初の画面 (40.99N まで、距離 16 km) で東の端が地平に直線で見えた。端のフェードと北へ 41.03N までの拡張 (行数 542 → 598、+44,688 B) で消えた
+    applies_when: 固定範囲の地形を低い俯角で見せるとき
+  - id: check-row-picks-horizon
+    finding: 風向の検査で、ハブの高さの行を画面全幅で読むと地平線上の遠い風車まで拾い、正面向きも真横向きも幅 1,253 px と 1,257 px で区別できなかった
+    evidence: 行をそのローターの外接範囲に限り、さらに背景に風車のない海側 (方位 290°) を向いた近景にすると 89 px と 21 px に分かれた。読み戻し範囲を 1 基の外接矩形に絞っても、地平の風車 (80 % 地点の矩形) が同じ行に入っていた
+    applies_when: 同じ物が多数並ぶ画面で 1 個の形を読み戻すとき
+  - id: sanity-run-not-bench
+    finding: bin/mfs bench は未実行。開発中に GPU つきコンテナの Chromium で ?bench を 1 回開き、検査 4 件が通ることだけ確かめた
+    evidence: >-
+      RTX 3060 (ANGLE Vulkan)。draw_calls 3、turbines_drawn 92、gpu_ms 約 0.11-0.14 ms/フレーム。--virtual-time-budget で走らせたため
+      first_frame_ms (24-32 ms) と frame_ms (0 ms) は計測値として使えない。予算判定は後の bench で行う
+    applies_when: 計測の前に検査の座標と閾値を確かめるとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (type stripped by the local server and Pages builder)
+    gpu: hardware
+    code:
+      - examples/openglobus/075-wind-farm/index.html
+      - examples/openglobus/075-wind-farm/main.ts
+      - examples/openglobus/075-wind-farm/render.ts
+      - examples/openglobus/075-wind-farm/terrain.ts
+      - examples/openglobus/075-wind-farm/turbine.ts
+      - examples/openglobus/075-wind-farm/camera.ts
+    dependencies: []
+    why: >-
+      範囲が固定の一帯なので、地形は 1 枚の格子を 1 回の drawElements で、高さは R16UI テクスチャから頂点シェーダーで
+      引いて陰影もそこで計算する。風車は手続きメッシュ 1 つを instance 属性 (位置・高さ・半径) と毎フレームの
+      ローター角で 92 回複製する。空は逆投影した視線の仰角でグラデーションを塗る全画面三角形
+  alternatives:
+    - option: OpenGlobus + glTF 風車 (原典)
+      rejected_because: 全球エンジンと glTF ローダーと Bing 画像は、この一帯の 92 基の表示に要らない。比較は未計測
+    - option: 風車ごとに draw call (原典は Entity 階層ごとに描く)
+      rejected_because: 92 × 2 回の draw call と uniform 更新になる。インスタンシングなら 1 回。比較は未計測
+    - option: 全球の楕円体座標
+      rejected_because: 32 × 43 km の範囲では局所メートルで誤差 0.1 % 未満、地球の曲率 (端で約 36 m の落ち込み) は描かない
+  not_doing: [全球表示, タイル LOD・ストリーミング, 航空写真, 風車の追加 (原典の Ctrl+クリック), 影, 時刻と太陽の位置, ピッキング, ラベル]
+
+verification:
+  checks:
+    - id: turbines-at-known-positions
+      what: 既知の風車 3 基 (他と外接矩形が重ならないもののうち、近い順で先頭・中央値・80 % 地点) の投影位置に風車の画素が出る
+      how: 同じカメラで風車あり・なしを描き、各風車の根元から翼端までの外接矩形を readPixels で読み、色が変わった画素を数える
+      expected: 3 基とも変化した画素が 3 以上
+    - id: blades-spin-tower-still
+      what: 羽根は 2 フレームの間で動き、塔は動かない
+      how: 最も近い風車でローター角だけを 0.6 rad 進めた 2 フレームを描き、ローター円の外接矩形と、羽根の届かない塔の下部の矩形を読み比べる
+      expected: ローター矩形で変化した画素が 20 以上、塔下部の矩形では 0
+    - id: wind-direction-changes-rotor
+      what: 風向を変えるとローター面のシルエットが変わる
+      how: 最も近い風車を海側 (方位 290°) に向いた近景で、羽根を 1 枚水平にし、ローターがカメラを向く風向と真横を向く風向で描く。ハブの高さの 5 行をローターの外接範囲だけ読み、風車なしの画面と色が違う画素の横幅を測る
+      expected: 正面向きの幅が真横向きの 2 倍以上かつ 20 px 超
+    - id: terrain-visible
+      what: 風車の下に陰影のある地形が見え、上には空がある
+      how: 画面下部 1/4 を地形なし (空だけ) と地形ありで読み比べる。岩木山の山頂 (140.303E 40.653N、経度緯度から投影) の下 120×20 px で、地形の画素の明るさの標準偏差を測る。画面最上段は地形なしの画面と比べる
+      expected: 下部の 90 % 以上の画素が空だけの画面と違い、岩木山の矩形の半分以上が地形で標準偏差 4 以上、最上段は 1 画素も変わらない
+  harness: [ページのエラーなし, WebGL context loss なし, info.gpu がソフトウェアラスタライザでない]

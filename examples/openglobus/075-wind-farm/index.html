@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wind Farm — map-from-scratch</title>
+  <meta name="description" content="92 OpenStreetMap wind turbines of the Tsugaru coast, instanced on Mapterhorn terrain with spinning rotors.">
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #10202c; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #d6e3ee; }
+    canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    .panel { position: absolute; background: #f4f8fbe0; border: 1px solid #9fb4c4; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+    #title { top: 14px; left: 14px; pointer-events: none; }
+    #title h1 { margin: 0 0 2px; font-size: 18px; }
+    #title p { margin: 0; color: #3b5163; font-size: 12px; }
+    #controls { top: 14px; right: 14px; width: min(260px, calc(100vw - 60px)); }
+    #controls label { display: block; margin: 2px 0; }
+    #controls input { width: 100%; }
+    #readout { white-space: pre; font: 12px/1.5 ui-monospace, monospace; margin-top: 6px; }
+    #credit { right: 8px; bottom: 8px; padding: 4px 8px; font-size: 11px; }
+    #credit a { color: #1d4f7a; }
+    #hint { left: 14px; bottom: 8px; padding: 4px 8px; font-size: 11px; }
+  </style>
+  <script>window.__mfsPageStart = performance.now();</script>
+</head>
+<body>
+  <canvas id="farm" aria-label="津軽の海岸の風力発電所の立体表示"></canvas>
+  <div id="title" class="panel"><h1>津軽の風車 92 基</h1><p>青森県つがる市・鰺ヶ沢町 · 奥に岩木山</p></div>
+  <div id="controls" class="panel">
+    <label for="dir">風向 (吹いてくる方位)</label>
+    <input id="dir" type="range" min="0" max="359" step="1" value="290">
+    <label for="speed">風速 m/s</label>
+    <input id="speed" type="range" min="0" max="25" step="0.5" value="9">
+    <div id="readout">読み込み中</div>
+  </div>
+  <div id="hint" class="panel">ドラッグで回転・傾き · ホイールで拡大縮小</div>
+  <div id="credit" class="panel">風車: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · 標高: © <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a> / 国土地理院</div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
