@@ -71,6 +71,13 @@ const POPUP_LINES = [
 ];
 const POPUP_H = POPUP_PAD * 2 + POPUP_LINE * POPUP_LINES.length;
 
+export function markerPopupBoundsAt(mx: number, my: number): PopupBounds {
+  const bx = mx - POPUP_W / 2;
+  const by = my - POPUP_OFFSET - POPUP_TIP - POPUP_H;
+  return { x: bx, y: by, width: POPUP_W, height: POPUP_H,
+    closeBtn: { x: bx + POPUP_W - 20, y: by + 6, size: 16 } };
+}
+
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
@@ -122,16 +129,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function getPopupBounds(): PopupBounds {
     const [mx, my] = getScreenPos(MONUMENT[0], MONUMENT[1]);
-    const tipY = my - POPUP_OFFSET;
-    const bx = mx - POPUP_W / 2;
-    const by = tipY - POPUP_TIP - POPUP_H;
-    return {
-      x: bx,
-      y: by,
-      width: POPUP_W,
-      height: POPUP_H,
-      closeBtn: { x: bx + POPUP_W - 20, y: by + 6, size: 16 },
-    };
+    return markerPopupBoundsAt(mx, my);
   }
 
   // ---- raster base map -----------------------------------------------------

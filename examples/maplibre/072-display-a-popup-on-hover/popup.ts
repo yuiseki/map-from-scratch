@@ -31,6 +31,10 @@ const BUBBLE_W = 140;
 const BUBBLE_H = 40;
 const TIP_H = 8;
 
+export function hoverPopupBoundsAt(mx: number, my: number): HoverPopupBounds {
+  return { x: mx - BUBBLE_W / 2, y: my - TIP_H - BUBBLE_H, width: BUBBLE_W, height: BUBBLE_H };
+}
+
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
@@ -79,7 +83,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function getPopupBounds(): HoverPopupBounds {
     const [mx, my] = getMarkerScreenPos();
-    return { x: mx - BUBBLE_W / 2, y: my - TIP_H - BUBBLE_H, width: BUBBLE_W, height: BUBBLE_H };
+    return hoverPopupBoundsAt(mx, my);
   }
 
   function draw(): void {

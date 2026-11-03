@@ -22,6 +22,13 @@ export interface ClickPopupMap {
   destroy(): void;
 }
 
+export function clickPopupBoundsAt(tipX: number, tipY: number): PopupBounds {
+  const bubbleW = 160, bubbleH = 44, tipH = 10;
+  const x = tipX - bubbleW / 2, y = tipY - tipH - bubbleH;
+  return { x, y, width: bubbleW, height: bubbleH,
+    closeBtn: { x: x + bubbleW - 20, y: y + 6, size: 16 } };
+}
+
 type Ring = [number, number][];
 type Polygon = Ring[];
 
@@ -76,18 +83,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function getPopupBounds(): PopupBounds {
     const [tipX, tipY] = getScreenPos(anchorLng, anchorLat);
-    const bubbleW = 160;
-    const bubbleH = 44;
-    const tipH = 10;
-    const bx = tipX - bubbleW / 2;
-    const by = tipY - tipH - bubbleH;
-    return {
-      x: bx,
-      y: by,
-      width: bubbleW,
-      height: bubbleH,
-      closeBtn: { x: bx + bubbleW - 20, y: by + 6, size: 16 },
-    };
+    return clickPopupBoundsAt(tipX, tipY);
   }
 
   function draw(): void {
