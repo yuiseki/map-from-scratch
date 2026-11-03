@@ -16,6 +16,7 @@ import { isLocal, rewriteSpecifiers, toJs } from './specifiers.ts';
 import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
+import { formatObservation, type Observation } from './observational.ts';
 import { galleries, galleryGroups, galleryOf, indexPages, techniques, techniquesOf, toRoot } from './site-pages.ts';
 import type { GalleryId, IndexPage } from './site-pages.ts';
 
@@ -23,6 +24,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(root, process.argv[2] ?? '.cache/site');
 const MAX_FILE = 100 * 1024 * 1024;
 const REPO_URL = 'https://github.com/yuiseki/map-from-scratch';
+const observationsFile = join(root, 'docs/measurements/observational-2026-10-29.json');
+const observations = new Map<string, Observation>(
+  (JSON.parse(readFileSync(observationsFile, 'utf8')) as { cases: Observation[] }).cases.map((o) => [o.id, o]),
+);
 
 // Module specifiers in source files are in tools/specifiers.ts; here, the
 // <script src> and <link href> of HTML.
@@ -127,12 +132,17 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
     if (existsSync(latest)) {
       const r = JSON.parse(readFileSync(latest, 'utf8'));
       const s = (k: string, st = 'p50') => r.summaries?.[k]?.[st];
-      const parts: string[] = [];
+      const parts: string[] = [`計測 ${typeof r.at === 'string' ? r.at.slice(0, 10) : '日付不明'}`];
       if (s('code_gzip_bytes') != null) parts.push(`コード ${(s('code_gzip_bytes') / 1024).toFixed(1)} KB gzip`);
       if (s('data_gzip_bytes')) parts.push(`データ ${(s('data_gzip_bytes') / 1024).toFixed(0)} KB gzip`);
       if (s('first_frame_ms') != null) parts.push(`初回描画 ${Math.round(s('first_frame_ms'))} ms`);
       if (s('frame_ms', 'p95') != null) parts.push(`フレーム p95 ${s('frame_ms', 'p95').toFixed(2)} ms`);
+      const passed = !r.errors?.length && (r.budgets ?? []).every((b: { pass: boolean }) => b.pass)
+        && (r.checks ?? []).every((c: { pass: boolean }) => c.pass);
+      parts.push(passed ? '予算・表示確認OK' : '予算または表示確認に未達');
       numbers = `<p class="num">${esc(parts.join(' ・ '))}</p>`;
+    } else if (observations.has(id)) {
+      numbers = `<p class="num">${esc(formatObservation(observations.get(id)!))}</p>`;
     }
     const tag = spec.baseline ? ' <span class="tag">比較用</span>' : '';
     const runtimeTag = spec.runtime === 'native' ? ' <span class="tag">ソース・計測結果</span>' : '';
@@ -140,6 +150,9 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
     const action = spec.runtime === 'browser' ? '操作する ↗' : '実装を見る ↗';
     const requestLink = existsSync(join(root, dir, 'REQUEST.md'))
       ? ` ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/REQUEST.md">設計と計測</a>`
+      : '';
+    const observationLink = observations.has(id)
+      ? ` ・ <a href="${REPO_URL}/blob/main/docs/measurements/2026-10-29.md">観測記録</a>`
       : '';
     const original = originalUrls.get(id);
     if (dir.startsWith('examples/') && dir.split('/').length === 3 && !original)
@@ -149,7 +162,7 @@ function indexPage(page: IndexPage<Row>, all: Row[]): string {
   <p class="labels">${cardLabels(r)}</p>
   <p class="req">${esc(d.request)}</p>
   <p class="how">${esc([chosen.api, chosen.language].filter(Boolean).join(' / '))}</p>${numbers || '<p class="num">性能は未計測</p>'}
-  <p class="links"><a href="${REPO_URL}/tree/main/${esc(dir)}">ソース</a> ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/spec.yaml">spec.yaml</a>${requestLink}${originalLink}</p>
+  <p class="links"><a href="${REPO_URL}/tree/main/${esc(dir)}">ソース</a> ・ <a href="${REPO_URL}/blob/main/${esc(dir)}/spec.yaml">spec.yaml</a>${requestLink}${observationLink}${originalLink}</p>
   <a class="open" href="${href}">${action}</a></li>`;
   }).join('\n');
   return `<!doctype html>

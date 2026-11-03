@@ -1,0 +1,88 @@
+{
+  "method": "Isolated headless Chromium, local mfs server, one cold page per case; request bytes at fixed elapsed times; no in-page benchmark hooks",
+  "cases": [
+    {
+      "id": "08-prefecture-quiz",
+      "date": "2026-10-29",
+      "duration_s": 15,
+      "first_contentful_paint_ms": 48.109999895095825,
+      "completed_requests": 4,
+      "transfer_mib": 0.01
+    },
+    {
+      "id": "09-prefecture-search",
+      "date": "2026-10-29",
+      "duration_s": 15,
+      "first_contentful_paint_ms": 56.75500011444092,
+      "completed_requests": 3,
+      "transfer_mib": 0.01
+    },
+    {
+      "id": "10-gsi-seamlessphoto",
+      "date": "2026-10-29",
+      "duration_s": 30,
+      "first_contentful_paint_ms": 43.63499999046326,
+      "completed_requests": 3,
+      "transfer_mib": 0.01,
+      "note": "Range request が HTTP 200"
+    },
+    {
+      "id": "18-fuji-aerial-terrain",
+      "date": "2026-10-29",
+      "duration_s": 30,
+      "first_contentful_paint_ms": 24.389999866485596,
+      "completed_requests": 86,
+      "transfer_mib": 5.02
+    },
+    {
+      "id": "19-kontur-h3-population",
+      "date": "2026-10-29",
+      "duration_s": 20,
+      "first_contentful_paint_ms": 57.21000003814697,
+      "completed_requests": 3,
+      "transfer_mib": 2.6
+    },
+    {
+      "id": "20-ucdp-ged-timeline",
+      "date": "2026-10-29",
+      "duration_s": 20,
+      "first_contentful_paint_ms": 47.985000133514404,
+      "completed_requests": 5,
+      "transfer_mib": 0.8
+    },
+    {
+      "id": "21-mapterhorn-planet-terrain",
+      "date": "2026-10-29",
+      "duration_s": 30,
+      "first_contentful_paint_ms": 48.424999952316284,
+      "completed_requests": 42,
+      "transfer_mib": 2.95,
+      "note": "一部タイルが HTTP 404"
+    },
+    {
+      "id": "22-plateau-tokyo-tiles",
+      "date": "2026-10-29",
+      "duration_s": 60,
+      "first_contentful_paint_ms": 56.91499996185303,
+      "completed_requests": 137,
+      "transfer_mib": 234.82
+    },
+    {
+      "id": "23-taito-point-cloud",
+      "date": "2026-10-29",
+      "duration_s": 30,
+      "first_contentful_paint_ms": 65.89499998092651,
+      "completed_requests": 48,
+      "transfer_mib": 11.88
+    },
+    {
+      "id": "24-osm-planet",
+      "date": "2026-10-29",
+      "duration_s": 30,
+      "first_contentful_paint_ms": 39.03999996185303,
+      "completed_requests": 5,
+      "transfer_mib": 0.02,
+      "note": "Range request が HTTP 200"
+    }
+  ]
+}
