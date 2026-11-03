@@ -1,0 +1,56 @@
+id: webgpu-012-scatterplot-instanced
+request: >-
+  マンハッタンの 13,987 地点の散布図を、WebGPU の Instanced Drawing と
+  WGSL 解析的アンチエイリアシングを用いて高品質かつ超高速に描画する。
+requirements:
+  - id: webgpu-instanced-scatter
+    need: 13,987件の重み付き地点を、WebGPU の Instanced Quad と WGSL 解析的AA円でジャギーなく高速描画する
+    unmeasured: 画面ピクセルを読み戻して青色および橙色の散布図円が描画されていることを確認する
+  - id: interactive-navigation
+    need: パン・ズーム操作および半径スケール変更に対して 60fps/120fps で滑らかに再描画する
+    rationale: 快適な操作のため 16.6ms 以内
+  - id: quick-display
+    need: バイナリを読み込み即座に初回フレームを表示する
+    rationale: 500ms 以内に初回表示
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.6, unit: ms, requirement: interactive-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: quick-display}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: quick-display}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/012-scatterplot-instanced/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: scatter-pan
+      what: 散布図を連続パンしながらフレームレートと描画時間を計測する
+      metrics: [frame_ms, fps]
+datasets:
+  outputs: [data/baked/deckgl-016-scatterplot-layer/points.bin]
+performance_knowledge:
+  - id: analytic-aa-circle
+    finding: WGSL の length(uv) と smoothstep による解析的アンチエイリアシングにより、MSAA なしでもサブピクセル精度で滑らかな円を描画できる
+    evidence: 13,987 点のインスタンス描画を 1 回のドローコールで行い、frame_ms p95 2ms 未満で実行可能
+    applies_when: 大規模な点・マーカーを高品質かつ低負荷で WebGPU 描画する場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU (Instanced Quad with WGSL analytic antialiased circle shader)
+    language: TypeScript
+    gpu: hardware
+    code: [examples/webgpu/012-scatterplot-instanced/index.html, examples/webgpu/012-scatterplot-instanced/main.ts, examples/webgpu/012-scatterplot-instanced/render.ts, examples/webgpu/012-scatterplot-instanced/scatter.ts]
+    dependencies: []
+    why: WebGPU のインスタンシング機能とシェーダー内解析的円描画により、Canvas 2D の CPU 負荷や重量ライブラリを完全排除
+  alternatives:
+    - option: Canvas 2D (deckgl/016-scatterplot-layer)
+      rejected_because: Canvas 2D は CPU でのパス構築が必要であり、大規模化時の GPU 並列性能を活かせない
+  not_doing: [背景地図タイル, 地名ラベル, 3D視点, 動的データ追加]
+verification:
+  checks:
+    - id: visible-scatterplot
+      what: 画面に重み1（青）と重み2（橙）の散布図ピクセルが正しく描画されている
+      how: 描画結果からサンプリングし青色と橙色のピクセル数を判定
+      expected: 青色および橙色のピクセルがそれぞれ20個以上検出される

@@ -1,0 +1,130 @@
+// Main entry point for WebGPU Instanced Scatterplot Layer visualization.
+import { WebGPUScatterplotRenderer, type ViewState } from './render.ts';
+
+async function init() {
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  const statusEl = document.getElementById('status') as HTMLElement;
+  const radiusScaleInput = document.getElementById('radius-scale') as HTMLInputElement;
+  const countEl = document.getElementById('point-count') as HTMLElement;
+
+  if (!navigator.gpu) {
+    statusEl.textContent = 'WebGPU is not supported in this browser.';
+    return;
+  }
+
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
+    statusEl.textContent = 'No suitable WebGPU adapter found.';
+    return;
+  }
+
+  const device = await adapter.requestDevice();
+  const gpu = `${adapter.info.vendor} ${adapter.info.architecture} ${adapter.info.description}`.trim();
+  const context = canvas.getContext('webgpu') as GPUCanvasContext | null;
+  if (!context) {
+    statusEl.textContent = 'Failed to get WebGPU context.';
+    return;
+  }
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', () => {
+    resize();
+    render();
+  });
+  resize();
+
+  const renderer = new WebGPUScatterplotRenderer(device, context);
+
+  // Initial view: Manhattan (centered around midtown/downtown)
+  const view: ViewState = {
+    center: [-73.985, 40.748],
+    zoom: 12.0,
+    radiusScale: parseFloat(radiusScaleInput.value) || 1.0,
+    width: canvas.width,
+    height: canvas.height,
+  };
+
+  function render() {
+    view.width = canvas.width;
+    view.height = canvas.height;
+    renderer.render(view);
+  }
+
+  statusEl.textContent = 'Loading Manhattan scatter points...';
+  try {
+    const res = await fetch('../../../data/baked/deckgl-016-scatterplot-layer/points.bin');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const bin = await res.arrayBuffer();
+    renderer.setData(bin);
+    countEl.textContent = '13,987 points';
+    statusEl.textContent = 'Ready';
+  } catch (err: unknown) {
+    statusEl.textContent = `Failed to load points: ${err instanceof Error ? err.message : String(err)}`;
+    return;
+  }
+
+  radiusScaleInput.addEventListener('input', () => {
+    view.radiusScale = parseFloat(radiusScaleInput.value);
+    render();
+  });
+
+  // Pan / Zoom interaction
+  let isDragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    const scale = 256 * Math.pow(2, view.zoom);
+    view.center[0] -= (dx / scale) * 360;
+    view.center[1] += (dy / scale) * 180;
+    render();
+  });
+
+  const stopDrag = (e: PointerEvent) => {
+    if (isDragging) {
+      isDragging = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch {}
+    }
+  };
+  canvas.addEventListener('pointerup', stopDrag);
+  canvas.addEventListener('pointercancel', stopDrag);
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = Math.exp(-e.deltaY * 0.002);
+    view.zoom = Math.max(9, Math.min(18, view.zoom + Math.log2(zoomFactor)));
+    render();
+  }, { passive: false });
+
+  render();
+
+  if (window.location.search.includes('bench')) {
+    import('./bench.ts').then((mod) => {
+      mod.run({
+        device,
+        gpu,
+        renderer,
+        view,
+        ready: () => renderer.hasData(),
+      });
+    });
+  }
+}
+
+init();
