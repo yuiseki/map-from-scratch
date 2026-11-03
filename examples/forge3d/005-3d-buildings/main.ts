@@ -1,27 +1,8 @@
 import { makeView, project, type Camera, type View } from './camera.ts';
 import { createRenderer, type Mesh, type Renderer } from './gl.ts';
-
-export interface Building { id: string; year: number | null; ground: number | null; roof: number | null; roofType: string | null; volume: number }
-
-// buildings.bin: 64-byte header, then 8-byte vertices, then uint16 indices.
-export function parseMesh(buf: ArrayBuffer, buildings: Building[]): Mesh & { lo: number[] } {
-  const dv = new DataView(buf);
-  if (String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== 'BAG3') throw new Error('buildings.bin: bad magic');
-  const nv = dv.getUint32(8, true), ni = dv.getUint32(12, true);
-  const lo = [0, 1, 2].map((k) => dv.getFloat64(20 + k * 8, true));
-  const step = [0, 1, 2].map((k) => dv.getFloat32(44 + k * 4, true));
-  const vertices = new Uint16Array(buf, 64, nv * 4);
-  const indices = new Uint16Array(buf, 64 + nv * 8, ni);
-  // Centre the scene on the middle of the tile; heights stay NAP metres.
-  const half = [step[0] * 32767.5, step[1] * 32767.5];
-  const grounds = buildings.map((b) => b.ground).filter((g): g is number => g !== null).sort((a, b) => a - b);
-  return {
-    vertices, indices, lo, step,
-    origin: [-half[0], -half[1], lo[2]],
-    groundZ: grounds[grounds.length >> 1] - 0.05, // the median ground level, just below the walls' feet
-    extent: Math.max(half[0], half[1]) + 80,
-  };
-}
+import { parseMesh, type Building } from './scene-data.ts';
+export { parseMesh } from './scene-data.ts';
+export type { Building } from './scene-data.ts';
 
 export class CityScene {
   canvas: HTMLCanvasElement;
