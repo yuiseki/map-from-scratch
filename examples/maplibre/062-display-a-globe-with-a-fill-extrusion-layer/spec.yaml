@@ -116,10 +116,24 @@ performance_knowledge:
     finding: 格子セルごとに三角形分割すると添字の飛びが小さく（最大 219）、差分を int16 で持てる
     evidence: u32 の差分で 1,346,136 B（gzip 364,796 B）、int16 で 1,010,364 B（gzip 344,389 B）
     applies_when: 局所的に三角形分割したメッシュを配る
-  - id: not-measured-yet
-    finding: 計測はまだ行っていない（ユーザーの指示で実装を先に済ませ、bench は別の回でまとめて流す）
-    evidence: bin/mfs test と型検査のみ通過。frame_ms、first_frame_ms、pick_ms、transfer_kb は未計測
-    applies_when: 次の計測の回で数字を入れて置き換える
+  - id: limb-check-assumed-sea
+    finding: >-
+      縁が丸いかの検査で「72 方向の 75% が予測した円の上」を求めたのは誤り。押し出しのある地球儀では、
+      太平洋の中心 (170 W, 10 S) から見ても縁の多くに陸が立ち、その押し出しが縁の外へ出る。描画は正しかった。
+      縁の内側が海の方向だけを円と比べ、陸の方向は凹まないことだけを求める形に直した
+    evidence: >-
+      RTX 3060（ANGLE Vulkan）の初回のサイト検査で onCircle 28/72、dents 0 で失敗。方向ごとに読むと、
+      円から外れた 44 方向はすべて縁の内側が陸の色（中国の黄 179,163,26 で +40 px、インドネシアの緑で +28 px など）、
+      海の方向はすべて -1.0 から +1.5 px の範囲だった。新しい検査は海の方向 19〜28 で合格し、
+      海のグリッドを 3 度から 15 度に粗くする（縁が 24 角形になり最大 2.8 px ずれる）と、海の方向 10 本が円から外れて失敗した
+    applies_when: 押し出しや標高のある地球儀の縁を画面で検査するとき
+  - id: first-gpu-run
+    finding: 予算はすべて大きく余裕を残して通った。地球儀 177,800、平面 533,400 三角形でも GPU 時間は 0.25 ms
+    evidence: >-
+      RTX 3060、bin/mfs bench -n 1（他のエージェントも計測中）: first_frame_ms 267 ms、frame_ms p50 0.745 / p95 1.835 ms、
+      gpu_ms p95 0.252 ms、flat_frame_ms p95 1.335 ms（flat_gpu_ms p95 0.200 ms）、pick_ms p95 0.485 ms、
+      transfer_kb 1,041、code gzip 9,940 B、data gzip 341,200 B
+    applies_when: 数十万三角形の静的メッシュを uniform だけ変えて描くとき
 
 architecture_selection:
   chosen:
@@ -168,8 +182,12 @@ verification:
       expected: 40 を超える成分の比が揃い（差 0.08 未満）、AMBIENT − 0.04 から 1.04 の範囲
     - id: limb-round
       what: 地球儀の縁が円
-      how: 中心を (170 W, 10 S) に置き、72 方向で外側から内側へ背景でない最初の画素を探す
-      expected: 75% 以上の方向でカメラから求めた縁の半径と 1.5 px 以内、半径より内側に凹む方向が 0
+      how: >-
+        中心を (170 W, 10 S) に置き、72 方向で外側から内側へ背景でない最初の画素を探し、その 3 px 内側の画素が
+        海の色（差 6 以内）なら「縁が海の方向」とする
+      expected: >-
+        縁が海の方向が 12 以上あり、そのすべてでカメラから求めた縁の半径と 1.5 px 以内。どの方向も半径より
+        1.5 px 以上内側に凹まない（陸の方向は押し出しが縁の外へ出てよい）
     - id: wall-past-limb
       what: 高い国の押し出しが縁の向こうに見える
       how: >-

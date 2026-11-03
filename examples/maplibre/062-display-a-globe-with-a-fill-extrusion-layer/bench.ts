@@ -9,6 +9,9 @@ import { ramp, scaleT, heightOf } from './ramp.ts';
 import type { GlobeMap } from './main.ts';
 
 type RGB = [number, number, number];
+// The harness prints a check's detail as text: send it as a string.
+const emitCheck = (o: { check: string; pass: boolean; detail: unknown }) =>
+  emit({ ...o, detail: typeof o.detail === 'string' ? o.detail : JSON.stringify(o.detail) });
 const near = (a: ArrayLike<number>, b: ArrayLike<number>, tol: number) => Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol && Math.abs(a[2] - b[2]) <= tol;
 
 export async function run(map: GlobeMap): Promise<void> {
@@ -73,17 +76,22 @@ export async function run(map: GlobeMap): Promise<void> {
   // The open Pacific at the centre is the ocean colour, unlit.
   set(-150, 0, 4.5);
   const sea = pixel(W() / 2, H() / 2);
-  emit({ check: 'ocean-pixel-colour', pass: near(sea, OCEAN, 2), detail: { sea, expected: OCEAN } });
+  emitCheck({ check: 'ocean-pixel-colour', pass: near(sea, OCEAN, 2), detail: { sea, expected: OCEAN } });
 
   // Brazil's interior at the centre is Brazil's ramp colour, lit.
   const bra = idOf('BRA');
   set(-52, -10, 4.5);
   const land = pixel(W() / 2, H() / 2), braBase = ramp(scaleT(rows[bra][3], popMax));
-  emit({ check: 'land-pixel-colour', pass: bra >= 0 && litFrom(land, braBase), detail: { land, ramp: braBase } });
+  emitCheck({ check: 'land-pixel-colour', pass: bra >= 0 && litFrom(land, braBase), detail: { land, ramp: braBase } });
 
   // Round limb: over the Pacific (centre 170 W, 10 S), scan 72 directions
-  // inward from outside; the first non-space pixel lies on the circle the
-  // camera predicts, except where an extrusion stands out past it.
+  // inward from outside for the first non-space pixel. Where the rim is sea
+  // (the pixel 3 px inside is the ocean colour) it must lie on the circle
+  // the camera predicts; where land stands on the rim its extrusion may
+  // stand out past the circle, never fall short of it. On the RTX 3060 the
+  // rim had land in 44 of 72 directions at this view (Asia, Australia,
+  // Antarctica, the Americas), so "75% on the circle" failed a right globe.
+  // An 'ocean' direction needs at least 12 of them, so the claim is tested.
   set(-170, -10, 4.5);
   const R = limbRadiusPx(cam, H());
   const radii: number[] = [];
@@ -93,9 +101,16 @@ export async function run(map: GlobeMap): Promise<void> {
     while (r > R - 20 && near(pixel(W() / 2 + ca * r, H() / 2 + sa * r), BG, 3)) r -= 0.5;
     radii.push(r);
   }
-  const onCircle = radii.filter((r) => Math.abs(r - R) <= 1.5).length;
+  const inner = radii.map((r, k) => { const a = (k / 72) * 2 * Math.PI; return pixel(W() / 2 + Math.cos(a) * (r - 3), H() / 2 + Math.sin(a) * (r - 3)); });
+  const rimSea = radii.map((_, k) => near(inner[k], OCEAN, 6));
+  const seaDirs = rimSea.filter(Boolean).length;
+  const seaOff = radii.filter((r, k) => rimSea[k] && Math.abs(r - R) > 1.5).length;
   const dents = radii.filter((r) => r < R - 1.5).length;
-  emit({ check: 'limb-round', pass: onCircle >= 0.75 * radii.length && dents === 0, detail: { R, onCircle, dents, of: radii.length } });
+  emitCheck({
+    check: 'limb-round', pass: seaDirs >= 12 && seaOff === 0 && dents === 0,
+    detail: `R ${R.toFixed(1)} px; sea rim ${seaDirs} of ${radii.length} directions, ${seaOff} off the circle by >1.5 px; ${dents} dents; ` +
+      `per direction (r - R)/inner rgb: ` + radii.map((r, k) => `${k}:${(r - R).toFixed(1)}/${inner[k].join(',')}`).join(' '),
+  });
 
   // China's lid stands past the limb: centre the globe 90 degrees west of
   // China on the equator, so China's interior (103 E, 35 N) is behind the
@@ -110,7 +125,7 @@ export async function run(map: GlobeMap): Promise<void> {
   const chinaBase = ramp(scaleT(rows[chn][3], popMax));
   const wallSeen = china.some((p) => !near(p, BG, 3) && !near(p, OCEAN, 3));
   const mirrorSpace = mirror.every((p) => near(p, BG, 3));
-  emit({ check: 'wall-past-limb', pass: chn >= 0 && out > R2 + 3 && wallSeen && mirrorSpace, detail: { beyondLimbPx: out - R2, china: china[12], chinaRamp: chinaBase, mirror: mirror[12] } });
+  emitCheck({ check: 'wall-past-limb', pass: chn >= 0 && out > R2 + 3 && wallSeen && mirrorSpace, detail: { beyondLimbPx: out - R2, china: china[12], chinaRamp: chinaBase, mirror: mirror[12] } });
 
   // Hover known countries at their interior points (lid height included)
   // in the opening view; a sea point clears the tooltip.
@@ -130,7 +145,7 @@ export async function run(map: GlobeMap): Promise<void> {
   canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: rect.left + sx / dpr, clientY: rect.top + sy / dpr, pointerId: 1 }));
   hovered.sea = map.tooltip.hidden ? '' : map.tooltip.textContent;
   if (!map.tooltip.hidden || renderer.hover !== -1) hoverOk = false;
-  emit({ check: 'hover-known-country', pass: hoverOk, detail: hovered });
+  emitCheck({ check: 'hover-known-country', pass: hoverOk, detail: hovered });
 
   // Drag: the ground under the press follows the pointer (right and down).
   set(30, 40, 4.5);
@@ -141,7 +156,7 @@ export async function run(map: GlobeMap): Promise<void> {
   for (let i = 1; i <= 10; i++) ev('pointermove', [p0[0] + (p1[0] - p0[0]) * i / 10, p0[1] + (p1[1] - p0[1]) * i / 10]);
   ev('pointerup', p1);
   const g1 = unproject(cam, W(), H(), ...p1)!;
-  emit({ check: 'drag-moves-ground', pass: Math.abs(g1[0] - g0[0]) < 0.5 && Math.abs(g1[1] - g0[1]) < 0.5, detail: { pressed: g0, underRelease: g1 } });
+  emitCheck({ check: 'drag-moves-ground', pass: Math.abs(g1[0] - g0[0]) < 0.5 && Math.abs(g1[1] - g0[1]) < 0.5, detail: { pressed: g0, underRelease: g1 } });
 
   // The toggle changes the outline: 1.2 limb radii right of the centre is
   // space on the globe and map in the flat view; the extrusions stay.
@@ -154,7 +169,7 @@ export async function run(map: GlobeMap): Promise<void> {
   const label = map.toggle.textContent;
   set(103, 35, 4.5, true);
   const flatChina = pixel(W() / 2, H() / 2);
-  emit({ check: 'toggle-changes-outline', pass: near(before, BG, 3) && !near(after, BG, 3) && label === 'Globe' && litFrom(flatChina, chinaBase), detail: { before, after, label, flatChina, chinaRamp: chinaBase } });
+  emitCheck({ check: 'toggle-changes-outline', pass: near(before, BG, 3) && !near(after, BG, 3) && label === 'Globe' && litFrom(flatChina, chinaBase), detail: { before, after, label, flatChina, chinaRamp: chinaBase } });
 
   set(30, 40, 4.5);
   emit({ done: true });
