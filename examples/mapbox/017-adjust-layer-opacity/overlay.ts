@@ -67,6 +67,8 @@ const TRACK_X1 = 238;
 const TRACK_Y = 52;
 const KNOB_R = 7;
 const ACCENT = '#2a7ae2';
+export const opacityFromTrackX = (x: number): number =>
+  Math.max(0, Math.min(100, Math.round(((x - TRACK_X0) / (TRACK_X1 - TRACK_X0)) * 100)));
 
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
@@ -364,8 +366,7 @@ export async function mount(
     x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 
   function setOpacityFromX(x: number): void {
-    const v = ((x - TRACK_X0) / (TRACK_X1 - TRACK_X0)) * 100;
-    setOpacity(v);
+    setOpacity(opacityFromTrackX(x));
   }
 
   function onPointerDown(e: PointerEvent): void {

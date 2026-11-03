@@ -35,14 +35,8 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 const defaultCenterMx = mercX(ANCHOR_LNG);
 const defaultCenterMy = mercY(ANCHOR_LAT);
 
-function generateGradient(size: number): HTMLCanvasElement {
-  const off = document.createElement('canvas');
-  off.width = size;
-  off.height = size;
-  const g = off.getContext('2d');
-  if (!g) throw new Error('2D context not available');
-  const image = g.createImageData(size, size);
-  const data = image.data;
+export function gradientPixels(size: number): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(size * size * 4);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const offset = (y * size + x) * 4;
@@ -52,6 +46,17 @@ function generateGradient(size: number): HTMLCanvasElement {
       data[offset + 3] = 255;
     }
   }
+  return data;
+}
+
+function generateGradient(size: number): HTMLCanvasElement {
+  const off = document.createElement('canvas');
+  off.width = size;
+  off.height = size;
+  const g = off.getContext('2d');
+  if (!g) throw new Error('2D context not available');
+  const image = g.createImageData(size, size);
+  image.data.set(gradientPixels(size));
   g.putImageData(image, 0, 0);
   return off;
 }

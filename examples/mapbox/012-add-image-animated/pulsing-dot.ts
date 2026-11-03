@@ -30,6 +30,11 @@ const ICON_CSS = 100; // 200 px image at pixelRatio 2
 // Radii in CSS pixels: half of the 200 px image is 100 image px, i.e. 50 CSS px.
 const INNER_R = (ICON_CSS / 2) * 0.3;
 const OUTER_GROWTH = (ICON_CSS / 2) * 0.7;
+export const normalizePulsePhase = (phase: number): number => Math.min(1, Math.max(0, phase));
+export const pulseDotStyle = (phase: number): { radius: number; alpha: number } => {
+  const t = normalizePulsePhase(phase);
+  return { radius: INNER_R + OUTER_GROWTH * t, alpha: 1 - t };
+};
 
 const OCEAN = '#aad3df';
 const LAND = '#f0eee8';
@@ -83,11 +88,11 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   function drawDot(): void {
     const [cx, cy] = getScreenPos(DOT_LNG, DOT_LAT);
     const t = lastPhase;
-    const outer = INNER_R + OUTER_GROWTH * t;
+    const { radius: outer } = pulseDotStyle(t);
 
     ctx.beginPath();
     ctx.arc(cx, cy, outer, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 200, 200, ${1 - t})`;
+    ctx.fillStyle = `rgba(255, 200, 200, ${pulseDotStyle(t).alpha})`;
     ctx.fill();
 
     ctx.beginPath();
@@ -158,7 +163,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   function setPhase(t: number): void {
     running = false;
     cancelAnimationFrame(rafId);
-    lastPhase = Math.min(1, Math.max(0, t));
+    lastPhase = normalizePulsePhase(t);
     draw();
   }
 
