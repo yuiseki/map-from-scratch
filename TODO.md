@@ -390,7 +390,7 @@
 - [x] `mapbox-013-add-image-generated` → `examples/mapbox/013-add-image-generated/` — [Add Image Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-generated/)
 - [ ] `mapbox-014-add-image-missing-generated` → `examples/mapbox/014-add-image-missing-generated/` — [Add Image Missing Generated](https://docs.mapbox.com/mapbox-gl-js/example/add-image-missing-generated/)
 - [ ] `mapbox-015-add-image-stretchable` → `examples/mapbox/015-add-image-stretchable/` — [Add Image Stretchable](https://docs.mapbox.com/mapbox-gl-js/example/add-image-stretchable/)
-- [ ] `mapbox-016-add-terrain` → `examples/mapbox/016-add-terrain/` — [Add Terrain](https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/)
+- [x] `mapbox-016-add-terrain` → `examples/mapbox/016-add-terrain/` — [Add Terrain](https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/)
 - [x] `mapbox-017-adjust-layer-opacity` → `examples/mapbox/017-adjust-layer-opacity/` — [Adjust Layer Opacity](https://docs.mapbox.com/mapbox-gl-js/example/adjust-layer-opacity/)
 - [x] `mapbox-018-animate-a-line` → `examples/mapbox/018-animate-a-line/` — [Animate A Line](https://docs.mapbox.com/mapbox-gl-js/example/animate-a-line/)
 - [x] `mapbox-019-animate-ant-path` → `examples/mapbox/019-animate-ant-path/` — [Animate Ant Path](https://docs.mapbox.com/mapbox-gl-js/example/animate-ant-path/)

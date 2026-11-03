@@ -1,0 +1,70 @@
+id: mapbox-016-add-terrain
+request: >-
+  Mapbox GL JS の公式サンプル「Add Terrain」のように、標高データから
+  立体峡谷山岳地形メッシュを生成し、ゴールデンアワーの太陽光ライティング・花崗岩壁面・大気ヘイズを伴う透視投影で描画したい。
+  外部ライブラリなし、WebGL2 で最速・最小で実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンを使わず軽量な配布サイズに抑える
+    rationale: 3D 地形描画に重厚な Mapbox GL JS バンドルを丸ごと読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 立体峡谷が現れる
+  - id: 3d-canyon-shading
+    need: 垂直岩壁・谷底松林・河川・大気ヘイズが立体的に描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 7000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 30, unit: ms, requirement: 3d-canyon-shading}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/mapbox/016-add-terrain/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: 初期峡谷メッシュの構築と初回 3D レンダリング
+      metrics: [first_frame_ms]
+    - id: rotate
+      what: 視点回転アニメーション中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - ヨセミテスタイルの氷河 U 字谷・花崗岩モノリス地形モデルを $128 \times 128$ グリッド（32,768 三角形）として生成
+
+performance_knowledge:
+  - id: indexed-canyon-mesh-drawing
+    finding: 峡谷グリッドの頂点・法線・マテリアル色を共有インデックスバッファで単一ドローコール（drawElements）描画することにより、毎フレーム 3 万以上の三角形を 60 fps で瞬時に描画可能
+    evidence: 単一ドローコールで峡谷 3D 地形を描画
+    applies_when: 3D 地形メッシュ描画
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/mapbox/016-add-terrain/index.html
+      - examples/mapbox/016-add-terrain/main.ts
+      - examples/mapbox/016-add-terrain/render.ts
+      - examples/mapbox/016-add-terrain/terrain.ts
+  not_doing:
+    - Mapbox GL JS ライブラリ全体のバンドル
+
+verification:
+  checks:
+    - id: canyon-terrain-rendered
+      what: 画面中央部に 3D 峡谷地形が透視投影で描画されていること
+      how: readPixels で谷底ピクセルと上部青空ピクセルを読み出し比較
+      expected: 谷底ピクセルが地形色であり上部青空ピクセルと異なる
+    - id: cliff-granite-contrast
+      what: 花崗岩垂直岩壁と谷底松林の間で質感と明度差が存在すること
+      how: readPixels で岩壁ピクセルと谷底森林ピクセルの色差を検証
+      expected: 岩壁と森林で明度コントラストが検出される
