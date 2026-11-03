@@ -21,9 +21,9 @@ type Polygon = Ring[];
 const BOX_CENTER_LNG = 37.5;
 const BOX_CENTER_LAT = 7.5;
 
-const mercY = (lat: number): number =>
+export const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
-const mercX = (lon: number): number => (lon + 180) / 360;
+export const mercX = (lon: number): number => (lon + 180) / 360;
 
 const defaultCenterMx = mercX(BOX_CENTER_LNG);
 const defaultCenterMy = mercY(BOX_CENTER_LAT);

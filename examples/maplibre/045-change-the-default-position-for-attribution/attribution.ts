@@ -37,6 +37,12 @@ const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
 const mercX = (lon: number): number => (lon + 180) / 360;
 
+export function attributionRect(width: number, height: number, position: Corner): AttributionRect {
+  const x = position.endsWith('left') ? MARGIN : width - BOX_W - MARGIN;
+  const y = position.startsWith('top') ? MARGIN : height - BOX_H - MARGIN;
+  return { x, y, width: BOX_W, height: BOX_H };
+}
+
 const defaultCenterMx = mercX(CENTER_LNG);
 const defaultCenterMy = mercY(CENTER_LAT);
 
@@ -76,9 +82,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function getAttributionRect(): AttributionRect {
-    const x = position.endsWith('left') ? MARGIN : width - BOX_W - MARGIN;
-    const y = position.startsWith('top') ? MARGIN : height - BOX_H - MARGIN;
-    return { x, y, width: BOX_W, height: BOX_H };
+    return attributionRect(width, height, position);
   }
 
   function draw(): void {
