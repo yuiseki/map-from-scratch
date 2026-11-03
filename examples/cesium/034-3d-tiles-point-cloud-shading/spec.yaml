@@ -1,0 +1,176 @@
+id: cesium-034-3d-tiles-point-cloud-shading
+request: >-
+  CesiumJS Sandcastle の「3D Tiles Point Cloud Shading」
+  （https://sandcastle.cesium.com/?src=3d-tiles-point-cloud-shading）のように、
+  密な点群を、点の減衰（幾何誤差と距離で点の大きさを決める）とアイドームライティング（EDL）で
+  陰影をつけて見たい。減衰と EDL のオン・オフ、最大スクリーン空間誤差、幾何誤差スケール、
+  最大減衰、基準解像度、EDL 強度、EDL 半径を操作できること。
+  データは東京の実在の密な点群（GSJ 統合点群タイル、東京都の区部点群）で、
+  街路と建物の輪郭が EDL で際立つ場所にする。
+
+requirements:
+  - id: real-point-cloud
+    need: 東京駅・丸の内の実測点群を 3D で見る
+    rationale: 開始視点で画面の 60% 以上が点で覆われ、4 ビット量子化で 300 色以上（実データの航空写真色）
+    unmeasured: verification の opening-view-drawn で確かめる（数値予算ではなく画面検査）
+  - id: opens-fast
+    need: ページを開いてすぐ点群が出る
+    rationale: 開始視点に必要な 4 つの z16 ノード（約 1.76 MB）と tileset.json を読み、描画し終えるまで。ローカル配信で 2.5 秒
+  - id: loads-only-the-view
+    need: 必要な詳細度のノードだけを読む
+    rationale: 開始視点は根ノード 4 つで足りる（SSE 16）。開始時の読み込みは 2 MB 以下、計測全体（近接視点で葉ノードまで読む）でも全 37 MB の 2/3 以下の 25,000 KB
+  - id: smooth-orbit
+    need: EDL をかけたまま回転・ズームが滑らか
+    rationale: 60 Hz の 1 フレーム 16.7 ms。旋回経路と近接・全詳細視点の両方の p95
+  - id: lod-bounds-points
+    need: 描く点の数が詳細度の選択で抑えられる
+    rationale: 既定の SSE 16 では旋回中に根ノード程度（約 19.5 万点）、上限 40 万点。SSE 2 の近接視点でも 200 万点以下
+  - id: controls
+    need: 原典と同じ操作（減衰・EDL のトグル、6 つのスライダー）がそれぞれ次のフレームで描画に反映される
+    rationale: 入力イベントから描画完了まで 2 フレーム（33.4 ms）以内。描画が変わったことは verification の controls-redraw-next-frame で確かめる
+  - id: shading-correct
+    need: 減衰で点の隙間が埋まり、EDL で奥行きの段差だけが暗くなる
+    unmeasured: verification の attenuation-fills-holes と edl-darkens-depth-edges で画面を読み戻して確かめる
+  - id: attribution
+    need: 出典を画面に示す
+    unmeasured: index.html の帰属表示（東京都デジタルツイン実現プロジェクト、GSJ）を目視レビューで確かめる
+  - id: light-page
+    need: 地図エンジンや CesiumJS を読み込まない小さなページ
+    rationale: 配布コード（index.html と 5 モジュール）の gzip 合計 12 KB 以下
+
+evaluation:
+  budgets:
+    - {metric: first_frame_ms, stat: p50, max: 2500, unit: ms, requirement: opens-fast}
+    - {metric: opening_bytes, stat: max, max: 2000000, unit: B, requirement: loads-only-the-view}
+    - {metric: transfer_kb, stat: max, max: 25000, unit: KB, requirement: loads-only-the-view}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-orbit}
+    - {metric: close_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-orbit}
+    - {metric: points_drawn, stat: max, max: 400000, unit: points, requirement: lod-bounds-points}
+    - {metric: close_points_drawn, stat: max, max: 2000000, unit: points, requirement: lod-bounds-points}
+    - {metric: control_redraw_ms, stat: p95, max: 33.4, unit: ms, requirement: controls}
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-page}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/034-3d-tiles-point-cloud-shading/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: >-
+        ナビゲーション開始から、開始視点（八重洲側から西向き、俯角 28°、距離 820 m）で選ばれたノードが
+        すべて読み込まれ、EDL つきで描画され、GPU が終わる（1 画素 readPixels）まで。
+        同時に開始時点の読み込みバイト数・件数・描画点数を出す
+      metrics: [first_frame_ms, opening_bytes, opening_requests, opening_points]
+    - id: orbit
+      what: >-
+        EDL・減衰オン、SSE 16 で、東京駅の周りを 1 周しながら俯角 ±12°、距離を半分近くまで寄る 300 フレーム。
+        経路で選ばれるノードは事前に読み込み、計測中は描画だけ
+      metrics: [cpu_ms, frame_ms, gpu_ms, points_drawn]
+    - id: close
+      what: 俯角 40°・距離 220 m・SSE 2 で z18 の葉ノード（点間隔約 0.5 m）まで描く固定視点 60 フレーム
+      metrics: [close_cpu_ms, close_frame_ms, close_gpu_ms, close_points_drawn]
+    - id: controls
+      what: >-
+        近接視点で 6 つのスライダーと 2 つのトグルを DOM の input イベントで動かし、
+        イベントから次の rAF でのページの描画と GPU 完了までの時間
+      metrics: [control_redraw_ms]
+
+datasets:
+  bake: [node, examples/cesium/034-3d-tiles-point-cloud-shading/bake.ts]
+  sources:
+    - id: gsj-mixed-pcpng
+      origin: https://tiles.gsj.jp/tiles/pcpng/mixed/index.html （元データ https://info.tokyo-digitaltwin.metro.tokyo.lg.jp/ 区部点群）
+      license: 東京都デジタルツイン実現プロジェクト 区部点群データ（CC BY 4.0）を GSJ が点群 PNG タイル化したもの。東京都と GSJ を画面に表示する
+  outputs:
+    - data/baked/cesium-034-3d-tiles-point-cloud-shading/tileset.json
+    - data/baked/cesium-034-3d-tiles-point-cloud-shading/nodes
+  preparation:
+    - GSJ 統合点群タイルの z16 2×2、z17 4×4、z18 8×8（計 84 枚、東京駅を含む約 1 km 四方）を取得し src/ にキャッシュ（公開しない）
+    - gdal_translate で可逆 WebP を生の RGBA にし、点群 PNG 1.0 の列（x, y はメルカトル、z は cm、RGB）を pcpng.ts で読む
+    - 東京駅（139.7671, 35.6812）からの東・北・上のメートルに変換（メルカトルを cos(緯度) 倍、この範囲ではほぼ実寸）
+    - 標高 -15〜320 m の外は雑音として捨てる（157 点）
+    - タイル 1 枚を 1 ノードにした置換型 LOD 木。子は親の 1/4 の範囲に同じくらいの点数（GSJ がズームごとに約 5 万点へ間引いている）
+    - 各ノードの点を箱の中で uint16 に量子化し、xyz を 6 バイト、続けて RGB を 3 バイト（9 バイト/点）。GPU にそのまま上げる
+    - 内側ノードの幾何誤差は平均点間隔 sqrt(面積/点数)、葉は 0（3D Tiles の慣例。葉の減衰は基準解像度か Cesium の推定 cbrt(体積/点数) に落ちる）
+    - 結果 84 ノード、4,115,231 点、ノードファイル計 37,037,079 B（1 ファイル最大約 0.55 MB）
+
+performance_knowledge:
+  - id: gsj-pyramid-is-a-replace-lod
+    finding: GSJ 統合点群タイルはズームごとに 1 タイル約 5 万点へ間引かれているので、タイル木をそのまま置換型 LOD 木として使える
+    evidence: 浅草の同じ地点で z16 48,960、z17 53,631、z18 55,411、z19 58,034 点。WebP は 276〜337 KB とほぼ一定。東京駅周辺 84 枚のベイクでも 31,085〜60,706 点/枚
+    applies_when: GSJ 点群タイルから LOD つきの点群描画を作るとき
+  - id: leaf-geometric-error-estimate-is-coarse
+    finding: Cesium の葉の幾何誤差の推定 cbrt(体積/点数) は、高層ビルのある航空 LiDAR では実際の点間隔の約 7 倍になる
+    evidence: z18 の葉（124 m × 124 m × 高さ最大 160 m、約 5.5 万点）で推定 3.5 m、平均点間隔 sqrt(面積/点数) は約 0.53 m。基準解像度スライダーで 0.5 前後を与えると葉の点が実際の間隔の大きさになる
+    applies_when: 3D Tiles の葉の幾何誤差が 0 の点群で減衰を使うとき
+  - id: unmeasured-yet
+    finding: 実装のみで計測は未実施（ユーザー指示で bench は後日の別作業）。予算はすべて見積もり
+    evidence: 開始視点の読み込みは根ノード 4 つ 1,757,268 B と tileset.json（ベイクの出力サイズから計算）
+    applies_when: 計測時にこの項目を実測値で置き換える
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2（点のパスを RGBA8 + DEPTH_COMPONENT32F のテクスチャへ、全画面パスで EDL）
+    language: TypeScript（型ストリップ配信）
+    gpu: hardware
+    code:
+      - examples/cesium/034-3d-tiles-point-cloud-shading/index.html
+      - examples/cesium/034-3d-tiles-point-cloud-shading/main.ts
+      - examples/cesium/034-3d-tiles-point-cloud-shading/render.ts
+      - examples/cesium/034-3d-tiles-point-cloud-shading/shading.ts
+      - examples/cesium/034-3d-tiles-point-cloud-shading/camera.ts
+      - examples/cesium/034-3d-tiles-point-cloud-shading/lod.ts
+    dependencies: []
+    why: >-
+      減衰は頂点シェーダーの gl_PointSize = min(幾何誤差 / 深度 × 深度係数, 最大減衰) だけで済み、
+      EDL は深度テクスチャを読む 1 枚の全画面パスで済む。点はノードファイルのまま GPU に上げ、
+      シェーダーで箱の範囲に戻すので CPU での復号がない。
+  alternatives:
+    - option: EDL 用に対数深度を R32F のカラーアタッチメントへ書く（Cesium の深度 G バッファに近い）
+      rejected_because: EXT_color_buffer_float と MRT が要る。ハードウェア深度テクスチャから目の深度を戻して log2 をとれば同じ値になる。計測での比較はしていない
+    - option: 23-taito-point-cloud のように GSJ の WebP タイルを実行時に読んで復号する
+      rejected_because: タイルごとに createImageBitmap と getImageData と列の復号が要り、範囲も固定したいのでベイクにした。比較は計測時に行う
+    - option: 円形の点（フラグメントで discard）
+      rejected_because: Cesium の点群は四角の点。discard は早期深度テストを妨げる。比較していない
+  not_doing:
+    - 原典の点群切り替え（St. Helens / Church）。東京駅周辺の 1 データセットだけ
+    - 地形・地球・地図タイル
+    - 3D Tiles（pnts / glb）の読み込み。ベイク済みの独自形式だけ
+    - レベルスキップ、ノードの破棄（全 37 MB でも GPU に収まる）
+    - 法線による陰影、背面カリング、スタイル式
+    - 画面で選んだ点の情報表示
+
+verification:
+  checks:
+    - id: opening-view-drawn
+      what: 開始視点が実データの点で覆われている
+      how: 開始視点で全画面を readBack し、背景色以外の画素の割合と 4 ビット量子化した色の種類を数える
+      expected: 60% 以上が点、300 色以上
+    - id: attenuation-fills-holes
+      what: 減衰オンで点の隙間（背景が見える画素）が減る
+      how: 開始視点の下中央（縦 50〜95%、横 25〜75%、データの正方形の内側）で、減衰のチェックボックスをオン・オフして背景色の画素を数える
+      expected: オフで 5% 以上の穴があり、オンの穴がオフの半分以下
+    - id: edl-darkens-depth-edges
+      what: EDL は奥行きの段差（建物の縁の外側）を暗くし、平らな所（道路・屋上）はほとんど変えない
+      how: >-
+        真上から 450 m で EDL オン・オフの画面を読み戻し、輝度比を求める。段差と平面は描画器ではなくデータから決める：
+        描画中のノードの点を同じカメラで投影した高さマップで、半径 2 画素内に 3 m 以上高い点がある画素を段差、
+        5×5 近傍の点がすべて ±0.3 m 以内（6 点以上）の画素を平面とする
+      expected: 段差・平面とも 200 画素以上、輝度比の中央値が段差で 0.8 以下、平面で 0.95 以上
+    - id: controls-redraw-next-frame
+      what: 6 つのスライダーと 2 つのトグルが、それぞれ次のフレームで画面を変える
+      how: >-
+        近接視点（SSE 2、葉ノードを描画）で各要素の値を変えて input イベントを送り、次の rAF の中で readBack して
+        直前の画面と比べる（最大減衰 0→4、基準解像度 0→0.3、幾何誤差スケール 1→0.05、SSE 2→1、EDL 強度 1→4、EDL 半径 1→3、EDL オフ、減衰オフ）
+      expected: どの操作でも画素の 0.5% 以上が変わる
+    - id: drag-and-wheel-move-view
+      what: ドラッグで回転、ホイールで寄る
+      how: キャンバスに合成の pointerdown / pointermove（右へ 80 px）/ pointerup と wheel（deltaY -200）を送り、次のフレームで比べる
+      expected: 方位が 24° 増え、距離が縮み、画素の 5% 以上が変わる
+  harness:
+    - webglcontextlost が起きたらエラーにする
+    - info.gpu がソフトウェアラスタライザならエラー（gpu: hardware）

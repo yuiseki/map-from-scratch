@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>点群シェーディング（東京駅）</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1019; color: #e5e9f0; font: 13px/1.45 system-ui, sans-serif; overflow: hidden; }
+  #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #panel { position: fixed; top: 10px; left: 10px; background: rgba(20, 26, 36, 0.88); border: 1px solid #2c3546; border-radius: 6px; padding: 8px 10px; max-width: calc(100vw - 40px); }
+  #panel h1 { font-size: 14px; margin: 0 0 6px; }
+  table { border-collapse: collapse; }
+  td { padding: 1px 4px; white-space: nowrap; }
+  th { text-align: left; padding: 6px 4px 1px; font-size: 12px; color: #9fb3c8; }
+  input[type=range] { width: 120px; vertical-align: middle; }
+  input[type=text] { width: 3.6em; background: #10161f; color: inherit; border: 1px solid #39465a; border-radius: 3px; }
+  #status { position: fixed; left: 10px; bottom: 30px; background: rgba(20, 26, 36, 0.8); padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+  #attribution { position: fixed; right: 0; bottom: 0; left: 0; background: rgba(11, 16, 25, 0.82); padding: 3px 8px; font-size: 11px; text-align: right; }
+  #attribution a { color: #9fc4ff; }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="panel">
+  <h1>点群シェーディング（東京駅・丸の内）</h1>
+  <table>
+    <tr><td>最大スクリーン空間誤差</td><td><input id="mse" type="range" min="0" max="64" step="0.1"> <input id="mse-text" type="text"></td></tr>
+    <tr><th colspan="2"><label><input id="att" type="checkbox"> 減衰（Attenuation）</label></th></tr>
+    <tr><td>幾何誤差スケール</td><td><input id="ges" type="range" min="0" max="2" step="0.1"> <input id="ges-text" type="text"></td></tr>
+    <tr><td>最大減衰 (px, 0=SSE)</td><td><input id="maxatt" type="range" min="0" max="32" step="1"> <input id="maxatt-text" type="text"></td></tr>
+    <tr><td>基準解像度 (m, 0=推定)</td><td><input id="baseres" type="range" min="0" max="10" step="0.01"> <input id="baseres-text" type="text"></td></tr>
+    <tr><th colspan="2"><label><input id="edl" type="checkbox"> アイドームライティング（EDL）</label></th></tr>
+    <tr><td>EDL 強度</td><td><input id="edls" type="range" min="0" max="10" step="0.1"> <input id="edls-text" type="text"></td></tr>
+    <tr><td>EDL 半径 (px)</td><td><input id="edlr" type="range" min="0" max="10" step="0.1"> <input id="edlr-text" type="text"></td></tr>
+  </table>
+</div>
+<div id="status">読み込み中…</div>
+<div id="attribution">
+  <span id="credit">点群: 東京都デジタルツイン実現プロジェクト 区部点群データ（CC BY 4.0）、産総研 地質調査総合センター 統合点群タイルを加工</span>
+  · <a href="https://tiles.gsj.jp/tiles/pcpng/mixed/index.html">GSJ 統合点群タイル</a>
+  · <a href="https://info.tokyo-digitaltwin.metro.tokyo.lg.jp/">東京都デジタルツイン</a>
+  · 元の例: <a href="https://sandcastle.cesium.com/?src=3d-tiles-point-cloud-shading">Cesium Sandcastle</a>
+</div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
