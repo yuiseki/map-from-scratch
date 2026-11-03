@@ -43,7 +43,7 @@ void main() {
   o = vec4(color * v_light, 1.0);
 }`;
 
-function mesh(): Float32Array {
+export function hexagonMesh(): Float32Array {
   const out: number[] = [];
   const corner = (i: number) => [Math.cos((i % 6) * Math.PI / 3), Math.sin((i % 6) * Math.PI / 3)];
   const vertex = (x: number, y: number, z: number, light: number) => out.push(x, y, z, light);
@@ -57,7 +57,7 @@ function mesh(): Float32Array {
   return new Float32Array(out);
 }
 
-function hexRound(q: number, r: number): [number, number] {
+export function hexRound(q: number, r: number): [number, number] {
   const x = q, z = r, y = -x - z;
   let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
   const dx = Math.abs(rx - x), dy = Math.abs(ry - y), dz = Math.abs(rz - z);
@@ -105,7 +105,7 @@ export async function mount(canvas: HTMLCanvasElement, url: string) {
   const loc = (name: string) => gl.getUniformLocation(program, name);
   const vao = gl.createVertexArray(), instanceBuffer = gl.createBuffer(), vertexBuffer = gl.createBuffer();
   if (!vao || !instanceBuffer || !vertexBuffer) throw new Error('GPU buffer allocation failed');
-  const unitMesh = mesh();
+  const unitMesh = hexagonMesh();
   gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, unitMesh, gl.STATIC_DRAW);
