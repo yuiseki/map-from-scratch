@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebGPU 3D Terrain Layer (Mt. Fuji)</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a2638;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(26, 38, 56, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      max-width: 320px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    h1 {
+      font-size: 15px;
+      margin: 0 0 8px 0;
+      color: #fff;
+      font-weight: 600;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      align-items: center;
+    }
+    label {
+      color: #aaa;
+    }
+    input[type=range] {
+      width: 140px;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #88c0d0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <h1>WebGPU 3D Terrain (富士山)</h1>
+    <div style="color: #aaa; font-size: 12px; margin-bottom: 8px;">Elevation 3,776 m • Sun Lighting</div>
+    <div class="row">
+      <label for="pitch">Camera Pitch (°):</label>
+      <input type="range" id="pitch" min="10" max="80" step="1" value="28" />
+    </div>
+    <div style="color: #888; font-size: 11px; margin-top: 6px;">
+      Drag to orbit • Wheel to zoom
+    </div>
+    <div id="status">Initializing WebGPU...</div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

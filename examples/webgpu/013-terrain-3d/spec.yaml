@@ -1,0 +1,56 @@
+id: webgpu-013-terrain-3d
+request: >-
+  富士山周辺（標高 3,776 m）の実測標高メッシュを、WebGPU の 3D パイプライン、
+  太陽光ライティング、Reversed-Z 深度バッファを用いて写実的かつ超高速に描画する。
+requirements:
+  - id: webgpu-fuji-mesh
+    need: 富士山周辺の実測標高メッシュを WebGPU 3D パイプラインと Reversed-Z で高精度に描画する
+    unmeasured: 画面ピクセルを読み戻して山肌や残雪の着色領域を確認する
+  - id: orbit-navigation
+    need: ドラッグによるオービット回転やズーム操作に対して 60fps/120fps で滑らかに再描画する
+    rationale: 快適な 3D 操作のため 16.6ms 以内
+  - id: fast-startup
+    need: Rice 符号化された標高チャンクをデコードし素早く初回フレームを表示する
+    rationale: 500ms 以内に初回表示
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.6, unit: ms, requirement: orbit-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: fast-startup}
+    - {metric: code_gzip_bytes, max: 20000, unit: B, requirement: fast-startup}
+  gates: [エラーがない, ハードウェアGPUで描画, verificationの全check合格]
+benchmarks:
+  runtime: browser
+  page: examples/webgpu/013-terrain-3d/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: terrain-orbit
+      what: 富士山周囲を連続オービット回転しながらフレームレートと描画時間を計測する
+      metrics: [frame_ms, fps]
+datasets:
+  outputs: [data/baked/17-fuji-terrain-3d/fuji.terr]
+performance_knowledge:
+  - id: reversed-z-terrain
+    finding: 遠景（150 km）から近景（100 m）まで広範囲を描画する 3D 地形において、Reversed-Z 深度バッファを用いることで Z-ファイティングを完全排除できる
+    evidence: 14 万ポリゴンのグリッド描画が 120fps 以上の高フレームレートでチラつきなく安定描画
+    applies_when: 広大な 3D 地形や山岳メッシュを WebGPU で描画する場合
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU (Indexed grid mesh with directional lighting and Reversed-Z depth)
+    language: TypeScript
+    gpu: hardware
+    code: [examples/webgpu/013-terrain-3d/index.html, examples/webgpu/013-terrain-3d/main.ts, examples/webgpu/013-terrain-3d/render.ts, examples/webgpu/013-terrain-3d/terrain.ts]
+    dependencies: []
+    why: WebGPU の純粋 WGSL パイプラインと Reversed-Z により、汎用 3D ライブラリなしで最速・最小コードを実現
+  alternatives:
+    - option: WebGL2 (17-fuji-terrain-3d)
+      rejected_because: 本例は WebGPU WGSL ネイティブ実装による次世代描画器の検証のため
+  not_doing: [衛星写真テクスチャ, 雲・大気シミュレーション, 建物重畳, 動的等高線]
+verification:
+  checks:
+    - id: visible-terrain
+      what: 画面に富士山の山肌や山頂雪のピクセルが正しく描画されている
+      how: 描画結果からサンプリングし背景色（空色）と異なる山体ピクセル数を判定
+      expected: 山体ピクセルが100個以上検出される
