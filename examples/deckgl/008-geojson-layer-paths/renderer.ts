@@ -59,6 +59,11 @@ function shader(gl: WebGL2RenderingContext,kind:number,code:string):WebGLShader{
 }
 type Route=[state:string,type:string,id:string,name:string,length:number];
 const THRESHOLDS=[0,4,8,12,20,32,52,84,136,220];
+export function fatalityRateBucket(deaths: number): number {
+  let bucket = 0;
+  for (const threshold of THRESHOLDS) if (deaths >= threshold) bucket++;
+  return Math.min(9, bucket);
+}
 export class HighwayMap{
   readonly gl:WebGL2RenderingContext;
   readonly canvas:HTMLCanvasElement;
@@ -136,9 +141,8 @@ export class HighwayMap{
       const at=8+((year-1990)*this.roadCount+i)*2;
       const incidents=this.stats.getUint8(at),fatalities=this.stats.getUint8(at+1),length=this.routes[i][4];
       const deaths=fatalities/length*1000,crashes=incidents/length*1000;
-      let bucket=0;for(const threshold of THRESHOLDS)if(deaths>=threshold)bucket++;
       const width=Math.min(200,crashes)/200*255;
-      data[i*4]=Math.min(9,bucket);data[i*4+1]=Math.round(width);
+      data[i*4]=fatalityRateBucket(deaths);data[i*4+1]=Math.round(width);
       data[i*4+2]=incidents;data[i*4+3]=fatalities;
     }
     return data;
