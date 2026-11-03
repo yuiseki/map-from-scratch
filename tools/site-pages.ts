@@ -17,6 +17,7 @@ export const galleries = [
   { id: 'forge3d', label: 'forge3d', group: 'library' },
   { id: 'kepler', label: 'kepler.gl', group: 'library' },
   { id: 'luma', label: 'luma.gl', group: 'library' },
+  { id: 'threejs', label: 'Three.js', group: 'library' },
   { id: 'webgpu', label: 'WebGPU', group: 'experiment' },
   { id: 'opfs', label: 'OPFS', group: 'experiment' },
   { id: 'wasm', label: 'WebAssembly', group: 'experiment' },

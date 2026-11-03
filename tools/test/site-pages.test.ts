@@ -17,6 +17,13 @@ test('an example belongs to the gallery of its directory, others to legacy', () 
   assert.equal(galleryOf('baselines/01-prefecture-picker-maplibre'), 'legacy');
 });
 
+test('Three.js examples have a dedicated gallery page', () => {
+  const dir = 'examples/threejs/006-earth';
+  assert.equal(galleryOf(dir), 'threejs');
+  const pages = indexPages([{ dir, api: 'WebGL2' }]);
+  assert.deepEqual(pages.map((page) => page.path), ['index.html', 'examples/threejs/index.html', 'tech/webgl2/index.html']);
+});
+
 test('the top page has every card, each gallery a page with only its own', () => {
   const pages = indexPages(rows);
   assert.deepEqual(pages.map((p) => p.path), ['index.html', 'examples/maplibre/index.html', 'examples/deckgl/index.html', 'examples/legacy/index.html', 'tech/canvas-2d/index.html', 'tech/webgl2/index.html']);
@@ -55,7 +62,7 @@ test('the gallery links are the libraries and the rest; technologies come from t
   const { galleryGroups } = await import('../site-pages.ts');
   const ids = (key: string) => galleryGroups.find((g) => g.key === key)!.galleries.map(({ id }) => id);
   assert.deepEqual(galleryGroups.map((g) => g.key), ['library', 'other']);
-  assert.ok(ids('library').includes('maplibre') && ids('library').includes('luma'));
+  assert.ok(ids('library').includes('maplibre') && ids('library').includes('luma') && ids('library').includes('threejs'));
   assert.deepEqual(ids('other'), ['legacy']);
 });
 
