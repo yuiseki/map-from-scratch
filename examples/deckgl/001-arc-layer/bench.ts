@@ -1,5 +1,5 @@
 // examples/deckgl/001-arc-layer/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ArcMap } from './map.ts';
 
 export async function run(map: ArcMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: ArcMap, firstFrameMs: number): Promise<void> {
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
   // Verification 1: Arcs loaded
   emit({
@@ -40,7 +40,7 @@ export async function run(map: ArcMap, firstFrameMs: number): Promise<void> {
   const scanW = Math.round((endX - startX) * dpr);
   const scanH = Math.round((endY - startY) * dpr);
 
-  const region = ctx.getImageData(Math.round(startX * dpr), Math.round(startY * dpr), scanW, scanH).data;
+  const region = readBack(ctx, Math.round(startX * dpr), Math.round(startY * dpr), scanW, scanH).data;
   for (let i = 0; i < region.length; i += 40) {
     const r = region[i];
     const g = region[i + 1];

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { GeoJsonMap } from './map.ts';
 
 export async function run(map: GeoJsonMap, firstFrameMs: number): Promise<void> {
@@ -10,7 +10,7 @@ export async function run(map: GeoJsonMap, firstFrameMs: number): Promise<void> 
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const isBlueDot = (px: Uint8ClampedArray): boolean => px[2] > 150 && px[2] - px[0] > 80;
   const isOrangeLine = (px: Uint8ClampedArray): boolean => px[0] > 200 && px[1] > 80 && px[1] < 190 && px[2] < 100;
   const isBlueFill = (px: Uint8ClampedArray): boolean => px[2] - px[0] > 12 && px[2] > 190;

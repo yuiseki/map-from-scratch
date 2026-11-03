@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { QuickStartMap } from './map.ts';
 
 export async function run(map: QuickStartMap, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(map: QuickStartMap, firstFrameMs: number): Promise<voi
 
   // 1. Verification: Marker is visible at London position
   const [mx, my] = map.getScreenPos(51.5, -0.09);
-  const pxMarker = ctx.getImageData(Math.round(mx * dpr), Math.round((my - 20) * dpr), 1, 1).data;
+  const pxMarker = readBack(ctx, Math.round(mx * dpr), Math.round((my - 20) * dpr), 1, 1).data;
   const isBlue = pxMarker[0] < 80 && pxMarker[1] > 90 && pxMarker[2] > 160;
   emit({
     check: 'marker-visible',
@@ -23,7 +23,7 @@ export async function run(map: QuickStartMap, firstFrameMs: number): Promise<voi
 
   // 2. Verification: Circle is visible with red tint
   const [cx, cy] = map.getScreenPos(51.508, -0.11);
-  const pxCircle = ctx.getImageData(Math.round(cx * dpr), Math.round(cy * dpr), 1, 1).data;
+  const pxCircle = readBack(ctx, Math.round(cx * dpr), Math.round(cy * dpr), 1, 1).data;
   const isRed = pxCircle[0] > 180 && pxCircle[1] < 150 && pxCircle[2] < 150;
   emit({
     check: 'circle-visible',

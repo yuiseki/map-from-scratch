@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ScrollZoomMap } from './map.ts';
 
 export async function run(map: ScrollZoomMap, firstFrameMs: number): Promise<void> {
@@ -13,11 +13,11 @@ export async function run(map: ScrollZoomMap, firstFrameMs: number): Promise<voi
 
   // Verification 1: Center [Portland] is land, [-140, 45.52] is Pacific ocean
   const [centerX, centerY] = map.getScreenPos(-122.65, 45.52);
-  const pxCenter = ctx.getImageData(Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
+  const pxCenter = readBack(ctx, Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
   const isLand = pxCenter[0] > 220 && pxCenter[1] > 220 && pxCenter[2] > 210;
 
   const [oceanX, oceanY] = map.getScreenPos(-140.0, 45.52);
-  const pxOcean = ctx.getImageData(Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
+  const pxOcean = readBack(ctx, Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
   const isOcean = pxOcean[0] < 190 && pxOcean[1] > 190 && pxOcean[2] > 210;
 
   emit({
@@ -61,7 +61,7 @@ export async function run(map: ScrollZoomMap, firstFrameMs: number): Promise<voi
   const [baseLandX, baseLandY] = map.getScreenPos(-122.65, 45.52);
   map.panBy(50, 30);
   const [pannedLandX, pannedLandY] = map.getScreenPos(-122.65, 45.52);
-  const pxPanned = ctx.getImageData(Math.round(pannedLandX * dpr), Math.round(pannedLandY * dpr), 1, 1).data;
+  const pxPanned = readBack(ctx, Math.round(pannedLandX * dpr), Math.round(pannedLandY * dpr), 1, 1).data;
   const isPannedLand = pxPanned[0] > 220 && pxPanned[1] > 220 && pxPanned[2] > 210;
 
   emit({

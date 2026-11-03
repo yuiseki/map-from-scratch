@@ -13,6 +13,19 @@ export function glRenderer(gl: WebGL2RenderingContext): string {
   return dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 }
 
+// getImageData for checks, without reading the canvas itself back. Once a
+// 2D canvas has been read back, Chromium draws it on the CPU from then on, and
+// the frames timed after the checks cost what a visitor's page (which never
+// reads back) does not: tangram-010's frame interval p95 was 12 ms instead of
+// 0.8 ms. Copying the rectangle into a scratch canvas first leaves the
+// canvas on the GPU. Coordinates are truncated, as getImageData's are.
+export function readBack(ctx: CanvasRenderingContext2D, x: number, y: number, w = 1, h = 1): ImageData {
+  [x, y, w, h] = [x, y, w, h].map(Math.trunc);
+  const scratch = new OffscreenCanvas(Math.max(1, w), Math.max(1, h)).getContext('2d', { willReadFrequently: true })!;
+  scratch.drawImage(ctx.canvas, x, y, w, h, 0, 0, w, h);
+  return scratch.getImageData(0, 0, w, h);
+}
+
 const nextFrame = () => new Promise<number>((r) => requestAnimationFrame(r));
 
 // Runs drawStep(i) for i in [0, steps) back to back and reports, per frame:

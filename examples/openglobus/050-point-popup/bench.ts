@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { PopupPointsMap } from './map.ts';
 
 export async function run(map: PopupPointsMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: PopupPointsMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
   const at = (name: string) => {
     const p = map.points.find((q) => q.name === name)!;

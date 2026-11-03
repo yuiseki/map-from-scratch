@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { PointerMap } from './map.ts';
 
 const CENTER: [number, number] = [-74.5, 40];
@@ -22,7 +22,7 @@ export async function run(map: PointerMap, firstFrameMs: number): Promise<void> 
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const isCross = (p: number[]) => p[0] === 230 && p[1] === 57 && p[2] === 70;
   const isLand = (p: number[]) => p[0] > 225 && p[1] > 225 && p[2] > 210;

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { LuxembourgRailMap } from './map.ts';
 
 function findColorNear(
@@ -12,7 +12,7 @@ function findColorNear(
   const size = radius * 2 + 1;
   const sx = Math.max(0, Math.round((cx - radius) * dpr));
   const sy = Math.max(0, Math.round((cy - radius) * dpr));
-  const img = ctx.getImageData(sx, sy, Math.round(size * dpr), Math.round(size * dpr));
+  const img = readBack(ctx, sx, sy, Math.round(size * dpr), Math.round(size * dpr));
   const data = img.data;
 
   for (let i = 0; i < data.length; i += 4) {

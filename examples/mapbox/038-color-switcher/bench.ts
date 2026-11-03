@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ColorSwitchMap, PaletteId } from './palette.ts';
 
 type Rgb = [number, number, number];
@@ -29,7 +29,7 @@ export async function run(map: ColorSwitchMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgb(${p[0]},${p[1]},${p[2]})`;
   const near = (p: number[], q: Rgb) =>
     Math.abs(p[0] - q[0]) <= 2 && Math.abs(p[1] - q[1]) <= 2 && Math.abs(p[2] - q[2]) <= 2;

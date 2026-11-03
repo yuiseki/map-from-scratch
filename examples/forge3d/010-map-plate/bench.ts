@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MapPlate } from './map.ts';
 
 export async function run(plate: MapPlate, firstFrameMs: number): Promise<void> {
@@ -13,11 +13,11 @@ export async function run(plate: MapPlate, firstFrameMs: number): Promise<void> 
 
   // Verification 1: Neatline rendered
   // Neatline at x = 32 (mx - 4) is dark border (#1a202c)
-  const pxNeatline = ctx.getImageData(Math.round(32 * dpr), Math.round(50 * dpr), 1, 1).data;
+  const pxNeatline = readBack(ctx, Math.round(32 * dpr), Math.round(50 * dpr), 1, 1).data;
   const isNeatlineDark = pxNeatline[0] < 50 && pxNeatline[1] < 50 && pxNeatline[2] < 60;
 
   // Margin at x = 10 is paper cream (#f8f6f0)
-  const pxMargin = ctx.getImageData(Math.round(10 * dpr), Math.round(10 * dpr), 1, 1).data;
+  const pxMargin = readBack(ctx, Math.round(10 * dpr), Math.round(10 * dpr), 1, 1).data;
   const isMarginCream = pxMargin[0] > 230 && pxMargin[1] > 230 && pxMargin[2] > 220;
 
   emit({
@@ -62,7 +62,7 @@ export async function run(plate: MapPlate, firstFrameMs: number): Promise<void> 
   const peakSx = mx + mapW / 2 + peakNormX * drawSize;
   const peakSy = my + mapH / 2 + peakNormY * drawSize;
 
-  const pxPeak = ctx.getImageData(Math.round(peakSx * dpr), Math.round(peakSy * dpr), 1, 1).data;
+  const pxPeak = readBack(ctx, Math.round(peakSx * dpr), Math.round(peakSy * dpr), 1, 1).data;
   const isPeakWhite = pxPeak[0] > 210 && pxPeak[1] > 210 && pxPeak[2] > 210;
 
   emit({
@@ -75,14 +75,14 @@ export async function run(plate: MapPlate, firstFrameMs: number): Promise<void> 
   const nx = mx + mapW - 40;
   const ny = my + 44;
   // Left half of north arrow needle at nx - 3, ny
-  const pxNorth = ctx.getImageData(Math.round((nx - 3) * dpr), Math.round(ny * dpr), 1, 1).data;
+  const pxNorth = readBack(ctx, Math.round((nx - 3) * dpr), Math.round(ny * dpr), 1, 1).data;
   const isNorthDark = pxNorth[0] < 50 && pxNorth[1] < 50 && pxNorth[2] < 60;
 
   // Title Cartouche banner background (sample corner inside banner away from centered text)
   const tw = 280;
   const tx = mx + (mapW - tw) / 2;
   const ty = my + 14;
-  const pxTitle = ctx.getImageData(Math.round((tx + 12) * dpr), Math.round((ty + 12) * dpr), 1, 1).data;
+  const pxTitle = readBack(ctx, Math.round((tx + 12) * dpr), Math.round((ty + 12) * dpr), 1, 1).data;
   const isTitleCream = pxTitle[0] > 220 && pxTitle[1] > 220 && pxTitle[2] > 210;
 
   // Scale bar graphic blocks (alternating black and white)
@@ -93,8 +93,8 @@ export async function run(plate: MapPlate, firstFrameMs: number): Promise<void> 
   const barX = sbX + 14;
   const barY = sbY + 16;
   const segW = 90 / 4;
-  const pxBarBlack = ctx.getImageData(Math.round((barX + 5) * dpr), Math.round((barY + 2) * dpr), 1, 1).data;
-  const pxBarWhite = ctx.getImageData(Math.round((barX + segW + 5) * dpr), Math.round((barY + 2) * dpr), 1, 1).data;
+  const pxBarBlack = readBack(ctx, Math.round((barX + 5) * dpr), Math.round((barY + 2) * dpr), 1, 1).data;
+  const pxBarWhite = readBack(ctx, Math.round((barX + segW + 5) * dpr), Math.round((barY + 2) * dpr), 1, 1).data;
   const isScaleBarValid = (pxBarBlack[0] < 60) && (pxBarWhite[0] > 200);
 
   emit({

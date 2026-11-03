@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { WorldMap } from './map.ts';
 
 export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (lon: number, lat: number): Uint8ClampedArray => {
     const [x, y] = map.getScreenPos(lon, lat);
-    return ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    return readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   };
   const isLand = (px: Uint8ClampedArray): boolean =>
     Math.abs(px[0] - 0xcc) < 12 && Math.abs(px[1] - 0xcc) < 12 && Math.abs(px[2] - 0xcc) < 12;
@@ -42,7 +42,7 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
   // Verification 3: the 10-degree graticule is drawn over the ocean: within a
   // few pixels of the equator at 30 W some pixel differs from the ocean fill.
   const [gx, gy] = map.getScreenPos(-30, 0);
-  const region = ctx.getImageData(Math.round((gx - 2) * dpr), Math.round((gy - 2) * dpr), 5, 5).data;
+  const region = readBack(ctx, Math.round((gx - 2) * dpr), Math.round((gy - 2) * dpr), 5, 5).data;
   let graticulePixels = 0;
   for (let i = 0; i < region.length; i += 4) {
     const r = region[i], g = region[i + 1], b = region[i + 2];

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MapboxAntPathMap } from './map.ts';
 
 export async function run(map: MapboxAntPathMap, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(map: MapboxAntPathMap, firstFrameMs: number): Promise<
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
 
   const mid = map.route[250];
@@ -34,7 +34,7 @@ export async function run(map: MapboxAntPathMap, firstFrameMs: number): Promise<
   // 2. The ants march: shifting dashOffset changes the pixels along the route.
   const box = (size: number) =>
     Uint8ClampedArray.from(
-      ctx.getImageData(
+      readBack(ctx, 
         Math.round((midPos.x - size / 2) * dpr),
         Math.round((midPos.y - size / 2) * dpr),
         Math.round(size * dpr),

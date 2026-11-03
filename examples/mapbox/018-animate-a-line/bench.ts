@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MapboxAnimatedLineMap } from './map.ts';
 
 export async function run(map: MapboxAnimatedLineMap, firstFrameMs: number): Promise<void> {
@@ -19,7 +19,7 @@ export async function run(map: MapboxAnimatedLineMap, firstFrameMs: number): Pro
   map.draw();
   const origin = map.route[0];
   const origPos = map.getScreenCoords(origin[0], origin[1]);
-  const pxOrig = ctx.getImageData(Math.round(origPos.x * dpr), Math.round(origPos.y * dpr), 1, 1).data;
+  const pxOrig = readBack(ctx, Math.round(origPos.x * dpr), Math.round(origPos.y * dpr), 1, 1).data;
   const isCyanOrig = pxOrig[1] > 150 && pxOrig[2] > 200;
 
   emit({
@@ -53,12 +53,12 @@ export async function run(map: MapboxAnimatedLineMap, firstFrameMs: number): Pro
 
   map.progress = 0.15; // Midpoint not reached yet
   map.draw();
-  const pxBefore = ctx.getImageData(Math.round(midPos.x * dpr), Math.round(midPos.y * dpr), 1, 1).data;
+  const pxBefore = readBack(ctx, Math.round(midPos.x * dpr), Math.round(midPos.y * dpr), 1, 1).data;
   const notCyanBefore = pxBefore[1] < 120 || pxBefore[2] < 140;
 
   map.progress = 0.65; // Midpoint reached and drawn
   map.draw();
-  const pxAfter = ctx.getImageData(Math.round(midPos.x * dpr), Math.round(midPos.y * dpr), 1, 1).data;
+  const pxAfter = readBack(ctx, Math.round(midPos.x * dpr), Math.round(midPos.y * dpr), 1, 1).data;
   const isCyanAfter = pxAfter[1] > 170 && pxAfter[2] > 190;
 
   emit({
@@ -72,7 +72,7 @@ export async function run(map: MapboxAnimatedLineMap, firstFrameMs: number): Pro
   map.draw();
   const head = map.route[250];
   const headPos = map.getScreenCoords(head[0], head[1]);
-  const pxHead = ctx.getImageData(Math.round(headPos.x * dpr), Math.round(headPos.y * dpr), 1, 1).data;
+  const pxHead = readBack(ctx, Math.round(headPos.x * dpr), Math.round(headPos.y * dpr), 1, 1).data;
   const isWhiteHead = pxHead[0] > 200 && pxHead[1] > 200 && pxHead[2] > 200;
 
   emit({

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import { STYLES } from './tiles.ts';
 import type { RasterTileMap } from './tiles.ts';
 
@@ -17,7 +17,7 @@ export async function run(map: RasterTileMap, firstFrameMs: number): Promise<voi
   const BG = [233, 238, 242];
 
   const px = (x: number, y: number): number[] => {
-    const d = ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    const d = readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
     return [d[0], d[1], d[2], d[3]];
   };
   const isBg = (p: number[]): boolean => p[0] === BG[0] && p[1] === BG[1] && p[2] === BG[2];

@@ -1,5 +1,5 @@
 // examples/tangram/008-road-filters-demo/bench.ts
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { TangramRoadMap } from './map.ts';
 
 // Known point along I-80 in the Bay Area (Berkeley / Emeryville: -122.309, 37.898)
@@ -14,7 +14,7 @@ export async function run(map: TangramRoadMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
   // Verification 1: roads-loaded
   emit({

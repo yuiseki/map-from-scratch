@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { WorldMap } from './map.ts';
 
 export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
@@ -13,11 +13,11 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
 
   // Verification 1: Ocean at [0, 0] (screen center) and land at [10, 50] (Europe)
   const [oceanX, oceanY] = map.getScreenPos(0, 0);
-  const pxOcean = ctx.getImageData(Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
+  const pxOcean = readBack(ctx, Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
   const isOcean = pxOcean[0] < 190 && pxOcean[1] > 190 && pxOcean[2] > 210;
 
   const [landX, landY] = map.getScreenPos(10, 50);
-  const pxLand = ctx.getImageData(Math.round(landX * dpr), Math.round(landY * dpr), 1, 1).data;
+  const pxLand = readBack(ctx, Math.round(landX * dpr), Math.round(landY * dpr), 1, 1).data;
   const isLand = pxLand[0] > 220 && pxLand[1] > 220 && pxLand[2] > 210;
 
   emit({
@@ -49,7 +49,7 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
   const [baseLandX, baseLandY] = map.getScreenPos(10, 50);
   map.panBy(50, 30);
   const [pannedLandX, pannedLandY] = map.getScreenPos(10, 50);
-  const pxPanned = ctx.getImageData(Math.round(pannedLandX * dpr), Math.round(pannedLandY * dpr), 1, 1).data;
+  const pxPanned = readBack(ctx, Math.round(pannedLandX * dpr), Math.round(pannedLandY * dpr), 1, 1).data;
   const isPannedLand = pxPanned[0] > 220 && pxPanned[1] > 220 && pxPanned[2] > 210;
 
   emit({
@@ -61,7 +61,7 @@ export async function run(map: WorldMap, firstFrameMs: number): Promise<void> {
   // Verification 3: Zoom scales coordinate positions
   map.setZoom(2);
   const [zoomLandX, zoomLandY] = map.getScreenPos(10, 50);
-  const pxZoom = ctx.getImageData(Math.round(zoomLandX * dpr), Math.round(zoomLandY * dpr), 1, 1).data;
+  const pxZoom = readBack(ctx, Math.round(zoomLandX * dpr), Math.round(zoomLandY * dpr), 1, 1).data;
   const isZoomLand = pxZoom[0] > 220 && pxZoom[1] > 220 && pxZoom[2] > 210;
 
   emit({

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { GeoJsonPolygonMap } from './polygon.ts';
 
 export async function run(map: GeoJsonPolygonMap, firstFrameMs: number): Promise<void> {
@@ -17,7 +17,7 @@ export async function run(map: GeoJsonPolygonMap, firstFrameMs: number): Promise
 
   // Verification 1: Polygon filled with default teal (#008888, opacity 0.8)
   const [sx0, sy0] = map.getScreenPos(testLng, testLat);
-  const px0 = ctx.getImageData(Math.round(sx0 * dpr), Math.round(sy0 * dpr), 1, 1).data;
+  const px0 = readBack(ctx, Math.round(sx0 * dpr), Math.round(sy0 * dpr), 1, 1).data;
   // Blended over land (#f2efe9): r~48, g~156, b~155
   const isTeal0 = px0[0] < 75 && px0[1] > 130 && px0[2] > 130;
 
@@ -50,7 +50,7 @@ export async function run(map: GeoJsonPolygonMap, firstFrameMs: number): Promise
   const [baseX, baseY] = map.getScreenPos(testLng, testLat);
   map.panBy(50, 30);
   const [pannedX, pannedY] = map.getScreenPos(testLng, testLat);
-  const pxPan = ctx.getImageData(Math.round(pannedX * dpr), Math.round(pannedY * dpr), 1, 1).data;
+  const pxPan = readBack(ctx, Math.round(pannedX * dpr), Math.round(pannedY * dpr), 1, 1).data;
   const isTealPan = pxPan[0] < 75 && pxPan[1] > 130 && pxPan[2] > 130;
 
   emit({
@@ -61,7 +61,7 @@ export async function run(map: GeoJsonPolygonMap, firstFrameMs: number): Promise
 
   // Verification 3: Restyling updates fill color and opacity
   map.setPolygonStyle('#ff8800', 0.9);
-  const pxStyled = ctx.getImageData(Math.round(pannedX * dpr), Math.round(pannedY * dpr), 1, 1).data;
+  const pxStyled = readBack(ctx, Math.round(pannedX * dpr), Math.round(pannedY * dpr), 1, 1).data;
   // Orange: r > 200, g > 100, b < 80
   const isOrange = pxStyled[0] > 200 && pxStyled[1] > 100 && pxStyled[2] < 80;
   emit({
@@ -73,7 +73,7 @@ export async function run(map: GeoJsonPolygonMap, firstFrameMs: number): Promise
   // Verification 4: Polygon stays anchored to coordinates under zoom
   map.setZoom(6);
   const [zoomX, zoomY] = map.getScreenPos(testLng, testLat);
-  const pxZoom = ctx.getImageData(Math.round(zoomX * dpr), Math.round(zoomY * dpr), 1, 1).data;
+  const pxZoom = readBack(ctx, Math.round(zoomX * dpr), Math.round(zoomY * dpr), 1, 1).data;
   const isOrangeZoom = pxZoom[0] > 200 && pxZoom[1] > 100 && pxZoom[2] < 80;
   emit({
     check: 'polygon-anchors-on-zoom',

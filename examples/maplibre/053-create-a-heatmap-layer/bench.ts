@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MaplibreHeatmapMap } from './map.ts';
 
 export async function run(map: MaplibreHeatmapMap, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(map: MaplibreHeatmapMap, firstFrameMs: number): Promis
 
   // Verification 1: Heatmap density rendered at Alaska subduction trench [-150, 60]
   const posHot = map.getScreenCoords(-150, 60);
-  const pxHot = ctx.getImageData(Math.round(posHot.x * dpr), Math.round(posHot.y * dpr), 1, 1).data;
+  const pxHot = readBack(ctx, Math.round(posHot.x * dpr), Math.round(posHot.y * dpr), 1, 1).data;
   const isHot = pxHot[0] > 100 || pxHot[1] > 60 || pxHot[2] > 120;
 
   emit({
@@ -24,7 +24,7 @@ export async function run(map: MaplibreHeatmapMap, firstFrameMs: number): Promis
 
   // Verification 2: Ocean background preserved in quiet Pacific [-140, 20]
   const posOcean = map.getScreenCoords(-140, 20);
-  const pxOcean = ctx.getImageData(Math.round(posOcean.x * dpr), Math.round(posOcean.y * dpr), 1, 1).data;
+  const pxOcean = readBack(ctx, Math.round(posOcean.x * dpr), Math.round(posOcean.y * dpr), 1, 1).data;
   const isOcean = pxOcean[0] < 35 && pxOcean[1] < 45 && pxOcean[2] < 65;
 
   emit({
@@ -59,7 +59,7 @@ export async function run(map: MaplibreHeatmapMap, firstFrameMs: number): Promis
 
   const pannedTargetX = Math.round((posHot.x + 60) * dpr);
   const pannedTargetY = Math.round((posHot.y + 40) * dpr);
-  const pxPanned = ctx.getImageData(pannedTargetX, pannedTargetY, 1, 1).data;
+  const pxPanned = readBack(ctx, pannedTargetX, pannedTargetY, 1, 1).data;
   const isPannedHot = pxPanned[0] > 100 || pxPanned[1] > 60 || pxPanned[2] > 120;
 
   emit({

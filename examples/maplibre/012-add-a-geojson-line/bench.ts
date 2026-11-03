@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { GeoJsonLineMap } from './line.ts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -17,7 +17,7 @@ async function waitForBase(map: GeoJsonLineMap, want: number, ms = 15000): Promi
 function distinctColours(map: GeoJsonLineMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -38,7 +38,7 @@ export async function run(map: GeoJsonLineMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const pixel = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
   // Verification 0: the raster base map is drawn under the line. The first
   // frame shows the baked land polygons; once tiles arrive the frame gains the

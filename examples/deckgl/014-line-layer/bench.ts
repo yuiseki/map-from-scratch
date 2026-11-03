@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { LineLayerMap } from './map.ts';
 
 export async function run(map: LineLayerMap, firstFrameMs: number): Promise<void> {
@@ -18,7 +18,7 @@ export async function run(map: LineLayerMap, firstFrameMs: number): Promise<void
 
   const anyInWindow = (x: number, y: number, test: (p: number[]) => boolean, size = 9): boolean => {
     const half = Math.floor(size / 2);
-    const data = ctx.getImageData(
+    const data = readBack(ctx, 
       Math.round((x - half) * dpr),
       Math.round((y - half) * dpr),
       Math.round(size * dpr),
@@ -36,7 +36,7 @@ export async function run(map: LineLayerMap, firstFrameMs: number): Promise<void
   // area, not just one lucky pixel.
   const w = canvas.width;
   const h = canvas.height;
-  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const pixels = readBack(ctx, 0, 0, w, h).data;
   let cyanPx = 0;
   let orangePx = 0;
   for (let i = 0; i < pixels.length; i += 8) {

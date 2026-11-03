@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { AttributionMap, Corner } from './attribution.ts';
 
 const BOX_W = 222;
@@ -15,11 +15,11 @@ export async function run(map: AttributionMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
   const isBox = (p: number[]) => p[0] >= 242 && p[1] >= 242 && p[2] >= 242;
   const darkText = (x: number, y: number, w: number, h: number): number => {
-    const data = ctx.getImageData(
+    const data = readBack(ctx, 
       Math.round(x * dpr), Math.round(y * dpr), Math.round(w * dpr), Math.round(h * dpr),
     ).data;
     let n = 0;

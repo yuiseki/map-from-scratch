@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { StaticMap } from './static-map.ts';
 
 export async function run(map: StaticMap, firstFrameMs: number): Promise<void> {
@@ -13,11 +13,11 @@ export async function run(map: StaticMap, firstFrameMs: number): Promise<void> {
 
   // Verification 1: Center [74.5, 40] is land, [74.5, 0] is ocean
   const [centerX, centerY] = map.getScreenPos(74.5, 40.0);
-  const pxCenter = ctx.getImageData(Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
+  const pxCenter = readBack(ctx, Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
   const isLand = pxCenter[0] > 220 && pxCenter[1] > 220 && pxCenter[2] > 210;
 
   const [oceanX, oceanY] = map.getScreenPos(74.5, 0.0);
-  const pxOcean = ctx.getImageData(Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
+  const pxOcean = readBack(ctx, Math.round(oceanX * dpr), Math.round(oceanY * dpr), 1, 1).data;
   const isOcean = pxOcean[0] < 190 && pxOcean[1] > 190 && pxOcean[2] > 210;
 
   emit({
@@ -42,7 +42,7 @@ export async function run(map: StaticMap, firstFrameMs: number): Promise<void> {
   const centerUnchanged = map.center[0] === startMx && map.center[1] === startMy;
   const zoomUnchanged = map.zoom === startZoom;
 
-  const pxAfter = ctx.getImageData(Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
+  const pxAfter = readBack(ctx, Math.round(centerX * dpr), Math.round(centerY * dpr), 1, 1).data;
   const isStillLand = pxAfter[0] > 220 && pxAfter[1] > 220 && pxAfter[2] > 210;
 
   emit({

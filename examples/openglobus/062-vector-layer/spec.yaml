@@ -62,7 +62,7 @@ performance_knowledge:
       コードは 3,382 B から 3,458 B。光彩はリングごとに重ね塗りされなくなり、線が密な北の縁で最大 80 / 255 違う
     applies_when: Canvas 2D の地球儀に行政界・海岸線・等高線を重ねるとき
   - id: time-before-readback
-    finding: 検査で getImageData を呼んだあとのキャンバスは Chromium が CPU で描くので、フレーム間隔を測るループは画素を読む検査より前に置く
+    finding: 検査で getImageData を呼んだあとのキャンバスは Chromium が CPU で描くので、フレーム間隔を測るループは画素を読む検査より前に置く。いまの検査は harness の readBack (別のキャンバスに写してから読む) を使うので、順序によらずキャンバスは GPU のまま
     evidence: 読み戻し 2 回のあとでは frame_interval_ms p95 が 21〜35 ms (陸の塗りを外すと 8.8 ms)。読み戻し前に回すと 1.38〜1.58 ms
     applies_when: Canvas 2D の例で、ベンチが画素を読んで検査するとき
 

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { GradientIconMap } from './gradient-icon.ts';
 
 const ANCHOR: [number, number] = [0, 0];
@@ -26,7 +26,7 @@ export async function run(map: GradientIconMap, firstFrameMs: number): Promise<v
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const near = (p: number[], rgb: number[], tol = 1): boolean =>
     Math.abs(p[0] - rgb[0]) <= tol && Math.abs(p[1] - rgb[1]) <= tol &&

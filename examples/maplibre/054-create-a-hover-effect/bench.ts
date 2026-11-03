@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { HoverFillMap } from './polygon.ts';
 
 const TEAL = [0, 136, 136];
@@ -20,7 +20,7 @@ export async function run(map: HoverFillMap, firstFrameMs: number): Promise<void
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgb(${p[0]},${p[1]},${p[2]})`;
   const near = (p: number[], q: number[]) =>
     Math.abs(p[0] - q[0]) <= 2 && Math.abs(p[1] - q[1]) <= 2 && Math.abs(p[2] - q[2]) <= 2;

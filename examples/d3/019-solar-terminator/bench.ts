@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { SolarTerminatorMap } from './map.ts';
 
 export async function run(map: SolarTerminatorMap, firstFrameMs: number): Promise<void> {
@@ -10,7 +10,7 @@ export async function run(map: SolarTerminatorMap, firstFrameMs: number): Promis
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const atLonLat = (lon: number, lat: number): Uint8ClampedArray => {
     const p = map.screenPos(lon, lat);
     return pixelAt(p.x, p.y);

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { Forge3dPointCloud } from './cloud.ts';
 
 export async function run(cloud: Forge3dPointCloud, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(cloud: Forge3dPointCloud, firstFrameMs: number): Promi
 
   // Verification 1: Summit rim peak (Point 0: x=0, y=-650, z=820) rendered with high elevation color
   const pPeak = cloud.project(0, -650, 820);
-  const pxPeak = ctx.getImageData(Math.round(pPeak.sx * dpr), Math.round(pPeak.sy * dpr), 1, 1).data;
+  const pxPeak = readBack(ctx, Math.round(pPeak.sx * dpr), Math.round(pPeak.sy * dpr), 1, 1).data;
   const isSummitWhite = pxPeak[0] > 180 && pxPeak[1] > 190 && pxPeak[2] > 200;
 
   emit({
@@ -23,7 +23,7 @@ export async function run(cloud: Forge3dPointCloud, firstFrameMs: number): Promi
   });
 
   // Verification 2: Background preserved at corner (20, 20)
-  const pxBg = ctx.getImageData(Math.round(20 * dpr), Math.round(20 * dpr), 1, 1).data;
+  const pxBg = readBack(ctx, Math.round(20 * dpr), Math.round(20 * dpr), 1, 1).data;
   const isBgDark = pxBg[0] < 20 && pxBg[1] < 25 && pxBg[2] < 40;
 
   emit({
@@ -56,7 +56,7 @@ export async function run(cloud: Forge3dPointCloud, firstFrameMs: number): Promi
   cloud.draw();
 
   const pRotated = cloud.project(0, -650, 820);
-  const pxRotated = ctx.getImageData(Math.round(pRotated.sx * dpr), Math.round(pRotated.sy * dpr), 1, 1).data;
+  const pxRotated = readBack(ctx, Math.round(pRotated.sx * dpr), Math.round(pRotated.sy * dpr), 1, 1).data;
   const isRotatedWhite = pxRotated[0] > 180 && pxRotated[1] > 190 && pxRotated[2] > 200;
 
   emit({

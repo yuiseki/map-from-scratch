@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { FitBoundsMap } from './fit.ts';
 
 const BOUNDS: [[number, number], [number, number]] = [
@@ -20,7 +20,7 @@ async function waitForBase(map: FitBoundsMap, want: number, ms = 20000): Promise
 function distinctColours(map: FitBoundsMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -41,7 +41,7 @@ export async function run(map: FitBoundsMap, firstFrameMs: number): Promise<void
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const isCornerDot = (p: number[]) => p[0] === 230 && p[1] === 57 && p[2] === 70;
   const isCentreDot = (p: number[]) => p[0] === 30 && p[1] === 111 && p[2] === 217;

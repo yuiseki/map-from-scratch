@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { IconMap } from './icon.ts';
 
 export async function run(map: IconMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: IconMap, firstFrameMs: number): Promise<void> {
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
   const isOrange = (p: number[]) => p[0] > 200 && p[1] > 120 && p[1] < 200 && p[2] < 90;
 

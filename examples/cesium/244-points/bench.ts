@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { CesiumPointsGlobe } from './globe.ts';
 
 export async function run(globe: CesiumPointsGlobe, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(globe: CesiumPointsGlobe, firstFrameMs: number): Promi
 
   // Verification 1: Front point (London: Yellow) rendered
   const pLondon = globe.project(-0.1278, 51.5074);
-  const pxLondon = ctx.getImageData(Math.round(pLondon.sx * dpr), Math.round(pLondon.sy * dpr), 1, 1).data;
+  const pxLondon = readBack(ctx, Math.round(pLondon.sx * dpr), Math.round(pLondon.sy * dpr), 1, 1).data;
   const isYellow = pxLondon[0] > 200 && pxLondon[1] > 170 && pxLondon[2] < 60;
 
   emit({
@@ -47,7 +47,7 @@ export async function run(globe: CesiumPointsGlobe, firstFrameMs: number): Promi
   globe.draw();
 
   const pLondonBack = globe.project(-0.1278, 51.5074);
-  const pxLondonBack = ctx.getImageData(Math.round(pLondon.sx * dpr), Math.round(pLondon.sy * dpr), 1, 1).data;
+  const pxLondonBack = readBack(ctx, Math.round(pLondon.sx * dpr), Math.round(pLondon.sy * dpr), 1, 1).data;
   const isNotYellow = pxLondonBack[0] < 150 || pxLondonBack[1] < 150;
 
   emit({
@@ -62,7 +62,7 @@ export async function run(globe: CesiumPointsGlobe, firstFrameMs: number): Promi
   globe.draw();
 
   const pRotated = globe.project(-0.1278, 51.5074);
-  const pxRotated = ctx.getImageData(Math.round(pRotated.sx * dpr), Math.round(pRotated.sy * dpr), 1, 1).data;
+  const pxRotated = readBack(ctx, Math.round(pRotated.sx * dpr), Math.round(pRotated.sy * dpr), 1, 1).data;
   const isRotatedYellow = pxRotated[0] > 180 && pxRotated[1] > 160 && pxRotated[2] < 70;
 
   emit({

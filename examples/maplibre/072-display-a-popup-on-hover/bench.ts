@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { HoverPopupMap } from './popup.ts';
 
 export async function run(map: HoverPopupMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: HoverPopupMap, firstFrameMs: number): Promise<voi
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
   const isWhite = (p: number[]) => p[0] > 245 && p[1] > 245 && p[2] > 245;
 

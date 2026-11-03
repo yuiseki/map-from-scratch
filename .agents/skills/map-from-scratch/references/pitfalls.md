@@ -45,8 +45,11 @@ plausible numbers. Suspect the measurement before the renderer.
   2D on the CPU once it has been read back with `getImageData` (the same as
   asking for `willReadFrequently`). openglobus-062 read two pixels before
   its rotation loop and the frame interval p95 was 21 ms; with the loop run
-  first it was 1.5 ms. Time the frames before any check reads pixels, or
-  set `willReadFrequently` on purpose and say so.
+  first it was 1.5 ms (tangram-010: 12 ms and 0.8 ms). Read pixels for
+  checks with `readBack(ctx, x, y, w, h)` from `harness/page/bench.ts`,
+  which copies the rectangle into a scratch canvas and leaves the page's
+  canvas on the GPU. Do not give the renderer `willReadFrequently` to make
+  the bench's reads cheap: it moves every visitor's canvas to the CPU.
 - **A percentile that hides the worst view.** A camera path's p95 (5.2 ms)
   hid that the all-in-view frame cost 11.7 ms (04). Bench the cheap and the
   expensive ends as fixed views with their own budgets.

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MarkerMap } from './marker.ts';
 
 export async function run(map: MarkerMap, firstFrameMs: number): Promise<void> {
@@ -13,7 +13,7 @@ export async function run(map: MarkerMap, firstFrameMs: number): Promise<void> {
 
   // Verification 1: Marker visible at target
   const [sx0, sy0] = map.getMarkerScreenPos();
-  const px0 = ctx.getImageData(Math.round(sx0 * dpr), Math.round((sy0 - 18) * dpr), 1, 1).data;
+  const px0 = readBack(ctx, Math.round(sx0 * dpr), Math.round((sy0 - 18) * dpr), 1, 1).data;
   const isCyan0 = px0[0] < 100 && px0[1] > 130 && px0[2] > 160;
   emit({
     check: 'marker-visible-at-target',
@@ -45,7 +45,7 @@ export async function run(map: MarkerMap, firstFrameMs: number): Promise<void> {
   const [baseX, baseY] = map.getMarkerScreenPos();
   map.panBy(50, 30);
   const [pannedX, pannedY] = map.getMarkerScreenPos();
-  const pxPan = ctx.getImageData(Math.round(pannedX * dpr), Math.round((pannedY - 18) * dpr), 1, 1).data;
+  const pxPan = readBack(ctx, Math.round(pannedX * dpr), Math.round((pannedY - 18) * dpr), 1, 1).data;
   const isCyanPan = pxPan[0] < 100 && pxPan[1] > 130 && pxPan[2] > 160;
   emit({
     check: 'marker-moves-with-pan',
@@ -56,7 +56,7 @@ export async function run(map: MarkerMap, firstFrameMs: number): Promise<void> {
   // Verification 3: Marker stays anchored to coordinates under zoom
   map.setZoom(7);
   const [zoomX, zoomY] = map.getMarkerScreenPos();
-  const pxZoom = ctx.getImageData(Math.round(zoomX * dpr), Math.round((zoomY - 18) * dpr), 1, 1).data;
+  const pxZoom = readBack(ctx, Math.round(zoomX * dpr), Math.round((zoomY - 18) * dpr), 1, 1).data;
   const isCyanZoom = pxZoom[0] < 100 && pxZoom[1] > 130 && pxZoom[2] > 160;
   emit({
     check: 'marker-anchors-on-zoom',

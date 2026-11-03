@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { CircleMap } from './circle.ts';
 
 const CENTER: [number, number] = [-74.5, 40];
@@ -15,7 +15,7 @@ async function waitForBase(map: CircleMap, want: number, ms = 15000): Promise<nu
 function distinctColours(map: CircleMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -35,7 +35,7 @@ export async function run(map: CircleMap, firstFrameMs: number): Promise<void> {
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const isCircle = (px: Uint8ClampedArray): boolean =>
     px[2] > 200 && px[2] - px[0] >= 60 && px[1] >= 150;
 

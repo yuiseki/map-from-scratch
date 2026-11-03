@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { WorldCopiesMap } from './world-copies.ts';
 
 const AFRICA_EQUATOR: [number, number] = [20, 0];
@@ -20,7 +20,7 @@ export async function run(map: WorldCopiesMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const isAccent = (p: number[]) => p[0] === ACCENT[0] && p[1] === ACCENT[1] && p[2] === ACCENT[2];
   const isLand = (p: number[]) => p[0] > 225 && p[1] > 225 && p[2] > 210;

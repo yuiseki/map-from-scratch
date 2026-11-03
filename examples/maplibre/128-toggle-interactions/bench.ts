@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ToggleMap } from './controls.ts';
 
 const LANDMARK: [number, number] = [-95, 40];
@@ -22,7 +22,7 @@ export async function run(map: ToggleMap, firstFrameMs: number): Promise<void> {
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const is = (p: number[], rgb: number[]) =>
     p[0] === rgb[0] && p[1] === rgb[1] && p[2] === rgb[2];
@@ -69,7 +69,7 @@ export async function run(map: ToggleMap, firstFrameMs: number): Promise<void> {
     return pixelAt(b.x + 12, b.y + 12);
   };
   const darkPixels = (x: number, y: number, cw: number, ch: number): number => {
-    const data = ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr),
+    const data = readBack(ctx, Math.round(x * dpr), Math.round(y * dpr),
       Math.round(cw * dpr), Math.round(ch * dpr)).data;
     let n = 0;
     for (let i = 0; i < data.length; i += 4) {

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { GridTileMap } from './tiles.ts';
 
 const BG = { r: 233, g: 238, b: 242 };
@@ -15,7 +15,7 @@ export async function run(map: GridTileMap, firstFrameMs: number): Promise<void>
   const w = canvas.width / dpr;
   const h = canvas.height / dpr;
   const px = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
   // 1. The tile URL, size and zoom range come from the TileJSON.
   const tj = map.tileJson;

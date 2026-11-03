@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ImageOverlayMap } from './image-overlay.ts';
 
 const WEST = -80.425;
@@ -29,7 +29,7 @@ async function waitForBase(map: ImageOverlayMap, want: number, ms = 15000): Prom
 function distinctColours(map: ImageOverlayMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -50,7 +50,7 @@ export async function run(map: ImageOverlayMap, firstFrameMs: number): Promise<v
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const is = (p: number[], rgb: number[]) =>
     p[0] === rgb[0] && p[1] === rgb[1] && p[2] === rgb[2];

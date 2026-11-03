@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { VectorExportMap } from './map.ts';
 
 export async function run(map: VectorExportMap, firstFrameMs: number): Promise<void> {
@@ -12,7 +12,7 @@ export async function run(map: VectorExportMap, firstFrameMs: number): Promise<v
   const near = (x: number, y: number, test: (p: Uint8ClampedArray) => boolean): boolean => {
     for (let dy = -3; dy <= 3; dy++) {
       for (let dx = -3; dx <= 3; dx++) {
-        const px = ctx.getImageData(Math.round((x + dx) * dpr), Math.round((y + dy) * dpr), 1, 1).data;
+        const px = readBack(ctx, Math.round((x + dx) * dpr), Math.round((y + dy) * dpr), 1, 1).data;
         if (test(px)) return true;
       }
     }

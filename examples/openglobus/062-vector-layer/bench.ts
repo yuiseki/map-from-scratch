@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { OpenGlobusVectorGlobe } from './globe.ts';
 
 export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): Promise<void> {
@@ -38,7 +38,7 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
   // vertex exactly (it read the glow at 1920x1021 even before any change):
   // look for the core colour within 2 px of it.
   const near = (sx: number, sy: number, ok: (p: Uint8ClampedArray) => boolean): Uint8ClampedArray => {
-    const d = ctx.getImageData(Math.round(sx * dpr) - 2, Math.round(sy * dpr) - 2, 5, 5).data;
+    const d = readBack(ctx, Math.round(sx * dpr) - 2, Math.round(sy * dpr) - 2, 5, 5).data;
     for (let i = 0; i < d.length; i += 4) if (ok(d.subarray(i, i + 4))) return d.slice(i, i + 4);
     return d.slice(48, 52);
   };
@@ -55,7 +55,7 @@ export async function run(globe: OpenGlobusVectorGlobe, firstFrameMs: number): P
   });
 
   // Verification 2: Globe horizon culling (space background outside globe)
-  const pxSpace = ctx.getImageData(Math.round(20 * dpr), Math.round(20 * dpr), 1, 1).data;
+  const pxSpace = readBack(ctx, Math.round(20 * dpr), Math.round(20 * dpr), 1, 1).data;
   const isSpaceDark = pxSpace[0] < 15 && pxSpace[1] < 20 && pxSpace[2] < 30;
 
   emit({

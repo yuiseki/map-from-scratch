@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { TangramHighwaysMap } from './map.ts';
 
 
@@ -17,7 +17,7 @@ export async function run(map: TangramHighwaysMap, firstFrameMs: number): Promis
   const cy = Math.round(h / 2);
 
   // Verification 1: Highway rendered at center (SF highway nexus)
-  const px0 = ctx.getImageData(Math.round(cx * dpr), Math.round(cy * dpr), 1, 1).data;
+  const px0 = readBack(ctx, Math.round(cx * dpr), Math.round(cy * dpr), 1, 1).data;
   const isCyan0 = px0[0] < 50 && px0[1] > 180 && px0[2] > 200;
 
   emit({
@@ -49,7 +49,7 @@ export async function run(map: TangramHighwaysMap, firstFrameMs: number): Promis
   const countColoredPixels = (yOffsetRange: number): number => {
     let count = 0;
     for (let dy = -yOffsetRange; dy <= yOffsetRange; dy++) {
-      const p = ctx.getImageData(Math.round(cx * dpr), Math.round((cy + dy) * dpr), 1, 1).data;
+      const p = readBack(ctx, Math.round(cx * dpr), Math.round((cy + dy) * dpr), 1, 1).data;
       if (p[1] > 120 && p[2] > 150) count++;
     }
     return count;
@@ -76,7 +76,7 @@ export async function run(map: TangramHighwaysMap, firstFrameMs: number): Promis
 
   const targetX = Math.round((cx + 40) * dpr);
   const targetY = Math.round((cy + 25) * dpr);
-  const pannedPx = ctx.getImageData(targetX, targetY, 1, 1).data;
+  const pannedPx = readBack(ctx, targetX, targetY, 1, 1).data;
   const isPannedCyan = pannedPx[0] < 60 && pannedPx[1] > 160 && pannedPx[2] > 180;
 
   emit({

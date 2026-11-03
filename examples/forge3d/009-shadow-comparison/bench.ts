@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ShadowRelief } from './relief.ts';
 
 const lum = (p: Uint8ClampedArray): number => 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
@@ -13,7 +13,7 @@ export async function run(relief: ShadowRelief, firstFrameMs: number): Promise<v
 
   const dpr = window.devicePixelRatio || 1;
   const px = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
 
   // Verification 0: the opening view shows the summit, whatever the window.
   {

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { SunGlobe } from './globe.ts';
 
 const lum = (d: Uint8ClampedArray): number => 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
@@ -15,7 +15,7 @@ export async function run(globe: SunGlobe, firstFrameMs: number): Promise<void> 
   const w = canvas.width / dpr;
   const h = canvas.height / dpr;
   const px = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const lumAt = (lon: number, lat: number): number => {
     const p = globe.project(lon, lat);
     const d = px(p.sx, p.sy);

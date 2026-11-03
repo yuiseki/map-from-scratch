@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { PatternFillMap } from './pattern.ts';
 
 export async function run(map: PatternFillMap, firstFrameMs: number): Promise<void> {
@@ -11,7 +11,7 @@ export async function run(map: PatternFillMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
 
   // 0. A regional view needs a real base map, not a flat land fill. Wait for
@@ -28,7 +28,7 @@ export async function run(map: PatternFillMap, firstFrameMs: number): Promise<vo
   }
   await new Promise(requestAnimationFrame);
   await new Promise(requestAnimationFrame);
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const data = readBack(ctx, 0, 0, canvas.width, canvas.height).data;
   const seen = new Set<number>();
   for (let i = 0; i < data.length; i += 4 * 4) {
     seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);

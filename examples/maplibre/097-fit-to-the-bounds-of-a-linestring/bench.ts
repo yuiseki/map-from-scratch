@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { FitLineMap } from './line.ts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -46,7 +46,7 @@ async function waitForBase(map: FitLineMap, want: number, ms = 15000): Promise<n
 function distinctColours(map: FitLineMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -70,9 +70,9 @@ export async function run(map: FitLineMap, firstFrameMs: number): Promise<void> 
   const height = canvas.clientHeight;
 
   const pixel = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const patchMean = (x: number, y: number): [number, number, number] => {
-    const data = ctx.getImageData(Math.round((x - 1) * dpr), Math.round((y - 1) * dpr), 3, 3).data;
+    const data = readBack(ctx, Math.round((x - 1) * dpr), Math.round((y - 1) * dpr), 3, 3).data;
     let r = 0, g = 0, b = 0;
     for (let i = 0; i < 9; i++) {
       r += data[i * 4]; g += data[i * 4 + 1]; b += data[i * 4 + 2];

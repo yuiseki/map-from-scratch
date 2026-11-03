@@ -1,4 +1,4 @@
-import { emit, glRenderer } from '../../../harness/page/bench.ts';
+import { emit, glRenderer, readBack } from '../../../harness/page/bench.ts';
 import type { FujiScene } from './main.ts';
 import type { Plan } from './labels.ts';
 
@@ -23,7 +23,7 @@ export async function run(scene: FujiScene, firstFrameMs: number): Promise<void>
   };
   // Label overlay pixels (y down).
   const labelPixel = (x: number, y: number): number[] =>
-    [...scene.ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data];
+    [...readBack(scene.ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data];
   const placedNamed = (plan: Plan, name: string) => plan.placed.find((p) => p.label.name === name);
   const reasonOf = (plan: Plan, name: string) => plan.rejected.find((r) => r.label.name === name)?.reason ?? 'placed';
 
@@ -68,7 +68,7 @@ export async function run(scene: FujiScene, firstFrameMs: number): Promise<void>
       const b = plan0.placed[j].box;
       if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) overlap++;
     }
-    const img = scene.ctx.getImageData(Math.round(a.x0 * dpr), Math.round(a.y0 * dpr), Math.max(1, Math.round((a.x1 - a.x0) * dpr)), Math.max(1, Math.round((a.y1 - a.y0) * dpr))).data;
+    const img = readBack(scene.ctx, Math.round(a.x0 * dpr), Math.round(a.y0 * dpr), Math.max(1, Math.round((a.x1 - a.x0) * dpr)), Math.max(1, Math.round((a.y1 - a.y0) * dpr))).data;
     let ink = 0;
     for (let k = 3; k < img.length; k += 4) if (img[k] > 200) ink++;
     if (ink < 20) blank++;

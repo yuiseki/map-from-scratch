@@ -1,8 +1,8 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { TangramMap } from './map.ts';
 
 function readPixel(ctx: CanvasRenderingContext2D, x: number, y: number, dpr: number): [number, number, number, number] {
-  const img = ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1);
+  const img = readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1);
   return [img.data[0], img.data[1], img.data[2], img.data[3]];
 }
 

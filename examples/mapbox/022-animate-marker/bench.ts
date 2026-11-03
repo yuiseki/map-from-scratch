@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { BouncingMarkerMap } from './marker.ts';
 
 const mercY = (lat: number): number =>
@@ -15,7 +15,7 @@ export async function run(map: BouncingMarkerMap, firstFrameMs: number): Promise
 
   const dpr = window.devicePixelRatio || 1;
   const rgba = (x: number, y: number) =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p[0]},${p[1]},${p[2]},${p[3]})`;
   const isPin = (p: number[]) => p[0] > 190 && p[1] > 50 && p[1] < 120 && p[2] < 60;
 

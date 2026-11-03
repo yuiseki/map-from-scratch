@@ -1,6 +1,6 @@
 // Bench branch for 26, loaded only with ?bench so it is not part of the page
 // a visitor downloads.
-import { emit } from '../../harness/page/bench.ts';
+import { emit, readBack } from '../../harness/page/bench.ts';
 import type { CanvasMap } from './canvasmap.ts';
 
 const raf = () => new Promise<number>(requestAnimationFrame);
@@ -97,7 +97,7 @@ export async function run(el: HTMLElement, map: CanvasMap, overlay: HTMLCanvasEl
   const ctx = map.base.getContext('2d')!;
   const px = (lon: number, lat: number): number[] => {
     const [x, y] = map.project(lon, lat);
-    return [...ctx.getImageData(Math.round(x * devicePixelRatio), Math.round(y * devicePixelRatio), 1, 1).data.slice(0, 3)];
+    return [...readBack(ctx, Math.round(x * devicePixelRatio), Math.round(y * devicePixelRatio), 1, 1).data.slice(0, 3)];
   };
   const hex = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
   const near = (a: number[], b: number[]) => a.every((v, i) => Math.abs(v - b[i]) <= 3);

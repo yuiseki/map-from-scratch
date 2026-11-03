@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { CirclesMap } from './map.ts';
 
 const mercX = (lon: number): number => (lon + 180) / 360;
@@ -14,7 +14,7 @@ export async function run(map: CirclesMap, firstFrameMs: number): Promise<void> 
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const tintAt = (lon: number, lat: number, dx = 0, dy = 0): Uint8ClampedArray => {
     const [x, y] = map.screenFromMercator(mercX(lon), mercY(lat));
     return pixelAt(x + dx, y + dy);

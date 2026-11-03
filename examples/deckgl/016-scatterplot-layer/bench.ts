@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { ScatterMap } from './map.ts';
 
 // First point of the deck.gl-data Manhattan file: [-73.986022, 40.730743, 2].
@@ -13,7 +13,7 @@ export async function run(map: ScatterMap, firstFrameMs: number): Promise<void> 
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): Uint8ClampedArray =>
-    ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
+    readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data;
   const isHeavyDot = (px: Uint8ClampedArray): boolean => px[0] > 200 && px[1] > 120 && px[2] < 110;
 
   emit({

@@ -1,4 +1,4 @@
-import { emit } from '../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../harness/page/bench.ts';
 import type { MarkerPopupMap } from './marker-popup.ts';
 
 const MONUMENT: [number, number] = [-77.0353, 38.8895];
@@ -17,7 +17,7 @@ async function waitForBase(map: MarkerPopupMap, want: number, ms = 15000): Promi
 function distinctColours(map: MarkerPopupMap, step = 4): number {
   const { ctx, canvas } = map;
   const w = canvas.width, h = canvas.height;
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = readBack(ctx, 0, 0, w, h).data;
   const seen = new Set<number>();
   for (let y = 0; y < h; y += step) {
     for (let x = 0; x < w; x += step) {
@@ -38,7 +38,7 @@ export async function run(map: MarkerPopupMap, firstFrameMs: number): Promise<vo
 
   const dpr = window.devicePixelRatio || 1;
   const pixelAt = (x: number, y: number): number[] =>
-    Array.from(ctx.getImageData(Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
+    Array.from(readBack(ctx, Math.round(x * dpr), Math.round(y * dpr), 1, 1).data);
   const fmt = (p: number[]) => `rgba(${p.join(',')})`;
   const isWhite = (p: number[]) => p[0] > 245 && p[1] > 245 && p[2] > 245;
   const isLand = (p: number[]) => p[0] > 225 && p[1] > 225 && p[2] > 215;
