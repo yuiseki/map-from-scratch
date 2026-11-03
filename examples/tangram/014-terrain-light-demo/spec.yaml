@@ -1,0 +1,214 @@
+id: tangram-014-terrain-light-demo
+request: >-
+  Tangram の terrain-light-demo (https://github.com/tangrams/terrain-light-demo) のように、マウスで動かす光で地形を照らし、
+  尾根と谷を浮かび上がらせたい。標高タイルから法線を作り、本物の地形 (Mapterhorn) で富士山と富士五湖を見る。
+  2D の陰影だけでなく、標高で持ち上げた 3D の地形を斜めから眺め、ドラッグで回し、ホイールで寄る。
+  光はマウスに従い (画面中心のまわりの角度で方位、中心からの距離で高度)、トグルで太陽が一日かけて空を渡るように動かせる。
+  ランバート拡散と湖の控えめな鏡面反射、低い太陽で山が谷に落とす影も出す。
+requirements:
+  - id: light-follows-mouse
+    need: マウスで光を動かし、光に向いた斜面が明るく、反対の斜面が暗い。光を反対側へ回すと明暗が入れ替わる
+    rationale: >-
+      富士山の東斜面と西斜面 (山頂から経度 ±0.03°、約 ±2.7 km) を画面で読み、光の側が反対側の 1.3 倍以上明るいこと。
+      ポインターを中心の右に置くと光は東 (方位 90° ± 1°)、左に置くと西
+    unmeasured: 数値の予算ではなく verification の lit-slope-brighter と order-flips-with-light で確かめる
+  - id: sun-cycle
+    need: トグルで、太陽が東から昇り南を通って西へ沈むように光が動く (元の DEMO MODE)
+    rationale: 一日 20 秒。60 フレームで方位が 3° 以上進み、影の計算がフレームごとにやり直され、斜面の明るさが変わる
+    unmeasured: verification の sun-toggle-animates で確かめる
+  - id: see-terrain-3d
+    need: 標高で持ち上げた地形を斜めから 3D で見て、ドラッグで回し、ホイールで寄る
+    rationale: 山頂が画面上で麓より 40 px 以上高く、上端は空。ドラッグ右で南の地面が右へ、ホイールでポインターの下の点が 1 px 以内に留まる
+    unmeasured: verification の terrain-3d と drag-and-wheel で確かめる
+  - id: shading
+    need: ランバート拡散と、湖だけの控えめな鏡面反射
+    rationale: 山中湖の画素が、視線を鏡に映した向きの光で、同じ高度で 90° 回した光のときの 1.5 倍以上明るい (水面は平らなのでランバート項は同じ)
+    unmeasured: verification の water-specular で確かめる
+  - id: cast-shadows
+    need: 低い太陽で山が谷に影を落とす
+    rationale: >-
+      忍野 (山頂の北東 14.7 km、標高差 2,800 m、仰角 10.9°) は、山頂の方向の高度 7° の太陽では影の有無で明るさが 0.75 倍未満、
+      高度 45° では 0.97 倍以上 (影がない)
+    unmeasured: verification の valley-cast-shadow で確かめる
+  - id: smooth-light
+    need: 光を動かしている間もなめらか
+    rationale: >-
+      光が動くフレームは影のパス (1280x1024 テクセル、96 歩) と地形の描画をする。120 Hz の 8.3 ms に収める (p95 8 ms)。
+      GPU は p95 5 ms 以内。光を動かさない回転は影を作り直さないので p95 4 ms
+  - id: quick-start
+    need: 開いてすぐ出る
+    rationale: fast 回線 (20 ms、50 Mbps) で 1.23 MB のデータを読んで、展開、勾配の計算、最初の 1 フレームまで p50 1,200 ms 以内 (見積もり 200 ms 転送 + 300 ms)
+  - id: few-bytes
+    need: 読むバイト数を少なく
+    rationale: >-
+      転送はデータ 1.23 MB とコード約 25 KB で 1,300 KB 以内。同じ範囲を原本の z11 WebP タイルで読むと 4x3 枚 4,989,416 B
+      (performance_knowledge の bytes-vs-original)
+  - id: light
+    need: 配るコードは小さく
+    rationale: gzip 9 KB 以内 (Tangram 本体は数百 KB)
+  - id: pages-static
+    need: GitHub Pages に静的ファイルとして置ける
+    rationale: データは 1 ファイル、1.3 MB 以内
+  - id: attribution
+    need: 出典を画面に出す
+    unmeasured: index.html の右下に常に表示 (Mapterhorn、国土地理院と承認番号、OpenStreetMap)。目視で確かめる
+
+evaluation:
+  budgets:
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: quick-start}
+    - {metric: light_frame_ms, stat: p95, max: 8, unit: ms, requirement: smooth-light}
+    - {metric: light_gpu_ms, stat: p95, max: 5, unit: ms, requirement: smooth-light}
+    - {metric: orbit_frame_ms, stat: p95, max: 4, unit: ms, requirement: smooth-light}
+    - {metric: transfer_kb, stat: max, max: 1300, unit: KB, requirement: few-bytes}
+    - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light}
+    - {metric: data_bytes, max: 1300000, unit: B, requirement: pages-static}
+    - {metric: js_heap_mb, stat: max, max: 80, unit: MB, requirement: quick-start}
+  gates: [エラーがない, ハードウェア GPU (info.gpu がソフトウェアラスタライザでない), verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/tangram/014-terrain-light-demo/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  network: {name: fast, latency_ms: 20, download_mbps: 50, upload_mbps: 10}
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: >-
+        ナビゲーション開始 (performance.now() の 0) から、fuji.mftl の取得、DecompressionStream での展開、
+        高さの復元、勾配テクスチャの計算、シェーダーのリンク、最初の影のパスと地形の描画を経て、1 画素の readPixels が返るまで。
+        bench.ts の読み込みは含まない
+      metrics: [first_frame_ms]
+    - id: checks
+      what: 本物のポインター、ホイール、クリックのイベントでページを動かし、画面の画素を読む (verification.checks)
+      metrics: []
+    - id: light-path
+      what: 最初の視点 (方位 200°、俯角 32°、距離 52 km、高さ 1.5 倍) で、光を 240 フレームで一周させ、高度を 8° から 48° まで揺らす。毎フレーム影のパスと地形
+      metrics: [light_cpu_ms, light_frame_ms, light_gpu_ms]
+    - id: orbit-path
+      what: 光を止めて、カメラを 240 フレームで一周させながら距離を 21 から 52 km まで変える。影は作り直さない
+      metrics: [orbit_cpu_ms, orbit_frame_ms, orbit_gpu_ms]
+
+datasets:
+  bake: [node, examples/tangram/014-terrain-light-demo/bake.ts]
+  sources:
+    - id: mapterhorn-planet
+      origin: >-
+        Mapterhorn の全球標高 PMTiles (2026-01-06 版、z0-12、512 px の WebP lossless、Terrarium)。
+        手元の /sata_hdd_24tb/www/html/static/mapterhorn/2026-01-06/planet.pmtiles を tools/pmtiles.ts で Range 読みする
+      license: >-
+        "© Mapterhorn"。日本の元データは国土地理院の基盤地図情報 (数値標高モデル)。Mapterhorn は測量法に基づく国土地理院長承認（使用）
+        R 8JHs 131 を得ており、使用承認を得て作成した成果の二次利用に追加申請は不要 (17-fuji-terrain-3d の調査)。
+        画面に Mapterhorn と国土地理院の出典、加工の事実、承認番号を出す
+    - id: osm-japan-src-2026-08
+      origin: >-
+        OpenStreetMap 日本の凍結版 (2026-08-31) の osm2pgsql テーブル planet_osm_polygon (GeoParquet、EPSG:3857)。
+        /sata_hdd_24tb/hf_data/__published/osm-japan-src-2026-08/data/parquet/planet_osm_polygon.parquet
+      license: ODbL ("© OpenStreetMap contributors")。湖のマスクは派生データベースとして ODbL に従う
+  outputs: [data/baked/tangram-014-terrain-light-demo/fuji.mftl]
+  preparation:
+    - 区画は z11 の画素 1280x1024 (x 927728-929007、y 413294-414317)、138.5101-138.9496E 35.2865-35.5730N、1 テクセル 31.14 m、39.9 x 31.9 km
+    - z11 タイル 4x3 枚 (x 1811-1814、y 807-809、4,989,416 B) を Range で読み、GDAL の WEBP ドライバーで VRT モザイクにして生のバイトにする
+    - Terrarium (R*256 + G + B/256 - 32768) で復元。235.56 から 3,769.79 m、最高点 138.7273E 35.3606N (山頂、z11 は z12 の 2x2 平均なので 3,776 m より低い)
+    - 0.25 m で量子化し、左 + 上 - 左上の平面予測の残差を int16 で並べる (最大 983 段)
+    - 湖のマスク。DuckDB で bbox が区画に掛かる natural=water または landuse=reservoir の多角形 391 件を選び、gdal_rasterize でテクセルの中心が内側なら 1 (21,921 テクセル、1.67%)。五湖の内点 (ST_PointOnSurface) がすべて水であることを bake が確かめる
+    - ヘッダー 32 B + 残差 + マスクを gzip -9。1,233,826 B (高さだけで 1,229,201 B、マスクは 4,625 B)。法線と影は配らずブラウザで作る
+
+performance_knowledge:
+  - id: normals-at-load-not-baked
+    finding: >-
+      法線は焼かず、読み込み時に JS で中央差分の勾配 (dh/dx, dh/dy) を RGBA16F テクスチャに入れ、フラグメントシェーダーで
+      normalize(-gx*e, -gy*e, 1) にする。勾配なら高さの倍率 e を変えても作り直さなくてよい。
+      焼くと 1 テクセル 2 から 4 B 増え、高さから正確に導ける量に転送を払うことになる。フラグメントごとに高さから微分する案
+      (navara が一度とってやめた方法) は、メッシュを 2 テクセルおきにしても陰影は 1 テクセルの細かさで出せる点は同じだが、毎フレーム 4 回の読みが要る
+    evidence: 勾配の計算は 1280x1024 で一度だけ (時間は未計測、ベンチで first_frame_ms に含まれる)
+    applies_when: 光や高さの倍率を実行時に変える地形の陰影
+  - id: shadow-march-only-when-light-moves
+    finding: >-
+      影は高さ場のテクセル空間で光の方へ 96 歩 (1 テクセルから対角 1,639 テクセルまで等比、公比 1.081) 進み、最も急な見上げ角と
+      tan(高度) を比べて R8 テクスチャに書く。光か倍率が変わったときだけ作り直し、カメラを回すときはやり直さない。
+      シャドウマップ (光から見た深度) は高さ場なら要らず、バイアスのにきびも出ない
+    evidence: 未計測 (light_gpu_ms と orbit_gpu_ms の差が影のパスの費用になる)
+    applies_when: 高さ場の地形に、動く光で影を落とすとき
+  - id: quantisation-sweep
+    finding: 高さの量子化を 0.25 m にした。0.5 m は 17% 小さいが、低い太陽の平地で勾配の誤差が段になって見える恐れがある
+    evidence: >-
+      gzip 後の高さ (平面予測の残差): 0.1 m 1,490,515 B、0.25 m 1,229,190 B、0.5 m 1,024,066 B、1 m 823,203 B。
+      バイトを下位と上位に分ける並びは 0.25 m で 1,139,489 B (7% 減) だが 1 m では逆に増え、採らなかった。
+      31 m のテクセルで 0.5 m の段は勾配で ±0.008 (高度 5° の太陽の sin 0.087 に対し ±9% の明るさ)
+    applies_when: 低い光で陰影を見せる DEM の量子化
+  - id: bytes-vs-original
+    finding: 同じ範囲を原本の WebP タイルで読むより小さい
+    evidence: >-
+      fuji.mftl 1,233,826 B に対し、範囲を覆う z11 タイル 12 枚は 4,989,416 B (タイル単位でしか取れない)。
+      範囲の面積の割合 (1280x1024 / 2048x1536 = 0.42) で按分しても 2.08 MB
+    applies_when: 決まった範囲だけを見る地形の例
+  - id: osm-lake-probe-points
+    finding: 湖の多角形の頂点の平均は湖の外に落ちることがある (精進湖、河口湖)。確かめる点は ST_PointOnSurface で取る
+    evidence: 頂点平均の 138.6096E 35.4869N (精進湖) はマスクで陸。ST_PointOnSurface の 138.6066E 35.4887N は水
+    applies_when: 多角形の内側の点を検査に使うとき
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (型ストリップ配信)
+    gpu: hardware
+    code:
+      - examples/tangram/014-terrain-light-demo/index.html
+      - examples/tangram/014-terrain-light-demo/main.ts
+      - examples/tangram/014-terrain-light-demo/grid.ts
+      - examples/tangram/014-terrain-light-demo/camera.ts
+      - examples/tangram/014-terrain-light-demo/light.ts
+      - examples/tangram/014-terrain-light-demo/shaders.ts
+    dependencies: []
+    why: >-
+      範囲が決まっているので、高さは 1 枚の R32F テクスチャ、メッシュは頂点バッファーなし (gl_VertexID から格子を作る) の
+      641x513 頂点 1 回の drawElements。光の変化は影のパス 1 回とユニフォームだけ。DecompressionStream で gzip を展開するので
+      展開器も要らない
+  alternatives:
+    - option: Tangram JS と Leaflet (元の例)
+      rejected_because: 2D の地図に Mapzen の法線タイル (サービス終了) を貼る作りで、3D の地形も影もない。ライブラリは数百 KB
+    - option: 法線をベイクして配る
+      rejected_because: 高さから導ける量に 1 テクセル 2 から 4 B を払う。高さの倍率を変えると合わなくなる。比較は未計測
+    - option: 光から見たシャドウマップ
+      rejected_because: 高さ場ではテクセル空間の行進のほうが単純で、バイアスの調整が要らない。比較は未計測
+    - option: 影をフラグメントごとに毎フレーム計算
+      rejected_because: カメラだけ動くときも費用を払う。テクスチャに書けば回転は影を作り直さない
+    - option: 17-fuji-terrain-3d の LOD つきチャンク (Range 読み)
+      rejected_because: 40 km 四方を 31 m で 1 枚にすれば 1.2 MB で、LOD も Range も要らない。寄ったときの細かさは捨てる
+  not_doing: [LOD とタイルの読み分け, 区画の外の地形 (影は区画の端で途切れる), 点光源 (元の例の赤い点光源), 地名ラベルと道路, 光の色を選ぶ GUI, 大気と霧, 区画の側面の壁, タッチのピンチ]
+
+verification:
+  checks:
+    - id: lit-slope-brighter
+      what: ポインターを画面中心の右に置くと光は東から当たり、富士山の東斜面が西斜面より明るい
+      how: pointermove を中心の右 (短辺の 0.3 倍) に送り、山頂から経度 +0.03° と -0.03° の地点を画面に投影して 5x5 画素の輝度を読む
+      expected: 光の方位 90° ± 1°、東 > 1.3 x 西
+    - id: order-flips-with-light
+      what: ポインターを中心の左に動かすと光は西からになり、明暗が入れ替わる
+      how: pointermove を中心の左に送り、同じ 2 地点を読む
+      expected: 光の方位 -90° ± 1°、西 > 1.3 x 東
+    - id: valley-cast-shadow
+      what: 低い太陽では富士山が忍野に影を落とし、高い太陽では落とさない
+      how: 忍野から山頂への方位に光を置き、高度 7° と 45° で、影ありと影なし (チェックボックスと同じ切り替え) の忍野の 5x5 画素の輝度の比を読む
+      expected: 7° で 0.75 未満、45° で 0.97 より大きい
+    - id: water-specular
+      what: 山中湖は視線を鏡に映した向きの光できらめく
+      how: 湖の内点の画素を、鏡映しの方位と、同じ高度で方位を 90° 回した光で読む
+      expected: 鏡映し > 1.5 x 90° 回し
+    - id: terrain-3d
+      what: 地形は持ち上がった 3D で、空が上にある
+      how: 俯角 25° の視点で、山頂の画面位置と、同じ平面位置で高さ 0 の点の画面位置を比べ、画面上端と山頂の画素を読む
+      expected: 麓 - 山頂 > 40 px、上端の輝度は背景 (15 ± 4)、山頂は背景と 15 以上違う
+    - id: drag-and-wheel
+      what: ドラッグ右で回り (南の地面が右へ)、ホイールでポインターの下の点を保ったまま寄る
+      how: pointerdown、pointermove (+60 px)、pointerup を送り、南 5.5 km の点の投影を比べる。目標の高さの平面上の点の位置で wheel (deltaY -300) を送る
+      expected: 方位が増え、南の点が 5 px 以上右へ、距離が 0.8 倍未満、ポインターの下の点のずれ 1 px 未満
+    - id: sun-toggle-animates
+      what: 太陽ボタンで光が動き出し、もう一度押すと止まる
+      how: ボタンを click し、60 フレーム待って光の方位、影のパスの回数、東斜面の輝度を比べる。もう一度 click
+      expected: 方位が 3° 以上進む、影のパス 30 回以上、輝度が 2 以上変わる、止まる
+  harness:
+    - webglcontextlost が起きたらエラーにする
+    - info.gpu がソフトウェアラスタライザならエラー (gpu: hardware)
