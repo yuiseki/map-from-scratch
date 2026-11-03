@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { source } from '../../tools/sources.ts';
 import { equalEarth, simplify, triangulatePolygon, polygonsOf } from '../../tools/geo.ts';
 import type { Point } from '../../tools/geo.ts';
+import { depthByte, magnitudeByte, quakeMinutes } from './quake-data.ts';
 
 // The parts of the two GeoJSON sources this bake reads.
 interface Countries { features: { geometry: { type: string; coordinates: unknown } | null }[] }
@@ -47,9 +48,9 @@ events.forEach((f, i) => {
   const [x, y] = q(equalEarth([lon, lat]));
   rec.writeUInt16LE(x, i * 12);
   rec.writeUInt16LE(y, i * 12 + 2);
-  rec.writeFloatLE((f.properties.time - T0) / 60000, i * 12 + 4);
-  rec.writeUInt8(Math.max(0, Math.min(255, Math.round(f.properties.mag * 10 - 40))), i * 12 + 8);
-  rec.writeUInt8(Math.max(0, Math.min(255, Math.round(depth / 3))), i * 12 + 9);
+  rec.writeFloatLE(quakeMinutes(f.properties.time, T0), i * 12 + 4);
+  rec.writeUInt8(magnitudeByte(f.properties.mag), i * 12 + 8);
+  rec.writeUInt8(depthByte(depth), i * 12 + 9);
 });
 
 mkdirSync(OUT, { recursive: true });

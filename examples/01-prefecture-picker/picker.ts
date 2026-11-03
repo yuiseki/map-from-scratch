@@ -13,6 +13,11 @@ export interface Picker {
   setHover(i: number): void;
 }
 
+export function pickPath(prefs: readonly Pick<Prefecture, 'path'>[], ctx: { isPointInPath(path: Path2D, x: number, y: number): boolean }, x: number, y: number): number {
+  for (let i = 0; i < prefs.length; i++) if (ctx.isPointInPath(prefs[i].path, x, y)) return i;
+  return -1;
+}
+
 export async function mount(el: HTMLElement, url: string): Promise<Picker> {
   const { w, h, p }: Baked = await (await fetch(url)).json();
   const prefs = p.map(([code, name, d]): Prefecture => ({ code, name, path: new Path2D(d) }));
@@ -53,8 +58,7 @@ export async function mount(el: HTMLElement, url: string): Promise<Picker> {
   // x, y in CSS pixels relative to the canvas. Returns an index or -1.
   function pick(x: number, y: number) {
     const dx = x * devicePixelRatio, dy = y * devicePixelRatio;
-    for (let i = 0; i < prefs.length; i++) if (ctx.isPointInPath(prefs[i].path, dx, dy)) return i;
-    return -1;
+    return pickPath(prefs, ctx, dx, dy);
   }
 
   const at = (e: MouseEvent) => {

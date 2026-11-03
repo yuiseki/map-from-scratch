@@ -1,4 +1,5 @@
 // Search a baked set of 47 prefecture paths and highlight the first match.
+import { findPrefecture } from './search.ts';
 export {};
 interface Data { w: number; h: number; p: [string, string, string][] }
 const data: Data = await (await fetch('../../data/baked/01-prefecture-picker/prefectures.json')).json();
@@ -39,7 +40,7 @@ function resize() {
 
 query.addEventListener('input', () => {
   const text = query.value.trim();
-  selected = text ? prefs.findIndex(({ name }) => name.includes(text)) : -1;
+  selected = findPrefecture(text, prefs);
   result.textContent = !text ? '県名を入力してください。'
     : selected < 0 ? '該当する都道府県はありません。'
     : `${prefs[selected].name} (${prefs[selected].code})`;

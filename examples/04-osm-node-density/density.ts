@@ -4,6 +4,7 @@
 //   2. the counts are reduced 4x4 at a time with max() down to one texel
 //   3. a full-screen pass colours log(1 + count) / log(1 + max)
 // Nothing goes back to the CPU; the exposure follows the view by itself.
+import { decodeDensityData } from './decode.ts';
 const POINT_VS = `#version 300 es
 layout(location=0) in vec2 a_pos;
 uniform vec3 u_cam;   // centre (grid units 0..1), px per grid unit
@@ -49,9 +50,7 @@ export type DensityMap = Awaited<ReturnType<typeof mount>>;
 
 export async function mount(canvas: HTMLCanvasElement, url: string) {
   const bin = await fetch(url).then((r) => r.arrayBuffer());
-  const n = new Uint32Array(bin, 0, 1)[0];
-  const bbox = new Float64Array(bin, 8, 4);
-  const dx = new Uint16Array(bin, 40, n), dy = new Uint16Array(bin, 40 + n * 2, n);
+  const { count: n, bbox, positions: pos } = decodeDensityData(bin);
   // Undo the delta coding, dealing the Morton-ordered points out across S
   // strides: neighbours on the ground end up apart in the draw order, so the
   // GPU is not blending into the same pixel over and over at once. With all
@@ -60,17 +59,6 @@ export async function mount(canvas: HTMLCanvasElement, url: string) {
   // The first rem strides hold per points, the others one fewer. Spacing
   // every stride per apart wrote 49 points past the end, where the typed
   // array dropped them, and left 49 slots at (0, 0).
-  const S = 128;
-  const per = Math.ceil(n / S), rem = n % S || S;
-  const pos = new Uint16Array(n * 2);
-  for (let i = 0, x = 0, y = 0; i < n; i++) {
-    const r = i % S, j = r * per - Math.max(0, r - rem) + Math.floor(i / S);
-    x = (x + dx[i]) & 0xffff;
-    y = (y + dy[i]) & 0xffff;
-    pos[2 * j] = x;
-    pos[2 * j + 1] = y;
-  }
-
   const ctx = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!ctx) throw new Error('WebGL2 unavailable');
   const gl = ctx;   // narrowed once, for resize() and draw() below as well
