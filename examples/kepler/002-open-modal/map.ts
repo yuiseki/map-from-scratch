@@ -18,7 +18,7 @@ export interface KeplerMap {
   destroy(): void;
 }
 
-function projectMercator(lon: number, lat: number): [number, number] {
+export function projectMercator(lon: number, lat: number): [number, number] {
   const x = (lon + 180) / 360;
   const sin = Math.sin((lat * Math.PI) / 180);
   const clampedSin = Math.max(-0.9999, Math.min(0.9999, sin));
