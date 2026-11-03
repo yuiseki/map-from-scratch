@@ -10,11 +10,11 @@ function neighborhood(z: number, mercatorX: number, mercatorY: number, radius: n
   return list;
 }
 
-export function planTiles(z: number, mercatorX: number, mercatorY: number, zoomIn: boolean) {
-  const visible = neighborhood(z, mercatorX, mercatorY, 2);
+export function planTiles(z: number, mercatorX: number, mercatorY: number, zoomIn: boolean, radius = 2) {
+  const visible = neighborhood(z, mercatorX, mercatorY, radius);
   const neighbors = zoomIn ? [z + 1, z - 1] : [z - 1, z + 1];
   const prefetch = neighbors.filter(level => level >= 14 && level <= 20)
-    .flatMap(level => neighborhood(level, mercatorX, mercatorY, 1));
+    .flatMap(level => neighborhood(level, mercatorX, mercatorY, Math.max(1, radius - 1)));
   return { visible, prefetch };
 }
 

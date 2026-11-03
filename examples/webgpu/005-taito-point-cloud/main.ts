@@ -24,6 +24,10 @@ try {
   throw error;
 }
 
+const isBench = new URLSearchParams(location.search).has('bench');
+// Bench strictly uses 5x5 (radius 2) for comparable measurements; default is wide (7x7).
+let tileRadius = isBench ? 2 : 3;
+
 const camera: Camera = { x: 0, y: 0, distance: 780, yaw: 22, pitch: 62, width: 1, height: 1, size: 3.2 };
 interface Tile { z: number; x: number; y: number; mesh: Mesh | null; loading: boolean; failed: boolean; used: number }
 const tiles = new Map<string, Tile>();
@@ -70,22 +74,22 @@ function draw() {
   camera.width = canvas.clientWidth; camera.height = canvas.clientHeight;
   const z = Math.max(14, Math.min(20, Math.round(20 - Math.log2(camera.distance / 130))));
   if (camera.distance !== previousDistance) zoomIn = camera.distance < previousDistance;
-  const plan = planTiles(z, mx0 + camera.x / world, my0 - camera.y / world, zoomIn);
+  const plan = planTiles(z, mx0 + camera.x / world, my0 - camera.y / world, zoomIn, tileRadius);
   previousDistance = camera.distance;
   const wanted = plan.visible.map(({ z, x, y }) => tile(z, x, y));
   visibleTiles = wanted;
   const prefetch = plan.prefetch.map(({ z, x, y }) => tile(z, x, y));
   const now = performance.now();
   for (const t of [...wanted, ...prefetch]) t.used = now;
+  const maxPending = tileRadius >= 3 ? 8 : 5;
   for (const t of wanted) {
-    if (pending >= 5) break;
+    if (pending >= maxPending) break;
     if (!t.mesh && !t.loading && !t.failed) void load(t, false);
   }
-  // The visible level fills first. At most two background requests run so a
-  // change of view retains room for foreground requests.
+  // The visible level fills first. Background prefetch requests run when visible has space.
   if (wanted.every(t => t.mesh || t.failed)) {
     for (const t of prefetch) {
-      if (pending >= 5 || prefetchPending >= 2) break;
+      if (pending >= maxPending || prefetchPending >= 3) break;
       if (!t.mesh && !t.loading && !t.failed) void load(t, true);
     }
   }
@@ -94,70 +98,83 @@ function draw() {
     .map(({ z, x, y }) => tiles.get(key(z, x, y))!);
   for (const t of fallback) t.used = now;
   renderer.draw(camera, [...fallback.map(t => t.mesh!), ...shown]);
-  if (gpuBytes > 120 * 1048576) {
+
+  const maxGpuBytes = (tileRadius >= 4 ? 480 : tileRadius >= 3 ? 320 : 120) * 1048576;
+  const targetGpuBytes = maxGpuBytes * 0.75;
+  if (gpuBytes > maxGpuBytes) {
     for (const t of [...tiles.values()].filter(t => t.mesh && t.used !== now).sort((a, b) => a.used - b.used)) {
-      if (gpuBytes < 85 * 1048576) break;
+      if (gpuBytes < targetGpuBytes) break;
       gpuBytes -= t.mesh!.bytes; points -= t.mesh!.count;
       renderer.remove(t.mesh!); t.mesh = null;
     }
   }
-  detail.textContent = `z${z} · 視点距離 ${Math.round(camera.distance)} m · 点サイズ ${camera.size.toFixed(1)}`;
-  const prefetched = prefetch.filter(t => t.mesh || t.failed).length;
-  status.textContent = `${shown.length} タイル表示${fallback.length ? ` ＋ ${fallback.length} 補完` : ''} · 前後のズームを先読み ${prefetched}/${prefetch.length} · 読込中 ${pending} · ${points.toLocaleString()} 点取得 · ${(bytes / 1048576).toFixed(1)} MiB / ${requests} 件${lastError ? ` · ${lastError}` : ''}`;
+  const side = tileRadius * 2 + 1;
+  const loadedCount = shown.length;
+  detail.textContent = `表示: ${side}×${side} (${loadedCount}/${wanted.length}タイル) | ズーム: z${z} | 点数: ${points.toLocaleString()} 点 | GPU: ${(gpuBytes / 1048576).toFixed(1)} MiB`;
+  status.textContent = pending > 0
+    ? `取得中: ${pending} 件 (受信 ${(bytes / 1048576).toFixed(1)} MB)`
+    : lastError ? `エラー: ${lastError}` : `準備完了 (${requests} リクエスト)`;
 }
 
-const places: Record<string, [number, number, number]> = {
-  asakusa: [139.795922, 35.711917, 780],
-  sensoji: [139.79665, 35.71478, 700],
-  ueno: [139.7749, 35.7144, 800],
-  okachimachi: [139.7748, 35.7075, 650],
+const PLACES: Record<string, { x: number; y: number; distance: number; yaw: number; pitch: number }> = {
+  overview: { x: 0, y: -200, distance: 3200, yaw: 15, pitch: 56 },
+  asakusa: { x: 0, y: 0, distance: 780, yaw: 22, pitch: 62 },
+  sensoji: { x: -80, y: 320, distance: 540, yaw: -15, pitch: 55 },
+  ueno: { x: -1650, y: 280, distance: 820, yaw: 85, pitch: 48 },
+  okachimachi: { x: -1400, y: -450, distance: 720, yaw: 35, pitch: 52 },
 };
-function setPlace(name: string) {
-  const place = places[name]; if (!place) return;
-  const [mx, my] = mercator(place[0], place[1]);
-  camera.x = (mx - mx0) * world; camera.y = (my0 - my) * world; camera.distance = place[2]; schedule();
+for (const b of document.querySelectorAll<HTMLButtonElement>('[data-place]')) {
+  b.addEventListener('click', () => {
+    const p = PLACES[b.dataset.place ?? ''];
+    if (p) { Object.assign(camera, p); schedule(); }
+  });
 }
-document.querySelectorAll<HTMLButtonElement>('[data-place]').forEach(button => button.addEventListener('click', () => {
-  setPlace(button.dataset.place!); history.replaceState(null, '', `?place=${button.dataset.place}`);
-}));
-setPlace(new URLSearchParams(location.search).get('place') ?? 'asakusa');
-document.getElementById('size')!.addEventListener('input', event => { camera.size = Number((event.target as HTMLInputElement).value); schedule(); });
-canvas.addEventListener('contextmenu', event => event.preventDefault());
-let drag: { id: number; x: number; y: number; pan: boolean } | null = null;
+const radiusButtons = document.querySelectorAll<HTMLButtonElement>('#radius-row button');
+for (const b of radiusButtons) {
+  b.addEventListener('click', () => {
+    const r = Number(b.dataset.radius);
+    if (r && r !== tileRadius) {
+      tileRadius = r;
+      for (const btn of radiusButtons) btn.classList.toggle('active', btn === b);
+      schedule();
+    }
+  });
+}
+const sizeInput = document.getElementById('size') as HTMLInputElement;
+sizeInput.addEventListener('input', () => { camera.size = Number(sizeInput.value); schedule(); });
+
+let drag: { x: number; y: number; right: boolean } | null = null;
 canvas.addEventListener('pointerdown', event => {
+  drag = { x: event.clientX, y: event.clientY, right: event.button === 2 || event.shiftKey };
   canvas.setPointerCapture(event.pointerId);
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, pan: event.button === 2 || event.shiftKey };
 });
 canvas.addEventListener('pointermove', event => {
-  if (drag?.id !== event.pointerId) return;
+  if (!drag) return;
   const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
   drag.x = event.clientX; drag.y = event.clientY;
-  if (drag.pan) {
-    const units = camera.distance * 2 * Math.tan(Math.PI / 6) / Math.max(1, canvas.clientHeight);
-    const yaw = camera.yaw * Math.PI / 180;
-    camera.x -= (Math.cos(yaw) * dx + Math.sin(yaw) * dy) * units;
-    camera.y -= (Math.sin(yaw) * dx - Math.cos(yaw) * dy) * units;
+  if (drag.right) {
+    const yaw = camera.yaw * Math.PI / 180, factor = camera.distance * 0.0012;
+    camera.x -= (Math.cos(yaw) * dx - Math.sin(yaw) * dy) * factor;
+    camera.y += (Math.sin(yaw) * dx + Math.cos(yaw) * dy) * factor;
   } else {
-    camera.yaw = (camera.yaw - dx * 0.3 + 360) % 360;
-    camera.pitch = Math.max(20, Math.min(85, camera.pitch + dy * 0.25));
+    camera.yaw = (camera.yaw + dx * 0.3) % 360;
+    camera.pitch = Math.max(10, Math.min(88, camera.pitch + dy * 0.3));
   }
   schedule();
 });
 canvas.addEventListener('pointerup', () => { drag = null; });
 canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('contextmenu', event => event.preventDefault());
 canvas.addEventListener('wheel', event => {
-  event.preventDefault(); camera.distance = Math.max(65, Math.min(9000, camera.distance * Math.exp(event.deltaY * 0.0015))); schedule();
+  event.preventDefault(); camera.distance = Math.max(65, Math.min(25000, camera.distance * Math.exp(event.deltaY * 0.0015))); schedule();
 }, { passive: false });
+
 // The bench (also webgpu-005's comparison) waits for the view's tiles, then
 // times the renderer alone on them. Not loaded without ?bench.
-if (new URLSearchParams(location.search).has('bench')) {
+if (isBench) {
   void import('./bench.ts').then(({ run }) => run({
-    device: renderer.device,
-    gpu: renderer.gpu,
-    draw: renderer.draw,
-    readScreen: renderer.readScreen,
-    size: renderer.size,
-    camera, origin,
+    device: renderer.device, gpu: renderer.gpu, draw: renderer.draw, readScreen: renderer.readScreen,
+    camera, origin, size: renderer.size,
     ready: () => visibleTiles.length > 0 && visibleTiles.every(t => t.mesh || t.failed),
     freeze: () => { frozen = true; },
     idle: () => pending === 0,
