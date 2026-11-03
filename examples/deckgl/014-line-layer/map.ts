@@ -1,6 +1,6 @@
 type Polygon = [number, number][][];
 
-interface Line {
+export interface Line {
   sx: number;
   sy: number;
   tx: number;
@@ -11,6 +11,23 @@ interface Line {
 const mercX = (lon: number): number => (lon + 180) / 360;
 const mercY = (lat: number): number =>
   (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
+
+export function decodeLineData(buffer: ArrayBuffer): Line[] {
+  const dv = new DataView(buffer);
+  const count = dv.getUint32(6, true);
+  const lines = new Array<Line>(count);
+  for (let i = 0; i < count; i++) {
+    const offset = 10 + i * 12;
+    lines[i] = {
+      sx: dv.getUint16(offset, true) / 65535,
+      sy: dv.getUint16(offset + 2, true) / 65535,
+      tx: dv.getUint16(offset + 4, true) / 65535,
+      ty: dv.getUint16(offset + 6, true) / 65535,
+      v: dv.getInt32(offset + 8, true),
+    };
+  }
+  return lines;
+}
 
 export class LineLayerMap {
   canvas: HTMLCanvasElement;
@@ -51,23 +68,13 @@ export class LineLayerMap {
   }
 
   private decodeLines(buffer: ArrayBuffer): void {
-    const dv = new DataView(buffer);
-    const count = dv.getUint32(6, true);
-    this.lines = new Array(count);
+    this.lines = decodeLineData(buffer);
     this.pathPos = new Path2D();
     this.pathNeg = new Path2D();
-
-    for (let i = 0; i < count; i++) {
-      const o = 10 + i * 12;
-      const sx = dv.getUint16(o, true) / 65535;
-      const sy = dv.getUint16(o + 2, true) / 65535;
-      const tx = dv.getUint16(o + 4, true) / 65535;
-      const ty = dv.getUint16(o + 6, true) / 65535;
-      const v = dv.getInt32(o + 8, true);
-      this.lines[i] = { sx, sy, tx, ty, v };
-      const path = v >= 0 ? this.pathPos : this.pathNeg;
-      path.moveTo(sx, sy);
-      path.lineTo(tx, ty);
+    for (const line of this.lines) {
+      const path = line.v >= 0 ? this.pathPos : this.pathNeg;
+      path.moveTo(line.sx, line.sy);
+      path.lineTo(line.tx, line.ty);
     }
   }
 

@@ -18,6 +18,11 @@ const BACKGROUND = '#0b1020';
 const LOW = [43, 111, 214];
 const HIGH = [255, 179, 64];
 
+export function scatterRadiusPixels(_weight: number, latitude: number, zoom: number): number {
+  const metresPerPixel = 40075016.686 * Math.cos(latitude * Math.PI / 180) / (256 * 2 ** zoom);
+  return Math.max(0.5, 30 / metresPerPixel);
+}
+
 export async function mount(canvas: HTMLCanvasElement, pointsUrl: string): Promise<ScatterMap> {
   const ctx = canvas.getContext('2d')!;
   if (!ctx) throw new Error('2D context not available');
@@ -51,8 +56,8 @@ export async function mount(canvas: HTMLCanvasElement, pointsUrl: string): Promi
   // radiusScale 30): the weight is a class (1 and 2 in two colours), not a size. Sized by
   // weight, the larger orange squares won every overlap.
   function radiusAt(_weight: number): number {
-    const metresPerPx = 40075016.686 * Math.cos(Math.atan(Math.sinh(Math.PI * (1 - 2 * centerMy)))) / (256 * Math.pow(2, zoom));
-    return Math.max(0.5, 30 / metresPerPx);
+    const latitude = Math.atan(Math.sinh(Math.PI * (1 - 2 * centerMy))) * 180 / Math.PI;
+    return scatterRadiusPixels(_weight, latitude, zoom);
   }
 
   function getScreenPos(lng: number, lat: number): [number, number] {
