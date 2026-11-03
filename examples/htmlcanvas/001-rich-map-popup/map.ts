@@ -5,6 +5,7 @@
 // 国土地理院「全国最新写真（シームレス）」PMTiles aerial raster tiles.
 
 import { openArchive } from './pmtiles.ts';
+import { popupRectAtAnchor, projectWorld, unprojectWorld } from './geometry.ts';
 
 export interface Landmark {
   id: string;
@@ -130,18 +131,11 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
 
   function project(lon: number, lat: number): { x: number; y: number } {
     const m = mercator(lon, lat);
-    return {
-      x: canvas.width / 2 + (m.x - center.x),
-      y: canvas.height / 2 + (m.y - center.y),
-    };
+    return projectWorld(m.x, m.y, center.x, center.y, canvas.width, canvas.height);
   }
 
   function unproject(px: number, py: number): { lon: number; lat: number } {
-    const mx = center.x + (px - canvas.width / 2);
-    const my = center.y + (py - canvas.height / 2);
-    const lon = (mx / world()) * 360 - 180;
-    const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * my) / world()))) * (180 / Math.PI);
-    return { lon, lat };
+    return unprojectWorld(px, py, center.x, center.y, canvas.width, canvas.height, world());
   }
 
   function getAnchorPos(): { x: number; y: number } {
@@ -152,9 +146,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     const anchor = getAnchorPos();
     const w = popup.offsetWidth || 260;
     const h = popup.offsetHeight || 140;
-    const px = Math.round(anchor.x - w / 2);
-    const py = Math.round(anchor.y - h - 14);
-    return { x: px, y: py, width: w, height: h };
+    return popupRectAtAnchor(anchor.x, anchor.y, w, h);
   }
 
   function getButtonRect(): { x: number; y: number; width: number; height: number } {
