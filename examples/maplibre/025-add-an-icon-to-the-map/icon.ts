@@ -23,6 +23,7 @@ const SPRITE_SIZE = 48;
 const mercY = (lat: number) => (1 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / Math.PI) / 2;
 const targetMx = (ICON_LNG + 180) / 360;
 const targetMy = mercY(ICON_LAT);
+export const iconWorldPosition = (): [number, number] => [targetMx, targetMy];
 
 // A tiny "cat" sprite drawn once into an offscreen canvas, standing in for the
 // cat.png that the MapLibre example loads. No image request at run time.
@@ -127,7 +128,8 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   function getIconScreenPos(): [number, number] {
     const scale = 256 * Math.pow(2, zoom);
-    return [width / 2 + (targetMx - centerMx) * scale, height / 2 + (targetMy - centerMy) * scale];
+    const [mx, my] = iconWorldPosition();
+    return [width / 2 + (mx - centerMx) * scale, height / 2 + (my - centerMy) * scale];
   }
 
   function draw(): void {

@@ -34,6 +34,7 @@ const mercX = (lon: number): number => (lon + 180) / 360;
 
 const anchorMx = mercX(MARKER_LNG);
 const anchorMy = mercY(MARKER_LAT);
+export const bounceOffset = (elapsedMs: number): number => BOUNCE_AMP * Math.abs(Math.sin(Math.PI * ((elapsedMs % BOUNCE_MS) / BOUNCE_MS)));
 
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<BouncingMarkerMap> {
   const rawCtx = canvas.getContext('2d');
@@ -63,8 +64,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
   }
 
   function bouncePx(): number {
-    const u = (elapsedMs % BOUNCE_MS) / BOUNCE_MS;
-    return BOUNCE_AMP * Math.abs(Math.sin(Math.PI * u));
+    return bounceOffset(elapsedMs);
   }
 
   function getAnchorScreenPos(): [number, number] {

@@ -21,6 +21,16 @@ function mercX(lon: number): number {
   return (lon + 180) / 360;
 }
 
+export function sineLinePoints(): [number, number][] {
+  const points: [number, number][] = [];
+  for (let x = 0; x <= 360; x++) {
+    const lat = Math.sin((x * Math.PI) / 90) * 40;
+    const lon = x > 180 ? x - 360 : x;
+    points.push([mercX(lon), mercY(lat)]);
+  }
+  return points;
+}
+
 export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise<AnimatedLineMap> {
   const ctx = canvas.getContext('2d')!;
   const res = await fetch(landUrl);
@@ -33,12 +43,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string): Promise
 
   // Precompute full sine wave points in Mercator [0..1]
   // In MapLibre example: x from 0 to 360, y = Math.sin((x * Math.PI) / 90) * 40;
-  const sinePoints: [number, number][] = [];
-  for (let x = 0; x <= maxSteps; x++) {
-    const lat = Math.sin((x * Math.PI) / 90) * 40;
-    const lon = x > 180 ? x - 360 : x; // Map -180..180 Mercator coordinates
-    sinePoints.push([mercX(lon), mercY(lat)]);
-  }
+  const sinePoints = sineLinePoints();
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
