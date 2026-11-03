@@ -250,13 +250,24 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
   context.configure({ device, format, alphaMode: 'opaque', usage: RENDER_ATTACHMENT | TEX_COPY_SRC });
 
   // 1. Compute Pipelines
+  const computeBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: 0x4, buffer: { type: 'uniform' } },
+      { binding: 1, visibility: 0x4, buffer: { type: 'read-only-storage' } },
+      { binding: 2, visibility: 0x4, buffer: { type: 'storage' } },
+    ],
+  });
+  const computePipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [computeBindGroupLayout],
+  });
+
   const computeModule = device.createShaderModule({ code: COMPUTE_WGSL });
   const clearPipeline = device.createComputePipeline({
-    layout: 'auto',
+    layout: computePipelineLayout,
     compute: { module: computeModule, entryPoint: 'clearCells' },
   });
   const binPipeline = device.createComputePipeline({
-    layout: 'auto',
+    layout: computePipelineLayout,
     compute: { module: computeModule, entryPoint: 'binPoints' },
   });
 
@@ -285,7 +296,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
       }],
     },
     fragment: { module: renderModule, entryPoint: 'fs', targets: [{ format }] },
-    primitive: { topology: 'triangle-list', cullMode: 'back' },
+    primitive: { topology: 'triangle-list', cullMode: 'none' },
     depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'greater' },
     multisample: { count: SAMPLES },
   });
@@ -348,7 +359,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
 
       // Recreate bind groups
       computeBindGroup = device.createBindGroup({
-        layout: clearPipeline.getBindGroupLayout(0),
+        layout: computeBindGroupLayout,
         entries: [
           { binding: 0, resource: { buffer: computeUniformBuffer } },
           { binding: 1, resource: { buffer: pointBuffer! } },
@@ -464,9 +475,10 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
     const proj = new Float32Array(16);
     proj[0] = 1 / (aspect * tanHalf);
     proj[5] = 1 / tanHalf;
-    proj[10] = near / (near - far);
+    // Reversed-Z: at near gives 1.0, at far gives 0.0 (WebGPU NDC [0, 1])
+    proj[10] = near / (far - near);
     proj[11] = -1.0;
-    proj[14] = (near * far) / (near - far);
+    proj[14] = (near * far) / (far - near);
 
     const yaw = cam.yaw * Math.PI / 180;
     const pitch = cam.pitch * Math.PI / 180;

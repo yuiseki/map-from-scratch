@@ -106,7 +106,7 @@ struct Uniforms {
 struct SegmentIn {
   @location(0) p0: vec3u, // 24-bit quantized x, y, time (t0 in 0.1s)
   @location(1) p1: vec3u, // 24-bit quantized x, y, time (t1 in 0.1s)
-  @location(2) meta: vec2u, // vendor (0=yellow, 1=green), gap (1=end of trip)
+  @location(2) attrs: vec2u, // vendor (0=yellow, 1=green), gap (1=end of trip)
 }
 
 struct VertexOut {
@@ -133,10 +133,10 @@ fn vs(@builtin(vertex_index) vertIdx: u32, in: SegmentIn) -> VertexOut {
   let t0 = f32(in.p0.z) * 0.1;
   let t1 = f32(in.p1.z) * 0.1;
 
-  if (in.meta.y > 0u || t1 < u.time - u.trail || t0 > u.time) {
+  if (in.attrs.y > 0u || t1 < u.time - u.trail || t0 > u.time) {
     out.clipPos = vec4f(0.0, 0.0, -1.0, 1.0);
     out.age = 1.0;
-    out.vendor = f32(in.meta.x);
+    out.vendor = f32(in.attrs.x);
     return out;
   }
 
@@ -168,7 +168,7 @@ fn vs(@builtin(vertex_index) vertIdx: u32, in: SegmentIn) -> VertexOut {
   out.clipPos = vec4f(pos.x / (u.view.x * 0.5), -pos.y / (u.view.y * 0.5), zNorm, 1.0);
   let curT = mix(t0, t1, select(lo, hi, isEnd));
   out.age = clamp((u.time - curT) / max(1.0, u.trail), 0.0, 1.0);
-  out.vendor = f32(in.meta.x);
+  out.vendor = f32(in.attrs.x);
   return out;
 }
 
@@ -314,14 +314,14 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
       const o0 = i * 10;
       const o1 = (i + 1) * 10;
 
-      const x0 = rawView.getUint8(o0) | (rawView.getUint8(o0 + 1) << 8) | (rawView.getUint8(o0 + 2) << 16);
-      const y0 = rawView.getUint8(o0 + 3) | (rawView.getUint8(o0 + 4) << 8) | (rawView.getUint8(o0 + 5) << 16);
+      const x0 = rawView.getUint8(o0) + rawView.getUint8(o0 + 1) * 256 + rawView.getUint8(o0 + 2) * 65536;
+      const y0 = rawView.getUint8(o0 + 3) + rawView.getUint8(o0 + 4) * 256 + rawView.getUint8(o0 + 5) * 65536;
       const t0 = rawView.getUint16(o0 + 6, true);
       const vendor = rawView.getUint8(o0 + 8);
       const gap = rawView.getUint8(o0 + 9);
 
-      const x1 = rawView.getUint8(o1) | (rawView.getUint8(o1 + 1) << 8) | (rawView.getUint8(o1 + 2) << 16);
-      const y1 = rawView.getUint8(o1 + 3) | (rawView.getUint8(o1 + 4) << 8) | (rawView.getUint8(o1 + 5) << 16);
+      const x1 = rawView.getUint8(o1) + rawView.getUint8(o1 + 1) * 256 + rawView.getUint8(o1 + 2) * 65536;
+      const y1 = rawView.getUint8(o1 + 3) + rawView.getUint8(o1 + 4) * 256 + rawView.getUint8(o1 + 5) * 65536;
       const t1 = rawView.getUint16(o1 + 6, true);
 
       const idx = i * 8;

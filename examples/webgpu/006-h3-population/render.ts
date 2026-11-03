@@ -94,10 +94,10 @@ export function populationColor(pop: number): [number, number, number] {
 }
 
 export function populationHeight(pop: number): number {
-  if (pop <= 0) return 0.0005;
-  // Logarithmic height scale with slight exponential curve
-  const t = Math.min(1.0, Math.max(0.0, Math.log10(pop + 1) / 7.2));
-  return Math.max(0.001, Math.pow(t, 1.8) * 0.14);
+  if (pop <= 0) return 0.001;
+  // Logarithmic height scale: proportional to log10(population + 1)
+  const logVal = Math.log10(pop + 1);
+  return Math.max(0.0015, (logVal / 7.2) * 0.085);
 }
 
 export async function createRenderer(canvas: HTMLCanvasElement) {
@@ -128,7 +128,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
       }],
     },
     fragment: { module, entryPoint: 'fs', targets: [{ format }] },
-    primitive: { topology: 'triangle-list', cullMode: 'back' },
+    primitive: { topology: 'triangle-list', cullMode: 'none' },
     depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'greater' },
     multisample: { count: SAMPLES },
   });
@@ -268,10 +268,10 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
     const proj = new Float32Array(16);
     proj[0] = 1 / (aspect * tanHalfFov);
     proj[5] = 1 / tanHalfFov;
-    // Reversed-Z: z_clip = near / (near - far) * (z - far) -> at near: 1, at far: 0
-    proj[10] = near / (near - far);
+    // Reversed-Z: at near gives 1.0, at far gives 0.0 (WebGPU NDC [0, 1])
+    proj[10] = near / (far - near);
     proj[11] = -1.0;
-    proj[14] = (near * far) / (near - far);
+    proj[14] = (near * far) / (far - near);
 
     // Camera eye position around target (cam.x, cam.y, 0)
     const yaw = cam.yaw * Math.PI / 180;
