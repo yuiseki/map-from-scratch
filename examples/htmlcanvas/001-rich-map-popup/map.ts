@@ -32,6 +32,9 @@ export interface MapPopupView {
   clickButton: () => Promise<boolean>;
   readPixel: (x: number, y: number) => Uint8ClampedArray;
   waitForTile: (timeoutMs?: number) => Promise<boolean>;
+  // Resolves true once every tile of the current view has arrived (or is
+  // known to be missing), false after timeoutMs.
+  waitForView: (timeoutMs?: number) => Promise<boolean>;
   hasAerialTiles: () => boolean;
 }
 
@@ -58,17 +61,22 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   const popupBtn = document.getElementById('popup-btn') as HTMLButtonElement;
   const popupLink = document.getElementById('popup-link') as HTMLAnchorElement;
 
+  // Write the popup's DOM only where it changed: setting textContent, even to
+  // the same text, replaces the text node and lays the popup out again, and
+  // a pan changes none of it.
+  const setText = (el: HTMLElement | null, text: string): void => {
+    if (el && el.textContent !== text) el.textContent = text;
+  };
   function updateDomContent(): void {
-    if (popupTitle) popupTitle.textContent = activeLandmark.name;
-    if (popupBadge) popupBadge.textContent = activeLandmark.category;
-    if (popupAddress) popupAddress.textContent = activeLandmark.address;
-    if (popupDesc) popupDesc.textContent = activeLandmark.description;
+    setText(popupTitle, activeLandmark.name);
+    setText(popupBadge, activeLandmark.category);
+    setText(popupAddress, activeLandmark.address);
+    setText(popupDesc, activeLandmark.description);
     if (popupBtn) {
-      popupBtn.textContent = bookmarked ? '保存済み ✓' : '保存する';
-      if (bookmarked) popupBtn.classList.add('active');
-      else popupBtn.classList.remove('active');
+      setText(popupBtn, bookmarked ? '保存済み ✓' : '保存する');
+      popupBtn.classList.toggle('active', bookmarked);
     }
-    if (popupLink) popupLink.href = activeLandmark.url;
+    if (popupLink && popupLink.href !== activeLandmark.url) popupLink.href = activeLandmark.url;
   }
 
   async function toggleBookmark(): Promise<boolean> {
@@ -380,7 +388,10 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   function readPixel(x: number, y: number): Uint8ClampedArray {
     const rx = Math.max(0, Math.min(canvas.width - 1, Math.round(x)));
     const ry = Math.max(0, Math.min(canvas.height - 1, Math.round(y)));
-    return ctx.getImageData(rx, ry, 1, 1).data;
+    // Through a copy: once read back, Chromium would draw the canvas on the CPU.
+    const scratch = new OffscreenCanvas(1, 1).getContext('2d', { willReadFrequently: true })!;
+    scratch.drawImage(canvas, rx, ry, 1, 1, 0, 0, 1, 1);
+    return scratch.getImageData(0, 0, 1, 1).data;
   }
 
   async function clickButton(): Promise<boolean> {
@@ -394,6 +405,26 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
         if (img) return true;
       }
       await new Promise((r) => setTimeout(r, 60));
+    }
+    return false;
+  }
+
+  function viewKeys(): string[] {
+    const w = canvas.width, h = canvas.height, max = 2 ** zoom;
+    const left = center.x - w / 2, top = center.y - h / 2;
+    const keys: string[] = [];
+    for (let y = Math.max(0, Math.floor(top / SIZE)); y <= Math.min(max - 1, Math.floor((top + h) / SIZE)); y++) {
+      for (let x = Math.max(0, Math.floor(left / SIZE)); x <= Math.min(max - 1, Math.floor((left + w) / SIZE)); x++) keys.push(`${zoom}/${x}/${y}`);
+    }
+    return keys;
+  }
+
+  async function waitForView(timeoutMs = 6000): Promise<boolean> {
+    const start = performance.now();
+    while (performance.now() - start < timeoutMs) {
+      if (viewKeys().every((k) => images.has(k))) return true;
+      await render();
+      await new Promise((r) => setTimeout(r, 50));
     }
     return false;
   }
@@ -434,6 +465,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     clickButton,
     readPixel,
     waitForTile,
+    waitForView,
     hasAerialTiles,
   };
 }

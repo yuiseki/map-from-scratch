@@ -31,8 +31,8 @@ evaluation:
     - {metric: code_gzip_bytes, max: 9000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: light-footprint}
-    - {metric: redraw_ms, stat: p95, max: 8.0, unit: ms, requirement: smooth-interaction}
-    - {metric: frame_interval_ms, stat: p95, max: 35, unit: ms, requirement: smooth-interaction}
+    - {metric: redraw_ms, stat: p95, max: 5.0, unit: ms, requirement: smooth-interaction}
+    - {metric: frame_interval_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-interaction}
   gates: [エラーがない, verification の check がすべて通る]
 
 benchmarks:
@@ -48,7 +48,7 @@ benchmarks:
       what: 初期化から初回 HTML-in-Canvas ポップアップ描画まで
       metrics: [first_frame_ms]
     - id: pan
-      what: 地図パン中のポップアップ追従と再描画
+      what: 60 フレームのパン。1 フレームは canvas の paint イベントで描く (drawElementImage がそれを要る) ので、redraw_ms はパンからそのフレームを描き終えるまで、frame_interval_ms は描き終わりどうしの間隔
       metrics: [redraw_ms, frame_interval_ms]
 
 datasets:
@@ -84,6 +84,15 @@ performance_knowledge:
       即座に drawElementImage() を呼ぶと `InvalidStateError: No cached paint record for element` が発生する。
       canvas.requestPaint() を発行し、paint イベントの完了を待機してから drawElementImage() を呼ぶことで、
       常に最新のスタイルが適用された paint record を安全に Canvas にブリットできる。
+
+  - id: write-the-dom-only-when-it-changes
+    finding: textContent は同じ文字列でも代入するとテキストノードを置き換え、ポップアップを組み直す。パンでは何も変わらないので、変わったときだけ書くと 1 フレームが 4 分の 1 になる
+    evidence: >-
+      RTX 3060 のホストの headless Chromium (2026-11-03)、画面のタイルがそろってからの 60 フレームのパンを 2 回ずつ交互に。毎回書く版は redraw_ms p50 1.6〜2.0 ms、
+      p95 2.76〜2.93 ms、変わったときだけ書く版は p50 0.39〜0.42 ms、p95 0.77〜0.84 ms。直前のズームの検査でタイルを読み直している間に測ると、
+      drawImage が省かれて軽いフレームになるので、waitForView で画面のタイルを待ってから測る。以前の計測は、何も描かずに rAF を待つ 15 回と、同じ視点を描き直す 20 回で、
+      パンを測っていなかった (予算も redraw 8 ms、フレーム間隔 35 ms に緩めてあった)
+    applies_when: HTML-in-Canvas で DOM をキャンバスに描き、地図の操作ごとに描き直すとき
 
 architecture_selection:
   chosen:

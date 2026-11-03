@@ -112,23 +112,26 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
     });
   }
 
-  // Measure frame interval during animation
-  let lastTime = performance.now();
-  for (let i = 0; i < 15; i++) {
-    await new Promise(requestAnimationFrame);
-    const now = performance.now();
-    emit({ metric: 'frame_interval_ms', value: now - lastTime });
-    lastTime = now;
-  }
+  // The zoom check above left tiles to reload; time the frames with the
+  // view's tiles in (or each frame skips their drawImage).
+  const viewReady = await map.waitForView(6000);
+  emit({ info: { view_tiles_ready_before_pan: viewReady } });
 
-  // Measure redraw performance
-  const samples = 20;
-  for (let i = 0; i < samples; i++) {
+  // Pan benchmark: 60 frames. A frame is drawn in the canvas's paint event
+  // (drawElementImage needs it), so redraw_ms runs from the pan to the end of
+  // that frame's drawing, and frame_interval_ms is the time between the ends.
+  const redrawTimes: number[] = [], frameIntervals: number[] = [];
+  let last = performance.now();
+  for (let i = 0; i < 60; i++) {
     const t0 = performance.now();
-    await map.render();
-    const dt = performance.now() - t0;
-    emit({ metric: 'redraw_ms', value: dt });
+    await map.panBy(Math.sin(i * 0.1) * 3, Math.cos(i * 0.1) * 2);
+    const t1 = performance.now();
+    redrawTimes.push(t1 - t0);
+    frameIntervals.push(t1 - last);
+    last = t1;
   }
+  emit({ metric: 'redraw_ms', values: redrawTimes });
+  emit({ metric: 'frame_interval_ms', values: frameIntervals });
 
   emit({ done: true });
 }
