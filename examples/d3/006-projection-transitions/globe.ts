@@ -1,3 +1,4 @@
+import { morphProjection } from './projection.ts';
 export type Quaternion = [number, number, number, number];
 export interface Globe {
   canvas: HTMLCanvasElement;
@@ -89,19 +90,7 @@ const toVec = (lon: number, lat: number): [number, number, number] => {
 export async function mount(canvas: HTMLCanvasElement, landUrl: string, comparison = false): Promise<Globe> {
   const response = await fetch(landUrl);
   if (!response.ok) throw new Error(`land data ${response.status}`);
-  const polygons = await response.json() as number[][][][];
-  const textureCanvas = document.createElement('canvas');
-  textureCanvas.width = 1024; textureCanvas.height = 512;
-  const textureContext = textureCanvas.getContext('2d');
-  if (!textureContext) throw new Error('2D texture context unavailable');
-  textureContext.fillStyle = '#000'; textureContext.fillRect(0, 0, 1024, 512);
-  textureContext.fillStyle = '#fff';
-  textureContext.beginPath();
-  for (const polygon of polygons) for (const ring of polygon) {
-    ring.forEach(([x, y], i) => i ? textureContext.lineTo(x * 1024, y * 512) : textureContext.moveTo(x * 1024, y * 512));
-    textureContext.closePath();
-  }
-  textureContext.fill('evenodd');
+  const landBitmap = await createImageBitmap(await response.blob());
   const maybeGl = canvas.getContext('webgl2', { alpha: false, antialias: true, depth: false, powerPreference: 'high-performance' });
   if (!maybeGl) throw new Error('WebGL2 unavailable');
   const gl: WebGL2RenderingContext = maybeGl;
@@ -120,7 +109,8 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string, comparis
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, textureCanvas);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, landBitmap);
+  landBitmap.close();
   const loc = (name: string) => gl.getUniformLocation(program, name);
   const uniforms = { resolution: loc('uResolution'), origin: loc('uOrigin'), morph: loc('uMorph'), projection: loc('uProjection'), quaternion: loc('uQuaternion'), land: loc('uLand'), hasRoute: loc('uHasRoute'), routeA: loc('uRouteA'), routeB: loc('uRouteB') };
   gl.uniform1i(uniforms.land, 0); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -153,7 +143,7 @@ export async function mount(canvas: HTMLCanvasElement, landUrl: string, comparis
   window.addEventListener('resize', draw); draw();
   return {
     canvas, gl, draw,
-    setMorph(value) { morph = Math.max(0, Math.min(1, value)); draw(); },
+    setMorph(value) { morph = morphProjection([0, 0], [1, 1], value)[0]; draw(); },
     setQuaternion(value) { quaternion = value; draw(); },
     setRoute(a, b) { route = [a, b]; draw(); },
     destroy() { window.removeEventListener('resize', draw); gl.deleteTexture(texture); gl.deleteBuffer(buffer); gl.deleteProgram(program); },

@@ -18,7 +18,7 @@ evaluation:
     - {metric: data_gzip_bytes, max: 40000, unit: B, requirement: independent-renderer}
     - {metric: first_frame_ms, stat: p50, max: 700, unit: ms, requirement: immediate-globe}
     - {metric: cpu_ms, stat: p95, max: 8.3, unit: ms, requirement: smooth-render}
-    - {metric: frame_ms, stat: p95, max: 30, unit: ms, requirement: smooth-render}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: smooth-render}
   gates: [画面チェックがすべて通る, WebGLエラーがない]
 
 benchmarks:
@@ -35,6 +35,9 @@ benchmarks:
     - id: steady-globe
       what: 同じカメラで60回描画しCPU発行時間とGPU同期時間を測定する
       metrics: [cpu_ms, frame_ms]
+    - id: projection-morph
+      what: 球面端と平面端の両方を描いて端点の見た目が変化することを検証する
+      metrics: [morph_delta]
 
 datasets:
   bake: [node, examples/d3/006-projection-transitions/bake.ts]
@@ -43,10 +46,10 @@ datasets:
       origin: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
       license: Public domain
   outputs:
-    - data/baked/d3-006-projection-transitions/land.json
+    - data/baked/d3-006-projection-transitions/land.png
   preparation:
-    - Natural Earth land を d3-005-world-map の日付変更線処理済みベイク結果から専用公開パスへ複製
-    - 実行時に陸地ポリゴンを一度だけGPU用の白黒テクスチャへラスタライズ
+    - Natural Earth land を d3-005-world-map の日付変更線処理済みベイク結果から1024×512の白黒PNGへラスタライズ
+    - 実行時はPNGを一度だけGPUテクスチャへ転送し、ポリゴン走査やCanvas描画を行わない
 
 performance_knowledge:
   - id: sample-static-land-on-gpu
@@ -64,7 +67,7 @@ architecture_selection:
     api: WebGL2 fragment shader and a pre-rasterized land texture
     language: TypeScript (type-stripped)
     gpu: hardware
-    code: [examples/d3/006-projection-transitions/index.html, examples/d3/006-projection-transitions/main.ts, examples/d3/006-projection-transitions/globe.ts]
+    code: [examples/d3/006-projection-transitions/index.html, examples/d3/006-projection-transitions/main.ts, examples/d3/006-projection-transitions/globe.ts, examples/d3/006-projection-transitions/projection.ts]
     dependencies: []
     why: 球面の陰影・奥行き・大気縁と投影変形をGPUの単一フラグメント処理で描く
   alternatives:
@@ -84,6 +87,11 @@ verification:
       what: 初期視点が赤道と経度0度の海面を向いている
       how: 中央のフレームバッファ画素の赤チャンネルを地理的な海面色と比較
       expected: 赤チャンネルが80未満
+      by: bench
+    - id: morph-endpoints-visible
+      what: 投影変形の球面端と平面端で画面の端の画素が変わる
+      how: morph 0 と 1 でフレームバッファの同じ画素を読み戻して比較
+      expected: RGB差分が20を超えるチャンネルがある
       by: bench
     - id: webgl-clean
       what: WebGL描画でエラーが発生しない
