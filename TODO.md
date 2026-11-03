@@ -819,7 +819,7 @@
 - [ ] `cesium-269-sample-height-from-3d-tiles` → `examples/cesium/269-sample-height-from-3d-tiles/` — [Sample Height From 3D Tiles](https://sandcastle.cesium.com/?src=sample-height-from-3d-tiles)
 - [ ] `cesium-270-scene-rendering-performance` → `examples/cesium/270-scene-rendering-performance/` — [Scene Rendering Performance](https://sandcastle.cesium.com/?src=scene-rendering-performance)
 - [ ] `cesium-271-sentinel-2` → `examples/cesium/271-sentinel-2/` — [Sentinel 2](https://sandcastle.cesium.com/?src=sentinel-2)
-- [ ] `cesium-272-shadows` → `examples/cesium/272-shadows/` — [Shadows](https://sandcastle.cesium.com/?src=shadows)
+- [x] `cesium-272-shadows` → `examples/cesium/272-shadows/` — [Shadows](https://sandcastle.cesium.com/?src=shadows)
 - [ ] `cesium-273-shadows-dev` → `examples/cesium/273-shadows-dev/` — [Shadows Dev](https://sandcastle.cesium.com/?src=shadows-dev)
 - [ ] `cesium-274-shared-context` → `examples/cesium/274-shared-context/` — [Shared Context](https://sandcastle.cesium.com/?src=shared-context)
 - [ ] `cesium-275-show-or-hide-entities` → `examples/cesium/275-show-or-hide-entities/` — [Show Or Hide Entities](https://sandcastle.cesium.com/?src=show-or-hide-entities)

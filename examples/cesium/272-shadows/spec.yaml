@@ -1,0 +1,81 @@
+id: cesium-272-shadows
+request: >-
+  CesiumJS の showcase である「Shadows」のように、太陽光の軌道角に応じたリアルタイムの
+  ディレクショナルソフトシャドウ（シャドウマップ深度テクスチャレンダリング、
+  3x3 PCF フィルタリング、アクネ防止バイアス補正）を
+  3D 都市ジオメトリと地上面に対して対話的にレンダリングしたい。
+  外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。
+
+requirements:
+  - id: light-footprint
+    need: 外部地図エンジンや CesiumJS を使わず軽量な配布サイズに抑える
+    rationale: シャドウマッピングの実装に巨大な CesiumJS バンドルを読み込む必要はない
+  - id: fast-startup
+    need: 初回フレームが素早くレンダリングされること
+    rationale: 300 ms 以内に 3D 都市と影が描画される
+  - id: dynamic-soft-shadows
+    need: シャドウマップと 3x3 PCF によるリアルタイムソフトシャドウが正しく描画されること
+    unmeasured: verification の checks で画面ピクセルを検証
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 8000, unit: B, requirement: light-footprint}
+    - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: fast-startup}
+    - {metric: frame_interval_ms, stat: p95, max: 75, unit: ms, requirement: dynamic-soft-shadows}
+  gates: [エラーがない, verification の check がすべて通る]
+
+benchmarks:
+  runtime: browser
+  page: examples/cesium/272-shadows/index.html
+  viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  scenarios:
+    - id: first-frame
+      what: ジオメトリ生成とシャドウ深度 FBO パイプラインの初期化および初回レンダリング
+      metrics: [first_frame_ms]
+    - id: animate
+      what: 太陽軌道移動中のフレーム間隔
+      metrics: [frame_interval_ms]
+
+datasets:
+  preparation:
+    - 起動時に 3D 都市ブロックと受光地上面ジオメトリを動的生成
+
+performance_knowledge:
+  - id: front-face-culling-shadow-pass
+    finding: シャドウ深度生成パスで前面カリング（gl.cullFace(gl.FRONT)）を行うことで、閉じた 3D メッシュの自己交差シャドウアクネ（Shadow Acne）をバイアス調整に頼りすぎることなく根絶
+    evidence: 浅い光線角度でもアクネアーティファクトが発生せずクリーンな影を生成
+    applies_when: シャドウマップ深度生成
+  - id: pcf-soft-filtering
+    finding: 3x3 PCF（Percentage-Closer Filtering）によりテクセル境界のジャギーをなめらかに分散させ、自然な半影（Penumbra）を単一パス深度サンプリングで実現
+    evidence: 硬い階段状のシャドウ境界が解消され写実的な影表現が得られる
+    applies_when: リアルタイムシャドウ
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    code:
+      - examples/cesium/272-shadows/index.html
+      - examples/cesium/272-shadows/main.ts
+      - examples/cesium/272-shadows/shadows.ts
+      - examples/cesium/272-shadows/render.ts
+  not_doing:
+    - CesiumJS や Three.js などの重量ライブラリの読み込み
+    - カスケードシャドウマップ (CSM) などの過度な複雑化（単一正射影ボリュームでシーン全体をカバー）
+
+verification:
+  checks:
+    - id: space-background-cleared
+      what: 画面隅が宇宙空間色でクリアされている
+      how: gl.readPixels で上端隅のピクセル色を取得
+      expected: 暗い背景色（r < 35, g < 35, b < 50）であること
+    - id: scene-geometry-rendered
+      what: 画面中央に 3D 都市ジオメトリが描画されている
+      how: gl.readPixels で中央ピクセル色を取得
+      expected: ジオメトリ描画色（r > 15 || g > 15 || b > 15）であること
+    - id: soft-shadows-evaluated
+      what: シャドウ有効時と無効時で影のコントラストが計算されている
+      how: gl.readPixels でシャドウ有無のピクセル輝度を比較検証
+      expected: シャドウなし時または受光部で十分な明暗コントラストが存在すること
