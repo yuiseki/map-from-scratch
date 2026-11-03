@@ -30,7 +30,7 @@ export class CesiumGlobe {
   async load(baseDir = '../../..'): Promise<void> {
     const res = await fetch(`${baseDir}/data/baked/cesium-180-hello-world/land.bin`);
     const ab = await res.arrayBuffer();
-    this.sphere = toSphere(new Int16Array(ab));
+    this.sphere = triangleVerticesOnSphere(new Int16Array(ab));
     this.draw();
   }
 
@@ -189,7 +189,7 @@ export class CesiumGlobe {
 // big flat ones crossing the horizon folded over the ocean.
 const MAX_EDGE = 20;
 type LL = [number, number];
-function toSphere(v: Int16Array): Float32Array {
+export function triangleVerticesOnSphere(v: Int16Array): Float32Array {
   const out: number[] = [];
   const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
   const split = (a: LL, b: LL, c: LL): void => {

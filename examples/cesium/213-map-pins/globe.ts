@@ -41,7 +41,7 @@ export class CesiumPinsGlobe {
       fetch(`${baseDir}/data/baked/cesium-213-map-pins/pins.json`),
     ]);
     const ab = await landRes.arrayBuffer();
-    this.sphere = toSphere(new Int16Array(ab));
+    this.sphere = triangleVerticesOnSphere(new Int16Array(ab));
     this.pins = (await pinRes.json()) as MapPin[];
     this.draw();
   }
@@ -283,7 +283,7 @@ function xyz(lon: number, lat: number): number[] {
   const l = lon * Math.PI / 180, p = lat * Math.PI / 180;
   return [Math.cos(p) * Math.sin(l), Math.sin(p), Math.cos(p) * Math.cos(l)];
 }
-function toSphere(v: Int16Array): Float32Array {
+export function triangleVerticesOnSphere(v: Int16Array): Float32Array {
   const out: number[] = [];
   const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
   const split = (a: LL, b: LL, c: LL): void => {

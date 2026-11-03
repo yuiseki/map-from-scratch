@@ -47,7 +47,7 @@ export class SunGlobe {
 
   async load(baseDir = '../../..'): Promise<void> {
     const res = await fetch(`${baseDir}/data/baked/cesium-209-lighting/land.bin`);
-    this.sphere = toSphere(new Int16Array(await res.arrayBuffer()));
+    this.sphere = triangleVerticesOnSphere(new Int16Array(await res.arrayBuffer()));
     this.draw();
   }
 
@@ -261,7 +261,7 @@ export class SunGlobe {
 // Long edges project across the horizon as chords (see cesium-180/244).
 const MAX_EDGE = 20;
 type LL = [number, number];
-function toSphere(v: Int16Array): Float32Array {
+export function triangleVerticesOnSphere(v: Int16Array): Float32Array {
   const out: number[] = [];
   const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
   const split = (a: LL, b: LL, c: LL): void => {

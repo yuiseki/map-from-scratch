@@ -47,7 +47,7 @@ export class CesiumPointsGlobe {
       fetch(`${baseDir}/data/baked/cesium-244-points/points.bin`),
     ]);
 
-    this.sphere = toSphere(new Int16Array(await landRes.arrayBuffer()));
+    this.sphere = triangleVerticesOnSphere(new Int16Array(await landRes.arrayBuffer()));
     this.turned = new Float32Array(this.sphere.length);
 
     const ab = await ptsRes.arrayBuffer();
@@ -259,7 +259,7 @@ export class CesiumPointsGlobe {
 // big flat ones crossing the horizon folded over the ocean (as in 180, 213).
 const MAX_EDGE = 20;
 type LL = [number, number];
-function toSphere(v: Int16Array): Float32Array {
+export function triangleVerticesOnSphere(v: Int16Array): Float32Array {
   const out: number[] = [];
   const d = (p: LL, q: LL): number => Math.hypot(p[0] - q[0], p[1] - q[1]);
   const split = (a: LL, b: LL, c: LL): void => {
