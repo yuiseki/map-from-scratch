@@ -59,3 +59,6 @@ All real-data reads, bakes, tests, type checks, builds, and browser measurements
 The capped three-run browser benchmark reports exact source totals and passes all eight interaction, rendering, attribution, caveat, and request-origin checks. The canvas is keyboard-focusable and arrow keys inspect adjacent cells. The earlier run reported frame p95 17.735 ms against a 16.7 ms target, draw CPU p95 0.20 ms, and first-frame p50 55.025 ms. Host load averages were 24.45, 21.35, and 20.68. Code gzip was 9,739 B and baked-data gzip was 65,071 B.
 
 2026-11-06 corrected three-run Chrome 156 measurement after pixel checks were moved to an OffscreenCanvas copy: all 8 browser checks passed and 22/23 budgets passed. The callback-to-callback frame p95 is 17.750 ms against a 16.7 ms target; draw CPU p95 is 0.110 ms and first-frame p50 is 62.785 ms. Host load averages were 22.08/21.77/21.68; this is concurrent environment data, not an established cause. The frame target remains unmet. Gzip code/data is 9,739/65,071 B. See `results/30DayMapChallenge-2026-28/latest.json`.
+
+
+再現確認（2026-11-06、Chrome 156 / headless、CPU 4コア上限）でも frame p95 17.700 ms・p50 17.340 ms、draw CPU p95 0.200 msとなり、22/23 budgets・8/8 checksでした。実行時load averageは18.49/18.69/20.21です。先の未達が負荷の低下後にも再現しました。最新JSONは同じ `results/30DayMapChallenge-2026-28/latest.json` にあります。
