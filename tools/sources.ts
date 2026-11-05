@@ -179,6 +179,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2025-01-01&endtime=2026-01-01&minmagnitude=4.5&eventtype=earthquake',
     copy: true,
   },
+  // OurAirports frozen at 2026-08-31 (public domain; attribution requested).
+  'ourairports-2026-08': {
+    out: 'ourairports_2026_08_airports.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/ourairports-2026-08/data/parquet/airports.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ourairports-2026-08/resolve/main/parquet/airports.parquet',
+    copy: true,
+  },
   // Akita prefecture kumadas wildlife sightings (bear, boar, deer) 2022-2026. CC BY 4.0.
   'akita-kumadas': {
     out: 'akita_kumadas.csv',

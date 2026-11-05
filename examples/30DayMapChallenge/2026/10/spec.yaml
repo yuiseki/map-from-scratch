@@ -1,0 +1,117 @@
+id: 30DayMapChallenge-2026-10
+request: >-
+  30DayMapChallenge 2026 の「Prompting only」。AI コードエージェントに一つの制作プロンプトを渡して、実在する公開地理データを使った世界の空港・飛行場地図を専用描画器で作る。画像生成は使わず、プロンプトとAIによる実装であることを開示する。
+requirements:
+  - id: real-airport-data
+    need: 実在する世界の空港・飛行場を位置と施設種別に沿って表示する
+    rationale: OurAirports 2026-08-31 スナップショットから閉鎖・座標なしを除いた有効施設を描き、最低50,000件の記録を確認する
+  - id: aviation-classes
+    need: 空港規模・用途と定期便の有無を地図上で読み分ける
+    rationale: 6種の原データ type を色・大きさ、scheduled_service=yes を輪郭で示して分類を保持する
+    unmeasured: 6分類の意味と表示色・定期便マークは凡例、およびブラウザベンチマークの分類件数検査で確認する
+  - id: no-invented-routes
+    need: データにない航空路や接続関係を作らない
+    unmeasured: 実装のリンク描画がないことと画面の説明をブラウザ検査する
+  - id: world-overview
+    need: 全世界の位置関係がわかる初期表示と、ドラッグ移動・ホイール拡大縮小
+    rationale: Equal Earth 投影の全世界を初期画面に収め、カメラ操作後のフレーム間隔を測定する
+  - id: prompt-and-source-disclosure
+    need: 使用した制作プロンプト、AI エージェントによる実装、データの時点・出典・条件を開示する
+    unmeasured: 表示文面と出典リンクをブラウザベンチマークで確認する
+  - id: quick-start
+    need: ページを開いて地図が表示される
+    rationale: 初回描画1秒以内、gzip後のコード32KB以内、データ1.5MB以内
+evaluation:
+  budgets:
+    - {metric: airport_count, min: 50000, unit: facilities, requirement: real-airport-data}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: world-overview}
+    - {metric: draw_cpu_ms, stat: p95, max: 16, unit: ms, requirement: world-overview}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 1500000, unit: B, requirement: quick-start}
+  gates: [全6施設種別の保持, 定期便ありの符号化, 航空路を創作しない, AIプロンプトと出典表示, 実地理座標の表示検査]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/10/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-global-airports
+      what: 全有効施設と Natural Earth の陸地を Equal Earth 投影で初回描画する
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 86,000件弱の点群を含む全世界図を80回移動・拡大縮小して描画する
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/10/bake.ts]
+  sources:
+    - id: hf:ourairports-2026-08
+      origin: >-
+        OurAirports airports at the upstream commit 9e51f13487de777bdc473a37d271981a2d0b30ca, 2026-08-31 snapshot; 86,002 rows across airports, heliports and fields.
+      license: >-
+        Public domain as stated by OurAirports. Attribution requested: Data from OurAirports (https://ourairports.com/). The publisher provides no guarantee of accuracy or fitness for use. Underlying sources were not separately re-audited.
+      url: https://ourairports.com/data/
+    - id: ne:admin0-10m
+      origin: Natural Earth 10m Admin 0 country polygons, version 5.1.1, used as world land backdrop.
+      license: Public domain; attribution appreciated.
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-10/airports.bin
+    - data/baked/30DayMapChallenge-2026-10/land.json
+    - data/baked/30DayMapChallenge-2026-10/stats.json
+  preparation:
+    - >-
+      Read the frozen OurAirports Parquet snapshot, retain six non-closed `type` values with valid WGS 84 longitude/latitude, and encode equal-earth normalized coordinates in two uint16 values followed by the source type id and scheduled-service flag.
+    - >-
+      Read Natural Earth 10m admin-0 source geometries, keep country polygon exterior rings, project to Equal Earth, simplify in projected coordinates at 0.0008 world units, and serialize normalized coordinates for one Canvas 2D fill and outline path.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript
+    gpu: none
+    code:
+      - examples/30DayMapChallenge/2026/10/index.html
+      - examples/30DayMapChallenge/2026/10/main.ts
+      - examples/30DayMapChallenge/2026/10/renderer.ts
+      - examples/30DayMapChallenge/2026/10/airports.ts
+      - examples/30DayMapChallenge/2026/10/camera.ts
+      - examples/30DayMapChallenge/2026/10/PROMPT.md
+    dependencies: []
+    why: >-
+      The map needs a fixed world overview, a few hundred simplified land paths and tens of thousands of small points. Canvas batches all markers by source class; no general map engine or image asset is needed.
+  alternatives:
+    - option: image generation or existing map artwork
+      rejected_because: This theme tests a map produced from a text prompt, and the user explicitly asked not to use image generation. The resulting geography must remain tied to inspectable source records.
+    - option: WebGL2
+      rejected_because: Canvas 2D can batch the current point count under the frame budget, while preserving a direct and small custom drawing implementation.
+    - option: connect airports into flight routes
+      rejected_because: The source contains locations and an indicator for scheduled service, but no route pairs; drawing links would invent relationships.
+  not_doing: [flight routes, air traffic volume, passenger counts, airport labels, real-time status, airport picking]
+performance_knowledge:
+  - claim: >-
+      A one-time Canvas 2D raster of the projected land and categorized airport points makes camera interaction independent of the source point count; panning and zooming only resample the cached raster.
+    evidence: >-
+      Three Chrome/Xvfb runs at 1280×800: 72,520 facilities (4,325 scheduled), 508,374 gzip data bytes, 9,272 gzip code bytes, 170 ms p50 first frame, 0.755 ms p95 frame interval, and 0.025 ms p95 draw CPU. Initial vector point drawing cost 45.58 ms p95 CPU and 255.1 ms p95 frame interval; caching the rendered map once reduced interaction redraw to a canvas image transform. Screenshot reviewed at the harness viewport.
+    applies_when: A static world overview distinguishes a few tens of thousands of point classes without labels or route topology.
+verification:
+  checks:
+    - id: active-airports
+      what: Active facilities with valid coordinates are drawn from the frozen source snapshot.
+      how: Compare decoded records to the baked included/excluded row counts.
+      expected: At least 50,000 active located facilities and all excluded rows accounted for.
+    - id: type-and-service-classes
+      what: The six supported source facility types and scheduled-service flag remain in the display records.
+      how: Count decoded type ids and scheduled flags; compare with the bake stats.
+      expected: All six type classes are present and at least one scheduled-service site is encoded.
+    - id: source-and-ai-disclosure
+      what: The page identifies its source date, public data sources, prompt-led AI implementation and source links.
+      how: Inspect page text and links in the browser benchmark.
+      expected: OurAirports, Natural Earth, 2026-08-31, AI authorship and the prompt are visible.
+    - id: known-airport-geography
+      what: Known real facilities in Los Angeles and Tokyo appear at their geographic coordinates.
+      how: Search the expected projected screen neighborhoods for airport marker colors.
+      expected: Airport-colored pixels appear within 7 screen pixels of both reference locations.
