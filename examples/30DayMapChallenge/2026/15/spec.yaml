@@ -1,0 +1,112 @@
+id: 30DayMapChallenge-2026-15
+request: >-
+  30DayMapChallenge 2026「Inside out」。北海道東方の実在するGEBCO地形断面を上下反転し、同じ経度帯に含まれる実在のUSGS震源深さを別軸で示す。
+requirements:
+  - id: real-inverted-terrain
+    need: GEBCO 2026の実地形を内外反転して表示する
+    rationale: 北緯42.25°、東経143–146°の720セルを、海底が上向き・陸地が下向きになるよう平均海面で反転する
+  - id: real-hypocenters
+    need: 実際の震源深さを地形の断面と結びつけて読める
+    rationale: 2025年USGS ComCat M4.5+、同じ経度範囲かつ緯度42.00–42.50°の震源を、独立した深度軸に表示する
+    unmeasured: 緯度方向約56 kmの帯を集約し、断面線上の発震や地形との因果関係を示さないことを画面で明示
+  - id: usable-section
+    need: 地形強調、左右移動、拡大縮小、震源選択を行える
+    rationale: 専用Canvas 2D描画器とネイティブrange入力、ポインター・ホイール・キーボード操作を実装する
+  - id: provenance-and-datum
+    need: 格子間隔、標高の基準面、出典、選択条件、深度軸の違いを明示する
+    rationale: GEBCO 2026の完全な引用情報とUSGS ComCatクレジットを画面に置く
+    unmeasured: データの観測誤差や元データでの実測解像度はこの可視化から推定しない
+evaluation:
+  budgets:
+    - {metric: profile_cells, min: 720, max: 720, unit: cells, requirement: real-inverted-terrain}
+    - {metric: hypocenter_count, min: 1, unit: earthquakes, requirement: real-hypocenters}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: usable-section}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: usable-section}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: real-inverted-terrain}
+    - {metric: code_gzip_bytes, max: 28000, unit: B, requirement: usable-section}
+    - {metric: data_gzip_bytes, max: 50000, unit: B, requirement: real-inverted-terrain}
+  gates: [720 real GEBCO cells in west-to-east order, sea floor flipped above mean sea level and land below, real USGS hypocenters in disclosed latitude band, independent depth axis and distinct vertical scales, GEBCO 2026 full citation, USGS credit and selectable event links]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/15/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: flipped-terrain-and-events
+      what: 720セルの符号反転断面と全選択震源を描画する
+      metrics: [first_frame_ms]
+    - id: pan-zoom-and-exaggeration
+      what: パン、ズーム、地形強調を反復しCanvas描画時間を測る
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: screen-pixel-checks
+      what: 地形とUSGS震源マークの実画面ピクセル、説明、操作コントロールを検査する
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/15/bake.ts]
+  sources:
+    - id: gebco-hokkaido-east-2026
+      origin: >-
+        GEBCO_2026 Grid 15 arc-second GeoParquet extract, 143–146°E, 42–45°N. Each polygon footprint carries signed integer elevation_m relative to mean sea level.
+      license: >-
+        Archived CEDA distribution under Open Government Licence v3.0 and GEBCO 2026 terms requiring attribution and non-misrepresentation. Source citation: GEBCO Bathymetric Compilation Group 2026 (2026), The GEBCO_2026 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals, NERC British Oceanographic Data Centre, 23 April 2026. doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa.
+      url: https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid
+    - id: usgs-quakes-2025
+      origin: 8,502 M4.5+ 2025 earthquakes from the frozen preferred-network=us USGS ComCat snapshot; events include hypocenter coordinates, depth and magnitude.
+      license: Public domain (US Government work); credit USGS ComCat.
+      url: https://earthquake.usgs.gov/data/comcat/
+  outputs: [data/baked/30DayMapChallenge-2026-15/profile.json, data/baked/30DayMapChallenge-2026-15/stats.json]
+  preparation:
+    - >-
+      From GEBCO's 3° GeoParquet extract, select the 720 15 arc-second cell centers nearest 42.25°N and sort by longitude for a west-to-east 143–146°E section. Keep the source elevation values in metres relative to mean sea level.
+    - >-
+      Select USGS ComCat 2025 M4.5+ hypocenters in the same longitude interval and latitude 42.00–42.50°N; display this ~56 km wide slab on a separately labeled depth axis.
+    - >-
+      At render time invert terrain height as screenY = seaLevelY + elevationM × verticalScale: negative bathymetry moves upward while positive land elevation moves downward. Hypocenters instead descend with positive depth on their own axis.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Path2D + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/15/index.html, examples/30DayMapChallenge/2026/15/main.ts, examples/30DayMapChallenge/2026/15/renderer.ts, examples/30DayMapChallenge/2026/15/profile.ts, examples/30DayMapChallenge/2026/15/PROMPT.md]
+    dependencies: []
+    why: 720 profile vertices and a small earthquake selection need only direct 2D paths; a dedicated renderer makes the reversed datum and separate depth scale explicit.
+  alternatives:
+    - option: Generic map engine and terrain plugin
+      rejected_because: A fixed section has one axis and no tiled or general-purpose camera needs; a map framework would obscure the deliberate vertical inversion.
+    - option: Put quake depths on the same inverted terrain scale
+      rejected_because: ComCat depth and GEBCO relief are different quantities, and combining scales could falsely imply that events lie directly below the sampled profile.
+    - option: Use generated or fictional terrain
+      rejected_because: The theme is fulfilled by inverting actual public elevation values; no synthetic geography is needed.
+  not_doing: [global map, bathymetry uncertainty visualization, earthquake density interpolation, tectonic causality claims, rendering all 8,502 events, map framework, external runtime data requests]
+performance_knowledge:
+  - claim: >-
+      Baked one west-to-east 720-cell line and only hypocenters in the disclosed latitudinal slab; both layers are drawn directly in one Canvas without runtime decoding or reprojection.
+    evidence: >-
+      Three Chrome/Xvfb runs: 720 cells, 13 local USGS events, first_frame_ms p50 53.58 ms, frame_ms p95 5.755 ms, draw_cpu_ms p95 1.22 ms, code_gzip_bytes 8,366 and data_gzip_bytes 2,192. All seven budgets and five browser pixel/disclosure/interaction checks passed; the screenshot was visually inspected after moving the chart clear of the control panel and separating the depth labels from the distance ruler.
+    applies_when: This fixed 3° terrain section with 2025 M4.5+ events.
+verification:
+  checks:
+    - id: flipped-ocean-visible
+      what: GEBCO bathymetry is rendered above the mean-sea-level line.
+      how: Read an actual canvas pixel inside the first negative-elevation segment and compare with the baked GEBCO extent.
+      expected: Sea-floor colored pixel is present above zero and the source minimum is below -1,000 m.
+    - id: flipped-land-visible
+      what: Positive GEBCO land is rendered below the mean-sea-level line.
+      how: Read an actual canvas pixel inside a positive-elevation segment.
+      expected: Land-colored pixel is present below zero and source maximum exceeds 500 m.
+    - id: usgs-hypocenters-visible
+      what: Selected ComCat events are painted with depth increasing downward.
+      how: Read a point pixel from a real event marker, check its source id and depth, and inspect the separate axis label.
+      expected: At least one non-background USGS event marker is visible; labels disclose the latitude slab and distinct depth scale.
+    - id: source-and-inversion-disclosure
+      what: Explain the reversed elevation, grid-spacing limitation, citations and quake selection.
+      how: Inspect rendered page text and official source links.
+      expected: GEBCO and USGS credits, dataset limits, mean-sea-level datum and independent quake depth axis are visible.
+    - id: pan-zoom-and-selection
+      what: Navigate section and select a real ComCat event.
+      how: Send keyboard/pointer events and check the selected event link.
+      expected: View responds; selected event opens the matching USGS event URL.

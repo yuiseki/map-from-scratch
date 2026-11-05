@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>15 · Inside out — 30DayMapChallenge 2026</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#07181d;color:#e6eee7}*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#map:active{cursor:grabbing}#panel{position:absolute;z-index:2;left:16px;top:16px;width:min(390px,calc(100vw - 32px));padding:17px;border:1px solid #42616a;border-radius:12px;background:#0a2028ee;box-shadow:0 12px 44px #0008;max-height:calc(100vh - 32px);overflow:auto}h1{margin:2px 0 8px;font-size:21px;letter-spacing:.03em}.eyebrow{font:10px ui-monospace,monospace;letter-spacing:.17em;color:#f2a36e}p{margin:8px 0;font-size:12px;line-height:1.55;color:#c0d4ce}.sub{font-size:11px;color:#9bb7b4}.row{display:flex;align-items:center;gap:10px;margin:10px 0}input{accent-color:#f0a16e;flex:1;min-width:100px}#exag-label{width:30px;font:12px ui-monospace,monospace;color:#ffc48e}#status{font:10px ui-monospace,monospace;color:#99b5b3}#selected{padding:8px;background:#102c34;border-radius:6px;font-size:11px;min-height:34px;color:#dce7de}a{color:#80d7d5}details{margin-top:9px;font-size:11px}summary{color:#8ed7d1;cursor:pointer}#prompt{white-space:pre-wrap;max-height:150px;overflow:auto;color:#b9c9c2;font-size:10px}footer{position:absolute;right:12px;bottom:8px;z-index:2;padding:6px 9px;border-radius:5px;background:#07181ddd;text-align:right;font-size:9px;color:#bdcfca}footer a{color:#9ce1db}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:#bfd1cb}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}.sea{background:#5fced0}.land{background:#ef9f69}.quake{background:#f28b55}button:focus-visible,input:focus-visible,canvas:focus-visible,summary:focus-visible{outline:2px solid #f1bc82;outline-offset:2px}@media(max-width:600px){#panel{left:8px;top:8px;width:min(365px,calc(100vw - 16px));padding:12px;max-height:50vh}h1{font-size:18px}footer{max-width:calc(100vw - 12px);font-size:8px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="北海道東方の地形断面を上下反転し、同じ緯度帯の地震震源深さを示す地図。左右ドラッグで移動、ホイールで拡大、矢印キーで移動します。"></canvas>
+  <section id="panel" aria-label="地図の説明と操作">
+    <div class="eyebrow">30DAYMAPCHALLENGE · DAY 15</div><h1>海底が空へ、陸が地中へ。</h1>
+    <p>北海道東方、北緯42.25°の断面。標高の符号を反転すると、海底がせり上がり陸地が沈みます。地図の「上」と「下」を裏返した断面です。</p>
+    <div class="legend"><span><i class="dot sea"></i>反転した海底</span><span><i class="dot land"></i>反転した陸地</span><span><i class="dot quake"></i>震源（別深度軸）</span></div>
+    <div class="row"><label for="exaggeration">地形の強調</label><input id="exaggeration" type="range" min="0.5" max="4" value="1" step="0.5" aria-label="反転地形の垂直強調倍率"><b id="exag-label">1×</b></div>
+    <div id="status">断面データを読み込み中</div>
+    <p class="sub">上段の0 mはGEBCOの平均海面基準です。15秒角は格子間隔で、元の観測解像度を示しません。下段は同じ経度軸に沿う幅約56 kmの緯度帯にある2025年 M4.5以上の震源です。深さはUSGSカタログのkm値を独立した深度軸に置き、上段と同じ高さ尺度とはしていません。点の大きさはマグニチュードを表します。</p>
+    <div id="selected" aria-live="polite">震源を選択すると USGS ComCat のイベントを表示します。</div>
+    <p class="sub">ドラッグで経度方向へ移動、ホイールまたは +/- キーで拡大縮小。矢印キーで移動します。</p>
+    <details><summary>制作プロンプトを読む</summary><pre id="prompt">読み込み中</pre></details>
+  </section>
+  <footer>GEBCO Bathymetric Compilation Group 2026 (2026), <a href="https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid" target="_blank" rel="noreferrer">The GEBCO_2026 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals</a>. NERC British Oceanographic Data Centre, 23 April 2026 · doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa.<br>USGS ComCat 2025 · 15 arc-second格子の抽出表示。原データの解像度・観測精度を保証しません。GEBCOの改変物を誤認させません。</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -204,6 +204,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2025-01-01&endtime=2026-01-01&minmagnitude=4.5&eventtype=earthquake',
     copy: true,
   },
+  // GEBCO 2026 15 arc-second eastern Hokkaido extract; signed metre values.
+  'gebco-hokkaido-east-2026': {
+    out: 'gebco_2026_hokkaido_east_15as.parquet',
+    local: '/sata_hdd_24tb/hf_data/gebco-2026-hokkaido-east-15as/data/elevation.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/gebco-2026-hokkaido-east-15as/resolve/main/data/elevation.parquet',
+    copy: true,
+  },
   // OurAirports frozen at 2026-08-31 (public domain; attribution requested).
   'ourairports-2026-08': {
     out: 'ourairports_2026_08_airports.parquet',

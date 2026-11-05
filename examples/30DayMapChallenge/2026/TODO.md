@@ -20,7 +20,7 @@
 | 12 | Power | World Bank WDI `EG.ELC.ACCS.ZS` の国別電力アクセス率を1990–2024年で比較し、欠損値を独立表示。Natural Earth 258か国に結合し、Canvas 2D + OffscreenCanvas Worker で描画 | 完了 · 目視確認済み · 2024年212か国 / 1990年96か国 · first frame p50 262.4 ms · frame p95 0.88 ms · 年変更 p95 68.11 ms · data gzip 346,550 B / code gzip 8,705 B |
 | 13 | Interactions | 国交省の人流オープンデータで、市区町村別の月平均滞在人口と居住地4カテゴリの集計を地図化し、年月・曜日・時間帯を切り替える。発地市区町村は特定できないため地理的な経路線は描かない。`hf:mlit-1km-fromto-2022-01`（CC BY 4.0、加工内容と非公表値を明記） | 完了 · 3回計測・画面確認済み · frame p95 6.90 ms · draw p95 5.615 ms · month frame p95 14.365 ms · first frame p50 118.1 ms · data gzip 5,799,208 B / code gzip 8,443 B |
 | 14 | Borgesian map | 東京・渋谷の OSM 建物フットプリントを実形状のまま描き、カードで画面校正した時だけ局所地表1:1の窓を開く。500 m overview と詳細窓の両立不能さを作品化（ODbL、非公式矩形範囲を明記） | 完了 · 3回計測・7 checks PASS・画面確認済み · frame p95 0.725 ms · draw p95 0.265 ms · first frame p50 49.575 ms · 222建物 / 1,698頂点 · code/data gzip 12,636 / 12,461 B |
-| 15 | Inside out | 地表の下を反転して見せる断面図。地震震源と地形・海底標高を組み合わせ、深さの次元を明示。`hf:usgs-comcat-2025-m45` + `hf:gebco-...-hokkaido-east`（個別ライセンス確認） | TODO |
+| 15 | Inside out | 北海道東方のGEBCO実地形断面を反転し、同じ緯度帯にあるUSGS地震震源を独立した深度軸で表示。GEBCO 2026はOGL v3.0/GEBCO条件、USGS ComCatはPublic Domain | 完了 · 3回計測・5 checks PASS・画面確認済み · frame p95 5.755 ms · draw p95 1.22 ms · first frame p50 53.58 ms · 720セル / 13震源 · code/data gzip 8,366 / 2,192 B |
 | 16 | Collaborative map | 人が共同編集してきた地物の履歴や貢献を題材にする。OSM データと履歴の取得可能性・ODbL を確認し、AI を「友人」として共同作成者扱いしない | 要件確認 |
 | 17 | Light & dark | 夜間光の明暗と都市域を比較する。カタログの `planetarble/` および関連ソースを調べ、由来・利用条件が確認できる衛星画像だけを採用 | TODO |
 | 18 | NULL | 欠損値を地理的な空白として可視化し、値がない場所とゼロの場所を区別。人口グリッド等から欠損を含む製品を選定し、欠損の意味を説明 | TODO |
