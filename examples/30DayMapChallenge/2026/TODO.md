@@ -2,12 +2,12 @@
 
 実装対象は [30DayMapChallenge 公式リポジトリ](https://github.com/tjukanovt/30DayMapChallenge) の 2026 年テーマ 30 件です。日付と題名は公式 README に合わせ、各日の実装は専用レンダラーとして `01/` から `30/` に置きます。地図ライブラリを実行時の描画器として使わず、各例の `spec.yaml` に描画方式、データの出典・ライセンス・加工、計測項目を記録します。
 
-データ選定では [yuiseki-open-data スキル](../../../.agents/skills/yuiseki-open-data/SKILL.md) と [データカタログ](../../../.agents/skills/yuiseki-open-data/references/catalog.md) を参照します。下表はカタログを使った初期案です。実装に着手するときに該当セクションを再確認し、配布条件、実ファイル、座標系、取得範囲、Range の挙動を `spec.yaml` に確定します。カタログに候補がない題材は、公開データを別途調査するか、合成データであることを明示します。
+データ選定では [yuiseki-open-data スキル](../../../.agents/skills/yuiseki-open-data/SKILL.md) と [データカタログ](../../../.agents/skills/yuiseki-open-data/references/catalog.md) を使います。下表はカタログにある候補から作った初期案です。各日の着手時にスキルの手順に沿って該当する個別項目と原典を読み直し、候補のライセンス・帰属文・ローカルファイル・公開 URL・形式・座標系・取得方法を照合します。確認した内容を `spec.yaml` の `datasets.sources` と `preparation` に記録し、実際の加工結果と件数・範囲をベイク時に検証します。カタログの候補が不適切または存在しない場合は、公開データを別途調査するか、合成データであることを明記してから採用します。
 
 | 日 | テーマ | 実装案・カタログ候補 | 状態 |
 |---:|---|---|---|
-| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 完了 · frame p95 0.515 ms |
-| 02 | Lines | 熱帯低気圧の全経路をストーム単位で接続し、移動速度を線上に表す。`hf:ibtracs-v04r01`（NOAA terms） | TODO |
+| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 実装完了 · 目視確認待ち · frame p95 0.515 ms |
+| 02 | Lines | IBTrACS v04r01 の全世界ストーム経路を個体ごとに接続し、盆地別に色分け。カタログ記載 311,935 観測点・8.8 MB・SID/season 順 7 row groups を照合。実データは 5,010 SID、LON が 180°を超える 7,626 行を西経へ正規化、303,826 線分。速度など機関ごとに定義が揃わない値は符号化しない。`hf:ibtracs-v04r01`（NOAA/NCEI terms、指定のデータ・論文を引用） | 実装完了 · 目視確認待ち · frame p95 0.580 ms |
 | 03 | Polygons | 国別人口指標を Natural Earth の国境ポリゴンに結合して比較する。`hf:natural-earth` + 国別統計（指標ごとにライセンスを確認） | TODO |
 | 04 | Clusters | 東京の施設点をズームに応じて GPU 集約し、密度と代表カテゴリを表示。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と共有条件を確認） | TODO |
 | 05 | Senses: Sight | 富士山の標高を地形陰影と視線方向で見せる。`hf:gsi-dem-fuji-z14-100m-2026-10-25`（CC BY 4.0） | TODO |

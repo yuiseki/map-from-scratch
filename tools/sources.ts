@@ -130,6 +130,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/ucdp-ged/resolve/main/parquet/26.1/ged.parquet',
     copy: true,
   },
+  // IBTrACS v04r01 since 1980. NOAA/NCEI terms; cite dataset and BAMS paper.
+  'ibtracs-since1980': {
+    out: 'ibtracs_since1980.parquet',
+    local: '/sata_hdd_24tb/hf_data/ibtracs-v04r01/data/parquet/since1980/ibtracs.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ibtracs-v04r01/resolve/main/parquet/since1980/ibtracs.parquet',
+    copy: true,
+  },
   // Natural Earth 10m admin 0, v5.1.1. Public domain.
   'ne-countries': {
     out: 'ne_10m_admin_0_countries.geojson',
