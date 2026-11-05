@@ -237,6 +237,14 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/tokyo23_osm_boundary.geojson',
     copy: true,
   },
+  // GSI DEM10B around Mount Fuji, 100-pixel aggregates (~95.55 m),
+  // EPSG:3857. GSI Content Terms / Japan PDL1.0 with mandatory attribution.
+  'gsi-dem-fuji-100m': {
+    out: 'gsi_dem_fuji_100m.parquet',
+    local: '/sata_hdd_24tb/hf_data/gsi-dem-fuji-z14-100m-2026-10-25/data/elevation_100m.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/gsi-dem-fuji-z14-100m-2026-10-25/resolve/main/data/elevation_100m.parquet',
+    copy: true,
+  },
   // kepler.gl demo datasets (commit 49c3101)
   'kepler-earthquakes': {
     out: 'kepler_earthquakes.csv',

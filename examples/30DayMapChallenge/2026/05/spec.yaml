@@ -1,0 +1,139 @@
+id: 30DayMapChallenge-2026-05
+request: >-
+  30DayMapChallenge 2026 の「Senses: Sight」。富士山周辺の GSI DEM10B 標高格子を
+  3D 地形として照明し、ドラッグによる軌道視点とホイール拡大縮小で立体形状を観察する。
+requirements:
+  - id: fuji-elevation
+    need: 65,536 個の GSI 標高セルを位置関係を保って連続した地形面にする
+    rationale: 富士山から周辺までの地形起伏と標高差を視覚的に読めるようにする
+  - id: directional-light
+    need: 標高から求める法線と方向光で斜面の向き・陰影を描く
+    rationale: 視覚で山体の斜面と稜線を把握できるようにする
+  - id: orbit-camera
+    need: ドラッグで地形を周回し、ホイールで距離を変えられる
+    rationale: 正面一方向の投影だけでは見えにくい立体起伏を観察する
+  - id: elevation-context
+    need: 標高値の範囲、垂直誇張、原典と加工条件を確認できる
+    rationale: 見た目の高さと実測高度を混同しないようにする
+  - id: responsive-terrain
+    need: 画面サイズ変更後も地形が画面に収まり描画される
+    unmeasured: frame p95 16.7 ms 以内
+  - id: quick-start
+    need: 読み込み後に陰影付き 3D 地形が見える
+    unmeasured: 初回描画 1 秒以内
+evaluation:
+  budgets:
+    - {metric: elevation_cell_count, min: 65536, unit: cells, requirement: fuji-elevation}
+    - {metric: terrain_triangle_count, min: 130000, unit: triangles, requirement: fuji-elevation}
+    - {metric: terrain_pixel_count, min: 30000, unit: pixels, requirement: directional-light}
+    - {metric: context_detail_count, min: 2, unit: disclosures, requirement: elevation-context}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: orbit-camera}
+    - {metric: responsive_size_count, min: 2, unit: viewport-sizes, requirement: responsive-terrain}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+  gates: [65,536 valid cells, hardware WebGL2, illuminated 3D mesh, GSI attribution and edited-data notice]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/05/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-relief
+      what: 65,536頂点の三角形地形を方向光で描く
+      metrics: [first_frame_ms]
+    - id: orbit
+      what: 方位・仰角・距離を80フレーム変えて地形を回転する
+      metrics: [frame_ms, gpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/05/bake.ts]
+  sources:
+    - id: gsi-dem-fuji-z14-100m-2026-10-25
+      origin: >-
+        GSI DEM10B text elevation tiles around Mt. Fuji, zoom 14, frozen
+        2026-10-25 and aggregated from each 10×10 source-pixel block into a
+        ~95.55 m Web Mercator cell. The GeoParquet has 65,536 cells and one
+        row group. Every cell has 100 valid source pixels.
+      license: >-
+        GSI Content Terms; GSI material usable with attribution under Japan
+        Public Data License 1.0 (PDL1.0), unless an exception applies. Required
+        attribution: Source: Geospatial Information Authority of Japan (GSI),
+        elevation tiles (Fundamental Geospatial Data elevation model),
+        https://maps.gsi.go.jp/development/ichiran.html. Edited and aggregated
+        into 10×10-pixel cells by yuiseki. This is not an official GSI product.
+      url: https://huggingface.co/datasets/yuiseki/gsi-dem-fuji-z14-100m-2026-10-25
+    - id: gsi-dem10b-original
+      origin: GSI elevation tile list, DEM10B text tiles interpolated from the Fundamental Geospatial Data elevation model
+      license: GSI Content Terms and PDL1.0; attribution required
+      url: https://maps.gsi.go.jp/development/ichiran.html
+  outputs:
+    - data/baked/30DayMapChallenge-2026-05/terrain.bin
+    - data/baked/30DayMapChallenge-2026-05/stats.json
+  preparation:
+    - >-
+      Read GeoParquet grid_x/grid_y and elevation_mean_m from the single-row-group
+      catalog file, assert a complete 256×256 lattice, and order rows north to
+      south and west to east. Verify all 65,536 cells each aggregate 100 valid
+      source pixels and that the mean-height range is consistent with Fuji.
+    - >-
+      Quantize mean elevations to unsigned 16-bit values in FJT1; retain actual
+      minimum/maximum elevations and source cell size in stats.json. The renderer
+      applies a visible vertical exaggeration and labels it explicitly.
+      Processing and quantization are edits to the source data.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/05/index.html
+      - examples/30DayMapChallenge/2026/05/main.ts
+      - examples/30DayMapChallenge/2026/05/renderer.ts
+      - examples/30DayMapChallenge/2026/05/terrain.ts
+      - examples/30DayMapChallenge/2026/05/camera.ts
+    dependencies: []
+    why: >-
+      A static indexed grid mesh is uploaded once to WebGL2; a height texture
+      supplies neighboring samples for smooth central-difference normals in the
+      vertex shader, and the fragment shader applies directional light and
+      elevation contours while the camera moves without rebuilding the mesh.
+  alternatives:
+    - option: raster hillshade in a 2D canvas
+      rejected_because: >-
+        A fixed hillshade would not reveal the Fuji relief from other viewing
+        directions, while the 65k-cell height grid is small enough for a GPU mesh.
+  not_doing: [streaming DEM tiles, terrain editing, exact geodetic perspective, labels, shadows cast by buildings]
+performance_knowledge:
+  - claim: >-
+      A 256×256 indexed terrain mesh with vertex-shader central-difference
+      normals renders in one GPU draw and remains far below the 16.7 ms frame
+      budget while the camera orbits.
+    evidence: >-
+      RTX 3060, Chrome 156, Xvfb, 1280×800, 3 runs: 65,536 cells,
+      130,050 triangles, 312,363 terrain pixels; frame p95 0.675 ms,
+      GPU p95 0.326 ms, first-frame p50 553.5 ms, JS heap p50 0.885 MB,
+      code gzip 7,978 B, data gzip 126,832 B. Two CSS viewport resizes and
+      80 distinct camera frames passed; no GL errors.
+    applies_when: >-
+      A regular height grid is small enough to upload as a single mesh and
+      lighting can be computed from neighboring height samples in the vertex shader.
+verification:
+  checks:
+    - id: source-grid
+      what: the baked grid represents every source cell exactly once
+      how: compare width × height and per-cell coverage against row and pixel counts
+      expected: 256 × 256 cells; 6,553,600 valid source pixels
+    - id: terrain-relief
+      what: height variation produces non-flat geometry and multiple illuminated colors
+      how: compare sampled GPU pixels and mesh bounds for min, summit, and max heights
+      expected: mean elevations 238.5–3,760.1 m, with visible terrain pixels
+    - id: camera-controls
+      what: drag changes orbit and wheel changes camera distance
+      how: browser benchmark exercises 80 distinct camera frames and verifies finite matrices
+      expected: all camera frames render without WebGL errors
+  harness:
+    - webglcontextlost is an error
+    - info.gpu must be hardware, not software rendering

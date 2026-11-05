@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>05 · Senses: Sight — 30DayMapChallenge 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #091116; color: #e8f0ed; font: 14px/1.5 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  aside { position: fixed; z-index: 1; top: 16px; left: 16px; width: min(350px, calc(100vw - 32px)); padding: 17px; border: 1px solid #ffffff24; border-radius: 13px; background: #101e25ed; box-shadow: 0 12px 42px #0006; }
+  h1 { margin: 0 0 2px; font-size: 20px; letter-spacing: .01em; }
+  .subtitle { margin-bottom: 13px; color: #a9bdc2; font-size: 12px; }
+  .ramp { height: 10px; border-radius: 5px; background: linear-gradient(90deg,#254836,#70875e 42%,#9d9480 76%,#e1e7e1); }
+  .range { display: flex; justify-content: space-between; margin-top: 4px; color: #b7c7c8; font-size: 11px; }
+  .context { margin-top: 10px; color: #c2d0ce; font-size: 12px; }
+  .hint { margin: 11px 0 0; color: #a9bdc2; font-size: 11px; }
+  button { appearance: none; margin-top: 12px; padding: 6px 10px; border: 1px solid #ffffff35; border-radius: 6px; color: #dce9e7; background: #1a2c34; font: inherit; font-size: 11px; cursor: pointer; }
+  details { margin-top: 11px; color: #b8c9c9; font-size: 11px; }
+  summary { width: max-content; cursor: pointer; }
+  details p { margin: 7px 0; }
+  footer { position: fixed; right: 14px; bottom: 11px; max-width: min(850px, calc(100vw - 28px)); color: #bfcecc; font-size: 10px; line-height: 1.45; text-align: right; text-shadow: 0 1px 4px #000; pointer-events: none; }
+  a { color: #c8e9e5; pointer-events: auto; }
+  @media (max-width: 480px) { aside { top: 10px; left: 10px; width: min(350px, calc(100vw - 20px)); padding: 12px; } }
+</style>
+<canvas id="terrain" aria-label="富士山周辺の標高データから描いた3D地形"></canvas>
+<aside>
+  <h1>05 · Senses: Sight</h1>
+  <div class="subtitle">富士山 · DEM10B relief</div>
+  <div class="ramp" aria-label="低地から高所への標高色分け"></div>
+  <div class="range"><span id="minimum">—</span><span id="maximum">—</span></div>
+  <div class="context" id="vertical" data-context>垂直誇張 —</div>
+  <p class="hint">ドラッグで周回 · ホイールで拡大縮小</p>
+  <button id="reset" type="button">初期視点に戻す</button>
+  <details>
+    <summary>データ出典と加工条件</summary>
+    <p>GSI DEM10B テキスト標高タイル（ズーム14、富士山周辺100枚）を10×10画素ごとに集約した約95.55 m格子。値は格子内平均標高です。</p>
+    <p data-context>Source: Geospatial Information Authority of Japan (GSI), elevation tiles (Fundamental Geospatial Data elevation model), <a href="https://maps.gsi.go.jp/development/ichiran.html">GSI elevation tile list</a>. Edited and aggregated into 10×10-pixel cells by yuiseki. This is not an official GSI product.</p>
+    <p><a href="https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html">GSI Content Terms</a> · <a href="https://www.digital.go.jp/resources/open_data/public_data_license_v1.0">Japan PDL1.0</a></p>
+    <p>標高は GSI の地盤高モデルを線形補間した値です。表示上の垂直誇張を実際の地形比と混同しないでください。</p>
+  </details>
+</aside>
+<footer><a href="https://maps.gsi.go.jp/development/ichiran.html">出典：国土地理院 DEM10B</a> · 10×10画素を集約・編集したデータ · GSIの公式製品ではありません</footer>
+<script type="module" src="./main.ts"></script>
+</html>
