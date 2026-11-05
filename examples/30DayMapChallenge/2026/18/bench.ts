@@ -1,4 +1,5 @@
 import { emit } from '../../../../harness/page/bench.ts';
+import { frameIntervals } from './frame-metrics.ts';
 import type { CellStatus, NullCell } from './nullmap.ts';
 import type { NullRenderer } from './renderer.ts';
 
@@ -80,13 +81,18 @@ export async function run(renderer: NullRenderer) {
   emit({ check: 'no-runtime-external-map-services', pass: external.length === 0,
     detail: `off-origin resources: ${external.length}` });
 
-  const drawSamples: number[] = [], frameSamples: number[] = [];
-  await new Promise(requestAnimationFrame);
-  for (let i = 0; i < 48; i++) {
-    const frameStart = performance.now(), drawStart = performance.now(); renderer.draw();
-    drawSamples.push(performance.now() - drawStart);
-    await new Promise(requestAnimationFrame); frameSamples.push(performance.now() - frameStart);
+  const drawSamples: number[] = [], frameTimestamps: number[] = [];
+  for (let i = 0; i < 49; i++) {
+    await new Promise<void>((resolve) => requestAnimationFrame((timestamp) => {
+      frameTimestamps.push(timestamp);
+      if (i < 48) {
+        const drawStart = performance.now(); renderer.draw();
+        drawSamples.push(performance.now() - drawStart);
+      }
+      resolve();
+    }));
   }
+  const frameSamples = frameIntervals(frameTimestamps);
   emit({ metric: 'frame_ms', values: frameSamples });
   emit({ metric: 'draw_cpu_ms', values: drawSamples });
   emit({ info: { renderer: 'Dedicated Canvas 2D quarter-mesh renderer', dataSource: 'e-Stat 2020 Population Census / T001142', metric: 'Female population aged 75 and over', nullStates: 'missing row / suppressed / exact zero / positive' } });
