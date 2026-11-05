@@ -1,0 +1,23 @@
+:root { color-scheme: dark; font-family: Inter, "Noto Sans JP", system-ui, sans-serif; background: #0e1a21; color: #e6edf0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { background: #0e1a21; }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#map:active { cursor: grabbing; }
+#panel { position: absolute; left: 18px; top: 18px; width: min(370px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: auto; padding: 18px 20px 16px; border: 1px solid #33464d; border-radius: 14px; background: rgb(14 28 36 / 94%); box-shadow: 0 14px 44px rgb(0 0 0 / 28%); backdrop-filter: blur(12px); }
+.eyebrow { margin: 0 0 7px; color: #86c9bc; font-size: 10px; font-weight: 750; letter-spacing: .12em; }
+h1 { margin: 0; color: #f4f7f5; font-size: 19px; line-height: 1.3; }
+.subhead { margin: 5px 0 0; color: #a9bbc0; font-size: 13px; }
+.instructions { margin: 14px 0 13px; color: #c2ced0; font-size: 12px; }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; padding: 12px; border-radius: 9px; background: #142831; font-size: 11px; }
+.legend-row { display: flex; gap: 7px; align-items: center; min-height: 16px; white-space: nowrap; }
+.swatch { width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid rgb(255 255 255 / 18%); border-radius: 3px; }
+.count-1 { background: #33636e; } .count-2 { background: #389185; } .count-3 { background: #80b86e; } .count-4 { background: #ebb250; } .count-5 { background: #e85c4d; }
+.zero { background: #334d61; } .suppressed { background: repeating-linear-gradient(135deg, #b076c5 0 3px, #684878 3px 6px); } .no-row { background: #21333f; } .unavailable { background: #7b858e; }
+#selection { margin-top: 12px; padding: 11px 12px; min-height: 68px; border: 1px solid #30434a; border-radius: 9px; background: #10232c; }
+#selection h2 { margin: 0 0 4px; color: #b7d8d1; font-size: 12px; }
+#selection p { margin: 0; color: #d5dfe1; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.caveat { margin: 11px 0 7px; color: #b1c0c2; font-size: 11px; line-height: 1.55; }
+#status { margin: 8px 0; color: #84c7b8; font-size: 11px; }
+footer { padding-top: 9px; border-top: 1px solid #2b4048; color: #9fb0b2; font-size: 10px; line-height: 1.5; }
+@media (max-width: 520px) { #panel { left: 10px; top: 10px; width: min(340px, calc(100vw - 20px)); max-height: 70vh; padding: 14px; } }

@@ -1,0 +1,120 @@
+id: 30DayMapChallenge-2026-27
+request: >-
+  WebGPU を新しい地図作成ツールとして学び、2020年国勢調査の日本の人口メッシュから実在する地理的パターンを描く。
+  実在データを使い、架空の地図にはしない。
+requirements:
+  - id: source-faithful
+    need: 2020年国勢調査の250mメッシュを、値の状態を保って表示する
+    unmeasured: source row values, mesh codes and per-state counts are checked by the bake sidecar and source-consistency check
+  - id: webgpu-compute-map
+    need: WebGPU compute が画面位置と階級を計算し、その結果を WebGPU で描く
+    rationale: 120 Hz 相当を目安に compute と draw の合計を 8.3 ms/frame 以下にする
+  - id: navigate-and-inspect
+    need: 地図を移動・拡大縮小し、セルを選んでコード・値・状態・出典列を確認する
+    unmeasured: verified by pan-zoom and selected-cell checks
+  - id: readable-and-attributed
+    need: 区名、読みやすい凡例、データ時点の注意、出典を表示する
+    unmeasured: verified by legend-caveat and attribution checks
+  - id: local-startup
+    need: PC ブラウザで、外部の地図・データ依存なしに表示する
+    rationale: baked data gzip を 500 KB 未満、最初の描画を 2 秒未満にする
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 8.3, unit: ms, requirement: webgpu-compute-map}
+    - {metric: gpu_ms, stat: p95, max: 8.3, unit: ms, requirement: webgpu-compute-map}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: local-startup}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: local-startup}
+    - {metric: code_gzip_bytes, max: 30000, unit: B, requirement: local-startup}
+  gates: [no renderer errors, hardware WebGPU adapter initialized, all verification checks pass on screen pixels]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/27/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 120000
+  scenarios:
+    - id: first-frame
+      what: page navigation through decoded local baked cells to completion of the first WebGPU submission; bench-module download excluded
+      metrics: [first_frame_ms]
+    - id: pan-zoom
+      what: 180 camera frames around Chiyoda-ku; each frame dispatches compute to project, classify and cull cells, then draws the computed rectangles
+      metrics: [frame_ms, gpu_ms, cpu_ms]
+    - id: fixed-view
+      what: 60 frames at the whole-ward opening view and 60 at 4x zoom; compute outputs and rendered color pixels are read back between scenarios
+      metrics: [whole_frame_ms, whole_gpu_ms, zoom_frame_ms, zoom_gpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/27/bake.ts]
+  sources:
+    - id: estat-census-mesh-250m-2020-jgd2011
+      origin: e-Stat Statistical GIS, 2020 Census quarter-mesh statistics, T001142 (JGD2011), 250m mesh
+      license: CC BY 4.0-compatible e-Stat terms; source values retained with attribution and processing notice
+    - id: jp-admin-2026-09-chiyoda-boundary
+      origin: yuiseki/jp-admin-2026-09 municipality 131016; boundary derived from e-Stat 2020 Census small areas
+      license: CC BY 4.0
+  outputs: [data/baked/30DayMapChallenge-2026-27/cells.json, data/baked/30DayMapChallenge-2026-27/stats.json]
+  preparation:
+    - Read T001142.parquet, prefecture 13, field T001142004 (0–14歳人口 総数); keep source value as text and source flags HTKSYORI, HTKSAKI and GASSAN.
+    - Decode every 10-digit JIS X 0410 quarter-mesh code into exact JGD2011 mesh bounds; transform the Chiyoda-ku municipality polygon from EPSG:4612 (JGD2000) to EPSG:6668 (JGD2011) with DuckDB Spatial ST_Transform before selecting whole cells whose centers are inside it (lg_code 131016).
+    - Enumerate every quarter-mesh square in the selected polygon and left-join table rows; preserve positive, zero, suppressed (*), unavailable and no-row states separately.
+    - Record the source and target CRS plus the PROJ-backed EPSG:4612 to EPSG:6668 transformation; retain full cells, do not clip the census counts to boundary fragments.
+performance_knowledge:
+  - id: compute-per-view-grid
+    finding: The GPU compute stage projects each source mesh for the active camera, culls offscreen squares and calculates its population display class; the render stage consumes those output records directly.
+    evidence: `bin/mfs bench 30DayMapChallenge-2026-27 -n 3` on 2026-11-05 with NVIDIA GeForce RTX 3060 / WebGPU timestamp-query: p95 frame 3.105 ms, p95 GPU 0.02867 ms; all eight browser verification checks passed. See results/30DayMapChallenge-2026-27/latest.json and screenshot.png.
+    applies_when: a modest, source-backed grid needs a dynamic WebGPU view transform and per-feature display classes
+  - id: no-row-is-not-zero
+    finding: A source-absent mesh has its own state and null value. Suppression is the literal source marker `*`, never a numeric zero.
+    evidence: source card documents absent no-population rows and hidden breakdown values; T001142004 Tokyo rows include both 0 and `*`.
+    applies_when: source tables encode suppressed counts and omit some geographic units
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGPU compute projection/classification and instanced WebGPU render pipeline
+    language: TypeScript, executed without a build after type erasure
+    gpu: hardware
+    code: [examples/30DayMapChallenge/2026/27/index.html, examples/30DayMapChallenge/2026/27/main.ts, examples/30DayMapChallenge/2026/27/mesh.ts, examples/30DayMapChallenge/2026/27/renderer.ts]
+    dependencies: []
+    why: This is the new tool theme; the GPU performs view-dependent projection, culling and display classification on authentic 250m census cells, and the map pixels are generated by that same compute output.
+  alternatives:
+    - option: WebGL2 instanced quads
+      rejected_because: would not teach or exercise the requested WebGPU tool
+    - option: CPU Canvas2D drawing
+      rejected_because: it cannot satisfy the compute-to-render pipeline requirement
+  not_doing: [other map layers, basemap tiles, live data, household or individual locations, boundary clipping of census counts, other census tables]
+verification:
+  checks:
+    - id: source-state-compute
+      what: compute output classes match raw cell states and values
+      how: compare every WebGPU projected-cell class against the baked source status/value classification
+      expected: every class matches and at least one cell is projected
+    - id: webgpu-ready
+      what: WebGPU adapter and device initialized
+      how: initialization reports adapter/device and benchmark asserts a hardware adapter
+      expected: successful adapter and device
+    - id: compute-view-change
+      what: camera change alters compute output for real cells and is reflected in rendered map pixels
+      how: compare compute readbacks and canvas pixels at two camera states
+      expected: visible, changed output records and changed map pixels
+    - id: screen-cells
+      what: populated, zero, suppressed and no-row categories use their dedicated screen colors
+      how: read back the rendered canvas and compare every observed status category with baked cell values
+      expected: color samples for observed categories match the source-backed palette; categories not represented by a source cell are reported explicitly
+    - id: selected-cell
+      what: pointer selection identifies the cell code, raw value/status and table field
+      how: select a known baked cell in the rendered screen and compare the inspection panel with its source record
+      expected: exact code, status, raw value and T001142004
+    - id: pan-zoom
+      what: drag and wheel camera controls change projected cell placement and scale
+      how: dispatch pointer and wheel input, then compare compute buffer and screen output
+      expected: camera and projected cell outputs both change
+    - id: legend-caveat
+      what: readable status legend and 2020 census date caveat are visible
+      how: inspect rendered text nodes
+      expected: count bands, zero, suppressed, no-row and unavailable appear with the 2020-10-01 date caveat
+    - id: attribution-no-external
+      what: source citations are visible and no runtime map/data request leaves the page origin
+      how: inspect attribution text and browser request list
+      expected: e-Stat and municipal boundary attribution present; requests limited to local page modules and baked JSON
+  harness: WebGPU adapter/device failures are emitted as errors; the browser request log must contain no external runtime map or data host.
