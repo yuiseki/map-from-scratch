@@ -18,3 +18,5 @@ Canvas 2Dで固定断面の水面基準、地形帯、経度グリッド、深�
 GEBCO Bathymetric Compilation Group 2026 (2026), *The GEBCO_2026 Grid - a continuous terrain model for oceans and land at 15 arc-second intervals*, NERC British Oceanographic Data Centre, 23 April 2026. doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa. [配布ページ](https://www.gebco.net/data-products-gridded-bathymetry-data/gebco2026-grid)。配布はOpen Government Licence v3.0に基づき、GEBCO条件に従って出典表示と非誤認表示を付しています。
 
 USGS ComCatの地震カタログは米国政府の著作物としてパブリックドメインで、USGSへのクレジットを付しています。地震カタログの選択条件は年・マグニチュード・緯度経度範囲によるもので、すべての地震や断層を示すものではありません。
+
+2026-11-06: the section-map pixel assertions now read from an OffscreenCanvas copy using `readBack()`. Previous frame and draw timings are provisional until the corrected three-run browser benchmark is repeated.

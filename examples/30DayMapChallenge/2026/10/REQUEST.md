@@ -18,3 +18,5 @@ OurAirports の固定スナップショットは86,002レコードです。ベ�
 ## 確認
 
 `camera.test.ts` は初期フィット、ポインター位置を固定するズーム、パンを検証します。`airports.test.ts` は Equal Earth の東西南北、正規化座標範囲、固定長エンコード、種別・定期便フラグ保持、壊れたバッファの拒否を検証します。`bench.ts` はレコード数、6種の存在、データ出典・AI実装の開示、ロサンゼルスと羽田の実座標付近の描画を確認し、80フレームのパン・ズームを計測します。
+
+2026-11-06: airport-pixel checks now use `readBack()` so they do not read back the visible canvas. The renderer's unused `sampleAt()` readback method was removed. Previous frame timings are provisional until a corrected three-run browser benchmark is recorded.

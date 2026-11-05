@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import type { AirportMap } from './renderer.ts';
 
 function hasAirportInk(map: AirportMap, lon: number, lat: number): boolean {
@@ -7,7 +7,7 @@ function hasAirportInk(map: AirportMap, lon: number, lat: number): boolean {
   const centerX = Math.round(x * dpr), centerY = Math.round(y * dpr), radius = Math.round(7 * dpr);
   const left = Math.max(0, centerX - radius), top = Math.max(0, centerY - radius);
   const width = Math.min(map.canvas.width - left, radius * 2 + 1), height = Math.min(map.canvas.height - top, radius * 2 + 1);
-  const pixels = map.context.getImageData(left, top, width, height).data;
+  const pixels = readBack(map.context, left, top, width, height).data;
   for (let i = 0; i < pixels.length; i += 4) {
     const red = pixels[i]!, green = pixels[i + 1]!, blue = pixels[i + 2]!;
     if (red > 160 && red > green * 1.15 && green > 65 && blue < 145) return true;

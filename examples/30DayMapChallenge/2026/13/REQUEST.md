@@ -36,3 +36,5 @@ The display is an independent processed visualization, not an MLIT publication o
 - Full test suite: 848 tests, 846 passed, 0 failed, 2 skipped. Node, web and test TypeScript checks passed.
 - The screenshot was opened and reviewed: [/Workspaces/repos/__yuiseki/map-from-scratch-30day-2026/results/30DayMapChallenge-2026-13/screenshot.png](/Workspaces/repos/__yuiseki/map-from-scratch-30day-2026/results/30DayMapChallenge-2026-13/screenshot.png). The national extent, selected Taito-ku point, category breakdown, controls and caveats are legible.
 - Bake and browser benchmark commands ran under a user systemd scope capped at MemoryMax=8G, MemorySwapMax=0, CPUQuota=400%.
+
+2026-11-06: the rendered-marker check now reads through `readBack()` on an OffscreenCanvas copy instead of the visible map canvas. The previous frame and draw timings are historical; rerun the three browser iterations before treating them as the current performance baseline.

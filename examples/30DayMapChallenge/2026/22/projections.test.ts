@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { project, projectSegment, screenPoint, PROJECTION_NAMES, type ProjectionName, type Point } from './projections.ts';
+import { PROJECTION_CONTEXT_OPTIONS } from './renderer.ts';
+
+test('projection rendering does not request a readback-oriented canvas', () => {
+  assert.deepEqual(PROJECTION_CONTEXT_OPTIONS, { alpha: false });
+});
 
 function requirePoint(name: ProjectionName, longitude: number, latitude: number): Point {
   const point = project(name, longitude, latitude);

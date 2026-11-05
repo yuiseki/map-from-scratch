@@ -26,4 +26,6 @@
 
 ## 検証状況
 
-`taste.test.ts` の8テストが通過しています。3回のブラウザ計測は10/10予算・6/6チェックに合格。first frame p50 70.09ms、描画CPU p95 2.035ms、frame p95 8.855ms、gzip data 207,700Bです。1280×800の画面も確認しました。
+`taste.test.ts` の8テストが通過しています。修正前の3回ブラウザ計測は10/10予算・6/6チェックに合格。first frame p50 70.09ms、描画CPU p95 2.035ms、frame p95 8.855ms、gzip data 207,700Bでした。1280×800の画面も確認しました。
+
+2026-11-06: the rendered-pixel assertion now uses `readBack()` to inspect an OffscreenCanvas copy. Previous frame and draw timings are provisional until the corrected three-run browser measurement is repeated.

@@ -95,6 +95,8 @@ performance_knowledge:
       Chrome 156, Xvfb, 1280×800, 3 runs: 737 population meshes, 109 clipped park polygons,
       106 schools, and 328 meshes with both facilities within 400 m. First-frame p50 77.1 ms;
       draw CPU p95 1.715 ms; frame p95 6.31 ms. Code gzip 4,430 B; baked data gzip 50,970 B.
+      These frame timings are provisional: the benchmark read visible-canvas pixels directly before timing.
+      Pixel checks now copy through OffscreenCanvas; repeat the three-run measurement before using timing as a baseline.
     applies_when: The precomputed Nerima study area is rendered in a desktop browser at 1280 by 800 pixels.
 verification:
   checks:

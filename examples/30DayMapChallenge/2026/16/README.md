@@ -19,3 +19,7 @@ The example uses a dedicated Canvas 2D renderer with a local ground-distance pro
 ## Attribution and license
 
 Data: [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright), accessed through [ohsome](https://ohsome.org/). OSM data is licensed under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). The OSM-derived aggregate database is published under ODbL 1.0; share-alike terms apply to derivative databases. This rendering is an independent, unofficial work and is not endorsed by OSM or HeiGIT.
+
+## Measurement note
+
+On 2026-11-06 the browser pixel checks were changed to use `readBack()` and an OffscreenCanvas copy. Earlier frame timings are provisional; repeat the capped browser measurement before using them as the current performance baseline.

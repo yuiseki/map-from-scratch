@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { type CollaborationMap } from './collaboration.ts';
 import { CollaborationRenderer, MonthTimeline, drawTimelineMonthLabel, updateSelectionText } from './renderer.ts';
 
@@ -50,12 +50,12 @@ export async function run(renderer: CollaborationRenderer, timeline: MonthTimeli
   const cellWidth = rect.width / data.gridSize, cellHeight = rect.height / data.gridSize;
   const pointX = rect.x + (densest.x + 0.5) * cellWidth, pointY = rect.y + (densest.y + 0.5) * cellHeight;
   const pixelRatio = mapCanvas.width / mapCanvas.clientWidth;
-  const pixel = mapCanvas.getContext('2d')!.getImageData(Math.floor(pointX * pixelRatio), Math.floor(pointY * pixelRatio), 1, 1).data;
+  const pixel = readBack(mapCanvas.getContext('2d')!, Math.floor(pointX * pixelRatio), Math.floor(pointY * pixelRatio)).data;
   const occupiedKeys = new Set(data.cells.map((cell) => `${cell.x}:${cell.y}`));
   let emptyX = 0, emptyY = 0;
   while (occupiedKeys.has(`${emptyX}:${emptyY}`)) { emptyX = (emptyX + 1) % data.gridSize; if (emptyX === 0) emptyY++; }
   const emptyXpx = rect.x + (emptyX + 0.5) * cellWidth, emptyYpx = rect.y + (emptyY + 0.5) * cellHeight;
-  const emptyPixel = mapCanvas.getContext('2d')!.getImageData(Math.floor(emptyXpx * pixelRatio), Math.floor(emptyYpx * pixelRatio), 1, 1).data;
+  const emptyPixel = readBack(mapCanvas.getContext('2d')!, Math.floor(emptyXpx * pixelRatio), Math.floor(emptyYpx * pixelRatio)).data;
   const activeLuma = pixel[0]! + pixel[1]! + pixel[2]!, emptyLuma = emptyPixel[0]! + emptyPixel[1]! + emptyPixel[2]!;
   emit({ check: 'real-contribution-cell-pixel', pass: activeLuma > emptyLuma + 25,
     detail: `occupied (${densest.x}, ${densest.y}) pixel=${[...pixel].join(',')}; empty (${emptyX}, ${emptyY})=${[...emptyPixel].join(',')}` });

@@ -2,6 +2,11 @@ import { emit, readBack } from '../../../../harness/page/bench.ts';
 import type { ProjectionMap } from './renderer.ts';
 import { MERCATOR_MAX_LATITUDE, PROJECTION_NAMES } from './projections.ts';
 
+function pixelAt(map: ProjectionMap, x: number, y: number): number[] {
+  const ratio = map.canvas.width / map.canvas.clientWidth;
+  return [...readBack(map.context, Math.round(x * ratio), Math.round(y * ratio)).data];
+}
+
 function checksum(map: ProjectionMap): number {
   const image = readBack(map.context, 0, 0, map.canvas.width, map.canvas.height).data;
   let sum = 0;
@@ -26,9 +31,9 @@ export async function run(map: ProjectionMap) {
   await new Promise(requestAnimationFrame);
   const view = map.viewport;
   const equatorAtOcean = map.projectToScreen([60, 0]);
-  const graticulePixel = equatorAtOcean ? map.getPixel(equatorAtOcean[0], equatorAtOcean[1]) : [0, 0, 0, 0];
+  const graticulePixel = equatorAtOcean ? pixelAt(map, equatorAtOcean[0], equatorAtOcean[1]) : [0, 0, 0, 0];
   const france = map.projectToScreen([2.35, 48.86]);
-  const francePixel = france ? map.getPixel(france[0], france[1]) : [0, 0, 0, 0];
+  const francePixel = france ? pixelAt(map, france[0], france[1]) : [0, 0, 0, 0];
   const image = readBack(map.context, 0, 0, map.canvas.width, map.canvas.height).data;
   let landPixels = 0;
   for (let i = 0; i < image.length; i += 4) {

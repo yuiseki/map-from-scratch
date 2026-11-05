@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { directionalNeighbor, type PresenceMap } from './lightdark.ts';
 import type { PresenceRenderer } from './renderer.ts';
 
@@ -6,7 +6,7 @@ function pixelAt(renderer: PresenceRenderer, id: string, panelId: 'day' | 'night
   const point = renderer.centerFor(id, panelId);
   if (!point) return null;
   const ratio = renderer.canvas.width / renderer.canvas.clientWidth;
-  return [...renderer.canvas.getContext('2d')!.getImageData(Math.floor(point.x * ratio), Math.floor(point.y * ratio), 1, 1).data];
+  return [...readBack(renderer.canvas.getContext('2d')!, Math.floor(point.x * ratio), Math.floor(point.y * ratio)).data];
 }
 
 export async function run(renderer: PresenceRenderer) {
@@ -43,7 +43,7 @@ export async function run(renderer: PresenceRenderer) {
   const dayPoint = renderer.centerFor(paired.id, 'day')!, nightPoint = renderer.centerFor(paired.id, 'night')!;
   const dayPanel = renderer.panelRect('day')!, nightPanel = renderer.panelRect('night')!;
   const pixelRatio = renderer.canvas.width / renderer.canvas.clientWidth;
-  const pixel = (point: { x: number; y: number }) => renderer.canvas.getContext('2d')!.getImageData(Math.floor(point.x * pixelRatio), Math.floor(point.y * pixelRatio), 1, 1).data;
+  const pixel = (point: { x: number; y: number }) => readBack(renderer.canvas.getContext('2d')!, Math.floor(point.x * pixelRatio), Math.floor(point.y * pixelRatio)).data;
   const dayCell = pixel(dayPoint), nightCell = pixel(nightPoint);
   const sameExtent = dayPanel.map.width > 0 && dayPanel.map.height > 0
     && Math.abs(dayPanel.map.width - nightPanel.map.width) < 0.01

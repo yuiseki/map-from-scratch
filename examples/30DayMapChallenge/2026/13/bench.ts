@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { type FlowMap } from './renderer.ts';
 
 export async function run(map: FlowMap) {
@@ -17,7 +17,7 @@ export async function run(map: FlowMap) {
   await map.setFrame(2, 10); map.select(taito); map.state.dayType = 2; map.state.timezone = 0; map.draw();
   const bins = map.values(taito), populated = bins.some((v) => v > 0), city = map.dataset.municipalities[taito]!;
   const [x, y] = map.screenPoint(city), canvas = document.getElementById('map') as HTMLCanvasElement;
-  const pixel = canvas.getContext('2d')!.getImageData(Math.round(x * Math.min(2, devicePixelRatio)), Math.round(y * Math.min(2, devicePixelRatio)), 1, 1).data;
+  const pixel = readBack(canvas.getContext('2d')!, Math.round(x * Math.min(2, devicePixelRatio)), Math.round(y * Math.min(2, devicePixelRatio))).data;
   emit({ check: 'real-destination-rendered', pass: populated && pixel[3] === 255 && (pixel[0]! > 80 || pixel[1]! > 100),
     detail: `Taito-ku November 2021 all-days daytime bins=${bins.join('/')}; marker pixel RGBA=${[...pixel].join(',')}` });
   const docs = document.body.innerText, links = [...document.querySelectorAll('a')].map((a) => a.href);

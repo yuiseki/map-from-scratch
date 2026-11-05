@@ -158,13 +158,8 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
   new ResizeObserver(resize).observe(canvas);
   resize();
 
-  const sampleAt = (lon: number, lat: number): [number, number, number] => {
-    const [x, y] = projectedLonLat(lon, lat);
-    const pixel = context!.getImageData(Math.max(0, Math.min(canvas.width - 1, Math.round(x * dpr))), Math.max(0, Math.min(canvas.height - 1, Math.round(y * dpr))), 1, 1).data;
-    return [pixel[0]!, pixel[1]!, pixel[2]!];
-  };
   return {
-    canvas, context, view, viewport, records, stats, land, draw, projectedLonLat, sampleAt,
+    canvas, context, view, viewport, records, stats, land, draw, projectedLonLat,
     firstFrameMs: performance.now() - started,
     airportBytes: airportBuffer.byteLength,
   };

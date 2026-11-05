@@ -1,10 +1,10 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { depthSectionY, flipReliefY } from './profile.ts';
 import type { SectionMap } from './renderer.ts';
 
 function pixel(map: SectionMap, x: number, y: number): number[] {
   const canvas = map.canvas, rect = canvas.getBoundingClientRect();
-  return [...canvas.getContext('2d')!.getImageData(Math.round((x + rect.left - rect.left) * canvas.width / rect.width), Math.round(y * canvas.height / rect.height), 1, 1).data];
+  return [...readBack(canvas.getContext('2d')!, Math.round(x * canvas.width / rect.width), Math.round(y * canvas.height / rect.height)).data];
 }
 function sameRgb(a: number[], hex: string): boolean {
   const rgb = hex.match(/[0-9a-f]{2}/gi)!.map((v) => Number.parseInt(v, 16));

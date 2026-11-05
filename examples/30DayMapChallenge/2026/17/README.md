@@ -18,4 +18,6 @@
 
 ## 計測
 
-3回のChrome/Xvfb計測は全9 budgets・8 browser checksが通過しました。初回描画 p50 114.585 ms、frame p95 13.145 ms、draw CPU p95 5.955 ms、コード gzip 12,639 B、データ gzip 11,834 Bです。1280×800のスクリーンショットで、左右の地図、共通凡例、出典と注意書きが重ならないことを確認しました。
+修正前の3回Chrome/Xvfb計測では9 budgets中8件と8 browser checksが通過しました。初回描画 p50 114.585 ms、frame p95 13.145 ms、draw CPU p95 5.955 ms、コード gzip 12,639 B、データ gzip 11,834 Bでした。1280×800のスクリーンショットで、左右の地図、共通凡例、出典と注意書きが重ならないことを確認しました。
+
+2026-11-06: cell-color assertions now use `readBack()` to inspect an OffscreenCanvas copy. Earlier frame timings are provisional until the corrected three-run browser benchmark is repeated.

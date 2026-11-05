@@ -1,10 +1,10 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import type { TasteRenderer } from './renderer.ts';
 
 function coloredPixels(canvas: HTMLCanvasElement): number {
   const ctx = canvas.getContext('2d');
   if (!ctx) return 0;
-  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = readBack(ctx, 0, 0, canvas.width, canvas.height);
   let count = 0;
   for (let i = 0; i < data.length; i += 4 * 8) {
     if (data[i]! < 235 || data[i + 1]! < 230 || data[i + 2]! < 220) count++;

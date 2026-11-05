@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { groundScale } from './territory.ts';
 import type { TerritoryMap } from './renderer.ts';
 
@@ -24,7 +24,7 @@ export async function run(map: TerritoryMap) {
   const [fx, fy] = map.screenPoint(focus.x, focus.y);
   const hit = map.hitTest(fx, fy);
   const mapCanvas = document.getElementById('map') as HTMLCanvasElement;
-  const pixel = mapCanvas.getContext('2d')!.getImageData(Math.round(fx * mapCanvas.width / mapCanvas.clientWidth), Math.round(fy * mapCanvas.height / mapCanvas.clientHeight), 1, 1).data;
+  const pixel = readBack(mapCanvas.getContext('2d')!, Math.round(fx * mapCanvas.width / mapCanvas.clientWidth), Math.round(fy * mapCanvas.height / mapCanvas.clientHeight)).data;
   const painted = pixel[0] !== 209 || pixel[1] !== 201 || pixel[2] !== 183;
   emit({ check: 'real-building-and-geometry-hit', pass: expected >= 0 && hit === expected && painted,
     detail: `OSM relation/${map.stats.physicalFocus.osmRelationId} hit=${hit}; sample pixel=${[...pixel].join(',')}; ${map.stats.sourceBuildingRows} buildings / ${map.stats.vertexCount} vertices` });

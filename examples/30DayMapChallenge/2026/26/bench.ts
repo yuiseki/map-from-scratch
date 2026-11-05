@@ -1,11 +1,11 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { DEPTH_COLORS, type FloodRenderer } from './renderer.ts';
 import { depthLabel, featureAt } from './flood.ts';
 
 function readPalette(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas readback unavailable');
-  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = readBack(ctx, 0, 0, canvas.width, canvas.height);
   const counts = new Map<string, number>();
   const extents = { minX: width, minY: height, maxX: -1, maxY: -1 };
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {

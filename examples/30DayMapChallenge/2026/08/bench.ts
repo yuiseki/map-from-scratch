@@ -1,4 +1,4 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import type { UtopiaMap } from './renderer.ts';
 
 export async function run(map: UtopiaMap) {
@@ -12,9 +12,9 @@ export async function run(map: UtopiaMap) {
   emit({ info: { renderer: 'Canvas 2D custom mesh and polygon renderer', center: 'Nerima Station', meshes: data.cells.length, parks: data.parks.length, schools: data.schools.length, dual_access_meshes: dualAccess } });
   emit({ check: 'dual-access-coverage', pass: dualAccess > 0 && data.parks.length >= 20 && data.schools.length >= 20, detail: `${dualAccess} of ${data.cells.length} population meshes are within 400 m of both a park and a school` });
   emit({ check: 'population-mesh', pass: data.cells.every((cell) => Number.isFinite(cell.population) && cell.population >= 0) && data.cells.length >= 200, detail: `${data.cells.length} valid Tokyo 2020 census fifth-level meshes` });
-  const outsideContext = map.canvas.getContext('2d', { willReadFrequently: true })!.getImageData(Math.floor(map.canvas.width * 0.12), Math.floor(map.canvas.height / 2), 1, 1).data;
+  const outsideContext = readBack(map.canvas.getContext('2d')!, Math.floor(map.canvas.width * 0.12), Math.floor(map.canvas.height / 2)).data;
   emit({ check: 'study-area-clip', pass: outsideContext[0] === 16 && outsideContext[1] === 28 && outsideContext[2] === 35, detail: `outer canvas sample RGB ${outsideContext[0]},${outsideContext[1]},${outsideContext[2]}` });
-  const outerRegion = map.canvas.getContext('2d')!.getImageData(0, Math.floor(map.canvas.height * 0.42), Math.floor(map.canvas.width * 0.22), Math.floor(map.canvas.height * 0.16)).data;
+  const outerRegion = readBack(map.canvas.getContext('2d')!, 0, Math.floor(map.canvas.height * 0.42), Math.floor(map.canvas.width * 0.22), Math.floor(map.canvas.height * 0.16)).data;
   let changedPixels = 0;
   for (let i = 0; i < outerRegion.length; i += 4) if (outerRegion[i] !== 16 || outerRegion[i + 1] !== 28 || outerRegion[i + 2] !== 35) changedPixels++;
   emit({ check: 'empty-outer-margin', pass: changedPixels === 0, detail: `${changedPixels} pixels differ from the background in the outside margin` });

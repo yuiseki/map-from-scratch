@@ -3,6 +3,7 @@ import { project, projectSegment, PROJECTION_NAMES, screenPoint, type Point, typ
 export interface Country { adm0_a3: string; name: string; geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown } }
 export interface CountryData { source: string; features: Country[] }
 export interface Viewport { width: number; height: number; scale: number }
+export const PROJECTION_CONTEXT_OPTIONS: CanvasRenderingContext2DSettings = { alpha: false };
 
 function coordinatePairs(input: unknown): Point[] {
   if (!Array.isArray(input)) return [];
@@ -34,12 +35,11 @@ export class ProjectionMap {
   firstFrameMs = 0;
   drawCpuMs = 0;
   private start = performance.now();
-  private dpr = 1;
   private resizeObserver: ResizeObserver;
 
   constructor(canvas: HTMLCanvasElement, data: CountryData) {
     this.canvas = canvas;
-    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+    const context = canvas.getContext('2d', PROJECTION_CONTEXT_OPTIONS);
     if (!context) throw new Error('Canvas 2D is unavailable');
     this.context = context;
     this.data = data;
@@ -73,7 +73,6 @@ export class ProjectionMap {
     const t0 = performance.now();
     const { canvas, context: ctx } = this;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.dpr = dpr;
     const width = Math.max(1, canvas.clientWidth);
     const height = Math.max(1, canvas.clientHeight);
     const pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
@@ -171,11 +170,6 @@ export class ProjectionMap {
     ctx.fillText('10° at equator', x, y - 9);
     ctx.fillStyle = 'rgba(215, 227, 223, .76)';
     ctx.fillText('Equal Earth: equal area · Mercator: conformal, polar clipping ±85.0511° · graticule 30°', x, view.height - 16);
-  }
-
-  getPixel(x: number, y: number): [number, number, number, number] {
-    const pixel = this.context.getImageData(Math.round(x * this.dpr), Math.round(y * this.dpr), 1, 1).data;
-    return [pixel[0]!, pixel[1]!, pixel[2]!, pixel[3]!];
   }
 
   dispose() { this.resizeObserver.disconnect(); }
