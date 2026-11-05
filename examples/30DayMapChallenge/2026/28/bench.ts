@@ -1,5 +1,6 @@
 import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { cellBounds, cellGreenShare, GREEN_BAND_COLORS, greenShareBand, GREEN_CLASS_CODES, NO_DATA_COLOR, WORLD_COVER_CLASSES } from './feeling.ts';
+import { frameIntervals } from './frame-metrics.ts';
 import type { GreenRenderer } from './renderer.ts';
 
 export function canvasPalette(canvas: HTMLCanvasElement): { counts: number[]; noData: number; extent: [number, number, number, number] } {
@@ -127,6 +128,11 @@ export async function run(renderer: GreenRenderer): Promise<void> {
   const offOrigin = performance.getEntriesByType('resource').map((entry) => entry.name)
     .filter((name) => new URL(name, location.href).origin !== location.origin);
   emit({ check: 'no-runtime-external-requests', pass: offOrigin.length === 0, detail: `${offOrigin.length} off-origin requests` });
+
+  const idleTimestamps: number[] = [];
+  for (let i = 0; i < 61; i++) idleTimestamps.push(await new Promise<number>((resolve) => requestAnimationFrame(resolve)));
+  const idleFrames = frameIntervals(idleTimestamps);
+  emit({ metric: 'idle_frame_ms', values: idleFrames });
 
   const frames: number[] = [], draws: number[] = [];
   let previousFrame = await new Promise<number>((resolve) => requestAnimationFrame(resolve));

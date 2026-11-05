@@ -62,3 +62,6 @@ The capped three-run browser benchmark reports exact source totals and passes al
 
 
 再現確認（2026-11-06、Chrome 156 / headless、CPU 4コア上限）でも frame p95 17.700 ms・p50 17.340 ms、draw CPU p95 0.200 msとなり、22/23 budgets・8/8 checksでした。実行時load averageは18.49/18.69/20.21です。先の未達が負荷の低下後にも再現しました。最新JSONは同じ `results/30DayMapChallenge-2026-28/latest.json` にあります。
+
+
+描画なしのRAF対照計測を追加した3回目（2026-11-06）は、アイドル時p95 17.525 ms、描画時frame p95 17.710 ms、draw CPU p95 0.255 ms、first-frame p50 61.510 msでした。アイドル時から16.7 ms目標を超え、描画時との差は0.185 msです。したがってこの実行環境では16.7 ms予算の未達を描画器単体の遅さとは判定できませんが、予算未達として記録を維持します。22/23 budgets、8/8 checks。host load averageは19.71/18.53/19.24でした。gzip code/data 9,959/65,070 B。

@@ -64,6 +64,9 @@ benchmarks:
     - id: cached-raster-pan-zoom
       what: Alternates camera pan state and draws once in each animation frame callback; frame_ms is the timestamp interval between consecutive callbacks, draw_cpu_ms is the synchronous draw duration.
       metrics: [frame_ms, draw_cpu_ms]
+    - id: idle-browser-frame-cadence
+      what: Records consecutive requestAnimationFrame callback intervals without drawing, to separate browser scheduling cadence from renderer work.
+      metrics: [idle_frame_ms]
     - id: pixels-inspection-and-provenance
       what: Reads actual canvas palette pixels and verifies source counts, green bands, NoData status, click/keyboard inspection, camera controls, caveat, source credit and runtime request origins.
       metrics: []
@@ -89,7 +92,7 @@ architecture_selection:
     api: Canvas 2D offscreen source-grid raster + Pointer Events + keyboard arrows
     language: TypeScript
     gpu: none
-    code: [examples/30DayMapChallenge/2026/28/index.html, examples/30DayMapChallenge/2026/28/main.ts, examples/30DayMapChallenge/2026/28/renderer.ts, examples/30DayMapChallenge/2026/28/feeling.ts, examples/30DayMapChallenge/2026/28/style.css]
+    code: [examples/30DayMapChallenge/2026/28/index.html, examples/30DayMapChallenge/2026/28/main.ts, examples/30DayMapChallenge/2026/28/renderer.ts, examples/30DayMapChallenge/2026/28/feeling.ts, examples/30DayMapChallenge/2026/28/frame-metrics.ts, examples/30DayMapChallenge/2026/28/style.css]
     dependencies: []
     why: The fixed AOI is a dense regular grid of 34,272 cells. Rasterizing its green-share bands into a compact 204×168 offscreen image keeps each camera redraw to a single image placement, while original 11-class pixel counts remain in row-major source cells for direct inspection.
   alternatives:
@@ -99,7 +102,7 @@ architecture_selection:
       rejected_because: The prompt requires a data-specific renderer with no external map runtime, and the AOI is fully represented by the source grid.
   not_doing: [infer emotional state or restorative benefit, infer park or public-access boundaries, infer safety or health, include subjective survey or individual data, treat crops as natural green respite, add roads or basemap, draw cells at 10m source resolution, use generated imagery, general-purpose map engine]
 performance_knowledge:
-  - The benchmark records 60 consecutive requestAnimationFrame callback timestamp intervals per iteration, with one camera update and synchronous cached-raster draw in each callback. After moving pixel readback to OffscreenCanvas, the 2026-11-06 three-run result had frame p95 17.750 ms (target 16.7 ms, miss), draw CPU p95 0.110 ms (target 8 ms), and first-frame p50 62.785 ms (target 1,500 ms). Host load averages were 22.08, 21.77, and 21.68 in the first corrected run. A repeat run at 18.49, 18.69, and 20.21 still measured frame p95 17.700 ms (p50 17.340 ms) with draw CPU p95 0.200 ms. These are concurrent measurements, not an established cause. Both corrected runs passed all eight functional checks and 22/23 budgets. Retain the frame miss rather than inferring a pass from low draw CPU.
+  - The benchmark records 60 consecutive requestAnimationFrame callback timestamp intervals per iteration, with one camera update and synchronous cached-raster draw in each callback. After moving pixel readback to OffscreenCanvas, the 2026-11-06 three-run result had frame p95 17.750 ms (target 16.7 ms, miss), draw CPU p95 0.110 ms (target 8 ms), and first-frame p50 62.785 ms (target 1,500 ms). Host load averages were 22.08, 21.77, and 21.68 in the first corrected run. A repeat run at 18.49, 18.69, and 20.21 still measured frame p95 17.700 ms (p50 17.340 ms) with draw CPU p95 0.200 ms. These are concurrent measurements, not an established cause. Both initial corrected runs passed all eight functional checks and 22/23 budgets. A third run added a no-draw RAF control: idle callback p95 17.525 ms, active frame p95 17.710 ms (0.185 ms higher), draw CPU p95 0.255 ms, first-frame p50 61.510 ms, code/data gzip 9,959/65,070 B. It also passed all eight checks and 22/23 budgets. The idle cadence already misses 16.7 ms, so this run cannot attribute the miss to drawing; retain the frame budget miss and do not infer a pass from low draw CPU.
 verification:
   checks:
     - id: source-counts-and-green-formula
