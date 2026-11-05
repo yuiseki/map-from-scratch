@@ -137,6 +137,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/ibtracs-v04r01/resolve/main/parquet/since1980/ibtracs.parquet',
     copy: true,
   },
+  // World Bank World Development Indicators, selected redistributable annual series.
+  'worldbank-wdi-basic-annual': {
+    out: 'worldbank_wdi_basic_annual.parquet',
+    local: '/sata_hdd_24tb/www/html/static/worldbank/wdi_basic_annual.parquet',
+    remote: 'https://z.yuiseki.net/static/worldbank/wdi_basic_annual.parquet',
+    copy: true,
+  },
   // Natural Earth 10m admin 0, v5.1.1. Public domain.
   'ne-countries': {
     out: 'ne_10m_admin_0_countries.geojson',
