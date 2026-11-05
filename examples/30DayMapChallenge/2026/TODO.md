@@ -33,7 +33,7 @@
 | 25 | Is this a map? | 2025年USGS ComCatの地震位置を、マグニチュード別の同心円残像と深さ別の色に変換。実際の震源座標は保ち、円は物理的な地震波・揺れ・危険度を表さないと明記 | 完了 · WebGL2 · 3回計測・全15 budgets / 11 checks PASS・画面確認済み · 8,502地震 · first frame p50 533.5 ms · draw p95 5.65 ms · frame p95 6.96 ms · gzip data/code 421,815 / 13,881 B |
 | 26 | Water | 2025年度の荒川・想定最大規模の浸水想定ポリゴンを、出典の深さランクで地図化。モデル上の仮定であり実災害記録・予報・個別リスク判定ではないと明記 | 完了 · 3回計測・14 budgets / 8 checks PASS・画面確認済み · 2,264ポリゴン / 124,919頂点 · first frame p50 213.5 ms · draw p95 0.205 ms · frame p95 4.48 ms · gzip data/code 534,524 / 9,678 B |
 | 27 | New tool | e-Stat 2020年国勢調査の千代田区250 m人口メッシュをWebGPU computeで投影・分類し、専用WebGPU描画器で表示。JGD2000の行政界をJGD2011へ変換し、値あり・0・秘匿・行なしを保持（CC BY 4.0） | 完了 · RTX 3060 / WebGPU・3回計測・8 checks / 5 budgets PASS・画面確認済み · 171格子 · first frame p50 22.625 ms · frame p95 3.105 ms · GPU p95 0.028672 ms · gzip data/code 15,268 / 10,525 B |
-| 28 | Senses: Feeling | 地域ごとの「感じ方」を色・触覚的な密度で表す主観的作品。個人情報を使わず、公開統計から作る代理指標または明記した合成値を採用 | TODO |
+| 28 | Senses: Feeling | ESA WorldCover 2021の東京100 m土地被覆を使い、樹木・低木・草地・草本湿地の割合を「緑被率」という物理的な代理指標としてCanvas 2D描画。感情や公園アクセスの実測ではないと明記（CC BY 4.0） | 実装・3回計測・8 checks PASS・画面確認済み · 34,272格子 · first frame p50 55.025 ms · draw CPU p95 0.20 ms · frame p95 17.735 ms（16.7 ms目標未達、host loadavg 24.45/21.35/20.68） · gzip data/code 65,071 / 9,739 B |
 | 29 | Raster | COG の衛星画像・標高を Range 読み込みし、独自ラスターレンダラーで表示。`z:planetarble/ETOPO_2022_15s_bed.tif` は NOAA NCEI CC0-1.0（DOI 10.25921/fd45-gt74、出典引用・航法用途外） | TODO |
 | 30 | Pen & paper | 印刷して手描きできる等高線・人口地図を生成する。`hf:gsi-dem-fuji-z14-100m-2026-10-25` 等を PDF/SVG に焼き込み（GSIコンテンツ利用規約 / PDL1.0、出典併記） | TODO |
 

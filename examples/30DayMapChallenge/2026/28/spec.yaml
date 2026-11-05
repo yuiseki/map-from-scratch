@@ -1,0 +1,136 @@
+id: 30DayMapChallenge-2026-28
+request: >-
+  30DayMapChallenge 2026「Senses: Feeling」。実在する土地被覆から緑被率を物理的な代理指標として地図化する。個人の感情・心理状態、公園アクセス、体験の質を表す地図にはしない。
+requirements:
+  - id: source-backed-vegetation
+    need: 2021年 WorldCover の実在セルと元クラスピクセル数を使う
+    rationale: 指定grid窓の34,272セル、3,427,200有効元ピクセルを正確に保持する
+  - id: explicit-green-share
+    need: 緑被率の分子、分母、対象クラスと農地を除外する理由を明示する
+    rationale: tree 10 + shrub 20 + grass 30 + herbaceous wetland 90 を valid_pixels で割る。cropland 40 は農地を自然の緑被として扱わないため除外する
+  - id: no-data-semantics
+    need: NoData を0%緑被と区別する
+    rationale: valid_pixels=0 はnull share / 専用色とし、有効pixelゼロ値を0%として描く
+  - id: geographic-distribution-and-inspection
+    need: 固定AOI内の緑被の広がりを見せ、選択セルの元クラス数を確認できる
+    rationale: source row/colを各セルの位置としてそのまま表示し、クリックとキーボードで原pixel数を調べる
+  - id: honest-senses-interpretation
+    need: 緑被率を感情やアクセス可能性と誤認させず、対象範囲・年・出典・ライセンスを示す
+    unmeasured: 人が感じる休息・癒やし・健康・安全を土地被覆から測れないため、これらの主観的意味は数値化しない
+  - id: dedicated-interaction
+    need: 地図を移動・拡大縮小・初期範囲へ戻し、100m相当セルを調べられる
+    rationale: 204×168セルの専用Canvas2Dオフスクリーンラスターを再配置する。描画CPU p95 8 ms、requestAnimationFrameコールバック間隔p95 16.7 msを目標とする
+  - id: compact-startup
+    need: 固定データを一度読み、外部地図・データサービスなしに表示する
+    rationale: 初回描画p50 1.5秒以内、コードgzip 35 KB以下、ベイクデータgzip 1 MB以下
+evaluation:
+  budgets:
+    - {metric: source_cells, min: 34272, max: 34272, unit: cells, requirement: source-backed-vegetation}
+    - {metric: source_valid_pixels, min: 3427200, max: 3427200, unit: pixels, requirement: source-backed-vegetation}
+    - {metric: source_nodata_pixels, min: 0, max: 0, unit: pixels, requirement: no-data-semantics}
+    - {metric: source_green_pixels, min: 308135, max: 308135, unit: pixels, requirement: explicit-green-share}
+    - {metric: no_data_cells, min: 0, max: 0, unit: cells, requirement: no-data-semantics}
+    - {metric: green_band_0_cells, min: 20637, max: 20637, unit: cells, requirement: explicit-green-share}
+    - {metric: green_band_1_cells, min: 6809, max: 6809, unit: cells, requirement: explicit-green-share}
+    - {metric: green_band_2_cells, min: 2764, max: 2764, unit: cells, requirement: explicit-green-share}
+    - {metric: green_band_3_cells, min: 1953, max: 1953, unit: cells, requirement: explicit-green-share}
+    - {metric: green_band_4_cells, min: 1032, max: 1032, unit: cells, requirement: explicit-green-share}
+    - {metric: green_band_5_cells, min: 1077, max: 1077, unit: cells, requirement: explicit-green-share}
+    - {metric: rendered_band_0_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_band_1_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_band_2_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_band_3_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_band_4_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_band_5_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
+    - {metric: rendered_nodata_pixels, min: 0, max: 0, unit: pixels, requirement: no-data-semantics}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: dedicated-interaction}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: dedicated-interaction}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: compact-startup}
+    - {metric: code_gzip_bytes, max: 35000, unit: B, requirement: compact-startup}
+    - {metric: data_gzip_bytes, max: 1000000, unit: B, requirement: compact-startup}
+  gates: [exact source classes and pixel counts, AOI is the fixed disclosed grid-index rectangle, zero valid pixels remain distinct from zero green share, actual canvas contains each available green-share band, no-data is reported as absent in the measured AOI, source-cell inspection preserves class counts, proxy limitations and ESA attribution are visible, browser checks pass all iterations, no off-origin runtime requests]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/28/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: headless
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: source-cells-first-frame
+      what: Starts when page module requests baked cells; stops after validated 100m block raster is drawn once to the display canvas.
+      metrics: [first_frame_ms]
+    - id: cached-raster-pan-zoom
+      what: Alternates camera pan state and draws once in each animation frame callback; frame_ms is the timestamp interval between consecutive callbacks, draw_cpu_ms is the synchronous draw duration.
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: pixels-inspection-and-provenance
+      what: Reads actual canvas palette pixels and verifies source counts, green bands, NoData status, click/keyboard inspection, camera controls, caveat, source credit and runtime request origins.
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/28/bake.ts]
+  sources:
+    - id: hf:esa-worldcover-tokyo-2021-100m
+      origin: ESA WorldCover 10 m 2021 v200, tile N33E138, aggregated into non-overlapping 10×10-pixel cell blocks; derived table by yuiseki.
+      local: /sata_hdd_24tb/hf_data/esa-worldcover-tokyo-2021-100m/data/parquet/esa_worldcover_tokyo_2021_v200_100m.parquet
+      license: CC BY 4.0
+      url: https://huggingface.co/datasets/yuiseki/esa-worldcover-tokyo-2021-100m
+      source_url: https://doi.org/10.5281/zenodo.7254221
+      attribution: "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium."
+  outputs: [data/baked/30DayMapChallenge-2026-28/cells.json, data/baked/30DayMapChallenge-2026-28/stats.json]
+  preparation:
+    - Verify the local HF card, license metadata and source/ATTRIBUTION.txt before reading. Source table is EPSG:4326/WGS84, 360,000 cells over 139.5–140.0°E, 35.5–36.0°N, with 10×10 counts from the 10m ESA WorldCover 2021 v200 tile.
+    - Select the exact source grid-index AOI: cell_row 288–455 and cell_col 192–395 inclusive. Keep complete source cells; the index range maps to 139.66–139.83°E and 35.62–35.76°N and is not an administrative polygon.
+    - Preserve valid_pixels, nodata_pixels and all 11 raw class counts for each of 34,272 selected cells. Verify every count is integer, class sum equals valid_pixels, valid plus NoData equals 100, and source row/column order has no gaps.
+    - Compute greenPixels = pixels_10 + pixels_20 + pixels_30 + pixels_90; exclude cropland 40, explain why, and divide by valid_pixels. Store null green share when valid_pixels is 0. The source crop and this AOI currently have zero NoData pixels, but the renderer retains a distinct NoData color/state.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D offscreen source-grid raster + Pointer Events + keyboard arrows
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/28/index.html, examples/30DayMapChallenge/2026/28/main.ts, examples/30DayMapChallenge/2026/28/renderer.ts, examples/30DayMapChallenge/2026/28/feeling.ts, examples/30DayMapChallenge/2026/28/style.css]
+    dependencies: []
+    why: The fixed AOI is a dense regular grid of 34,272 cells. Rasterizing its green-share bands into a compact 204×168 offscreen image keeps each camera redraw to a single image placement, while original 11-class pixel counts remain in row-major source cells for direct inspection.
+  alternatives:
+    - option: WebGL2 instanced polygon quads
+      rejected_because: Not needed before measuring; 34,272 axis-aligned cells reduce exactly to one small native grid raster with no polygon triangulation or per-cell draw state.
+    - option: MapLibre, public tiles, or remote image
+      rejected_because: The prompt requires a data-specific renderer with no external map runtime, and the AOI is fully represented by the source grid.
+  not_doing: [infer emotional state or restorative benefit, infer park or public-access boundaries, infer safety or health, include subjective survey or individual data, treat crops as natural green respite, add roads or basemap, draw cells at 10m source resolution, use generated imagery, general-purpose map engine]
+performance_knowledge:
+  - The benchmark records 60 consecutive requestAnimationFrame callback timestamp intervals per iteration, with one camera update and synchronous cached-raster draw in each callback. The corrected three-run result had frame p95 17.735 ms (target 16.7 ms, miss), draw CPU p95 0.20 ms (target 8 ms), and first-frame p50 55.025 ms (target 1,500 ms). Host load averages were 24.45, 21.35, and 20.68. All eight functional checks passed. A prior timing implementation measured request-to-next-callback delay and gave p95 18.065/17.92 ms; it was replaced with callback-to-callback intervals, so only the corrected value is the reported frame result. Retain the miss rather than inferring a frame pass from low draw CPU.
+verification:
+  checks:
+    - id: source-counts-and-green-formula
+      what: Exact selected source-cell count, all source class totals and green numerator/denominator survive the bake.
+      how: Compare the in-browser aggregate of every cell array against source-derived constants recorded from the catalog-verified table query.
+      expected: 34,272 cells, 3,427,200 valid pixels, zero NoData, green numerator 308,135, exact per-class totals.
+    - id: rendered-green-bands-and-no-data
+      what: The physical green-share bins reach the display canvas, while zero share and NoData are separate categories.
+      how: Read actual canvas RGB pixels for every ordered palette entry and compare the source NoData count with the no-data color count.
+      expected: All six available share bins are visible; this AOI has zero NoData cells and zero NoData-color pixels.
+    - id: selected-cell-preserves-raw-class-counts
+      what: Selected 100m source cell exposes its row/column and all original class-pixel counts.
+      how: Click a known highest-green source cell and compare selection-panel text with its baked vector.
+      expected: Coordinates map to the correct source grid cell; tree, crop, built, water and other raw counts remain visible.
+    - id: legend-formula-and-interpretation
+      what: Ordered 0–100% legend, exact formula, cropland exclusion and proxy caveat are visible.
+      how: Inspect live page text.
+      expected: Text says land cover is not emotion, restfulness, park access, safety, or experience quality.
+    - id: pan-zoom-reset-controls
+      what: Drag, wheel, zoom buttons and reset move or restore the cached-raster camera; scale responds to zoom.
+      how: Dispatch browser pointer, wheel and button input and inspect camera state and scale label.
+      expected: Camera changes on pan/zoom and resets to the initial view.
+    - id: keyboard-cell-inspection
+      what: Keyboard focus and arrow controls can inspect adjacent source cells.
+      how: Focus the canvas and dispatch ArrowRight; compare the selected cell before and after.
+      expected: Canvas is focusable and the selected row/column changes.
+    - id: source-attribution-license
+      what: ESA source year, source DOI and exact required attribution / CC BY 4.0 credit are visible.
+      how: Inspect the page link and source text.
+      expected: WorldCover project and modified Copernicus Sentinel data credits appear verbatim.
+    - id: no-runtime-external-requests
+      what: Runtime renderer has no external data, tiles, libraries, or API requests.
+      how: Inspect Resource Timing origins after the first frame.
+      expected: All page and baked-data requests are same-origin.
