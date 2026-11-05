@@ -6,8 +6,8 @@
 
 | 日 | テーマ | 実装案・カタログ候補 | 状態 |
 |---:|---|---|---|
-| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 実装完了 · 目視確認待ち · frame p95 0.515 ms |
-| 02 | Lines | IBTrACS v04r01 の全世界ストーム経路を個体ごとに接続し、盆地別に色分け。カタログ記載 311,935 観測点・8.8 MB・SID/season 順 7 row groups を照合。実データは 5,010 SID、LON が 180°を超える 7,626 行を西経へ正規化、303,826 線分。速度など機関ごとに定義が揃わない値は符号化しない。`hf:ibtracs-v04r01`（NOAA/NCEI terms、指定のデータ・論文を引用） | 実装完了 · 目視確認待ち · frame p95 0.580 ms |
+| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 完了 · 目視確認済み · frame p95 0.515 ms |
+| 02 | Lines | IBTrACS v04r01 の全世界ストーム経路を個体ごとに接続し、盆地別に色分け。カタログ記載 311,935 観測点・8.8 MB・SID/season 順 7 row groups を照合。実データは 5,010 SID、LON が 180°を超える 7,626 行を西経へ正規化、303,826 線分。速度など機関ごとに定義が揃わない値は符号化しない。`hf:ibtracs-v04r01`（NOAA/NCEI terms、指定のデータ・論文を引用） | 完了 · 目視確認済み · frame p95 0.580 ms |
 | 03 | Polygons | 国別人口指標を Natural Earth の国境ポリゴンに結合して比較する。`hf:natural-earth` + 国別統計（指標ごとにライセンスを確認） | TODO |
 | 04 | Clusters | 東京の施設点をズームに応じて GPU 集約し、密度と代表カテゴリを表示。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と共有条件を確認） | TODO |
 | 05 | Senses: Sight | 富士山の標高を地形陰影と視線方向で見せる。`hf:gsi-dem-fuji-z14-100m-2026-10-25`（CC BY 4.0） | TODO |
