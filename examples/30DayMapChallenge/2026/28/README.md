@@ -67,3 +67,5 @@ The capped three-run browser benchmark reports exact source totals and passes al
 描画なしのRAF対照計測を追加した3回目（2026-11-06）は、アイドル時p95 17.525 ms、描画時frame p95 17.710 ms、draw CPU p95 0.255 ms、first-frame p50 61.510 msでした。アイドル時から16.7 ms目標を超え、描画時との差は0.185 msです。したがってこの実行環境では16.7 ms予算の未達を描画器単体の遅さとは判定できませんが、予算未達として記録を維持します。22/23 budgets、8/8 checks。host load averageは19.71/18.53/19.24でした。gzip code/data 9,959/65,070 B。
 
 表示方式の影響を切り分けるためXvfbでも同じ資源上限・3反復で計測しました（2026-11-06）。アイドルRAF p95 17.705 ms、描画時frame p95 17.780 ms、draw CPU p95 0.310 msで、22/23 budgets・8/8 checksでした。headless時と同じくアイドル周期が16.7 msを超えたため、Xvfbへの切り替えでも目標未達は解消しませんでした。描画器が遅いという結論にはせず、未達を維持します。測定値は `results/30DayMapChallenge-2026-28/latest.json` にあります。
+
+GPU合成を無効にした3反復も行いました（2026-11-06）。アイドルRAF p95 17.870 ms、描画時frame p95 17.745 ms、draw CPU p95 0.185 ms、初回描画p50 52.740 msでした。8/8 checksが通り、未達はframe budgetだけでした（22/23）。GPU表示経路を切ってもRAF周期は改善しなかったため、現計測環境で描画器やGPU負荷を主因とする根拠はありません。スクリーンショットも再確認しました。
