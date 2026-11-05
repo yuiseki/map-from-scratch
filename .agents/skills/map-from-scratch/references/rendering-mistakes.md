@@ -209,7 +209,33 @@ coordinate through pans and zooms. Two differences from MapLibre remain:
 the popup is drawn on one world copy only, so it vanishes when that copy
 leaves the screen, and it never flips its anchor at the screen edge.
 
+### Clicks land where the drawn popup was (repeated: htmlcanvas 001, 002, 003)
+
+- Screen: the popup or card was drawn in the right place, but after a pan a
+  click on it reached the canvas, and a click where it had been still pressed
+  its button.
+- Why: Chrome 157 keeps recent hit-test results per point and drops them only
+  on a DOM change. Moving a drawn element with `drawElementImage` (2D) or
+  `updateElementGeometry` (WebGL, WebGPU) is not one. 001 passed by luck: its
+  HUD wrote `textContent` every frame.
+- Test: ask `document.elementFromPoint` at the same point before and after the
+  move; for real input, send CDP mouse events from a probe.
+- Fix: in each frame that moved a drawn element, write an attribute of an
+  element outside the document (`hitTestCacheBuster` in the examples'
+  support.ts). Details in `.agents/skills/html-in-canvas`.
+
 ## Markers
+
+### A pin sprite cut by the globe's limb (htmlcanvas 003)
+
+- Screen: near the edge of the globe the lower half of a city's pin was cut
+  diagonally; the centre pixel was sea colour mixed with red (133,56,59).
+- Why: a screen-facing point sprite drawn with the depth test; the near side
+  of the sphere is in front of the sprite's lower half.
+- Test: read the centre pixel of a pin 25 degrees from the limb and compare it
+  with a pin at the centre of the globe.
+- Fix: draw pins without the depth test and discard back-facing ones in the
+  vertex shader. Seen once so far.
 
 ### A legend that drifts from the data (repeated: openglobus 004 and 062, mapbox 045)
 

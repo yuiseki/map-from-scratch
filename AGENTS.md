@@ -40,7 +40,7 @@
 - `vendor/earcut/` : ベンダー同梱された earcut。
 - `.agents/skills/`（`.claude/skills`, `skills/map-from-scratch` からリンク）:
   - `map-from-scratch/` : 全体の手順 (`SKILL.md`)、`spec.yaml` 仕様 (`references/spec-yaml.md`)、設計パターン (`references/patterns.md`)、計測の落とし穴 (`references/pitfalls.md`)。
-  - 30個の技術トピックスキル（`line-tessellation`, `polygon-triangulation`, `label-placement`, `text-rendering`, `float-precision`, `data-range-requests`, `plateau-3d-tiles`, `visual-review` など）とデータカタログ (`yuiseki-open-data`)。
+  - 31個の技術トピックスキル（`line-tessellation`, `polygon-triangulation`, `label-placement`, `text-rendering`, `float-precision`, `data-range-requests`, `plateau-3d-tiles`, `html-in-canvas`, `visual-review` など）とデータカタログ (`yuiseki-open-data`)。
 - `data/` / `results/` : ベイク生成データおよび計測結果の出力先（Git 管理外）。
 
 ---
