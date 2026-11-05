@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>人口の六角地球 — 30DayMapChallenge 2026 / Day 20</title>
+  <meta name="description" content="KonturのH3解像度4（約22 km）人口推計を、回転できるWebGL2の六角地球に描きます。">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="Konturの世界人口推計をH3六角形の高さと色で示す3D地球。ドラッグで回転、ホイールで拡大縮小、六角形をクリックすると推計値を表示します。"></canvas>
+  <header class="panel intro">
+    <p class="eyebrow">30DAYMAPCHALLENGE 2026 <span>· DAY 20 / HEXAGONS</span></p>
+    <h1>人口の六角地球</h1>
+    <p class="lede">世界を約22 kmのH3セルで敷き詰め、人口推計を色と高さに。</p>
+    <p id="dataset-count" class="mono">データを読み込み中…</p>
+  </header>
+  <aside class="panel legend" aria-label="人口推計の凡例">
+    <h2>推計人口 · 1セルあたり</h2>
+    <div class="ramp"></div>
+    <div class="ticks"><span>1人</span><span>1万</span><span>100万</span><span>2,273万</span></div>
+    <p>色と放射方向の高さは同じ対数尺度</p>
+    <p class="muted">高さは視覚表現で、標高ではありません</p>
+  </aside>
+  <nav class="controls panel" aria-label="地球操作">
+    <button id="zoom-out" type="button" aria-label="縮小">−</button>
+    <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+    <button id="reset" type="button">初期表示</button>
+  </nav>
+  <output id="selection" class="panel selection" aria-live="polite">六角形を選ぶとH3 IDと元の推計値を表示します。</output>
+  <footer class="panel credits">
+    <p><a href="https://www.kontur.io/datasets/population-dataset/" target="_blank" rel="noreferrer">Kontur Population dataset</a> © Kontur · 2023-11-01 · H3 r4 · 約22 km · <a href="https://data.humdata.org/dataset/kontur-population-dataset-22km" target="_blank" rel="noreferrer">HDXライセンス情報</a> CC BY</p>
+    <p>値はKonturによるモデル推計で、国勢調査の実測値ではありません。公開スナップショットの値を加工して描画しています。全71,283セルに正の値があり、0値と欠損セルはこのデータに含まれません。細かな境界や個人単位の位置精度は表しません。</p>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
