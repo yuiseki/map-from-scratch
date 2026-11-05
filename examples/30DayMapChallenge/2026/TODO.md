@@ -6,7 +6,7 @@
 
 | 日 | テーマ | 実装案・カタログ候補 | 状態 |
 |---:|---|---|---|
-| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | TODO |
+| 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 完了 · frame p95 0.515 ms |
 | 02 | Lines | 熱帯低気圧の全経路をストーム単位で接続し、移動速度を線上に表す。`hf:ibtracs-v04r01`（NOAA terms） | TODO |
 | 03 | Polygons | 国別人口指標を Natural Earth の国境ポリゴンに結合して比較する。`hf:natural-earth` + 国別統計（指標ごとにライセンスを確認） | TODO |
 | 04 | Clusters | 東京の施設点をズームに応じて GPU 集約し、密度と代表カテゴリを表示。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と共有条件を確認） | TODO |

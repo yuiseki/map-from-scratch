@@ -7,12 +7,13 @@
 //   report                     latest results of every example, as Markdown
 //   serve [port]               serve the repo for interactive use
 //   test                       every *.test.ts, then tsc on the Node, browser and test sides
-import { readdirSync, existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cpus, loadavg } from 'node:os';
 import { loadSpec, missingToolchain } from './lib/spec.ts';
+import { discoverSpecDirs } from '../tools/example-discovery.ts';
 import { summarize } from './lib/stats.ts';
 import { checkBudgets, checkVerification } from './lib/budget.ts';
 import { serve } from './lib/serve.ts';
@@ -42,17 +43,10 @@ function allIds(): string[] {
   dirOf.clear();
   for (const d of SPEC_DIRS) {
     const base = join(root, d);
-    if (!existsSync(base)) continue;
-    for (const entry of readdirSync(base)) {
-      const direct = join(base, entry);
-      if (existsSync(join(direct, 'spec.yaml'))) { dirOf.set(entry, direct); continue; }
-      if (d !== 'examples') continue;
-      for (const child of readdirSync(direct, { withFileTypes: true })) {
-        if (!child.isDirectory() || !existsSync(join(direct, child.name, 'spec.yaml'))) continue;
-        const id = `${entry}-${child.name}`;
-        if (dirOf.has(id)) throw new Error(`duplicate example id ${id}`);
-        dirOf.set(id, join(direct, child.name));
-      }
+    for (const dir of discoverSpecDirs(base)) {
+      const id = loadSpec(dir).id;
+      if (dirOf.has(id)) throw new Error(`duplicate example id ${id}`);
+      dirOf.set(id, dir);
     }
   }
   return [...dirOf.keys()].sort();

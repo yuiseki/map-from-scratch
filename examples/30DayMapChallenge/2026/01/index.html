@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · Points — 30DayMapChallenge 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0e171d; color: #e7f1f3; font: 14px/1.45 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  aside { position: fixed; top: 16px; left: 16px; width: min(310px, calc(100vw - 32px)); padding: 16px; border: 1px solid #ffffff24; border-radius: 12px; background: #101e26eF; box-shadow: 0 12px 40px #0005; pointer-events: none; }
+  h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: .01em; }
+  p { margin: 0; color: #a9bec5; }
+  .legend { display: grid; gap: 8px; margin-top: 15px; }
+  .row { display: flex; align-items: center; gap: 9px; color: #d8e5e8; }
+  .dot { display: inline-block; flex: none; border-radius: 50%; width: 10px; height: 10px; background: #ff624d; box-shadow: 0 0 8px #ff624d66; }
+  .dot.mid { background: #ffc857; box-shadow: 0 0 8px #ffc85766; }
+  .dot.deep { background: #67b7ff; box-shadow: 0 0 8px #67b7ff66; }
+  .sizes { display: flex; align-items: end; gap: 13px; height: 34px; padding-left: 2px; }
+  .sizes span { display: inline-flex; align-items: center; gap: 5px; color: #a9bec5; font-size: 11px; }
+  .sizes i { display: block; flex: none; border: 1px solid #fff9; border-radius: 50%; background: #ffffff30; }
+  .sizes span:nth-child(1) i { width: 5px; height: 5px; }
+  .sizes span:nth-child(2) i { width: 10px; height: 10px; }
+  .sizes span:nth-child(3) i { width: 16px; height: 16px; }
+  footer { position: fixed; right: 14px; bottom: 12px; max-width: calc(100vw - 28px); color: #adc0c5; font-size: 11px; text-align: right; text-shadow: 0 1px 3px #000; pointer-events: none; }
+  a { color: #b8e4ef; pointer-events: auto; }
+</style>
+<canvas id="map" aria-label="2025 年の地震分布図"></canvas>
+<aside>
+  <h1>01 · Points</h1>
+  <p>2025年、M4.5以上の地震</p>
+  <div class="legend" aria-label="凡例">
+    <div class="row"><i class="dot"></i>浅い震源　&lt; 70 km</div>
+    <div class="row"><i class="dot mid"></i>中間の深さ　70–300 km</div>
+    <div class="row"><i class="dot deep"></i>深い震源　&gt; 300 km</div>
+    <div class="row">マグニチュード</div>
+    <div class="sizes"><span><i></i>M4.5</span><span><i></i>M6</span><span><i></i>M7.7</span></div>
+  </div>
+  <p style="margin-top:12px;font-size:12px">ドラッグで移動、ホイールで拡大</p>
+</aside>
+<footer>8,502 events · 出典: <a href="https://earthquake.usgs.gov/earthquakes/search/">USGS ComCat</a> (Public Domain) · Land: Natural Earth (Public Domain)</footer>
+<script type="module" src="./main.ts"></script>
+</html>

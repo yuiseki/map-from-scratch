@@ -17,6 +17,7 @@ import { loadSpec, publishOnPages } from '../harness/lib/spec.ts';
 import { expandFiles } from '../harness/lib/footprint.ts';
 import type { Spec } from '../harness/lib/types.ts';
 import { formatObservation, type Observation } from './observational.ts';
+import { discoverSpecDirs } from './example-discovery.ts';
 import { galleries, galleryGroups, galleryOf, indexPages, techniques, techniquesOf, toRoot } from './site-pages.ts';
 import type { GalleryId, IndexPage } from './site-pages.ts';
 
@@ -225,21 +226,15 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 const rows: Row[] = [];
 for (const base of ['examples', 'baselines']) {
-  for (const name of readdirSync(join(root, base)).sort()) {
-    const parent = join(root, base, name);
-    const dirs = existsSync(join(parent, 'spec.yaml')) ? [parent]
-      : base === 'examples' ? readdirSync(parent).map((child) => join(parent, child)).filter((dir) => existsSync(join(dir, 'spec.yaml')))
-      : [];
-    for (const dir of dirs) {
-      const spec = loadSpec(dir);
-      if (!publishOnPages(spec.definition!)) continue;
-      if (spec.runtime === 'browser') {
-        copyPage(join(dir, 'index.html'));
-        for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
-        for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
-      }
-      rows.push({ id: spec.id, dir: relative(root, dir).replaceAll('\\', '/'), api: spec.definition!.architecture_selection.chosen.api, spec });
+  for (const dir of discoverSpecDirs(join(root, base))) {
+    const spec = loadSpec(dir);
+    if (!publishOnPages(spec.definition!)) continue;
+    if (spec.runtime === 'browser') {
+      copyPage(join(dir, 'index.html'));
+      for (const f of expandFiles(root, spec.footprint.code)) if (!f.endsWith('.ts') && !f.endsWith('.html')) copyFile(join(root, f));
+      for (const f of expandFiles(root, spec.footprint.data)) copyFile(join(root, f));
     }
+    rows.push({ id: spec.id, dir: relative(root, dir).replaceAll('\\', '/'), api: spec.definition!.architecture_selection.chosen.api, spec });
   }
 }
 for (const page of indexPages(rows)) {

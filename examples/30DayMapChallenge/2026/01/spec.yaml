@@ -1,0 +1,104 @@
+id: 30DayMapChallenge-2026-01
+request: >-
+  30DayMapChallenge 2026 の「Points」。2025 年に発生した M4.5 以上の地震を、震央の位置・規模・深さが読み取れる世界地図として表示する。
+requirements:
+  - id: global-earthquakes
+    need: 2025 年の M4.5 以上の地震を世界地図に点で表示する
+    rationale: USGS ComCat の 8,502 件を全件描き、ベイク前後の件数一致を確認する
+  - id: magnitude-and-depth
+    need: 点の大きさで規模、色で深さを読み取れる
+    unmeasured: 規模と深さの視覚符号化は凡例と地理座標上の実画面ピクセル検査で確認する
+  - id: responsive-map
+    need: PC ブラウザで地図を動かし、拡大縮小できる
+    rationale: ドラッグとホイール操作後もフレームを p95 16.7 ms 以内で描画する
+  - id: quick-start
+    need: ページを開いてすぐ地図が見える
+    rationale: 初回描画を 1 秒以内、コードを 24 KB gzip 以内にする
+  - id: hardware
+    need: 専用のフルスクラッチ描画器を使う
+    unmeasured: WebGL2 のハードウェア GPU を記録し、地図ライブラリを実行時に使わない
+
+evaluation:
+  budgets:
+    - {metric: point_count, min: 8502, unit: events, requirement: global-earthquakes}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-map}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 24000, unit: B, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 250000, unit: B, requirement: quick-start}
+  gates: [8,502 件全件を描画, 全 verification checks が通る, ハードウェア GPU で描画, エラーがない]
+
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/01/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-world
+      what: ページ読み込みから全地震点と陸地を描画し、readPixels で GPU 完了を待つ
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 世界地図を 80 フレーム移動・拡大縮小して描画する
+      metrics: [frame_ms, gpu_ms]
+
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/01/bake.ts]
+  sources:
+    - id: usgs-quakes-2025
+      origin: USGS ComCat、2025 年、M4.5 以上の地震 8,502 件
+      license: Public domain (米国政府の著作物、クレジット USGS ComCat)
+    - id: ne-countries
+      origin: Natural Earth 10m Admin 0 countries v5.1.1 (背景の陸地)
+      license: Public domain
+  outputs:
+    - data/baked/30DayMapChallenge-2026-01/land.bin
+    - data/baked/30DayMapChallenge-2026-01/points.bin
+  preparation:
+    - Natural Earth の陸ポリゴンを Equal Earth 投影し、世界縮尺で 0.5 px 相当まで単純化して 16-bit 座標と三角形インデックスへ変換する
+    - 地震点は Equal Earth 座標を 16-bit に量子化し、規模別半径・深さクラスとともに 8 byte のレコードへ焼き込む
+
+performance_knowledge:
+  - id: points-as-webgl-primitives
+    finding: 全点を単一の WebGL2 POINTS 呼び出しで描き、円形状と深さ色はフラグメントシェーダで決める
+    evidence: 8,502 点を1回の drawArrays で描画。RTX 3060 / Xvfb / 1280×800 / 240 camera frames で frame_ms p95 0.515 ms、gpu_ms p95 0.1516 ms。円の境界式をピクセル検査で修正し、M7.7 震央近傍の赤画素数が合格した。
+    applies_when: 数千から数万件の静的な点を規模とカテゴリで描く場合
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript (ブラウザで型を除去)
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/01/index.html
+      - examples/30DayMapChallenge/2026/01/main.ts
+      - examples/30DayMapChallenge/2026/01/renderer.ts
+      - examples/30DayMapChallenge/2026/01/points.ts
+    dependencies: []
+    why: 8,502 点を頂点属性として一度 GPU に渡し、規模・深さをシェーダで表現する。実行時の地図ライブラリや外部データ通信を避ける。
+  alternatives:
+    - option: Canvas 2D
+      rejected_because: 点ごとの円描画とフレームごとの投影を避け、GPU に全点を保持するため
+    - option: クラスタリング
+      rejected_because: 点の全体分布と個々の震央を表示する題材なので集約しない
+  not_doing: [地球儀, 時系列再生, ラベル, 個別イベントのクリック, タイル配信, 他の地震規模や年]
+
+verification:
+  checks:
+    - id: land-visible
+      what: 世界地図の陸地が背景から区別できる
+      how: 実画面中央の海と日本付近の陸の色を readPixels で比較する
+      expected: 陸地が海より明るく、2色間の RGB 距離が 20 を超える
+    - id: myanmar-earthquake-visible
+      what: 2025 年ミャンマー M7.7 地震の位置に大きな浅発地震の点が表示される
+      how: USGS の震央座標 95.9363E, 22.011N を実画面へ投影し、近傍 5×5 px の赤い点を探索する
+      expected: 赤の色成分が緑・青よりそれぞれ 40 以上大きく、点の直径が 10 px 以上
+    - id: point-count
+      what: 全 8,502 件が GPU へ渡される
+      how: renderer が報告するアップロード点数をデータ件数と照合する
+      expected: 8,502
+  harness:
+    - webglcontextlost はエラー
+    - info.gpu がソフトウェア描画なら失敗
