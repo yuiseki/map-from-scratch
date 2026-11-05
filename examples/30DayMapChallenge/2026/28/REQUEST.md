@@ -33,3 +33,5 @@ A repeat run under the same four-CPU cap on 2026-11-06 reproduced the frame miss
 
 
 A third corrected run added an idle RAF control (no canvas draw) in the same 3-iteration benchmark. Idle callback interval p95 was 17.525 ms; draw-active frame p95 was 17.710 ms, draw CPU p95 0.255 ms, and first-frame p50 61.510 ms. The idle baseline already exceeds 16.7 ms; the active-run increase was 0.185 ms. This does not establish renderer causality, so the budget remains marked unmet rather than relaxed. All 8 checks passed; 22/23 budgets passed. Host load averages were 19.71/18.53/19.24. Code/data gzip was 9,959/65,070 B.
+
+An Xvfb run with the same resource cap and three iterations tested whether display mode explained the cadence. Idle RAF p95 was 17.705 ms, active frame p95 17.780 ms, and draw CPU p95 0.310 ms. All 8 checks passed and 22/23 budgets passed; the 16.7 ms frame budget remains unmet. Xvfb therefore did not remove the idle RAF overrun.
