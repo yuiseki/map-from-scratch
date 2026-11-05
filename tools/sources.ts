@@ -318,6 +318,22 @@ const SOURCES: Record<string, Source> = {
   },
 };
 
+// GHSL R2023A epoch 2020 Japan/East Asia tiles, converted to GeoParquet.
+// Population and built-up grids have distinct geotransforms; consumers must
+// align by geometry rather than assuming identical cell row/column indices.
+for (const product of ['population', 'built_surface'] as const) {
+  for (const tile of ['R5_C32', 'R5_C33', 'R6_C31', 'R6_C32', 'R6_C33']) {
+    const id = `ghsl-${product}-${tile}`;
+    const filename = `${tile}.parquet`;
+    SOURCES[id] = {
+      out: `ghsl_${product}_${filename}`,
+      local: `/sata_hdd_24tb/hf_data/ghsl-japan-core-2020-30arcsec/data/parquet/${product}/${filename}`,
+      remote: `https://huggingface.co/datasets/yuiseki/ghsl-japan-core-2020-30arcsec/resolve/main/data/parquet/${product}/${filename}`,
+      copy: true,
+    };
+  }
+}
+
 export function source(name: string): string {
   const s = SOURCES[name];
   if (!s) throw new Error(`unknown source ${name}`);

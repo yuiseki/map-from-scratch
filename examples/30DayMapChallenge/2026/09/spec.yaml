@@ -1,0 +1,119 @@
+id: 30DayMapChallenge-2026-09
+request: >-
+  30DayMapChallenge 2026 の「Urban-rural」。日本の人口密度を明るさ、建成地面積の比率を色相にした連続表示で、都市と農村の境界がどこで曖昧になるかを示す。
+requirements:
+  - id: ghsl-population
+    need: GHSL R2023A E2020の人口推計を30秒格子から読み、格子面積の緯度差を考慮した人口密度として描く
+    rationale: 人数の総量ではなく地域面積あたりの人の分布で都市・農村の移行を表す
+  - id: ghsl-built-surface
+    need: 同 epoch の built-up surface を人口格子の中心位置に空間的に対応付け、セル面積に対する割合で色相に反映する
+    rationale: 居住人口密度と建成地を独立した変数として比較する
+  - id: spatial-grid-alignment
+    need: 2製品の異なる格子原点を row/column 番号だけで結合せず、格子ポリゴンの包含関係で対応付ける
+    rationale: 別々の格子位置を同じ場所と誤認しない
+  - id: model-disclosure
+    need: 2020 epoch の推計・モデル化された値、30秒格子、空間範囲と出典を開示する
+    rationale: 国勢調査の実数や現在値として扱わない
+    unmeasured: データ年・推計の性質・範囲の開示はブラウザベンチマークで文字列と公式リンクを検査する
+  - id: navigation
+    need: 日本の表示範囲をドラッグ移動・ホイール拡大縮小できる
+    rationale: 広域の都市化パターンから格子の集まりまで観察できる
+    unmeasured: 操作はブラウザベンチマークで連続描画時間を計測する
+  - id: quick-start
+    need: 日本の有人・建成セルを初期画面に描き、人口密度と建成地の符号化を凡例で示す
+    rationale: 都市から農村までの連続的な変化を初期表示で比較する
+    unmeasured: 初回描画をブラウザベンチマークで計測する
+evaluation:
+  budgets:
+    - {metric: active_cell_count, min: 100000, unit: cells, requirement: ghsl-population}
+    - {metric: population_cell_count, min: 100000, unit: cells, requirement: ghsl-population}
+    - {metric: built_only_cell_count, min: 1, unit: cells, requirement: ghsl-built-surface}
+    - {metric: matched_cell_count, min: 100000, unit: cells, requirement: spatial-grid-alignment}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 4, unit: ms, requirement: navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 3000000, unit: B, requirement: ghsl-population}
+  gates: [GHSL E2020 population estimates and built-up surface, geographic containment alignment, JRC product citations, selected-tile coverage caveat]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/09/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: japan-urban-rural
+      what: Draw the pre-baked Japan footprint from 30-arc-second population and built-up values.
+      metrics: [first_frame_ms]
+    - id: zoom-and-pan
+      what: Reproject and redraw the national point field through 80 camera updates.
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/09/bake.ts]
+  sources:
+    - id: hf:ghsl-japan-core-2020-30arcsec
+      origin: >-
+        GHSL R2023A epoch 2020 GeoParquet, GHS-POP residential population and GHS-BUILT-S built-up surface, five 10-degree tiles. The two products have slightly different grid origins. Keep values in their source units and assign each built-up value spatially to the population cell whose centroid it contains. Clip display records to a Natural Earth JPN polygon and the selected tiles' latitude span (29.0995–46°N); southern Japan below the tile coverage is absent.
+      license: >-
+        CC BY 4.0. Recommended attribution: © European Union, European Commission, Joint Research Centre (JRC), GHSL R2023A. GHS-POP and GHS-BUILT-S GeoTIFF cell values are preserved and converted to cell-footprint GeoParquet; this dataset covers five selected source tiles. No JRC endorsement is implied. Product DOIs: 10.2905/2FF68A52-5B5B-4A22-8F40-C41DA8332CFE and 10.2905/9F06F36F-4B11-47EC-ABB0-4F8B7B1D72EA.
+      url: https://human-settlement.emergency.copernicus.eu/datasets.php
+    - id: ne:admin0-10m
+      origin: Natural Earth 1:10m admin-0 Japan polygon is used only as a geographic mask for the GHSL cells.
+      license: Public domain.
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-09/urban.bin
+    - data/baked/30DayMapChallenge-2026-09/stats.json
+  preparation:
+    - >-
+      Use tile_code and bounded cell_row/cell_col ranges to prune source tiles. Retain positive population cells and built-only cells within the Natural Earth Japan polygon. The cross-product join is accepted only where the built polygon spatially contains the population-cell centroid; values from the two source grids are never paired by ordinal index alone.
+    - >-
+      Store longitude and latitude as 16-bit coordinates over the fixed national extent, population rounded to the nearest person, and built surface quantized in 10 m² steps in fixed 8-byte little-endian URB2 records. Coordinate quantization error is under 15 m north-south and 18 m east-west. Calculate geodesic cell area, population per km² and built surface share in the WebGL shader.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 point renderer
+    language: TypeScript
+    gpu: hardware
+    code: [examples/30DayMapChallenge/2026/09/index.html, examples/30DayMapChallenge/2026/09/main.ts, examples/30DayMapChallenge/2026/09/renderer.ts]
+    dependencies: []
+    why: A custom WebGL2 shader computes latitude-adjusted population density and built surface share per cell; one point draw renders the national cell set, and camera changes only update uniforms.
+  alternatives:
+    - option: full per-cell polygons redrawn in Canvas 2D
+      rejected_because: Hundreds of thousands of tiny polygons would spend CPU time drawing below-pixel geometry at the national overview scale.
+    - option: join population and built values by cell_row/cell_col alone
+      rejected_because: The product geotransforms differ; only geographic containment identifies the matching cell location.
+  not_doing: [street or settlement labels, categorical city-boundary threshold, 100 m building detail, Okinawa and southern islands below 29.0995°N]
+performance_knowledge:
+  - claim: >-
+      The bake reduces two country-wide tile families to active Japan cells and the WebGL2 renderer submits them in one GPU draw per frame.
+    evidence: >-
+      Three browser runs: 331,296 active cells (321,955 with population, 9,341 built-only),
+      311,442 geometrically matched cells, 2,025,074 gzip data bytes, 457 ms p50 first frame,
+      0.295 ms p95 frame interval, and 0.035 ms p95 draw CPU time. Transfer is 2,615.8 KiB
+      across 8 requests; code is 5,270 gzip bytes. Screenshot reviewed at 1280×800.
+    applies_when: The national GHSL footprint is viewed in a desktop browser at 1280 by 800 pixels.
+verification:
+  checks:
+    - id: aligned-source-cells
+      what: Built surface values are geographically contained by the corresponding population-cell centroid.
+      how: The bake uses ST_Contains on the actual GeoParquet cell geometry and benchmark verifies counts and coverage.
+      expected: At least 100,000 population cells render and source-grid origins are not treated as identical.
+    - id: population-built-separation
+      what: The map retains both low-density inhabited cells and built-only cells.
+      how: Report positive-population count and cells whose population estimate is zero but built surface is positive.
+      expected: At least 100,000 population cells and one built-only cell.
+    - id: model-and-extent-disclosure
+      what: The display does not imply cell-level census observations or full Japan tile coverage.
+      how: Check visible text and official product links.
+      expected: GHS-POP estimates, GHS-BUILT-S modeled surface, 2020 epoch, 30 arc seconds, five-tile coverage, and below-29.0995°N omission are disclosed.
+    - id: japan-mask-and-active-cells
+      what: Every rendered cell is active and falls inside the declared Japan extent.
+      how: Inspect all decoded coordinates and population/built values.
+      expected: No empty cells or coordinates outside 122–146.1°E and 29.099–46°N.
+    - id: webgl2-renderer
+      what: The map uses a WebGL2 drawing context for its point renderer.
+      how: Check the canvas rendering context and WebGL version.
+      expected: WebGL 2 context available.

@@ -14,7 +14,7 @@
 | 06 | Vintage | Natural Earth 1:10m の258か国を、紙地・国別の落ち着いた色・経緯線・彫版ハッチで描く専用 Canvas 2D 描画器。小さな国は簡略化で消えないよう元の輪郭を保持。Public domain（credit appreciated）。 | 完了 · 目視確認済み · frame p95 2.20 ms · first frame p50 79.7 ms |
 | 07 | 10 minute map | 2026-08-31 OSM 道路網から上野駅起点の歩行グラフを作り、1.2 m/s の仮定で10分圏をDijkstra探索。到達道路を所要時間別に、圏外道路を暗色で表示。ODbL帰属と速度仮定を明記。 | 完了 · 目視確認済み · graph 12,780 nodes / 16,080 edges · reachable 1,376 segments · frame p95 1.715 ms · first frame p50 79.9 ms |
 | 08 | Utopia | 練馬駅周辺の2020年250 m人口メッシュに、国交省の公園ポリゴンと学校点への近さを重ね、両方400 m以内の区画を理想的近隣として描く。直線距離・区域概略の注意書きとCC BY 4.0出典を表示。`hf:estat-census-mesh-2020` + `hf:mlit-toshi-keikaku-jp` + `hf:ksj-p29` | 完了 · 目視確認済み · 737 meshes / 109 parks / 106 schools · dual access 328 meshes · frame p95 6.31 ms · first frame p50 77.1 ms |
-| 09 | Urban-rural | 人口密度と建成地を連続尺度で描き、都市・農村の境界を問う。`hf:ghsl-japan-core-2020-30arcsec`（CC BY 4.0） | TODO |
+| 09 | Urban-rural | GHSL 2020人口密度を明るさ、建成地比率を色相にした日本の連続分布。別々の格子を形状包含で対応付け、選択5タイルから331,296セルを抽出（人口あり321,955、建成のみ9,341、空間対応311,442）。`hf:ghsl-japan-core-2020-30arcsec`（CC BY 4.0） | 完了 · 目視確認済み · gzip 2,025,074 B · first frame p50 457.1 ms · frame p95 0.295 ms · draw p95 0.035 ms |
 | 10 | Prompting only | 公式ルールに従い、地図の構想・仕様決定をプロンプトだけで行った成果を記録する日。AI によるコード生成を「prompting only」と偽らず、実装例として成立する表現方法を公式説明に照らして決める | 要件確認 |
 | 11 | Senses: Sound | 東京の鉄道・道路を音の強さに変換した合成サウンドスケープ。`hf:osm-tokyo23-src-2026-08` 等を使用し、実測音ではなくモデルであることを表示 | TODO |
 | 12 | Power | 国別の再生可能電力比率を時系列で描き、発電の地域差を比較。カタログの country tables からライセンスと列を確認して選定 | TODO |
