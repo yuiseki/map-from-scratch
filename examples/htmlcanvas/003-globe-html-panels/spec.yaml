@@ -1,0 +1,242 @@
+id: htmlcanvas-003-globe-html-panels
+request: >-
+  Chrome 157 で正式に入った HTML-in-Canvas を使い、WebGL2 の 3D 地球儀に本物の HTML パネル (ボタン、
+  年のスライダー、リンク、文字の選択、キーボードのフォーカス) を都市の位置に立てたい。パネルは地球儀と一緒に
+  傾き、地平線の向こうでは隠れ、クリックやフォーカスはブラウザ自身の当たり判定で描かれた位置に届くこと。
+  ドラッグで回転、ホイールでズーム。API の無いブラウザでは同じパネルを DOM の重ね表示で出し、どちらで
+  動いているかを画面に出す。
+
+requirements:
+  - id: html-panels-in-3d
+    need: 実 HTML のパネルを canvas の子要素として WebGL2 のテクスチャに取り込み、都市の接平面に立つ四角形として描く (傾き・遠近で縮む)
+    unmeasured: verification の panels-drawn-in-canvas (各パネルの内側の画面ピクセルがカードの色) と zoom-scales-panels で確認する
+  - id: real-hit-testing
+    need: パネルのボタン・リンク・スライダーを、描かれた位置でブラウザの当たり判定が拾う (updateElementGeometry)
+    unmeasured: verification の button-click-through-hit-testing、link-hit、slider-redraws-its-panel、zoom-scales-panels、focus-brings-panel-into-view が elementFromPoint で確認する。実際のマウス入力 (CDP Input) はハーネスに無く未確認
+  - id: horizon
+    need: 地平線の向こうのパネルは描かず、当たり判定からも外す (clearElementGeometry)
+    unmeasured: verification の hidden-panel-not-hit と panels-drawn-in-canvas (東京は裏側) で確認する
+  - id: upload-only-on-change
+    need: パネルのテクスチャは paint イベントの changedElements に入ったときだけ送る。回転・ズームでは送らない
+    rationale: 1 パネルの送り直し (texElementSubImage2D + mip 生成) を 2 ms 以内、スライダー操作から描き終わりまで 1 フレーム (16.7 ms) 以内
+  - id: smooth-rotation
+    need: ドラッグとホイールで 60 fps。毎フレームの updateElementGeometry を含めて
+    rationale: 60 Hz の 16.7 ms に対し frame_ms p95 を 8 ms、JS の時間 cpu_ms p95 を 2 ms、updateElementGeometry 5 枚分 geometry_ms p95 を 0.3 ms に
+  - id: real-data
+    need: パネルの数字は実データ (Natural Earth の都市と UN WUP の都市圏人口、World Bank WDI の都市人口率)。出典を画面と spec に書く
+    unmeasured: verification の slider-redraws-its-panel がスライダーの年の値が panels.json の値どおりに出ることを確かめる。単位と出典は data.test.ts
+  - id: geography
+    need: 都市は地理的に正しい位置に立ち、北が上
+    unmeasured: verification の geography-on-screen (ピンの位置関係とサハラ・大西洋の色)
+  - id: fallback
+    need: HTML-in-Canvas の無いブラウザでは同じパネルを DOM (CSS matrix3d) で重ね、どちらの経路かを画面に出す
+    unmeasured: MFS_PAGE_QUERY=fallback の実行で同じ検査が DOM の経路で通ることを確かめる (REQUEST.md に記録)。既定の実行では render-path が HTML-in-Canvas であることを確かめる
+  - id: compact
+    need: ライブラリなし。地球画像のほかは小さく
+    rationale: コード gzip 12 KB 以内、データ (地球画像 513 KB + panels.json) 530 KB 以内、最初のフレーム 1.5 秒以内
+
+evaluation:
+  budgets:
+    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: compact}
+    - {metric: data_bytes, max: 530000, unit: B, requirement: compact}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: compact}
+    - {metric: frame_ms, stat: p95, max: 8, unit: ms, requirement: smooth-rotation}
+    - {metric: cpu_ms, stat: p95, max: 2, unit: ms, requirement: smooth-rotation}
+    - {metric: geometry_ms, stat: p95, max: 0.3, unit: ms, requirement: smooth-rotation}
+    - {metric: upload_ms, stat: p95, max: 2, unit: ms, requirement: upload-only-on-change}
+    - {metric: slider_frame_ms, stat: p95, max: 16.7, unit: ms, requirement: upload-only-on-change}
+  gates: [エラーがない, ハードウェアの GPU で描いている, verification の check がすべて通る, WebGL のコンテキストを失わない]
+
+benchmarks:
+  runtime: browser
+  page: examples/htmlcanvas/003-globe-html-panels/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: first-frame
+      what: ページ先頭のスクリプトから、見えているパネルすべてのテクスチャを送って地球儀と一緒に描いた最初のフレームまで
+      metrics: [first_frame_ms]
+    - id: camera-path
+      what: 1 回転しながらズームイン・アウトする 90 フレーム (benchFrames)。1 フレームは向きの判定、updateElementGeometry か clearElementGeometry、DOM の順の並べ替え、描画
+      metrics: [cpu_ms, frame_ms, gpu_ms, geometry_ms]
+    - id: slider
+      what: ラゴスのパネルの年スライダーを 10 回動かし、input から paint イベントでテクスチャを送り直して描き終わるまで
+      metrics: [slider_frame_ms]
+    - id: upload
+      what: 5 枚のパネルを 10 回ずつ texElementSubImage2D + generateMipmap + gl.finish で送り直す (upload_ms)。paint_upload_ms は paint イベントの中で実際に送った回の JS の時間 (gl.finish なし)
+      metrics: [upload_ms, paint_upload_ms]
+    - id: raf-rotation
+      what: rAF ごとに 3 度ずつ 120 フレーム回す (テクスチャを送らないことの確認を兼ねる)
+      metrics: [frame_interval_ms]
+
+datasets:
+  bake: [node, examples/htmlcanvas/003-globe-html-panels/bake.ts]
+  sources:
+    - id: natural-earth-populated-places
+      origin: hf:yuiseki/natural-earth v5.1.2 10m_cultural/ne_10m_populated_places.parquet (NAME, ADM0_A3, LONGITUDE, LATITUDE, WIKIDATAID, NAME_JA, POP1950..POP2025) と 110m admin 0 の NAME_JA
+      license: Public domain (Natural Earth)。POPyyyy は Natural Earth が収録する国連 World Urbanization Prospects の都市圏人口 (千人、推計と予測)
+    - id: worldbank-wdi
+      origin: hf:yuiseki/worldbank-wdi 2026-10-01 data.parquet、SP.URB.TOTL.IN.ZS (都市人口の割合、%)
+      license: CC BY 4.0 (World Bank, World Development Indicators)
+    - id: earth-texture
+      origin: examples/threejs/006-earth/earth.jpg (Solar System Scope、2048x1024 正距円筒)
+      license: CC BY 4.0 (Solar System Scope、画面に表示)
+  outputs:
+    - data/baked/htmlcanvas-003-globe-html-panels/panels.json
+    - data/baked/htmlcanvas-003-globe-html-panels/earth.jpg
+  preparation:
+    - Natural Earth 10m populated places から London, Lagos, New York, São Paulo, Tokyo を SCALERANK 1 以下で 1 行ずつ選び、国名は 110m admin 0 の NAME_JA を ADM0_A3 で結ぶ
+    - 1950〜2025 年の 5 年おき 16 年分の POPyyyy (千人) と、同じ年の WDI 都市人口率を国ごとに並べる。値の無い年は null (WDI は 1960 年から)
+    - decodePanels で形を検査してから panels.json (1.7 KB) に書く。地球画像は sha256 を確かめて写す
+
+performance_knowledge:
+  - id: texelementsubimage2d-signature
+    finding: WebGL2 の取り込みは texElementSubImage2D(target, level, xoffset, yoffset, element) の 5 引数 (6 番目に options 可)。texImage2D 風の format/type や width/height を入れると型エラーになる。texElement2D や texElementImage2D は無い
+    evidence: >-
+      Chrome 157.0.8103.38 (2026-11-06)。length は 5。7 引数 (…, RGBA, UNSIGNED_BYTE, el) と 9 引数は
+      "TypeError: … The provided value is not of type '(Element or ElementImage)'"、3 引数は "5 arguments required, but only 3 present"。
+      5 引数で GL エラー 0。テクスチャの行 0 は要素の上端 (UNPACK_FLIP_Y_WEBGL を立てると逆になる、つまりこの pixelStorei は効く)。
+      xoffset をはみ出させると INVALID_VALUE (1281)。TypeScript の DOM 型にまだ無いので、その場で型を書いて呼ぶ
+    applies_when: HTML-in-Canvas の要素を WebGL2 のテクスチャに取り込むとき
+  - id: hit-test-cache-ignores-geometry
+    finding: updateElementGeometry は Blink の当たり判定のキャッシュを無効にしない。同じ点 (1/64 px 単位で同じ) を前にも聞いていると、elementFromPoint はパネルが動いたあとも前の答えを返す。何かの属性を 1 つ書けば (切り離した要素でもよい) 直る
+    evidence: >-
+      ロンドンのパネルの隅の点で、視点 A (点はパネル内) と B (パネル外) を 8 回交互に。同期・1 フレーム待ち・2 フレーム待ち・50 ms 待ち・
+      強制レイアウト (offsetWidth)・requestPaint と paint 待ちは、いずれも 8 回中 4 回ほど前の答え (外なのにパネル、内なのに canvas)。
+      問い合わせる点を毎回 0.25 px ずらすと 8/8 正しく、0.001 px ずらしでは古いまま (LayoutUnit が 1/64 px)。updateElementGeometry のあとに
+      body・html・canvas・画面外の要素・document に属さない要素のどれかの data 属性を書くと 8/8 正しく、paint イベントも changedElements も増えない。
+      この対処を外すと zoom-scales-panels が失敗する (画面には描かれているのに canvas が返る)。ホイールのあいだマウスを動かさない利用者のクリックも
+      同じ経路を通るはずだが、本物の入力はハーネスに無く未確認
+    applies_when: updateElementGeometry で動かす要素を elementFromPoint や静止したポインタで当てるとき
+  - id: geometry-is-not-a-repaint-but-dom-order-is
+    finding: updateElementGeometry と clearElementGeometry は paint を起こさず、テクスチャを送り直す必要もない。DOM の中で子要素を動かすと (append でも moveBefore でも) 動かした要素がすべて changedElements に入って描き直される
+    evidence: >-
+      rAF ごとに 3 度ずつ 120 フレーム回し、遠近の順が変わるたびに見えているパネルを近い順に append し直すと、テクスチャの送信が 21 回から 47 回に
+      (順が変わった 7 フレームでそれぞれ 2〜4 枚)。並べ替えを「2 枚の画面上の外接矩形が重なり、かつ順が逆のときだけ」にすると 0 回で、
+      その 120 フレームの中で地平線を越えて clearElementGeometry した 5 回と、戻って updateElementGeometry した 5 回のどれでも paint は出なかった
+    applies_when: HTML-in-Canvas の子要素の重なり順 (当たり判定の順) を保つとき
+  - id: overlap-hit-order-is-dom-order
+    finding: 描いた子要素が重なると、当たるのは DOM で後ろの要素。position:relative と z-index:5 を付けても変わらない
+    evidence: 同じ canvasTransform を 2 つの子要素に与え、重なりの点で elementFromPoint は後ろの要素。前の要素に z-index:5 を付けて 1 フレーム待っても後ろの要素
+    applies_when: 3D で重なりうるパネルの手前を当てたいとき (近い順に DOM を並べる)
+  - id: hit-testing-needs-geometry
+    finding: updateElementGeometry を一度も呼んでいない子要素は、レイアウト上の位置 (canvas の左上) でも当たらず canvas が返る。canvasTransform は要素の border-box の左上を原点とし、canvas の CSS px に写す (transform-origin は効かない)。clearElementGeometry のあと getBoundingClientRect はレイアウト上の箱に戻る
+    evidence: >-
+      プローブ (200x100 の子要素): 更新前は (10,10) も (30,40) も canvas。translate(400,300) で (410,310) が要素、getBoundingClientRect が x 400 y 300。
+      translate(400,300).scale(2) で右下 (790,490) が要素 (拡大の中心は左上)。四角形 (600,100)(900,150)(880,400)(620,350) への射影変換の matrix3d で、
+      中心と中のボタンが当たり、外は canvas。返った要素の click() でハンドラが動く
+    applies_when: WebGL / WebGPU の canvas に描いた要素を当てたいとき
+  - id: projective-matrix3d
+    finding: 接平面に置いた四角形の透視投影は射影変換なので、クリップ行列 x パネルのモデル行列に画面への写しを掛け、z の行を (0,0,1,0) にした matrix3d 1 つで表せる。z の行を 0 にすると逆行列が無くなるので入れておく。同じ行列を CSS の transform に入れればフォールバックの DOM が同じ位置に重なる
+    evidence: >-
+      geometry.test.ts で CSS の箱の 4 隅と中心が、投影した四角形の 4 隅と中心に 1e-6 px で一致。HTML-in-Canvas (WebGL の四角形) とフォールバック (CSS matrix3d) の
+      画面写真で、4 枚のカードの白 (RGB > 240) の外接矩形が 1〜2 px 以内で一致 (ロンドン 611,127-798,223 と 610,126-799,223 など)
+    applies_when: 3D の四角形に要素を貼り、当たり判定か DOM の重ね表示をそれに合わせるとき
+  - id: costs
+    finding: 5 枚のパネルなら HTML-in-Canvas の追加の費用は小さい。1 フレームの updateElementGeometry 5 回 (向きの判定と行列計算込み) は p95 0.06 ms、1 枚の送り直しは mip 込みで p95 0.37 ms
+    evidence: >-
+      RTX 3060、headless、load average 21〜26 (2026-11-06)、3 回。geometry_ms p50 0.025 / p95 0.06 ms。プローブで updateElementGeometry 1 回 5.2 us
+      (DOMMatrix の生成込み、2000 回)、elementFromPoint と合わせて 13.6 us。upload_ms (232x172 の texElementSubImage2D + generateMipmap + gl.finish) p50 0.105 /
+      p95 0.37 ms、paint イベントの中の送信 (JS の時間) p50 0.085 / p95 0.46 / 最大 4.4 ms (最初の 1 回)、プローブの最初の 1 回は 1.1〜1.4 ms で 2 回目から 0.05〜0.14 ms。
+      カメラの経路 90 フレーム cpu_ms p95 0.15、frame_ms p50 0.43 / p95 1.43、gpu_ms 0.038 ms。スライダーの input から送り直して描き終わるまで p50 0.77 / p95 1.27 ms
+      (フレームレート制限なし)。テクスチャは 5 x 232 x 172 x 4 B x 4/3 (mip) = 1.06 MB。最初のフレーム p50 151〜211 ms、各計測の 1 回目は 573〜594 ms
+    applies_when: 数枚の HTML パネルを 3D に置くとき。何百枚にもなるなら要素ごとの送信と当たり判定の費用を測り直す
+  - id: paint-comes-after-raf
+    finding: paint イベントはフレームの rAF コールバックのあとに来る。rAF を待ってから数えると、そのフレームで描き直された要素は次の数えに入る
+    evidence: >-
+      視点を戻して await rAF の直後にテクスチャ送信回数を数えたら、ロンドンの送り直しが次のスライダー操作の paint (changedElements [london, lagos]) に入って検査が失敗した。
+      3 フレーム待ってから数えると [lagos] だけ
+    applies_when: paint イベントでの送信を数える検査を書くとき
+  - id: upload-only-in-paint
+    finding: テクスチャを書くのは paint イベントの changedElements だけにすると、最初の paint の前に送って InvalidStateError ("No cached paint record for element") になることがない。中身を変えた直後、paint の前に送っても例外にはならず前の paint の絵が送られる
+    evidence: プローブでボタンの色を変えた直後の texElementSubImage2D は GL エラー 0 (古い絵)。この例は paint の中でしか送らないので、ベンチの間に InvalidStateError は 0 回
+    applies_when: HTML-in-Canvas で要素の絵をテクスチャに取り込むとき
+  - id: pin-sprite-cut-by-the-limb
+    finding: 地球儀のピンを点スプライトで深度テストつきで描くと、縁の近くで球の手前側がスプライトの下半分を斜めに切る。深度テストを外し、裏側だけ頂点シェーダで捨てる
+    evidence: ニューヨーク (縁から 25 度) のピンの中心の画素が (133,56,59)、右下半分が海の色。直したあと (237,69,69) で他の 3 都市と同じ
+    applies_when: 球の上に画面に平行な点やアイコンを描くとき
+  - id: check-points-under-panels
+    finding: 地理の色の検査点 (サハラ 8W 24N) がラゴスのパネルの下にあり、パネルの白を読んで失敗した。検査点では elementFromPoint が canvas であることも確かめる
+    evidence: (8W, 24N) の 5x5 平均が (238,240,243)。elementFromPoint は span.name (ラゴス)。(2E, 31N) にして (204,168,123)、海 (17,28,46)
+    applies_when: 地図の上に大きな UI を描く例で地理の色を読む検査
+  - id: tangent-panels-tilt
+    finding: パネルを都市の接平面に北向きで立てると、画面の中心から外れた都市では行が斜めになる (ラゴスで約 10 度)。地理の向きのまま残した
+    evidence: 最初の視点の画面写真で、ラゴスの行の左端と右端の高さが約 25 px 違い、値が 1 行上の見出しに並んで見える
+    applies_when: 3D の看板の向きを決めるとき。読みやすさを優先するなら、接平面の中で画面の右方向に合わせて回す
+
+architecture_selection:
+  chosen:
+    language: TypeScript (erasableSyntaxOnly)
+    runtime: browser
+    api: WebGL2 + HTML-in-Canvas (texElementSubImage2D, updateElementGeometry, clearElementGeometry)
+    gpu: hardware
+    code:
+      - examples/htmlcanvas/003-globe-html-panels/index.html
+      - examples/htmlcanvas/003-globe-html-panels/main.ts
+      - examples/htmlcanvas/003-globe-html-panels/geometry.ts
+      - examples/htmlcanvas/003-globe-html-panels/globe.ts
+      - examples/htmlcanvas/003-globe-html-panels/data.ts
+    dependencies: []
+    why: >-
+      パネルの中身 (日本語の組版、ボタン、スライダー、リンク、フォーカスリング) はブラウザがそのまま描き、
+      WebGL2 は 5 枚のテクスチャを接平面の四角形として描くだけ。当たり判定は四角形と同じ射影を matrix3d で渡すので、
+      自前の picking も DOM の重ね表示の追従もいらない
+  alternatives:
+    - {option: DOM の重ね表示 (CSS matrix3d) だけで描く, rejected_because: "パネルが canvas の外にあり、地球儀の深度と合成されない (地平線での隠れは自前)、canvas を画像にしても写らない。API の無いブラウザ向けのフォールバックとしては同じ行列で実装した"}
+    - {option: パネルを Canvas 2D や SDF 文字で自前描画, rejected_because: スライダー・ボタン・リンク・フォーカス・文字の選択を作り直すことになる (text-rendering の最初の判断表で DOM 側)}
+    - {option: WebGPU (GPUQueue.drawElementImageToTexture), rejected_because: "headless の SwiftShader ではデバイスが失われた (親の計測)。Xvfb なら動くが、5 枚の四角形に WebGPU の利点は無い。比較はしていない"}
+    - {option: 2D の drawElementImage で別 canvas に描いてから WebGL に送る, rejected_because: "コピーが 1 回増え、当たり判定は 2D canvas の位置になり updateElementGeometry の意味がない。比較はしていない"}
+  not_doing:
+    - 昼夜の陰影、大気、雲 (地球画像に正面からの明暗だけ)
+    - パネルどうしの衝突回避と間引き (5 枚、重なったら近いほうが上で当たる)
+    - 地平線際の徐々の透明化 (cos 85 度で消す)
+    - 大量のラベル (5 枚の HTML パネルのみ。何百枚もの文字は SDF アトラスの仕事)
+    - DPR 2 の計測 (コードは DPR に合わせてテクスチャを取り直す)
+
+verification:
+  checks:
+    - id: render-path
+      what: 既定では HTML-in-Canvas の経路、?fallback では DOM の経路で動いている
+      how: setAttribute('content','drawable') のあと canvas.content === 'drawable' かつ WebGL2RenderingContext.prototype.texElementSubImage2D があるか
+      expected: ?fallback の有無と一致
+    - id: panels-drawn-in-canvas
+      what: 最初の視点で見えるのはロンドン・ラゴス・ニューヨーク・サンパウロの 4 枚、東京は裏側。見えるパネルの内側の WebGL の画面ピクセルがカードの色
+      how: 各パネルの CSS 座標 (215, 14) を canvasTransform と同じ行列で画面へ写し、render() 直後に gl.readPixels で 5x5 の平均を読む。東京の位置の elementFromPoint はパネルでない
+      expected: 4 枚とも RGB > 230 (フォールバックでは canvas には描かれていないこと)
+    - id: geography-on-screen
+      what: ピンが都市の位置にあり、北が上・東が右 (ロンドンはラゴスの上、サンパウロはラゴスの左下、ニューヨークはロンドンの左)。サハラ (2E 31N) は砂色、南大西洋 (10W 20S) は海
+      how: 各都市の投影位置で 5x5 の平均を読み赤いピンを確かめ、位置の大小を比べる。砂漠と海の色を比べる
+      expected: 赤 > 180 かつ緑 < 130、位置関係が地理どおり、砂漠の赤 > 海の赤 + 40
+    - id: button-click-through-hit-testing
+      what: ロンドンのパネルの保存ボタンの描かれた位置で elementFromPoint がそのボタンを返し、返った要素の click() でブックマークが HUD に入り、ボタンが緑になってテクスチャが 1 回だけ送り直される
+      how: ボタンのレイアウト上の中心を canvasTransform と同じ行列で画面へ写し elementFromPoint、click()、paint イベントの changedElements と画面ピクセル (青 -> 緑)
+      expected: ボタンが返る、bookmarks = [london]、HUD がロンドン、changedElements = [london]、フォーカスできる
+    - id: link-hit
+      what: Wikidata のリンクが描かれた位置で当たる
+      how: elementFromPoint をリンクの投影した中心で
+      expected: リンク要素、href は panels.json の Wikidata ID
+    - id: hidden-panel-not-hit
+      what: 視点を回してロンドンを地平線の向こうにすると、同じ画面の点でもボタンを隠れた位置へ投影した点でもパネルに当たらず、クリックしても状態が変わらない
+      how: 中心 (179.9, -35) で render() し、elementFromPoint で返った要素に click()
+      expected: facing < 0、パネル内の要素が返らない、bookmarks は [london] のまま、その点の画面ピクセルはカード色でない
+    - id: slider-redraws-its-panel
+      what: ラゴスの年スライダーが描かれた位置で当たり、値を変えるとそのパネルだけが paint され送り直され、数字が panels.json の値になる
+      how: elementFromPoint でスライダーを取り、返った要素の value を変えて input を送る (10 回)。uploads を全パネルで数え、数字の位置のピクセルを比べる
+      expected: スライダーが返る、ラゴスだけ +10、changedElements = [lagos]、1950 年は 31万人、ピクセルが変わる
+    - id: zoom-scales-panels
+      what: ホイールで近づくとパネルが大きく描かれ、当たり判定も一緒に広がる
+      how: ズーム後のロンドンのパネルの右上隅の内側 (CSS 220, 6) にあたる画面の点を、ズームの前後で同じ座標のまま elementFromPoint と画面ピクセルで読む (同じ座標で聞き直すので、当たり判定のキャッシュが古いままなら失敗する)
+      expected: 前はパネル外で地球の色、後はパネル内でカードの色
+    - id: focus-brings-panel-into-view
+      what: 裏側の東京のパネルのボタンにフォーカスが来ると地球儀が回って東京のパネルが見え、そのボタンが描かれた位置で当たる
+      how: tokyo.button.focus() のあと 1 フレーム待って render()、ボタンの投影した中心で elementFromPoint
+      expected: activeElement がボタン、東京が見えている、elementFromPoint がボタン。フォールバックでは隠れたパネルは visibility:hidden でフォーカスを受けないこと
+    - id: no-uploads-while-moving
+      what: rAF ごとに 120 フレーム回してもテクスチャは 1 回も送られない (パネルが地平線を越え、描く順と DOM の順が入れ替わっても)
+      how: uploads を前後で比べる
+      expected: 同じ
+  harness: >-
+    ハーネスは info.gpu がソフトウェアのラスタライザなら失敗にする。コードとデータの gzip サイズ、
+    最初のフレーム、JS ヒープ、転送量を測る。
