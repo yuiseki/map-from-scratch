@@ -1,0 +1,131 @@
+id: 30DayMapChallenge-2026-16
+request: >-
+  30DayMapChallenge 2026「Collaborative map」。OpenStreetMapに記録された渋谷の建物編集履歴を、個人識別情報を持ち込まず場所と月の累積件数として表す。
+requirements:
+  - id: real-community-history
+    need: 実際のOpenStreetMap履歴を範囲・期間・編集対象を限定して表示する
+    rationale: ohsome API v1の2025年渋谷AOI・building=* contribution extractionを使い、月別の活動を地図化する
+  - id: privacy-and-interpretation
+    need: 個人情報・投稿者数・編集品質を推定せず、位置の近似性を説明する
+    rationale: bake時に要素ID・changeset ID・タグ・人に関わるmetadataを削除し、centroidを約38 × 46mセルに集約する
+    unmeasured: 編集者数や手作業と自動編集の区別はデータに保持せず、編集位置の厳密な形状も主張しない
+  - id: temporal-and-spatial-interaction
+    need: 月を選び累積の編集密度を見比べ、格子内の変更種別を調べられる
+    rationale: ネイティブスライダー、月送り、timeline選択、格子選択と矢印キーを実装する
+  - id: odbl-attribution
+    need: OSMへの帰属とODbL条件を利用者が画面とデータから確認できる
+    rationale: ページ上にOpenStreetMap copyrightとODbL 1.0へのリンクを常時表示する
+    unmeasured: 自動検査は表示とリンクを確認するが、ODbLの適用範囲について法的判断は行わない
+evaluation:
+  budgets:
+    - {metric: input_features, min: 162, max: 162, unit: contributions, requirement: real-community-history}
+    - {metric: mapped_contributions, min: 152, max: 152, unit: contributions, requirement: real-community-history}
+    - {metric: occupied_cells, min: 1, max: 576, unit: cells, requirement: real-community-history}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: temporal-and-spatial-interaction}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: temporal-and-spatial-interaction}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: real-community-history}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: temporal-and-spatial-interaction}
+    - {metric: data_gzip_bytes, max: 50000, unit: B, requirement: real-community-history}
+  gates: [bounded 2025 extraction, 152 located contributions, 10 unlocated deletions disclosed, all identifiers removed from browser bundle, OSM attribution and ODbL link visible, cumulative month control and cell selection usable by keyboard]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/16/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: cumulative-month-map
+      what: 24×24の位置別セルを月の累積編集件数で描画する
+      metrics: [first_frame_ms]
+    - id: month-and-cell-interactions
+      what: 2025年の月を切り替えて累積マップを描き、格子を選ぶ
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: pixels-provenance-and-accessibility
+      what: 実編集セルのCanvasピクセル、帰属、ODbL、範囲開示、キー操作を確認する
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/16/bake.ts]
+  sources:
+    - id: osm-historical-contributions-shibuya-2025
+      origin: >-
+        ohsome API v1.10.4 contribution centroids from OpenStreetMap history, clipped to 139.696,35.650–139.706,35.660, 2025 calendar year, building=* filter. One 52,781-byte response contained 162 features.
+      license: >-
+        OpenStreetMap data under Open Database License 1.0. Attribute © OpenStreetMap contributors. The OSM-derived aggregate database is shared under ODbL 1.0.
+      url: https://api.ohsome.org/v1/contributions/centroid
+    - id: ohsome-api-documentation
+      origin: >-
+        Historical OSM contribution extraction endpoint reference; source request uses v1 and a 1 MB body cap.
+      license: ohsome API terms and service policy; OSM history database retains ODbL 1.0 attribution/share-alike conditions.
+      url: https://docs.ohsome.org/ohsome-api/development/endpoints.html
+  outputs: [data/baked/30DayMapChallenge-2026-16/collaboration.json, data/baked/30DayMapChallenge-2026-16/stats.json]
+  preparation:
+    - >-
+      Make one bounded request to the documented ohsome v1 `/contributions/centroid` endpoint with bbox, year, building=* filter, contributionTypes and clipped geometry. Abort after 60 seconds or 1 MB; do not request per-user data.
+    - >-
+      Ignore features outside the calendar year or bbox, omit features with no returned Point geometry, and aggregate located contributions to a 24 × 24 grid and 12 monthly counters. Strip OSM element ids, changeset ids, tags and person metadata before writing files.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + native range input + pointer events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/16/index.html, examples/30DayMapChallenge/2026/16/main.ts, examples/30DayMapChallenge/2026/16/renderer.ts, examples/30DayMapChallenge/2026/16/collaboration.ts]
+    dependencies: []
+    why: A fixed 24 × 24 grid and 12 months require only a lightweight custom 2D renderer; mapping libraries, public tile endpoints and runtime history APIs add no necessary capability.
+  alternatives:
+    - option: Plot individual contributor histories or leaderboards
+      rejected_because: This map intentionally removes identity data and does not measure unique people or editing quality.
+    - option: Draw edits as exact feature footprints
+      rejected_because: The centroid extraction only supplies approximate points and deletion records have no geometry.
+    - option: Load public OSM raster/vector tiles
+      rejected_because: Contribution density is the map subject; an external basemap is not required and public tile usage is not part of this example.
+  not_doing: [individual contributor identity, per-user ranking, exact edit footprint, editor-count inference, map-quality inference, runtime external map services]
+performance_knowledge:
+  - claim: >-
+      The renderer loads one aggregate JSON file, with no runtime API queries or map library. The 24 × 24 grid is redrawn directly for each month.
+    evidence: >-
+      Three-run browser benchmark: 162 source features, 152 located contributions,
+      89 occupied cells; first-frame p50 4.265 ms (max 5.965 ms), draw CPU p95
+      1.045 ms, frame p95 7.035 ms; 10,160 gzip bytes of code and 2,007 gzip
+      bytes of data. All 9/9 browser checks pass. Screenshot visually inspected.
+    applies_when: The shipped payload contains 152 located features aggregated from a 2025 annual request.
+verification:
+  checks:
+    - id: openstreetmap-attribution-and-odbl
+      what: OpenStreetMapへの帰属とODbL条件が操作なしで読める。
+      how: ページ内の文章とリンク先を検査する。
+      expected: contributors creditとODbL 1.0のライセンスリンクが表示される。
+    - id: query-scope-and-privacy-disclosure
+      what: AOI、年、地物種別、格子近似、削除データ除外、編集者数を推定しないことを明示する。
+      how: ページの表示テキストを検査する。
+      expected: 条件・限界が地図の操作なしで確認できる。
+    - id: identifiers-stripped-from-render-data
+      what: ブラウザ用データに要素・changeset・個人識別情報を含めない。
+      how: 描画器へ渡したデータをシリアライズし禁止項目を検査する。
+      expected: 月別セル件数と匿名集計だけを保持する。
+    - id: no-runtime-external-map-services
+      what: 外部地図サービスへの実行時リクエストがない。
+      how: ブラウザのResource Timingからページ由来のリクエストoriginを確認する。
+      expected: データとプロンプトは同一originから読み込む。
+    - id: local-ground-projection
+      what: 地理的な東西・南北距離比を保つ。
+      how: AOI boundsと画面上の地図矩形の縦横比を比較する。
+      expected: 平均緯度のcos補正を含む地上距離比と一致する。
+    - id: real-contribution-cell-pixel
+      what: A real cell containing an OSM contribution is visibly drawn.
+      how: Sample a browser canvas pixel in the most active cell and compare to an unoccupied cell.
+      expected: Active grid cell is measurably brighter than the background.
+    - id: month-control-cumulative-map
+      what: The cumulative map follows the selected calendar month.
+      how: Change the range input and compare selected month label, annual cumulative count and active renderer month.
+      expected: July selection includes all located edits through July and updates the accessible value.
+    - id: pointer-cell-selection
+      what: A pointer selects the occupied map cell.
+      how: Dispatch a pointer to the center of the most active actual cell.
+      expected: The selection label reports the corresponding cell coordinates.
+    - id: keyboard-cell-navigation
+      what: Grid selection and contribution counters are available without a pointer.
+      how: Focus the map and send an arrow key; inspect the live detail text.
+      expected: Selection moves one cell and the text reports aggregate edit type counts.
