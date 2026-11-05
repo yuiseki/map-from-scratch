@@ -9,7 +9,7 @@
 
 import { openArchive } from './pmtiles.ts';
 import { popupRectAtAnchor, projectWorld, unprojectWorld } from './geometry.ts';
-import { supportsHtmlInCanvas } from './support.ts';
+import { hitTestCacheBuster, supportsHtmlInCanvas } from './support.ts';
 
 export interface Landmark {
   id: string;
@@ -53,6 +53,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string, onDraw: 
   if (!ctx) throw new Error('Failed to get 2D context');
 
   // ?fallback forces the DOM overlay, to look at what other browsers get.
+  const bustHitTests = hitTestCacheBuster();
   const htmlInCanvas = !new URLSearchParams(location.search).has('fallback') && supportsHtmlInCanvas(canvas);
 
   // Load landmarks
@@ -296,6 +297,7 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string, onDraw: 
     // pixels of the canvas box.
     if (htmlInCanvas) {
       ctx.drawElementImage(popup, pRect.x, pRect.y);
+      bustHitTests();
     } else {
       const box = canvas.getBoundingClientRect();
       const k = box.width / canvas.width;

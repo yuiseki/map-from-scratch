@@ -60,3 +60,5 @@
 | `redraw_ms` p95 | 1.87 ms | <= 5.0 ms |
 | `first_frame_ms` p50 | 45 ms | <= 1,500 ms |
 | コード (gzip) | 8,683 B | <= 9,000 B |
+
+2D の `drawElementImage` で位置が動いたときも、Chrome 157 は点ごとのヒットテストの結果を捨てない。本物のクリックが古い位置に当たった (CDP のマウス入力のプローブ)。この例の検査が通っていたのは、HUD が毎フレーム `textContent` を書いて、それが DOM の変化としてキャッシュを消していたからである。描いたフレームで `support.ts` の `hitTestCacheBuster` を呼ぶようにした。

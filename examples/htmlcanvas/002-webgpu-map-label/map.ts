@@ -14,7 +14,7 @@
 
 import { openArchive } from './pmtiles.ts';
 import { labelScreenRect } from './geometry.ts';
-import { supportsHtmlInCanvas } from './support.ts';
+import { hitTestCacheBuster, supportsHtmlInCanvas } from './support.ts';
 
 export interface MapLabelItem {
   id: string;
@@ -321,6 +321,7 @@ export async function mount(
   // browser cannot know it (the vertex shader placed the quad), so every
   // frame tells it with updateElementGeometry, in CSS pixels of the canvas.
   // The overlay places the cards themselves.
+  const bustHitTests = hitTestCacheBuster();
   function placeLabelElements(): void {
     const box = canvas.getBoundingClientRect();
     const k = box.width / canvas.width;
@@ -335,6 +336,7 @@ export async function mount(
         labelElements[i].style.transform = `translate(${box.left + window.scrollX + r.x * k}px, ${box.top + window.scrollY + r.y * k}px) scale(${k})`;
       }
     }
+    if (htmlInCanvas) bustHitTests();
   }
 
   // Label Instance storage buffer

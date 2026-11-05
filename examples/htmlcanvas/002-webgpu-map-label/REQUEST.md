@@ -64,3 +64,4 @@ HTML-in-Canvas で生成した HTML 要素を WebGPU レンダリングパイプ
 | コード (gzip) | 12,351 B (移行前 11,686 B) | <= 13,000 B |
 
 計測のあいだ、マシンの load average は 21 前後だった (ほかの計測と同時)。
+- 上の `elementFromPoint` の件は、本物のクリックにも出た (CDP のマウス入力、2026-11-06)。要素を動かした後に元の位置をクリックすると、もう無いカードに届き、止まったポインタの下へカードが来てもクリックは canvas に行った。Chrome は点ごとのヒットテストの結果を覚えていて、DOM が変わると捨てるが、`updateElementGeometry` では捨てない。htmlcanvas-003 が見つけた対処 (document に属さない要素の属性を、動かしたフレームで 1 回書く、`support.ts` の `hitTestCacheBuster`) で、どちらも正しくなった。計測は、動かす前と後で同じ点を問う厳しい形に戻した。対処を外すと `card-hit-where-drawn` が落ちる。

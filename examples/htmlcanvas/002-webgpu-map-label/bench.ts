@@ -86,10 +86,10 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
     const r0 = map.getLabelScreenPos(2);
     await new Promise(requestAnimationFrame);
     await new Promise(requestAnimationFrame);
-    // Not at r0's centre: elementFromPoint keeps its last answers for a point
-    // even after updateElementGeometry moved the element (real clicks get the
-    // new geometry), so the old place is asked only once, after the pan.
-    const hit0 = document.elementFromPoint(box.left + (r0.x + 20) * k, box.top + (r0.y + 20) * k);
+    // The old place is asked before and after the pan: Chrome keeps recent
+    // hit tests per point and does not drop them when updateElementGeometry
+    // moves an element (support.ts, hitTestCacheBuster).
+    const hit0 = cardAt(r0);
     await map.panBy(-90, 60);
     const r1 = map.getLabelScreenPos(2);
     await new Promise(requestAnimationFrame);
