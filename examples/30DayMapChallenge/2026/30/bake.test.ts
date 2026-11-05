@@ -1,25 +1,22 @@
 import assert from 'node:assert/strict';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
 const output = 'data/baked/30DayMapChallenge-2026-30';
-const stats = JSON.parse(readFileSync(`${output}/stats.json`, 'utf8')) as {
-  contours: { segmentCount: number; pathCount: number };
-  elevations: { contourLevelsM: number[]; contourIntervalM: number };
-  counts: { rows: number; validCells: number; nodataCells: number };
-  aoi: { print: { mapFrameMm: { widthMm: number; heightMm: number } } };
-};
-const svg = readFileSync(`${output}/sheet.svg`, 'utf8');
-const data = JSON.parse(readFileSync(`${output}/dem.json`, 'utf8')) as {
-  source: { crs: string; id: string; sourceTileCount: number };
-  aoi: { sourceGrid: Record<string, number>; boundsEpsg3857: Record<string, number>; grid: { width: number; height: number; cellSizeM: number }; print: { scale: string; centerLatitude: number } };
-  elevations: { minMeanM: number; maxMeanM: number; contourIntervalM: number; contourLevelsM: number[] };
-  counts: { rows: number; validCells: number; nodataCells: number };
-  grid: { values: (number | null)[]; valid: number[] };
-};
+const bakedOutputsAvailable = ['dem.json', 'stats.json', 'sheet.svg']
+  .every(file => existsSync(`${output}/${file}`));
+const unavailableReason = 'requires the locally baked GSI source dataset; CI has no source parquet';
 
-test('the frozen source AOI has a complete regular grid and retains nodata as null', () => {
+test('the frozen source AOI has a complete regular grid and retains nodata as null', {
+  skip: !bakedOutputsAvailable && unavailableReason,
+}, () => {
+  const data = JSON.parse(readFileSync(`${output}/dem.json`, 'utf8')) as {
+    source: { crs: string; id: string; sourceTileCount: number };
+    aoi: { sourceGrid: Record<string, number>; grid: { width: number; height: number } };
+    counts: { rows: number; validCells: number; nodataCells: number };
+    grid: { values: (number | null)[]; valid: number[] };
+  };
   assert.equal(data.source.id, 'hf:gsi-dem-fuji-z14-100m-2026-10-25');
   assert.equal(data.source.crs, 'EPSG:3857');
   assert.equal(data.source.sourceTileCount, 100);
@@ -34,20 +31,44 @@ test('the frozen source AOI has a complete regular grid and retains nodata as nu
   }
 });
 
-test('bake statistics reflect real elevations, contour interval and physical scale', () => {
+test('bake statistics reflect real elevations, contour interval and physical scale', {
+  skip: !bakedOutputsAvailable && unavailableReason,
+}, () => {
+  const stats = JSON.parse(readFileSync(`${output}/stats.json`, 'utf8')) as {
+    elevations: { contourLevelsM: number[]; contourIntervalM: number };
+    counts: { rows: number; validCells: number; nodataCells: number };
+    aoi: { print: { scale: string; centerLatitude: number } };
+  };
+  const data = JSON.parse(readFileSync(`${output}/dem.json`, 'utf8')) as {
+    elevations: { minMeanM: number; maxMeanM: number; contourIntervalM: number; contourLevelsM: number[] };
+  };
   assert.ok(data.elevations.minMeanM > 400 && data.elevations.minMeanM < 500);
   assert.ok(data.elevations.maxMeanM > 3700 && data.elevations.maxMeanM < 3800);
   assert.equal(data.elevations.contourIntervalM, 100);
   assert.equal(data.elevations.contourLevelsM.length, 33);
-  assert.match(data.aoi.print.scale, /1:100,000/);
-  assert.ok(data.aoi.print.centerLatitude > 35 && data.aoi.print.centerLatitude < 36);
+  assert.match(stats.aoi.print.scale, /1:100,000/);
+  assert.ok(stats.aoi.print.centerLatitude > 35 && stats.aoi.print.centerLatitude < 36);
+  assert.equal(stats.counts.rows, 45_934);
+  assert.equal(stats.counts.validCells + stats.counts.nodataCells, stats.counts.rows);
   assert.ok(statSync(`${output}/dem.json`).size > 0);
 });
 
-test('the real-data SVG contains the bake level set, path count, credits and hand-drawn space', () => {
+test('the real-data SVG contains the bake level set, path count, credits and hand-drawn space', {
+  skip: !bakedOutputsAvailable && unavailableReason,
+}, () => {
+  const stats = JSON.parse(readFileSync(`${output}/stats.json`, 'utf8')) as {
+    contours: { segmentCount: number; pathCount: number };
+    elevations: { contourLevelsM: number[] };
+    aoi: { print: { mapFrameMm: { widthMm: number; heightMm: number } } };
+  };
+  const data = JSON.parse(readFileSync(`${output}/dem.json`, 'utf8')) as {
+    elevations: { contourLevelsM: number[] };
+  };
+  const svg = readFileSync(`${output}/sheet.svg`, 'utf8');
   const pathLevels = [...svg.matchAll(/<path data-level="(\d+)"/g)].map(match => Number(match[1]));
   assert.equal(pathLevels.length, stats.contours.pathCount);
   assert.deepEqual([...new Set(pathLevels)].sort((a, b) => a - b), stats.elevations.contourLevelsM);
+  assert.deepEqual(stats.elevations.contourLevelsM, data.elevations.contourLevelsM);
   assert.ok(stats.contours.segmentCount > stats.contours.pathCount);
   assert.match(svg, /width="297mm" height="210mm" viewBox="0 0 297 210"/);
   assert.ok(stats.aoi.print.mapFrameMm.widthMm > 185 && stats.aoi.print.mapFrameMm.widthMm < 186);
@@ -58,7 +79,7 @@ test('the real-data SVG contains the bake level set, path count, credits and han
   assert.match(svg, /手書きエリア/);
 });
 
-test('browser preview and download resolve to the same generated artifact', () => {
+test('browser preview and download point to the same generated artifact', () => {
   const pageDir = 'examples/30DayMapChallenge/2026/30';
   const html = readFileSync(`${pageDir}/index.html`, 'utf8');
   const main = readFileSync(`${pageDir}/main.ts`, 'utf8');
@@ -66,5 +87,12 @@ test('browser preview and download resolve to the same generated artifact', () =
   assert.match(html, new RegExp(`src="${served.replaceAll('/', '\\/')}"`));
   assert.match(html, new RegExp(`href="${served.replaceAll('/', '\\/')}"`));
   assert.ok(main.includes(`fetch('${served}')`));
+});
+
+test('the generated SVG is served at the preview URL', {
+  skip: !bakedOutputsAvailable && unavailableReason,
+}, () => {
+  const pageDir = 'examples/30DayMapChallenge/2026/30';
+  const served = '../../../../data/baked/30DayMapChallenge-2026-30/sheet.svg';
   assert.ok(statSync(resolve(pageDir, served)).size > 0);
 });

@@ -34,6 +34,8 @@ bin/mfs bench 30DayMapChallenge-2026-30 -n 3
 
 実データ処理、テスト、型検査、ブラウザー計測は、すべて `systemd-run --user --scope -q -p MemoryMax=8G -p MemorySwapMax=0 -p CPUQuota=400% -- <command>` の制約内で実行します。ブラウザー計測値とスクリーンショットは `results/30DayMapChallenge-2026-30/` に記録します。
 
+GSI GeoParquetと生成済みベイク成果物はローカル環境にのみあります。CIでは成果物に対する実データ検査をスキップし、HTMLとプレビューURLの配線を含むソース検査を実行します。データを含む検査はローカルの `bin/mfs bake 30DayMapChallenge-2026-30` 後に実行されます。
+
 ### 最終ブラウザー計測
 
 2026-11-06のChrome 156・1280×800、最終スタイルでの3反復ローカル計測では、first render p50 96.0 ms / p95 105.2 ms、SVG 179,003 byte、33 contour levels、49 stitched paths、地図枠内の非白画素27,735でした。全5予算・6ブラウザー検査に合格し、エラーと外部リクエストはありません。standalone SVGとプレビュー取得内容のバイト一致、物理ページ寸法・線の範囲・描画ピクセルを各反復で確認しました。
