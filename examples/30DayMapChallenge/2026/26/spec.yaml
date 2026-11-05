@@ -1,0 +1,133 @@
+id: 30DayMapChallenge-2026-26
+request: >-
+  30DayMapChallenge 2026「Water」。国土数値情報A31aの洪水浸水想定区域から一つの河川・想定シナリオを選び、浸水深ランクと水がもたらす地理的な広がりを専用描画器で示す。これはモデルに基づく想定であり、実際の洪水記録や予報として示さない。
+requirements:
+  - id: source-scenario
+    need: 一つの河川の想定最大規模シナリオを、出典フィールドに基づき表示する
+    rationale: FY2025 A31a 83_10 の荒川・関東地方整備局・最大規模だけを選び、選択bboxで2,264地物を取得する。 planned/duration/collapseレイヤーとは結合しない
+  - id: faithful-depth-classes
+    need: 浸水深ランクを定義と単位を持つ順序尺度で示し、unknownと非浸水をゼロ扱いしない
+    rationale: 出典のA31a_205コード1–6をm単位の公式範囲に直接対応する。全6段階を凡例に明示し、bbox内に実在するrank 1–5を描く
+  - id: geography-and-interaction
+    need: 河川の浸水域が地理的にどこまで広がるかを見せ、地物を調べられる
+    rationale: 東経139.79–139.85度、北緯35.70–35.76度の矩形にクリップした全出典ポリゴンを描き、クリックで河川・管理者・カテゴリ・元深度ランクを表示する
+    unmeasured: 描画幾何の位置精度と画面構成は画面検査で確認する。元データの位置精度は出典仕様に従う
+  - id: honest-interpretation-and-credit
+    need: 洪水想定を観測・予測・住所リスクとして誤認させず、出典とライセンスを示す
+    rationale: 画面にモデル想定、データの限界、無地物がゼロ深度を意味しないことを明記し、MLITのデータページとCC BY 4.0の帰属をリンクする
+    unmeasured: リスク文章の誤読防止とライセンス表示は数値性能では測れないため、ページ表示と視覚レビューで確認する
+  - id: dedicated-renderer
+    need: このデータのための専用描画器で、実行時に地図エンジン・外部タイル・APIを使わない
+    rationale: ベイク済みの2,264ポリゴンをCanvas 2Dのオフスクリーン深度レイヤーへ一度描き、カメラ移動時は単一画像を再配置する
+  - id: responsive-interaction
+    need: デスクトップとモバイルで地図を読みやすく操作できる
+    rationale: Canvasを利用可能領域にフィットさせ、ドラッグ・ホイール・ズームボタンと座標・スケール表示を用意する。描画CPU p95 8ms以下、フレームp95 16.7ms以下を目標とする
+  - id: compact-data-and-startup
+    need: ベイク済みデータと描画コードを軽量に配信し、初回描画を待たせない
+    rationale: 単一のbboxクリップGeoJSONをPages公開上限100MB未満にし、コードgzip 35KB・データgzip 5MB・初回描画1.5秒以内を予算化する
+evaluation:
+  budgets:
+    - {metric: source_features, min: 2264, max: 2264, unit: features, requirement: source-scenario}
+    - {metric: unique_feature_ids, min: 2264, max: 2264, unit: ids, requirement: source-scenario}
+    - {metric: depth_class_1_features, min: 1, unit: features, requirement: faithful-depth-classes}
+    - {metric: depth_class_2_features, min: 1, unit: features, requirement: faithful-depth-classes}
+    - {metric: depth_class_3_features, min: 1, unit: features, requirement: faithful-depth-classes}
+    - {metric: depth_class_4_features, min: 1, unit: features, requirement: faithful-depth-classes}
+    - {metric: depth_class_5_features, min: 1, unit: features, requirement: faithful-depth-classes}
+    - {metric: depth_class_6_features, min: 0, max: 0, unit: features, requirement: faithful-depth-classes}
+    - {metric: projected_flood_pixels, min: 15000, unit: pixels, requirement: geography-and-interaction}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-interaction}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: responsive-interaction}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: compact-data-and-startup}
+    - {metric: code_gzip_bytes, max: 35000, unit: B, requirement: dedicated-renderer}
+    - {metric: data_gzip_bytes, max: 5000000, unit: B, requirement: compact-data-and-startup}
+  gates: [all geometry lies inside the disclosed bbox, source data category is only maximum-scale Arakawa, no null rank is converted to rank zero, modeled scenario disclaimers and attribution are visible, browser checks pass in all iterations, no cross-origin runtime request]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/26/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: headless
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: clipped-flood-initial-frame
+      what: Starts when renderer starts fetching baked JSON; stops after flood raster and first display composition have completed.
+      metrics: [first_frame_ms]
+    - id: pan-zoom-redraw
+      what: Repeated camera pan/zoom redraw over the cached flood image.
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: pixels-selection-and-provenance
+      what: Read actual canvas pixels, source feature/class counts, picking, controls, legend, caveats and runtime request origins.
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/26/bake.ts]
+  sources:
+    - id: z:ksj/A31a
+      origin: /sata_hdd_24tb/www/html/static/ksj/A31a/A31a-25_83_10_GEOJSON-part0.parquet and part1.parquet; FY2025 A31a maximum-scale attributes A31a_201..A31a_208; EPSG:6668 JGD2011; spatial partitions with bbox; only 荒川 / 関東地方整備局 within lon 139.79–139.85 and lat 35.70–35.76; maximum rank field A31a_205; source files are recorded in baked stats.
+      license: CC BY 4.0, subject to MLIT KSJ terms. Credit 出典：「国土数値情報（洪水浸水想定区域データ（河川単位））」（国土交通省）を加工して作成
+      url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31a-2025.html
+  outputs: [data/baked/30DayMapChallenge-2026-26/flood.json, data/baked/30DayMapChallenge-2026-26/stats.json]
+  preparation:
+    - Query the bbox-bearing, Hilbert-ordered A31a-25_83_10 partitions. Filter only the maximum-scale group, the source river name 荒川 and river manager 関東地方整備局.
+    - Clip source EPSG:6668 polygons to the disclosed rectangular selection using DuckDB spatial intersection, retain Polygon and MultiPolygon rings and their original A31a_205 class code, source file, river, and manager.
+    - Assign deterministic IDs by stable ordering of source file, river, class and clipped GeoJSON; serialize ring coordinates as JGD2011 longitude/latitude. Convert to a centered local equirectangular metre frame only at render time.
+    - Record the source path/files, bbox, CRS, feature and vertex counts, source class counts, output bytes and interpretation in stats.json.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + OffscreenCanvas-compatible HTMLCanvasElement + Pointer Events
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/26/index.html, examples/30DayMapChallenge/2026/26/main.ts, examples/30DayMapChallenge/2026/26/renderer.ts, examples/30DayMapChallenge/2026/26/flood.ts, examples/30DayMapChallenge/2026/26/style.css]
+    dependencies: []
+    why: Source polygons are fixed. Rasterizing each ordered class once to a 2048-pixel-high offscreen canvas with the bbox's physical aspect ratio keeps the map responsive during camera changes, while pre-baked feature bounds and exact geographic rings support polygon inspection.
+  alternatives:
+    - option: WebGL2 per-feature fills
+      rejected_because: Not compared; depth class is fixed and the viewport-sized offscreen raster avoids repeating 125k vertices on every pan or zoom.
+    - option: Canvas path fill on every frame
+      rejected_because: Not compared; 2,264 clipped polygons and about 125k vertices would repeat CPU path traversal for camera-only changes.
+    - option: MapLibre or external hazard tiles
+      rejected_because: Not allowed for this purpose; the renderer should expose one precise source layer without external runtime dependencies.
+  not_doing: [other rivers, planned-scale scenario, duration category, collapse-flow or erosion category, other Japanese prefectures, administrative boundary overlay, address-level risk, real-time warnings, forecast, observed floods, general-purpose map engine, external tiles or APIs]
+performance_knowledge:
+  - id: cached-raster-for-clipped-inundation
+    finding: >-
+      Canvas 2Dで深さランク別に一度ラスタ化し、パン・ズーム中は画像を再配置する。2,264個・124,919頂点のクリップ済み形状で、1280×800のChrome 156 3-run計測は初回描画p50 213.5 ms、frame p95 4.48 ms、描画CPU p95 0.205 ms、コードgzip 9,678 B、データgzip 534,524 Bだった。
+    evidence: >-
+      `results/30DayMapChallenge-2026-26/latest.json` と `screenshot.png`。3反復すべての14予算・8 browser checksがPASSし、外部origin requestは0件。最大frame intervalは10.51 ms、最大描画CPUは1.27 ms。デスクトップ初期画面のスクリーンショットをレビューし、荒川の河道と色別の想定区域、スケール・選択bbox・出典が確認できた。headless ChromeのログにDBus/EGL初期化警告があるが、測定・画像・検査結果に失敗はない。
+    applies_when: 一つの固定領域にある大量の静的な浸水ポリゴンを、地物の色分けを維持してパン・ズームする。モバイル画面や別領域・全域の性能を保証しない。
+verification:
+  checks:
+    - id: source-scenario-and-feature-preservation
+      what: Exact source-selected feature set is preserved with unique stable IDs.
+      how: Compare rendered data count, unique IDs and category/river/manager values with sidecar stats.
+      expected: 2,264 clipped Arakawa maximum-scale features, all with their original rank.
+    - id: ordered-ranks-and-rendered-pixels
+      what: Each available source depth class reaches the actual canvas in increasing order and all six definitions appear in the legend.
+      how: Count exact palette colors in canvas readback and verify rank labels.
+      expected: Ranks 1–5 have rendered pixels, rank 6 remains represented in legend but has zero source features in this bbox.
+    - id: unknown-zero-and-outside-semantics
+      what: Unknown, measured class values and no drawn polygon are not collapsed into a zero category.
+      how: Exercise the model validation helper and inspect the explicit no-polygon disclaimer.
+      expected: Class 0 is rejected, unknown remains null, and outside coverage is explicitly not a zero or safety guarantee.
+    - id: polygon-inspection-retains-source-fields
+      what: Selecting an inundation polygon reports the exact source river, manager, category and raw class code.
+      how: Pick a known test coordinate inside a source feature and compare the details panel to loaded data.
+      expected: 荒川, 関東地方整備局, maximum (想定最大規模), and the corresponding A31a_205 rank are visible.
+    - id: clipping-and-geographic-composition
+      what: The displayed geometry stays inside the bbox and the opening view fills the available canvas.
+      how: Validate every coordinate and inspect the canvas flood pixel extent for nontrivial width and height.
+      expected: Geometry is within the declared bbox; flood pixels cover at least 15,000 screen pixels in the initial view.
+    - id: pan-zoom-and-coordinate-context
+      what: Map controls pan and zoom and the page gives coordinate and distance context.
+      how: Dispatch pointer/wheel/button input and compare camera; inspect scale and coordinate labels.
+      expected: Camera changes as requested and scale context is visible.
+    - id: modeled-scenario-and-license
+      what: The scenario limits, non-observation disclaimer, attribution and CC BY 4.0 terms are visible.
+      how: Inspect rendered page text and source links.
+      expected: Model, limitations, MLIT source and license are stated.
+    - id: no-runtime-external-requests
+      what: Runtime map uses only same-origin static assets.
+      how: Inspect Resource Timing origins after the first render.
+      expected: No off-origin requests.

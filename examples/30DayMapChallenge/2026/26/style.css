@@ -1,0 +1,45 @@
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #101c22; color: #e8eeea; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+#map { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; outline: none; }
+#map:active { cursor: grabbing; }
+.panel { position: fixed; z-index: 2; top: 16px; left: 16px; width: min(354px, calc(100vw - 32px)); padding: 17px 17px 13px; border: 1px solid rgba(185, 209, 198, .24); border-radius: 13px; background: rgba(13, 27, 33, .95); box-shadow: 0 12px 40px rgba(0, 0, 0, .3); }
+.eyebrow { margin: 0 0 8px; color: #a3b9af; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+h1 { margin: 0; color: #f4e8ca; font-size: 24px; line-height: 1.2; font-weight: 650; }
+.intro { margin: 7px 0 12px; color: #b8c6c2; font-size: 11px; line-height: 1.5; }
+.scenario { padding: 7px 9px; border-radius: 7px; background: rgba(221, 103, 72, .15); color: #f0b98b; font-size: 10px; font-weight: 700; }
+.legend, .inspect { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(162, 191, 183, .18); }
+.legend h2, .inspect h2 { margin: 0 0 8px; color: #9eb5ae; font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.depth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; color: #d4ded8; font-size: 10px; font-variant-numeric: tabular-nums; }
+.depth-grid span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.depth-grid i { width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid rgba(255,255,255,.3); border-radius: 3px; }
+.depth-grid b { color: #98aaa4; font-size: 9px; }
+.depth-1 { background: #f4d35e; }.depth-2 { background: #f4a340; }.depth-3 { background: #f07845; }.depth-4 { background: #dc4d50; }.depth-5 { background: #bd3e70; }.depth-6 { background: #7b398c; }
+.depth-unknown { background: #83959a; }
+.legend p { margin: 8px 0 0; color: #94a9a3; font-size: 9px; line-height: 1.45; }
+#selected { display: grid; gap: 4px; color: #dce4db; font-size: 10px; line-height: 1.45; }
+#selected strong { color: #f3cf9c; }
+#selected span { color: #b0c1b9; }
+#selected code { color: #899d96; font-size: 8px; overflow-wrap: anywhere; }
+.controls { display: flex; gap: 6px; margin-top: 11px; }
+button { min-width: 34px; height: 30px; padding: 0 9px; border: 1px solid #3e5855; border-radius: 7px; background: #1b302f; color: #e4ece4; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+button:hover, button:focus-visible { border-color: #e8b77f; background: #29413d; outline: 2px solid rgba(232,183,127,.25); }
+.interaction { margin: 8px 0 0; color: #879c94; font-size: 9px; line-height: 1.45; }
+.notice { position: fixed; z-index: 1; left: 16px; bottom: 57px; display: grid; gap: 4px; width: min(500px, calc(100vw - 32px)); padding: 9px 12px; border-left: 2px solid #df815e; border-radius: 0 8px 8px 0; background: rgba(15, 28, 33, .93); }
+.notice strong { color: #efb599; font-size: 10px; }
+.notice span { color: #b4c1bc; font-size: 9px; line-height: 1.45; }
+.map-context { position: fixed; z-index: 1; right: 14px; bottom: 57px; display: grid; gap: 4px; justify-items: end; color: #c3d0c7; font-size: 9px; text-align: right; text-shadow: 0 1px 4px #101c22; }
+.credits { position: fixed; z-index: 2; right: 12px; bottom: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: min(850px, 68vw); padding: 6px 9px; border-radius: 6px; background: rgba(13, 27, 33, .92); color: #8fa29a; font-size: 8px; }
+.credits a { color: #bdd0c4; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.credits a:hover { color: #ffe2b6; }
+@media (max-width: 700px) {
+  .panel { top: 7px; left: 7px; width: min(380px, calc(100vw - 14px)); max-height: 46vh; overflow-y: auto; padding: 12px; }
+  h1 { font-size: 20px; }
+  .intro { margin: 5px 0 8px; }
+  .legend, .inspect { margin-top: 8px; padding-top: 7px; }
+  .legend p { margin-top: 5px; }
+  .controls { margin-top: 7px; }
+  .notice { left: 7px; bottom: 70px; width: calc(100vw - 14px); padding: 7px 9px; }
+  .notice strong { font-size: 9px; }.notice span { font-size: 8px; }
+  .map-context { right: 10px; bottom: 143px; font-size: 8px; }
+  .credits { left: 7px; right: 7px; bottom: 5px; justify-content: flex-start; max-width: none; font-size: 7px; }
+}

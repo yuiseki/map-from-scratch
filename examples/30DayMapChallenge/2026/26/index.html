@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101c22">
+  <title>Water · 荒川の洪水浸水想定 — 30DayMapChallenge 2026</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="img" aria-label="荒川の想定最大規模洪水浸水深地図。色は想定浸水深ランク。ドラッグで移動、ホイールで拡大縮小、地物クリックで出典属性を確認できます。"></canvas>
+  <main class="panel">
+    <p class="eyebrow">30DAYMAPCHALLENGE · 26 / WATER</p>
+    <h1>荒川があふれるとき</h1>
+    <p class="intro">想定最大規模の洪水浸水深を、荒川の河川別ポリゴンから表示しています。</p>
+    <div class="scenario" id="scenario">想定最大規模 · 荒川</div>
+    <div class="legend" aria-label="想定浸水深ランク凡例">
+      <h2>想定浸水深 · 出典ランク</h2>
+      <div class="depth-grid">
+        <span><i class="depth-1"></i><b>1</b> 0–&lt;0.5 m</span>
+        <span><i class="depth-2"></i><b>2</b> 0.5–&lt;3 m</span>
+        <span><i class="depth-3"></i><b>3</b> 3–&lt;5 m</span>
+        <span><i class="depth-4"></i><b>4</b> 5–&lt;10 m</span>
+        <span><i class="depth-5"></i><b>5</b> 10–&lt;20 m</span>
+        <span><i class="depth-6"></i><b>6</b> ≥20 m</span>
+        <span><i class="depth-unknown"></i>深さランク不明</span>
+      </div>
+      <p>色は各ポリゴンの A31a_205 浸水深ランクをそのまま示します。凡例に該当色がなくても、ゼロ深度や安全を示すものではありません。</p>
+    </div>
+    <section class="inspect" aria-live="polite">
+      <h2>選択した浸水想定域</h2>
+      <div id="selected"><span>地図上のポリゴンを選択してください。</span></div>
+    </section>
+    <div class="controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">範囲をリセット</button>
+    </div>
+    <p class="interaction">ドラッグで移動 · ホイールで拡大縮小 · タップで深さランクと河川属性を表示</p>
+  </main>
+  <aside class="notice" id="notice">
+    <strong>これはモデル上の想定です。実際の浸水記録、予報、警報ではありません。</strong>
+    <span>選択した河川・シナリオの区域外でも浸水する場合があり、実際の深さが想定を上回ることがあります。無地物は深さ0 mや安全を意味せず、住所ごとの保証や個別リスク評価ではありません。</span>
+  </aside>
+  <div class="map-context"><span id="coordinates">座標: ポインターを地図上へ</span><span>範囲: 139.79–139.85°E · 35.70–35.76°N · スケール 500 m</span></div>
+  <footer class="credits">
+    <a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31a-2025.html" target="_blank" rel="noreferrer">出典: 国土数値情報 洪水浸水想定区域データ（河川単位）A31a FY2025（国土交通省）を加工して作成</a>
+    <span>·</span><a href="https://creativecommons.org/licenses/by/4.0/legalcode.ja" target="_blank" rel="noreferrer">CC BY 4.0</a>
+    <span>·</span><a href="https://nlftp.mlit.go.jp/ksj/other/agreement_01.html" target="_blank" rel="noreferrer">国土数値情報利用規約</a>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
