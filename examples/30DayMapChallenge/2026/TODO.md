@@ -22,7 +22,7 @@
 | 14 | Borgesian map | 東京・渋谷の OSM 建物フットプリントを実形状のまま描き、カードで画面校正した時だけ局所地表1:1の窓を開く。500 m overview と詳細窓の両立不能さを作品化（ODbL、非公式矩形範囲を明記） | 完了 · 3回計測・7 checks PASS・画面確認済み · frame p95 0.725 ms · draw p95 0.265 ms · first frame p50 49.575 ms · 222建物 / 1,698頂点 · code/data gzip 12,636 / 12,461 B |
 | 15 | Inside out | 北海道東方のGEBCO実地形断面を反転し、同じ緯度帯にあるUSGS地震震源を独立した深度軸で表示。GEBCO 2026はOGL v3.0/GEBCO条件、USGS ComCatはPublic Domain | 完了 · 3回計測・5 checks PASS・画面確認済み · frame p95 5.755 ms · draw p95 1.22 ms · first frame p50 53.58 ms · 720セル / 13震源 · code/data gzip 8,366 / 2,192 B |
 | 16 | Collaborative map | 渋谷のOpenStreetMap建物編集履歴を匿名集計し、2025年の月別累積を格子地図で示す。削除記録などの位置情報欠落とODbL条件を明記する | 完了 |
-| 17 | Light & dark | 夜間光の明暗と都市域を比較する。カタログの `planetarble/` および関連ソースを調べ、由来・利用条件が確認できる衛星画像だけを採用 | TODO |
+| 17 | Light & dark | 国交省の人流オープンデータから東京の1 kmメッシュを左右同尺度で描き、2021年12月の昼間（11–14時）と深夜（1–4時）の月平均滞在人口推計を比較。実際の照明・衛星夜間光ではなく、10人未満など未公表の値をゼロにしないことを明示 | 完了 · 3回計測・8 checks / 9 budgets PASS・画面確認済み · 1,016メッシュ / 昼682・深夜671 · first frame p50 114.6 ms · frame p95 13.15 ms · draw p95 5.96 ms · code/data gzip 12,639 / 11,834 B |
 | 18 | NULL | 欠損値を地理的な空白として可視化し、値がない場所とゼロの場所を区別。人口グリッド等から欠損を含む製品を選定し、欠損の意味を説明 | TODO |
 | 19 | Senses: Smell | 工場・土地利用と風向を使い、においの届き方を合成モデルで表現。東京 OSM / 土地利用 + 気象データ候補を調査し、実測値と推定値を混同しない | TODO |
 | 20 | Hexagons | 世界人口を H3 六角形で色と高さに変換。`hf:kontur-population-2023-11-01-22km`（CC BY） | TODO |

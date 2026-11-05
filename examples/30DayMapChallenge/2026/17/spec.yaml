@@ -1,0 +1,128 @@
+id: 30DayMapChallenge-2026-17
+request: >-
+  30DayMapChallenge 2026「Light & dark」。東京都の同じ1 kmメッシュを使い、国土交通省の月平均滞在人口推計を昼間（11–14時）と深夜（1–4時）で比較する。照明や衛星夜間光として表現しない。
+requirements:
+  - id: matched-day-night-human-presence
+    need: 同じ地域・メッシュ・年月・曜日条件における昼間と深夜の公表滞在人口を比較する
+    rationale: 2021年12月、東京都、全日、昼間timezone 0と深夜timezone 1を同じ1 kmメッシュ境界で左右表示する
+    unmeasured: セル間の移動、個人の行動、全人口の実測値はこの集計から分からない
+  - id: light-dark-means-time-contrast
+    need: Light & dark のテーマを地図だけから読み取れる
+    rationale: 「昼間」「深夜」と時刻を図中に置き、淡い昼色と暗い夜色で同じ対数尺度の人流値を対比する
+    unmeasured: 夜間照明、人工光、衛星観測の明るさは扱わない
+  - id: suppressed-is-unknown
+    need: 非公表セルをゼロとして誤読させない
+    rationale: データ値がないメッシュは「未公表 / 値なし」と描き、データ仕様の10人未満抑制を明記する
+    unmeasured: 空セルが必ず10人未満であるとは断定しない
+  - id: usable-paired-map
+    need: 同じ地理的セルを選び、両時間帯の値を読める
+    rationale: Canvas 2Dの左右パネルを同期し、クリックと矢印キーで共通メッシュを選ぶ
+  - id: source-credit-and-interpretation
+    need: 原資料、利用条件、推計の限界を確認できる
+    rationale: 国交省データセットへのリンク、政府標準利用規約2.0相当の条件、アプリ由来推計・夜間光ではない旨を画面に表示する
+    unmeasured: 自動検査は表示文面とリンクを確認するが、利用規約の法的解釈を行わない
+evaluation:
+  budgets:
+    - {metric: mesh_geometries, min: 1016, max: 1016, unit: meshes, requirement: matched-day-night-human-presence}
+    - {metric: daytime_records, min: 682, max: 682, unit: meshes, requirement: matched-day-night-human-presence}
+    - {metric: late_night_records, min: 671, max: 671, unit: meshes, requirement: matched-day-night-human-presence}
+    - {metric: shared_population_maximum, min: 190197, max: 190197, unit: people, requirement: matched-day-night-human-presence}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: usable-paired-map}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: usable-paired-map}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: matched-day-night-human-presence}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: usable-paired-map}
+    - {metric: data_gzip_bytes, max: 80000, unit: B, requirement: matched-day-night-human-presence}
+  gates: [same 1016 mesh geometries in both views, 682 daytime and 671 late-night published records, common maximum of 190197, true nulls for missing values, visible time and non-illumination labels, MLIT source credit and terms, paired pointer selection and arrow-key navigation]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/17/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: paired-presence-comparison
+      what: 同じWGS84 1 kmメッシュを昼間と深夜のパネルに描画する
+      metrics: [first_frame_ms]
+    - id: select-and-redraw
+      what: マウスとキーボードでメッシュを選び、左右両方の選択枠を更新する
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: credits-and-data-pixels
+      what: 出典、制限、実データの色セル、未公表値の状態を確認する
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/17/bake.ts]
+  sources:
+    - id: mlit-1km-fromto-2022-01
+      origin: >-
+        国土交通省「全国の人流オープンデータ」固定Parquetスナップショット。都道府県コード13、2021年12月、全日dayflag=2、昼間timezone=0、深夜timezone=1。2020年版属性表で中心座標を結合し、139.55≤経度<139.98、35.53≤緯度<35.82の1 kmメッシュを選択。人流表はメッシュIDごとに合計する。
+      license: >-
+        「全国の人流オープンデータ利用規約」（令和3年1月27日）。政府標準利用規約2.0相当（CC BY 4.0相当）。出典：「全国の人流オープンデータ」（国土交通省）（https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto）を加工して作成。
+      url: https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto
+  outputs: [data/baked/30DayMapChallenge-2026-17/presence.json, data/baked/30DayMapChallenge-2026-17/stats.json]
+  preparation:
+    - >-
+      Local Parquet only: join monthly_mdp_mesh1km with version=2020 attribute_mesh1km, group values by mesh id, and serialize WGS84 cell bounds. Keep nulls for absent period records. Reject changed record/geometry totals and source maxima.
+    - >-
+      Do not download satellite imagery, call public map tile services, interpolate missing values, or retain any personal GPS records; the inputs are pre-published monthly aggregate tables.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver + native keyboard events
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/17/index.html, examples/30DayMapChallenge/2026/17/main.ts, examples/30DayMapChallenge/2026/17/renderer.ts, examples/30DayMapChallenge/2026/17/lightdark.ts, examples/30DayMapChallenge/2026/17/bench.ts, examples/30DayMapChallenge/2026/17/PROMPT.md]
+    dependencies: []
+    why: 1016 static rectangular meshes need direct, repeatable drawing; one Canvas can show both palettes, maintain a shared scale and keep interaction lightweight without external map requests.
+  alternatives:
+    - option: VIIRS / Black Marble satellite night lights
+      rejected_because: No documented local copy with verified provenance is present in the open-data catalog; this reproducible example instead compares a clearly identified human-presence dataset.
+    - option: Show day and night on independent automatic color scales
+      rejected_because: Independent scales would make brightness comparisons misleading; both use the same log scale and maximum.
+    - option: Treat missing records as zero people
+      rejected_because: MLIT suppresses values below 10 and does not publish those cells.
+  not_doing: [observed illumination, satellite night-light values, individual tracks, city-wide total population, inferential movement lines, interpolation of absent cells, runtime external services]
+performance_knowledge:
+  - claim: >-
+      The browser fetches one compact, pre-aggregated mesh payload and redraws the two fixed panels directly; no basemap, map library, runtime query, or external service is needed.
+    evidence: >-
+      Three Chrome/Xvfb runs: 1016 mesh geometries, 682 daytime and 671 late-night published values; first_frame_ms p50 114.585 ms, frame_ms p95 13.145 ms, draw_cpu_ms p95 5.955 ms, code_gzip_bytes 12639 and data_gzip_bytes 11834. All 9 budgets and 8 browser checks pass; screenshot visually inspected with legends visible above the disclosure footer.
+    applies_when: The frozen Tokyo 2021-12, all-days, daytime versus late-night comparison is used.
+verification:
+  checks:
+    - id: matched-cell-geometries
+      what: Both panels use one shared set of the same WGS84 1 km mesh geometries.
+      how: Compare panel dimensions and sample the same paired mesh pixel from each canvas panel.
+      expected: Same mesh id and extent are present in both, with distinct period-specific color palettes.
+    - id: source-scope-and-limits-visible
+      what: The page names dates, time windows, units and the meaning of missing values.
+      how: Inspect visible text and source links in the page.
+      expected: Day/night times, all-days month, 1 km mesh, non-illumination explanation, and unknown/suppressed disclaimer are present.
+    - id: mlit-attribution-and-license
+      what: The official source attribution and source page are visible.
+      how: Inspect displayed text and destination of the MLIT link.
+      expected: 国土交通省 credit, source dataset link, and Government Standard Terms 2.0 / CC BY 4.0-equivalent wording.
+    - id: no-runtime-external-map-services
+      what: Runtime uses only local baked data and same-origin prompt text.
+      how: Check Resource Timing origins after initial render.
+      expected: No off-origin resources.
+    - id: actual-published-cell-pixel
+      what: A maximum-valued real data mesh is painted in its daytime location.
+      how: Sample the center of the actual maximum daytime mesh from canvas pixels.
+      expected: The pixel is opaque and within the selected map area.
+    - id: suppressed-data-remains-unknown
+      what: Missing published values are serialized and rendered as null/unknown.
+      how: Inspect a mesh missing either period and compare its values with null.
+      expected: No missing value is replaced with zero.
+    - id: pointer-selects-matched-mesh
+      what: Clicking either map selects the same mesh in both panels.
+      how: Dispatch pointerup at a real paired mesh center.
+      expected: `selectedId` equals that mesh id, and the details show both periods.
+    - id: keyboard-moves-selection
+      what: The map supports arrow-key movement and Escape clearing.
+      how: Send ArrowRight after selecting a mesh and inspect the renderer selection.
+      expected: The nearest mesh to the right becomes selected.
+footprint:
+  code: [examples/30DayMapChallenge/2026/17/index.html, examples/30DayMapChallenge/2026/17/main.ts, examples/30DayMapChallenge/2026/17/renderer.ts, examples/30DayMapChallenge/2026/17/lightdark.ts, examples/30DayMapChallenge/2026/17/bench.ts, examples/30DayMapChallenge/2026/17/PROMPT.md]
+  data: [data/baked/30DayMapChallenge-2026-17/presence.json, data/baked/30DayMapChallenge-2026-17/stats.json]

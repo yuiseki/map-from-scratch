@@ -157,6 +157,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/monthly_fromto_city.parquet',
     copy: true,
   },
+  // MLIT National People Flow Open Data, monthly 1 km mesh presence counts (2019–2021).
+  'mlit-mesh1km-2022-01': {
+    out: 'mlit_monthly_mesh1km.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/monthly_mdp_mesh1km.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/monthly_mdp_mesh1km.parquet',
+    copy: true,
+  },
   'mlit-attribute-mesh1km-2022-01': {
     out: 'mlit_attribute_mesh1km.parquet',
     local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/attribute_mesh1km.parquet',

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>昼と深夜、東京の滞在人口 — 30DayMapChallenge 2026 / Day 17</title>
+  <meta name="description" content="国土交通省の1 km人流オープンデータを使い、東京の昼間と深夜の月平均滞在人口を同じ尺度で比較します。衛星夜間光ではありません。">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#f1eee4;color:#10151c;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}#map{display:block;width:100vw;height:100vh;touch-action:manipulation}footer{position:fixed;z-index:2;left:12px;right:12px;bottom:8px;padding:8px 12px;border:1px solid #a9a79f;border-radius:8px;background:#f7f5eef2;color:#414c50;font-size:10px;line-height:1.5;box-shadow:0 3px 18px #24272420;backdrop-filter:blur(8px)}footer a{color:#254e65}footer p{margin:3px 0}#selected{font-weight:600;color:#18272e}#stats{color:#536167;font:10px ui-monospace,monospace}details{display:inline-block;margin-left:10px}summary{cursor:pointer}#prompt{white-space:pre-wrap;max-height:180px;max-width:min(650px,90vw);overflow:auto;padding:8px;background:#fff;border:1px solid #aaa;font-size:10px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}canvas:focus-visible{outline:3px solid #2574a6;outline-offset:-4px}@media(max-width:759px){#map{height:1100px}footer{left:6px;right:6px;bottom:6px;padding:6px 8px;font-size:9px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="東京の同じ1 kmメッシュを使った昼間と深夜の人流推計比較地図。矢印キーでメッシュを選択し、Escapeで選択解除できます。">
+    東京の昼間と深夜の月平均滞在人口を1 kmメッシュで比較します。照明や衛星夜間光の観測ではありません。
+  </canvas>
+  <div id="selected" class="sr-only" role="status" aria-live="polite">地図のメッシュを選ぶと、同じ場所の昼間と深夜の公表値を並べて表示します。</div>
+  <footer>
+    <p><span id="selected-visible">地図のメッシュを選択すると、昼間と深夜の値を同時に確認できます。</span>　<span id="status">読み込み中</span></p>
+    <p id="stats">データを読み込み中</p>
+    <p>出典：「<a href="https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto" target="_blank" rel="noreferrer">全国の人流オープンデータ</a>」（国土交通省）を加工して作成 · 政府標準利用規約2.0（CC BY 4.0相当）</p>
+    <p>これは照明の明るさや衛星夜間光の地図ではありません。値はスマートフォンアプリ由来の月平均滞在人口推計です。11–14時と1–4時を比較し、10人未満など未公表のメッシュをゼロとは扱いません。</p>
+    <details><summary>制作プロンプト</summary><pre id="prompt">読み込み中</pre></details>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
