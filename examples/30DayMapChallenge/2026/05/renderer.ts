@@ -84,8 +84,9 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
   if (cellCount !== width * height || terrainData.byteLength !== 20 + cellCount * 2 || width !== stats.width || height !== stats.height || cellCount !== stats.cells || maximum <= minimum) {
     throw new Error('Baked Fuji terrain and statistics disagree');
   }
-  const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const glContext = canvas.getContext('webgl2', { antialias: true, alpha: false });
+  if (!glContext) throw new Error('WebGL2 is not available');
+  const gl = glContext;
   const glErrors: string[] = [];
   const checkGL = (stage: string) => { const error = gl.getError(); if (error !== gl.NO_ERROR) glErrors.push(`${stage}:${error}`); };
   const program = createProgram(gl), vao = gl.createVertexArray()!;

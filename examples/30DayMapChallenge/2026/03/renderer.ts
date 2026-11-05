@@ -64,8 +64,9 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     return name === 'stats.json' ? response.json() : response.arrayBuffer();
   })) as [ArrayBuffer, Stats];
-  const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const glContext = canvas.getContext('webgl2', { antialias: true, alpha: false });
+  if (!glContext) throw new Error('WebGL2 is not available');
+  const gl = glContext;
   const view = new DataView(meshData);
   if (String.fromCharCode(...new Uint8Array(meshData, 0, 4)) !== 'GPC1') throw new Error('Unsupported country mesh signature');
   const vertexCount = view.getUint32(4, true), triangleIndexCount = view.getUint32(8, true), borderCount = view.getUint32(12, true);

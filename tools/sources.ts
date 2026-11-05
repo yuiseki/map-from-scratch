@@ -138,6 +138,12 @@ const SOURCES: Record<string, Source> = {
     copy: true,
   },
   // World Bank World Development Indicators, selected redistributable annual series.
+  'worldbank-wdi-2026-10-01-data': {
+    out: 'worldbank_wdi_2026_10_01_data.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/worldbank-wdi/data/parquet/2026-10-01/data.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/worldbank-wdi/resolve/main/parquet/2026-10-01/data.parquet',
+    copy: true,
+  },
   'worldbank-wdi-basic-annual': {
     out: 'worldbank_wdi_basic_annual.parquet',
     local: '/sata_hdd_24tb/www/html/static/worldbank/wdi_basic_annual.parquet',

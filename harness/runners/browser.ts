@@ -167,9 +167,17 @@ async function runOnce(chrome: Chrome, url: string, spec: RunSettings, outDir: s
     await s('Runtime.addBinding', { name: '__mfsEmit' });
 
     let bytes = 0, requests = 0;
+    const requestsSeen: string[] = [], failedRequests: string[] = [];
+    off.push(cdp.on('Network.requestWillBeSent', (p, sid) => { if (sid === sessionId && requestsSeen.length < 30) requestsSeen.push(p.request.url); }));
+    off.push(cdp.on('Network.loadingFailed', (p, sid) => { if (sid === sessionId) failedRequests.push(`${p.errorText}: ${p.requestId}`); }));
     off.push(cdp.on('Network.loadingFinished', (p, sid) => { if (sid === sessionId) { bytes += p.encodedDataLength; requests++; } }));
+    off.push(cdp.on('Runtime.consoleAPICalled', (p, sid) => {
+      if (sid !== sessionId || p.type !== 'error') return;
+      const message = p.args?.map((arg: { value?: unknown; description?: string }) => String(arg.value ?? arg.description ?? '')).join(' ');
+      if (message) collector.add({ error: `console.error: ${message}` });
+    }));
     const done = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`timeout after ${spec.timeoutMs} ms`)), spec.timeoutMs);
+      const timer = setTimeout(() => reject(new Error(`timeout after ${spec.timeoutMs} ms${collector.errors.length ? `; ${collector.errors.slice(-12).join('; ')}` : ''}; info=${JSON.stringify(collector.info)}; requests=${JSON.stringify(requestsSeen)}; failed=${JSON.stringify(failedRequests)}`)), spec.timeoutMs);
       off.push(cdp.on('Runtime.bindingCalled', (p, sid) => {
         if (sid !== sessionId || p.name !== '__mfsEmit') return;
         const ev = JSON.parse(p.payload) as MfsEvent;

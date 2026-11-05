@@ -111,8 +111,9 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
   if (String.fromCharCode(...new Uint8Array(pointsData, 0, 4)) !== 'TFC1' || String.fromCharCode(...new Uint8Array(boundaryData, 0, 4)) !== 'TBO1') throw new Error('Unsupported Tokyo cluster data signature');
   const pointCount = pointsView.getUint32(4, true), segmentCount = boundaryView.getUint32(4, true);
   if (pointsData.byteLength !== 8 + pointCount * 6 || boundaryData.byteLength !== 8 + segmentCount * 8 || pointCount !== stats.sourceFeatures || stats.categoryCounts.length !== 4) throw new Error('Baked point data and statistics disagree');
-  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const glContext = canvas.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false });
+  if (!glContext) throw new Error('WebGL2 is not available');
+  const gl = glContext;
   const ratio = (stats.bounds.maxY - stats.bounds.minY) / (stats.bounds.maxX - stats.bounds.minX);
   if (!Number.isFinite(ratio) || ratio <= 0) throw new Error('Invalid city boundary aspect ratio');
 

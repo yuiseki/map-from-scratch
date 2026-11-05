@@ -78,8 +78,9 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     return response.arrayBuffer();
   }));
-  const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const glContext = canvas.getContext('webgl2', { antialias: true, alpha: false });
+  if (!glContext) throw new Error('WebGL2 is not available');
+  const gl = glContext;
   const landProgram = createProgram(gl, LAND_VS, LAND_FS);
   const pointProgram = createProgram(gl, POINT_VS, POINT_FS);
   const landHeader = new DataView(land);

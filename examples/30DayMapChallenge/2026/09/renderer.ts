@@ -2,7 +2,7 @@ import { decodeUrbanCells, URBAN_EXTENT } from './urban.ts';
 
 export interface UrbanStats {
   sourceRelease: string; resolutionArcseconds: number; crs: string;
-  cells: number; populationCells: number; builtOnlyCells: number;
+  cells: number; populationCells: number; builtOnlyCells: number; matchedCellCount: number;
   populationEstimate: number; builtSurfaceM2: number;
   extent: { west: number; east: number; south: number; north: number };
   recordBytes: number; outputBytes: number; populationProduct: string; builtProduct: string;
@@ -76,8 +76,9 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   const [binary, stats] = await Promise.all([binaryResponse.arrayBuffer(), statsResponse.json() as Promise<UrbanStats>]);
   const records = decodeUrbanCells(binary, URBAN_EXTENT);
   if (records.length / 4 !== stats.cells || stats.recordBytes !== 8 || stats.resolutionArcseconds !== 30) throw new Error('GHSL record count or layout does not match metadata');
-  const gl = canvas.getContext('webgl2', { alpha: false, antialias: true, powerPreference: 'high-performance' });
-  if (!gl) throw new Error('WebGL2 is unavailable');
+  const glContext = canvas.getContext('webgl2', { alpha: false, antialias: true, powerPreference: 'high-performance' });
+  if (!glContext) throw new Error('WebGL2 is unavailable');
+  const gl = glContext;
   const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX), fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
   const program = gl.createProgram();
   if (!program) throw new Error('WebGL2 could not allocate a program');

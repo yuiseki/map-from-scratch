@@ -82,8 +82,9 @@ export async function mount(canvas: HTMLCanvasElement, base: string) {
   }));
   const stats = statsResponse as { observations: number; storms: number; segments: number; basinSegments: Record<string, number> };
   const landData = land as ArrayBuffer, trackData = tracks as ArrayBuffer;
-  const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
-  if (!gl) throw new Error('WebGL2 is not available');
+  const glContext = canvas.getContext('webgl2', { antialias: true, alpha: false });
+  if (!glContext) throw new Error('WebGL2 is not available');
+  const gl = glContext;
   const landProgram = createProgram(gl, LAND_VS, LAND_FS), lineProgram = createProgram(gl, LINE_VS, LINE_FS);
   const landHeader = new DataView(landData), vertexCount = landHeader.getUint32(0, true), indexCount = landHeader.getUint32(4, true);
   const landVao = gl.createVertexArray()!; gl.bindVertexArray(landVao);
