@@ -1,0 +1,23 @@
+:root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; background: #081b24; color: #e8f0ec; font-synthesis: none; }
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+.frame { position: relative; width: 100%; height: 100%; min-height: 560px; overflow: hidden; background: #081b24; }
+#map { display: block; width: 100%; height: 100%; }
+.panel { position: absolute; z-index: 2; top: clamp(14px, 3vh, 34px); left: clamp(14px, 3vw, 44px); width: min(390px, calc(100vw - 28px)); padding: 25px 26px 21px; border: 1px solid rgba(171, 208, 204, .21); border-radius: 5px; background: rgba(8, 27, 36, .91); box-shadow: 0 18px 52px rgba(0, 0, 0, .28); backdrop-filter: blur(18px); }
+.eyebrow, footer { font: 500 10px 'DM Mono', monospace; letter-spacing: .13em; color: #8baea9; }
+h1 { margin: 13px 0 4px; font-size: clamp(24px, 2.4vw, 30px); line-height: 1.25; letter-spacing: -.04em; }
+.lead { margin: 0 0 23px; color: #aec1bf; font-size: 13px; }
+label { display: block; margin: 0 0 7px; color: #8baea9; font: 500 10px 'DM Mono', monospace; letter-spacing: .1em; }
+.controls { display: flex; gap: 8px; }
+select, button { min-height: 42px; border: 1px solid #54736f; border-radius: 3px; background: #102c37; color: #edf3ef; font: 600 13px ui-sans-serif, system-ui, sans-serif; }
+select { flex: 1; padding: 0 12px; }
+button { padding: 0 13px; cursor: pointer; }
+select:focus-visible, button:focus-visible { outline: 2px solid #f2b05c; outline-offset: 2px; }
+.note { min-height: 58px; margin: 13px 0 17px; color: #bdceca; font-size: 12px; line-height: 1.7; }
+.source { display: flex; gap: 10px; align-items: center; padding-top: 13px; border-top: 1px solid rgba(171, 208, 204, .16); color: #9db3af; font-size: 11px; line-height: 1.7; }
+.source b { color: #e4eeea; font-weight: 600; }
+.dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #f2b05c; box-shadow: 0 0 12px rgba(242, 176, 92, .75); }
+.status { margin: 12px 0 0; color: #76928e; font: 10px 'DM Mono', monospace; }
+footer { position: absolute; right: clamp(14px, 3vw, 44px); bottom: 23px; left: clamp(14px, 3vw, 44px); display: flex; justify-content: space-between; color: #78938f; font-size: 9px; }
+footer span:last-child { font-family: ui-sans-serif, system-ui, sans-serif; letter-spacing: .04em; }
+@media (max-width: 600px) { .frame { min-height: 520px; } .panel { top: 12px; left: 12px; padding: 18px; } h1 { font-size: 24px; } .lead { margin-bottom: 16px; } .note { min-height: 44px; } footer { bottom: 10px; flex-direction: column; gap: 4px; } }

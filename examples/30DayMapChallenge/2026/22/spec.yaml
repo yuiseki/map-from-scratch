@@ -1,0 +1,88 @@
+id: 30DayMapChallenge-2026-22
+request: >-
+  30DayMapChallenge 2026「Projections」。同じ世界の国境を少なくとも4つの数式的に異なる全球投影で切り替え、同じ描画スケール・データ・視覚表現で比較する。格子線と赤道を示し、保存する性質と歪みを説明する。
+requirements:
+  - id: four-global-projections
+    need: 同じ国境を4つ以上の全球投影で比較する
+    rationale: Equirectangular、Mercator、Equal Earth、Winkel Tripelの4式を専用描画器で提供する
+  - id: same-geometry-and-scale
+    need: 投影の切替で同じ国データと画面縮尺を維持する
+    rationale: 一つのベイク済み177国ジオメトリを共有し、全ビューで同じラジアン対ピクセル係数を使う
+  - id: distortion-reference
+    need: 格子線・赤道・縮尺参照を表示する
+    rationale: 30°間隔のgraticule、強調赤道、赤道上10°の尺度バーを描画する
+  - id: explain-domain-and-properties
+    need: 図法の特徴、歪み、Mercatorの緯度限界を説明する
+    rationale: 各図法の説明を操作パネルに表示し、Mercatorの限界を±85.05112878°に設定する
+  - id: offline-source
+    need: 実行時に外部地図サービスへ接続せず、出典を明記する
+    rationale: Natural Earthの公有領域データを同一originから読み込み、外部リクエストを0件にする
+evaluation:
+  budgets:
+    - {metric: source_country_count, min: 177, max: 177, unit: features, requirement: same-geometry-and-scale}
+    - {metric: projection_count, min: 4, unit: projections, requirement: four-global-projections}
+    - {metric: mercator_latitude_limit_deg, min: 85.05112878, max: 85.05112878, unit: degrees north/south, requirement: explain-domain-and-properties}
+    - {metric: first_frame_ms, max: 1200, unit: ms, requirement: offline-source}
+    - {metric: draw_cpu_ms, stat: p95, max: 16.7, unit: ms, requirement: same-geometry-and-scale}
+    - {metric: frame_ms, stat: p95, max: 33.4, unit: ms, requirement: distortion-reference}
+    - {metric: code_gzip_bytes, max: 40000, unit: B, requirement: offline-source}
+    - {metric: data_gzip_bytes, max: 250000, unit: B, requirement: offline-source}
+  gates: [all browser checks pass, four projection outputs differ, screenshot visually reviewed, only same-origin runtime requests]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/22/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: initial-world
+      what: Fetch the same-origin baked geometry, draw the opening Equal Earth view and mark first frame from renderer construction through initial Canvas drawing.
+      metrics: [first_frame_ms]
+    - id: projection-switch-and-redraw
+      what: Switch among all four formulas and draw 36 consecutive frames; read actual Canvas pixels for countries and graticule.
+      metrics: [draw_cpu_ms, frame_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/22/bake.ts]
+  sources:
+    - id: natural-earth-110m-admin0-countries-v5.1.1
+      origin: >-
+        Local Natural Earth `ne_110m_admin_0_countries` GeoParquet from collection directory v5.1.2; layer `.VERSION.txt` and dataset card report source layer version 5.1.1. 177 features (148 Polygon, 29 MultiPolygon), EPSG:4326, 231,079 bytes; public domain.
+      license: >-
+        Natural Earth public-domain terms. Attribution is optional; this page identifies Natural Earth as the source and links its publisher.
+      url: https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-22/countries.json
+    - data/baked/30DayMapChallenge-2026-22/stats.json
+  preparation:
+    - Read the complete local GeoParquet at the catalog path; select ADM0_A3, NAME and geometry and assert exactly 177 rows, 148 Polygon and 29 MultiPolygon.
+    - Preserve all source coordinates in EPSG:4326 and sort deterministically by ADM0_A3. Do not reproject or simplify at bake time because the user switches the projection at runtime.
+    - Write the same frozen country list and provenance/count stats. At runtime project the shared data with direct formulas, split lines at the antimeridian, drop non-finite points and clamp Mercator at ±85.05112878°.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/22/index.html, examples/30DayMapChallenge/2026/22/main.ts, examples/30DayMapChallenge/2026/22/renderer.ts, examples/30DayMapChallenge/2026/22/projections.ts, examples/30DayMapChallenge/2026/22/style.css]
+    dependencies: []
+    why: A single world of 177 low-resolution country polygons fits a direct Canvas renderer. Keeping one source geometry and recomputing four small projection formulas at redraw makes the comparison honest without bundling a general map engine.
+  alternatives:
+    - {option: WebGL2, rejected_because: A single low-detail world frame needs no large vertex batch or continuous animation; Canvas 2D makes the dedicated formulas and pixel checks direct.}
+    - {option: D3 geo, rejected_because: Runtime projection library use is disallowed and the renderer only needs four compact formulas.}
+    - {option: bake each projection separately, rejected_because: Separate datasets risk comparing different geometry and add duplicated payloads; the projection selector keeps one source.}
+  not_doing: [panning, zooming, globe mode, labels, thematic data, interactive country inspection, external tiles, runtime projection libraries]
+performance_knowledge:
+  - id: projection-cost-pending
+    finding: Four low-detail world projections are recomputed on Canvas redraw from one compact source geometry.
+    evidence: "3-run browser benchmark: first frame p50 30.3 ms; draw CPU p95 6.01 ms; frame interval p95 16.31 ms; 8/8 budgets and 6/6 browser checks pass. The 1280×800 screenshot was visually reviewed."
+    applies_when: A global overview with Natural Earth 1:110m geometry and projection-switch interaction.
+verification:
+  checks:
+    - {id: projection-switching-changes-rendered-pixels, what: "Each selector option changes the visible projection", how: "Compare checksums sampled from actual Canvas pixels after selecting each formula", expected: "Four distinct pixel checksums and a change from the opening view."}
+    - {id: same-source-geometry-in-every-view, what: "Every view uses all source countries", how: "Check the frozen 177-feature data count while each of four options is selected", expected: "177 features in every view."}
+    - {id: recognizable-country-geometry-is-visible, what: "Land reaches the page as real source polygons", how: "Read actual Canvas pixels over the world and sample mainland France", expected: "More than 20,000 land-like pixels and a non-background France sample."}
+    - {id: graticule-and-equator-reach-screen, what: "Graticule and equator are visible", how: "Read the actual Canvas pixel at the Equator near 60°E", expected: "Amber equator pixel is present."}
+    - {id: projection-explanations-and-domain-disclosure, what: "Text communicates each projection's trade-off and Mercator limit", how: "Inspect rendered page text", expected: "Winkel Tripel, area/angle characteristics and ±85.0511° are stated."}
+    - {id: no-runtime-external-network, what: "All page resources are local", how: "Inspect browser resource entries", expected: "Zero off-origin requests."}
+  harness: The browser bench checks drawn Canvas pixels and reports individual check IDs; do not infer visible geography from data buffers alone.

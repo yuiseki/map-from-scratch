@@ -27,7 +27,7 @@
 | 19 | Senses: Smell | 芝浦水再生センターのOSM形状と、約6.2 km離れた気象庁東京観測所の2026-11-04 18時の北北西・1.9 m/s観測を別地点として表示。観測風から南東へ5 kmの仮定扇形を描き、臭気測定・排出量・濃度・曝露の推定ではないことを明記。東京都下水道局の施設情報、気象庁、ODbLの出典を表示 | 完了 · 3回計測・8 checks / 12 budgets PASS · 目視確認済み · 道路8,353線 / 17,978頂点・水路689線 / 2,515頂点 · frame p95 2.895 ms · draw p95 2.02 ms · first frame p50 48.615 ms · code/data gzip 10,849 / 155,812 B |
 | 20 | Hexagons | 世界人口を H3 六角形で色と高さに変換。`hf:kontur-population-2023-11-01-22km`（CC BY） | 完了 · 3回計測・9 checks / 12 budgets PASS・画面確認済み · 71,283セル / 推計人口合計8,031,924,024 · first frame p50 857.03 ms · frame p95 1.98 ms · GPU p95 1.02 ms · GPU buffers 30.23 MB · code/data gzip 12,348 / 2,668,475 B |
 | 21 | OpenStreetMap | OSM の東京データから建物・道路・水系を選択描画する、OSM データそのものを主役にした地図。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と派生データ条件を確認） | TODO |
-| 22 | Projections | Natural Earth の同一地物を複数投影に変換し、歪みをインタラクティブに比較。`hf:natural-earth`（public domain） | TODO |
+| 22 | Projections | Natural Earth の同一地物を複数投影に変換し、歪みをインタラクティブに比較。`hf:natural-earth`（public domain） | 完了 · 3回計測・8 budgets / 6 checks PASS・画面確認済み · 177か国 / 4投影 · first frame p50 30.3 ms · draw p95 6.01 ms · frame p95 16.31 ms · gzip data/code 177,700 / 6,825 B |
 | 23 | Senses: Taste | 東京の飲食店分布をカテゴリ・密度で描く。Overture Places または OSM の出典とライセンスを選定時に確認（CDLA / ODbL） | TODO |
 | 24 | Network | 日本の鉄道路線と駅をグラフ化し、接続性・乗換を探索。`hf:ksj` の鉄道データまたは GTFS（CC BY 4.0）、ネットワーク形状を検証 | TODO |
 | 25 | Is this a map? | 地図とデータ図表の境界を問う、場所を音・色・並びに変換する実験。出典が必要な場合はカタログの public-domain 地震データを使い、地理情報の符号化を明示 | TODO |

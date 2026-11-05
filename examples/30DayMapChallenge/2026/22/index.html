@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#081b24">
+    <title>地球を平面にする — Projections</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main class="frame">
+      <canvas id="map" aria-label="Natural Earth の国境線を投影した世界地図"></canvas>
+      <header class="panel">
+        <div class="eyebrow">30 DAY MAP CHALLENGE · 22</div>
+        <h1>地球を、平面にする。</h1>
+        <p class="lead">同じ国境を、4つの数式で投影する。</p>
+        <label for="projection">投影法を選択</label>
+        <div class="controls">
+          <select id="projection" aria-describedby="projection-note"></select>
+          <button id="reset" type="button">基準に戻す</button>
+        </div>
+        <p id="projection-note" class="note"></p>
+        <div class="source"><span class="dot"></span><span><b>Natural Earth · 1:110m</b><br>177か国 · 公有領域 · 30° graticule</span></div>
+        <p id="status" class="status">地図を読み込んでいます</p>
+      </header>
+      <footer><span>NO FLAT MAP PRESERVES EVERYTHING</span><span>同じ地球に、唯一の正解はない。</span></footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
