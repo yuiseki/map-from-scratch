@@ -19,4 +19,4 @@ OurAirports の固定スナップショットは86,002レコードです。ベ�
 
 `camera.test.ts` は初期フィット、ポインター位置を固定するズーム、パンを検証します。`airports.test.ts` は Equal Earth の東西南北、正規化座標範囲、固定長エンコード、種別・定期便フラグ保持、壊れたバッファの拒否を検証します。`bench.ts` はレコード数、6種の存在、データ出典・AI実装の開示、ロサンゼルスと羽田の実座標付近の描画を確認し、80フレームのパン・ズームを計測します。
 
-2026-11-06: airport-pixel checks now use `readBack()` so they do not read back the visible canvas. The renderer's unused `sampleAt()` readback method was removed. Previous frame timings are provisional until a corrected three-run browser benchmark is recorded.
+2026-11-06 corrected three-run Chrome 156 measurement after moving pixel checks to an OffscreenCanvas copy: 6/6 budgets and 4/4 checks passed. Frame p95 1.335 ms, draw CPU p95 0.020 ms, first-frame p50 171.730 ms; gzip code/data 9,180/508,374 B. Host load averages were 20.35/21.23/21.50. See `results/30DayMapChallenge-2026-10/latest.json`.

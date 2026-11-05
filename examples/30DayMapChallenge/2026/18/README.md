@@ -22,10 +22,11 @@ systemd-run --user --scope -q -p MemoryMax=8G -p MemorySwapMax=0 -p CPUQuota=400
 
 ## 計測
 
-`frame_ms` は連続する `requestAnimationFrame` コールバック間の時刻差、`draw_cpu_ms` はそのコールバック内で行う同期 `renderer.draw()` のCPU時間として定義しています。以前のベンチは「描画開始から次のコールバックまで」を測っていたため、その値は新方式と比較できません。旧方式での3回計測は、frame/draw CPUのp95が16.215/6.045、17.19/7.10、125.555/4.68 msでした。旧方式の3回目と同時にhost load average 19.53/21.19/20.61も記録されていますが、frame値との因果関係は判断できません。修正後の3回計測（2026-11-05）はframe p50/p95/p99/maxが115.705/132.485/365.370/904.465 ms、draw CPU p95が4.015 ms、first-frame p50が80.670 ms、コード/データgzipが14,312/26,120 Bでした。10 budgets中9 PASS/1 FAIL（`frame_ms` p95 132.485 ms > 16.7 ms）、9/9 checks PASSです。同じ実行中にhost load average 20.56/20.81/20.51が記録され、表示環境はxvfbでした。これらは同時観測された環境情報であり、長いcallback間隔の原因とは断定できません。未達を記録し、低負荷時の再計測までframe目標を合格扱いにしません。
+旧方式のframe計測（描画開始から次のrequestAnimationFrameまで）と、表示Canvasの直接読戻しを含む2026-11-05の値は履歴値です。frame計測方法も「連続するrequestAnimationFrameコールバック間の時刻差」に統一しました。現行値は下記のOffscreenCanvas検査を使った2026-11-06の再計測です。
 
-2026-11-06に、ベンチのピクセル検査を表示用Canvasへの直接`getImageData()`から、OffscreenCanvasへのコピー後に読む方式へ変更しました。直接読戻しはChromiumのCanvas描画経路に影響し得るため、上記の数値は旧検査方式で得た参考値です。修正後の3反復計測は未実施で、frame予算の達成状況は未確定です。計測を再実行するときは、ベンチ前のピクセル検査が表示用Canvasを読み戻さないことを確認してください。
 
 ## 出典
 
 出典：政府統計の総合窓口(e-Stat)「令和2年国勢調査」(総務省統計局)を加工して作成。利用条件はe-Statの利用規約に基づくCC BY 4.0互換の条件です。地域メッシュの結果表示、秘匿値`*`、人口がないメッシュのレコードなしという意味は、総務省統計局の[ダウンロードデータの留意事項](https://www.stat.go.jp/data/mesh/pdf/ryuijikou.pdf)とe-Statの[T001142定義書](https://www.e-stat.go.jp/help/data-definition-information/downloaddata/T001142.pdf)を参照しています。
+
+2026-11-06 corrected three-run Chrome 156 measurement after pixel checks were moved to an OffscreenCanvas copy: all 10 budgets and all 9 browser checks passed. Using callback-to-callback RAF intervals, frame p95 was 6.100 ms, draw CPU p95 3.130 ms, and first-frame p50 77.330 ms; gzip code/data 14,308/26,120 B. Host load averages were 23.84/22.02/21.75. This replaces the prior provisional measurement. See `results/30DayMapChallenge-2026-18/latest.json`.

@@ -22,4 +22,4 @@ Data: [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright), 
 
 ## Measurement note
 
-On 2026-11-06 the browser pixel checks were changed to use `readBack()` and an OffscreenCanvas copy. Earlier frame timings are provisional; repeat the capped browser measurement before using them as the current performance baseline.
+2026-11-06 corrected three-run Chrome 156 measurement after pixel checks were moved to an OffscreenCanvas copy: 8/8 budgets and 9/9 browser checks passed. Frame p95 1.010 ms, draw CPU p95 0.860 ms, first-frame p50 4.235 ms; gzip code/data 10,157/2,007 B. Host load averages were 23.08/21.78/21.67. See `results/30DayMapChallenge-2026-16/latest.json`.

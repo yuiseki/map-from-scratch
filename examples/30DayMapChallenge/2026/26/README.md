@@ -40,8 +40,8 @@ bin/mfs bench 30DayMapChallenge-2026-26 -n 3
 
 ## 計測
 
-2026-11-05 の資源上限付き Chrome 156 / 1280×800 3反復計測では、2,264ポリゴン・124,919頂点から初回描画p50 213.5 ms、frame p95 4.48 ms（最大10.51 ms）、描画CPU p95 0.205 ms（最大1.27 ms）でした。コードgzip 9,678 byte、データgzip 534,524 byte、外部originリクエスト0件で、3反復すべての予算とブラウザ検査に合格しました。これは表示Canvasのピクセルを直接読んでいたベンチの結果で、修正後の再測定待ちです。ブラウザの実ピクセルから計測した浸水色の合計は391,402 pxです。
+2026-11-05 の計測値（frame p95 4.48 ms、draw CPU p95 0.205 ms、first frame p50 213.5 ms）は表示Canvasを直接読戻していた旧ベンチの履歴値です。修正後の2026-11-06計測値を下に記録しました。ブラウザの実ピクセルから計測した浸水色の合計は391,402 pxです。
 
 結果JSONとデスクトップの1280×800スクリーンショットは `results/30DayMapChallenge-2026-26/` にあります。スクリーンショットでは河道と浸水ランクの広がり、500 mスケール、選択範囲、出典を確認しました。モバイル表示は今回の計測・視覚レビューに含めていません。
 
-2026-11-06: the flood-palette pixel check now uses `readBack()` to inspect an OffscreenCanvas copy. Earlier frame and draw timings are provisional until the corrected three-run browser measurement is repeated.
+2026-11-06 corrected three-run Chrome 156 measurement after the flood-palette check was moved to an OffscreenCanvas copy: 14/14 budgets and 8/8 checks passed. Frame p95 5.540 ms, draw CPU p95 0.145 ms, first-frame p50 246.455 ms; gzip code/data 9,678/534,524 B. Host load averages were 23.57/22.05/21.77. See `results/30DayMapChallenge-2026-26/latest.json`.

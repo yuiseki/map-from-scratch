@@ -28,4 +28,4 @@
 
 `taste.test.ts` の8テストが通過しています。修正前の3回ブラウザ計測は10/10予算・6/6チェックに合格。first frame p50 70.09ms、描画CPU p95 2.035ms、frame p95 8.855ms、gzip data 207,700Bでした。1280×800の画面も確認しました。
 
-2026-11-06: the rendered-pixel assertion now uses `readBack()` to inspect an OffscreenCanvas copy. Previous frame and draw timings are provisional until the corrected three-run browser measurement is repeated.
+2026-11-06 corrected three-run Chrome 156 measurement after rendered-pixel checks were moved to an OffscreenCanvas copy: 10/10 budgets and 6/6 checks passed. Frame p95 10.320 ms, draw CPU p95 2.295 ms, first-frame p50 71.420 ms; gzip code/data 10,553/207,656 B. Host load averages were 23.88/22.08/21.78. See `results/30DayMapChallenge-2026-23/latest.json`.

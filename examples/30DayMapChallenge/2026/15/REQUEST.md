@@ -19,4 +19,4 @@ GEBCO Bathymetric Compilation Group 2026 (2026), *The GEBCO_2026 Grid - a contin
 
 USGS ComCatの地震カタログは米国政府の著作物としてパブリックドメインで、USGSへのクレジットを付しています。地震カタログの選択条件は年・マグニチュード・緯度経度範囲によるもので、すべての地震や断層を示すものではありません。
 
-2026-11-06: the section-map pixel assertions now read from an OffscreenCanvas copy using `readBack()`. Previous frame and draw timings are provisional until the corrected three-run browser benchmark is repeated.
+2026-11-06 corrected three-run Chrome 156 measurement after moving section-map pixel checks to an OffscreenCanvas copy: 7/7 budgets and 5/5 checks passed. Frame p95 3.845 ms, draw CPU p95 2.415 ms, first-frame p50 93.675 ms; gzip code/data 8,366/2,192 B. Host load averages were 21.52/21.45/21.57. See `results/30DayMapChallenge-2026-15/latest.json`.
