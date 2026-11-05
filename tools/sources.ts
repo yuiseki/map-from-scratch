@@ -223,6 +223,20 @@ const SOURCES: Record<string, Source> = {
     local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23-260831.osm.pbf',
     copy: true,
   },
+  // Frozen OSM point table for the Tokyo 23 wards, EPSG:3857 GeoParquet;
+  // its extracted city boundary is from the same ODbL snapshot.
+  'osm-tokyo23-points': {
+    out: 'tokyo23_osm_points.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/parquet/planet_osm_point.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_point.parquet',
+    copy: true,
+  },
+  'osm-tokyo23-boundary': {
+    out: 'tokyo23_osm_boundary.geojson',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23_osm_boundary.geojson',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/tokyo23_osm_boundary.geojson',
+    copy: true,
+  },
   // kepler.gl demo datasets (commit 49c3101)
   'kepler-earthquakes': {
     out: 'kepler_earthquakes.csv',

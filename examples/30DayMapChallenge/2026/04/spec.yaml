@@ -1,0 +1,134 @@
+id: 30DayMapChallenge-2026-04
+request: >-
+  30DayMapChallenge 2026 の「Clusters」。東京23区にある飲食・買い物・交通・
+  公共観光施設の点を、表示倍率に沿った画面セルにGPU集約して密度と代表カテゴリを示す。
+requirements:
+  - id: tokyo-facilities
+    need: 同一時点のOpenStreetMapから23区内の施設点を分類する
+    rationale: 2026-08-31スナップショットから行政境界内の141,092点を再現可能に抽出する
+  - id: screen-clusters
+    need: 画面上で隣接する施設点をGPUでセル集約し、混雑度と主カテゴリを表示する
+    rationale: 密集した施設の位置関係を過剰な個別マーカーなしに読めるようにする
+  - id: category-filter
+    need: 全施設または4カテゴリを切り替えて集約結果を比較できる
+    rationale: カテゴリごとの集積場所を同じ表示範囲で比べられるようにする
+  - id: responsive-map
+    need: ドラッグ移動、ホイール拡大縮小、画面サイズ変更に応答する
+    unmeasured: frame p95 16.7 ms 以内
+  - id: quick-start
+    need: ページを開くと施設クラスターが見え、件数とデータ出典が分かる
+    unmeasured: 初回描画 1 秒以内
+evaluation:
+  budgets:
+    - {metric: facility_count, min: 140000, unit: points, requirement: tokyo-facilities}
+    - {metric: category_count, min: 4, unit: categories, requirement: tokyo-facilities}
+    - {metric: category_filter_count, min: 4, unit: modes, requirement: category-filter}
+    - {metric: occupied_cluster_cells, min: 50, unit: cells, requirement: screen-clusters}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-map}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+  gates: [GPU aggregation, four selectable categories, city boundary visible, attribution visible]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/04/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-map
+      what: 施設点を画面セルへ加算集約し、集積位置を描画する
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 東京23区を80フレーム移動・拡大縮小して集約を更新する
+      metrics: [frame_ms, gpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/04/bake.ts]
+  sources:
+    - id: osm-tokyo23-src-2026-08
+      origin: >-
+        yuiseki/osm-tokyo23-src-2026-08 point GeoParquet and its 23-ward cut
+        boundary, derived from OpenStreetMap planet snapshot 2026-08-31. Only
+        facility-tagged point features whose geometry is within that boundary
+        are used; the OSM tag fields amenity, shop, public_transport, railway,
+        highway, tourism and leisure determine four display categories.
+      license: >-
+        Open Database License 1.0 (ODbL); the extract and resulting database
+        remain ODbL. Attribution: © OpenStreetMap contributors, available under
+        the Open Database License 1.0.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+    - id: osm-tokyo23-boundary
+      origin: 23 special-ward boundary cut from the same OpenStreetMap snapshot
+      license: ODbL 1.0
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs:
+    - data/baked/30DayMapChallenge-2026-04/facilities.bin
+    - data/baked/30DayMapChallenge-2026-04/boundary.bin
+    - data/baked/30DayMapChallenge-2026-04/stats.json
+  preparation:
+    - >-
+      GeoParquet way column is EPSG:3857. DuckDB spatial filters point features
+      with ST_Within against the source GeoJSON boundary transformed from
+      EPSG:4326; facility nodes only are retained.
+    - >-
+      Category priority: food amenity (restaurant, cafe, fast_food, food_court,
+      ice_cream, pub, bar, biergarten), mobility (public_transport, railway,
+      bus_stop, bicycle_rental, taxi), shop, then civic/visitor amenity,
+      tourism or leisure. Duplicate geometry rows are not removed.
+    - >-
+      Coordinates are quantized to unsigned 16-bit normalized coordinates.
+      Point categories are packed as aligned six-byte TFC1 records; the boundary outline is
+      packed as TBO1 line segments. These are derived ODbL database outputs.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/04/index.html
+      - examples/30DayMapChallenge/2026/04/main.ts
+      - examples/30DayMapChallenge/2026/04/renderer.ts
+      - examples/30DayMapChallenge/2026/04/clusters.ts
+    dependencies: []
+    why: >-
+      An additive-blended RGBA8 framebuffer accumulates four category counts
+      into screen-space cells on the GPU; a second WebGL2 pass draws cluster
+      symbols colored by the dominant category and sized by cell density.
+  alternatives:
+    - option: CPU-side point clustering on each camera change
+      rejected_because: >-
+        The fixed 141k point set can be projected and binned directly on the
+        GPU without allocating or sorting a new CPU cluster list per frame.
+  not_doing: [individual point labels, exact count labels, facility search, routing, live OSM updates]
+performance_knowledge:
+  - claim: >-
+      Additive RGBA8 GPU clustering of 141k screen-space points stays well below
+      a 16.7 ms frame budget while rebuilding the grid on pan and zoom.
+    evidence: >-
+      RTX 3060, Chrome 156, Xvfb, 1280×800, 3 runs: 141,092 facility points,
+      54×34 cluster grid, 437 occupied cells, 3,221 boundary segments; frame
+      p95 0.455 ms, GPU p95 0.237 ms, first-frame p50 511.8 ms, JS heap p50
+      1.280 MB, code gzip 7,882 B, data gzip 553,102 B. Category filters,
+      populated GPU cells and boundary pixels passed readback checks.
+    applies_when: >-
+      A static city point set fits in a compact GPU buffer and density clusters
+      may use quantized screen-cell counts rather than exact feature counts.
+verification:
+  checks:
+    - id: source-count
+      what: facility count and four category counts match bake statistics
+      how: compare renderer-loaded TFC1 count with source-derived stats and benchmark checks
+      expected: at least 140000 points and all 4 categories nonempty
+    - id: gpu-cells
+      what: multiple screen cells receive facility points and draw cluster marks
+      how: GPU aggregate framebuffer readback confirms occupied cells; sampled image pixels differ from background
+      expected: at least 50 occupied cells and visible category colors
+    - id: city-boundary
+      what: Tokyo 23-ward boundary remains visible beneath cluster symbols
+      how: WebGL boundary pass plus framebuffer sampling
+      expected: visible line pixels distinct from sea background
+  harness:
+    - webglcontextlost is an error
+    - info.gpu must be hardware, not software rendering

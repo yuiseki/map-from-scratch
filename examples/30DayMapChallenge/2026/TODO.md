@@ -9,7 +9,7 @@
 | 01 | Points | 世界の M4.5 以上の地震点を、規模と深さで符号化。`hf:usgs-comcat-2025-m45`（public domain） | 完了 · 目視確認済み · frame p95 0.515 ms |
 | 02 | Lines | IBTrACS v04r01 の全世界ストーム経路を個体ごとに接続し、盆地別に色分け。カタログ記載 311,935 観測点・8.8 MB・SID/season 順 7 row groups を照合。実データは 5,010 SID、LON が 180°を超える 7,626 行を西経へ正規化、303,826 線分。速度など機関ごとに定義が揃わない値は符号化しない。`hf:ibtracs-v04r01`（NOAA/NCEI terms、指定のデータ・論文を引用） | 完了 · 目視確認済み · frame p95 0.580 ms |
 | 03 | Polygons | 2024年の国別総人口を Natural Earth の国境ポリゴンに結合し、対数色スケールで比較する。カタログの World Bank WDI `SP.POP.TOTL`（CC BY 4.0、出典に応じた帰属）と Natural Earth v5.1.1（public domain）を使用。人口値217件中213件を結合、未結合コード4件・人口値なし45地物。 | 完了 · 目視確認済み · frame p95 0.565 ms · first frame p50 508.2 ms |
-| 04 | Clusters | 東京の施設点をズームに応じて GPU 集約し、密度と代表カテゴリを表示。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と共有条件を確認） | TODO |
+| 04 | Clusters | 東京23区の OSM 2026-08-31 点施設を境界内で抽出し、飲食・買い物・交通・公共観光の4分類を表示倍率に沿った画面セルで GPU 集約。カタログ `hf:osm-tokyo23-src-2026-08` の ODbL 条件と出典表示を確認。141,092 点（29,077 / 29,496 / 25,091 / 57,428）。 | 完了 · 目視確認済み · frame p95 0.455 ms · first frame p50 511.8 ms |
 | 05 | Senses: Sight | 富士山の標高を地形陰影と視線方向で見せる。`hf:gsi-dem-fuji-z14-100m-2026-10-25`（CC BY 4.0） | TODO |
 | 06 | Vintage | Natural Earth を使い、紙地図風の色・文字・ハッチを専用 Canvas 描画器で再現。`hf:natural-earth`（public domain） | TODO |
 | 07 | 10 minute map | 台東区から徒歩10分圏をネットワーク探索で塗り分ける。東京の OSM 道路データを抽出・焼き込み（ODbL）。徒歩速度と通行可能性を明記 | TODO |
