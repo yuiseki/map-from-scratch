@@ -1,11 +1,11 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { cellBounds, cellGreenShare, GREEN_BAND_COLORS, greenShareBand, GREEN_CLASS_CODES, NO_DATA_COLOR, WORLD_COVER_CLASSES } from './feeling.ts';
 import type { GreenRenderer } from './renderer.ts';
 
-function canvasPalette(canvas: HTMLCanvasElement): { counts: number[]; noData: number; extent: [number, number, number, number] } {
+export function canvasPalette(canvas: HTMLCanvasElement): { counts: number[]; noData: number; extent: [number, number, number, number] } {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas readback unavailable');
-  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = readBack(ctx, 0, 0, canvas.width, canvas.height);
   const counts = Array.from({ length: 6 }, () => 0);
   const byColor = new Map<string, number>();
   const extent: [number, number, number, number] = [width, height, -1, -1];

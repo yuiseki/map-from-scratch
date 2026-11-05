@@ -1,13 +1,13 @@
-import { emit } from '../../../../harness/page/bench.ts';
+import { emit, readBack } from '../../../../harness/page/bench.ts';
 import { frameIntervals } from './frame-metrics.ts';
 import type { CellStatus, NullCell } from './nullmap.ts';
 import type { NullRenderer } from './renderer.ts';
 
-function sample(renderer: NullRenderer, cell: NullCell): number[] | null {
+export function sample(renderer: NullRenderer, cell: NullCell): number[] | null {
   const point = renderer.canvasPoint(cell.code);
   if (!point) return null;
   const ratio = renderer.canvas.width / renderer.canvas.clientWidth;
-  return [...renderer.canvas.getContext('2d')!.getImageData(Math.floor(point.x * ratio), Math.floor(point.y * ratio), 1, 1).data];
+  return [...readBack(renderer.canvas.getContext('2d')!, Math.floor(point.x * ratio), Math.floor(point.y * ratio)).data];
 }
 
 export async function run(renderer: NullRenderer) {
