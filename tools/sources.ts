@@ -319,6 +319,20 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/mlit-toshi-keikaku-jp/resolve/main/data/parquet/fy2025/kouen.parquet',
     copy: true,
   },
+  // KSJ N07 Tokyo bus route lines, 2022 edition (CC BY 4.0).
+  'ksj-n07-bus-route-tokyo-2022': {
+    out: 'ksj_n07_bus_route_tokyo_2022.parquet',
+    local: '/sata_hdd_24tb/hf_data/ksj-n07-bus-route-greater-tokyo/data/parquet/prefectures/13.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ksj-n07-bus-route-greater-tokyo/resolve/main/data/parquet/prefectures/13.parquet',
+    copy: true,
+  },
+  // KSJ P11 Tokyo bus stops, 2022 edition (CC BY 4.0).
+  'ksj-p11-bus-stops-tokyo-2022': {
+    out: 'ksj_p11_bus_stops_tokyo_2022.parquet',
+    local: '/sata_hdd_24tb/hf_data/ksj-p11-bus-stop-jp/data/parquet/prefectures/13.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ksj-p11-bus-stop-jp/resolve/main/data/parquet/prefectures/13.parquet',
+    copy: true,
+  },
   // MLIT National Land Numerical Information schools, 2023 Tokyo GeoParquet; CC BY 4.0.
   'ksj-p29-schools-tokyo-2023': {
     out: 'ksj_p29_schools_tokyo_2023.parquet',

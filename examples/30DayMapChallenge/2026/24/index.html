@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b29">
+  <title>Network — 30DayMapChallenge 2026</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="map-shell">
+    <canvas id="map" tabindex="0" role="application" aria-label="東京都のバス停とバスルート。矢印キーで移動、プラスとマイナスで拡大縮小、Homeで初期表示に戻ります"></canvas>
+    <section class="panel" aria-labelledby="title">
+      <p class="eyebrow">30 DAY MAP CHALLENGE · 2026 / 24</p>
+      <h1 id="title">NETWORK<br><span>東京のバス網</span></h1>
+      <p class="intro">線はバスルートの地理形状。点はバス停の位置と、資料に記録された系統数です。</p>
+      <p class="caveat">2022年版の記録です。時刻表・運行頻度・現在の運行状況は示しません。</p>
+      <div class="legend" aria-label="凡例">
+        <span><i class="route-key"></i>バスルート（N07）</span>
+        <span><i class="stop-key"></i>バス停（P11）</span>
+        <span><i class="hub-key"></i>複数系統の停留所</span>
+      </div>
+      <label class="operator-control" for="operator-filter">事業者の範囲<select id="operator-filter"><option value="">すべての事業者</option></select></label>
+      <dl class="stats">
+        <div><dt>描画中のルート線</dt><dd id="route-count">—</dd></div>
+        <div><dt>描画中のバス停</dt><dd id="stop-count">—</dd></div>
+        <div><dt>停留所の系統記録</dt><dd id="membership-count">—</dd></div>
+        <div><dt>事業者内の系統表記群</dt><dd id="label-group-count">—</dd></div>
+        <div><dt>停留所の事業者</dt><dd id="operator-count">—</dd></div>
+      </dl>
+      <div id="selection" class="selection" aria-live="polite">地図上の停留所を選択してください。</div>
+      <div class="controls">
+        <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+        <button id="zoom-out" type="button" aria-label="縮小">−</button>
+        <button id="reset" type="button">初期表示</button>
+      </div>
+      <p class="keys">ドラッグで移動 · ホイールで拡大縮小 · ←↑→↓ / ＋− / Home</p>
+    </section>
+    <footer class="credit">
+      <span id="loading">2022年の国土数値情報を読み込み中…</span>
+      <span><a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N07-v2_0.html">国土数値情報（バスルートデータ）</a>・<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P11-v3_0.html">国土数値情報（バス停留所データ）</a>を加工して作成 · CC BY 4.0</span>
+    </footer>
+  </main>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -29,8 +29,8 @@
 | 21 | OpenStreetMap | OSM の東京データから建物・道路・水系を選択描画する、OSM データそのものを主役にした地図。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と派生データ条件を確認） | 完了 · 3回計測・7 budgets / 7 checks PASS・画面確認済み · 19,948行 / 105,147頂点 · draw p95 0.14 ms · frame p95 1.295 ms · first frame p50 365.545 ms · gzip data/code 1,490,000 / 15,340 B |
 | 22 | Projections | Natural Earth の同一地物を複数投影に変換し、歪みをインタラクティブに比較。`hf:natural-earth`（public domain） | 完了 · 3回計測・8 budgets / 6 checks PASS・画面確認済み · 177か国 / 4投影 · first frame p50 30.3 ms · draw p95 6.01 ms · frame p95 16.31 ms · gzip data/code 177,700 / 6,825 B |
 | 23 | Senses: Taste | 東京の飲食店分布をカテゴリ・密度で描く。Overture Places または OSM の出典とライセンスを選定時に確認（CDLA / ODbL） | 完了 · 3回計測・10 budgets / 6 checks PASS・画面確認済み · 4,905地点 / 643 grid cells · first frame p50 70.09 ms · draw p95 2.035 ms · frame p95 8.855 ms · gzip data/code 207,700 / 10,550 B |
-| 24 | Network | 日本の鉄道路線と駅をグラフ化し、接続性・乗換を探索。`hf:ksj` の鉄道データまたは GTFS（CC BY 4.0）、ネットワーク形状を検証 | TODO |
-| 25 | Is this a map? | 地図とデータ図表の境界を問う、場所を音・色・並びに変換する実験。出典が必要な場合はカタログの public-domain 地震データを使い、地理情報の符号化を明示 | TODO |
+| 24 | Network | 国土数値情報の2022年東京都バスルート（N07）とバス停（P11）を別レイヤーで描き、停留所の記録系統数と事業者掲載範囲を比較。相互のID対応や現行運行を推測しない | 完了 · 3回計測・9 budgets / 4 checks PASS・画面確認済み · 9,545線 / 6,664停留所 · 15,286系統表記 · first frame p50 304.49 ms · draw p95 12.125 ms · frame p95 15.78 ms · gzip data/code 1,458,086 / 10,226 B |
+| 25 | Is this a map? | 地震の震源位置を同心円の残像表現へ変換し、地理情報と抽象的なデータアートの境界を試す。USGS ComCat の実データ（public domain）を使用し、円は物理的な地震波や危険度を表さないと明記 | 実装・テスト・データベイク・型検査済み · ブラウザ計測と画面確認待ち |
 | 26 | Water | 洪水想定深または海底地形を描き、水の分布と地形を表す。`z:ksj/A31a`（CC BY 4.0）または `hf:gebco-...-hokkaido-east`（採用範囲の条件確認） | TODO |
 | 27 | New tool | WebGPU compute と独自 WebGPU 描画器を新しい道具として使い、人口グリッドを並列描画。`hf:estat-census-mesh-2020`（CC BY 4.0） | TODO |
 | 28 | Senses: Feeling | 地域ごとの「感じ方」を色・触覚的な密度で表す主観的作品。個人情報を使わず、公開統計から作る代理指標または明記した合成値を採用 | TODO |
