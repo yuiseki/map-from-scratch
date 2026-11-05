@@ -150,6 +150,25 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://z.yuiseki.net/static/worldbank/wdi_basic_annual.parquet',
     copy: true,
   },
+  // MLIT monthly aggregated presence and broad home-area category counts, CC BY 4.0.
+  'mlit-fromto-city-2022-01': {
+    out: 'mlit_monthly_fromto_city.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/monthly_fromto_city.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/monthly_fromto_city.parquet',
+    copy: true,
+  },
+  'mlit-attribute-mesh1km-2022-01': {
+    out: 'mlit_attribute_mesh1km.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/attribute_mesh1km.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/attribute_mesh1km.parquet',
+    copy: true,
+  },
+  'mlit-city-master-2022-01': {
+    out: 'mlit_prefcode_citycode_master.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/prefcode_citycode_master.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/prefcode_citycode_master.parquet',
+    copy: true,
+  },
   // Natural Earth 10m admin 0, v5.1.1. Public domain.
   'ne-countries': {
     out: 'ne_10m_admin_0_countries.geojson',

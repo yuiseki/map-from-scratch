@@ -18,7 +18,7 @@
 | 10 | Prompting only | AI コードエージェントに制作プロンプトを与え、OurAirports 2026-08 固定スナップショットと Natural Earth を Canvas 2D の独自描画器で地図化。閉鎖・座標なし13,482件を除く72,520施設、うち定期便あり4,325件。Public domain（OurAirports帰属表示）・Natural Earth public domain。航空路は創作しない | 完了 · 3回計測・全check PASS · frame p95 0.755 ms · draw p95 0.025 ms · first frame p50 170.0 ms · data gzip 508,374 B · code gzip 9,272 B |
 | 11 | Senses: Sound | 東京23区の OSM 道路163,329本・鉄道8,004本から重み付き線密度を320×320セルに集計し、Canvas 2Dで表示。クリック地点の道路ノイズと鉄道低音をWeb Audio APIで合成。実測音・デシベルではないことと ODbL 帰属を表示 | 完了 · 3回計測・全check PASS · 道路54,883 / 鉄道8,400セル · first frame p50 62.29 ms · frame p95 0.315 ms · draw p95 0.055 ms · gzip 79,700 B data / 7,571 B code |
 | 12 | Power | World Bank WDI `EG.ELC.ACCS.ZS` の国別電力アクセス率を1990–2024年で比較し、欠損値を独立表示。Natural Earth 258か国に結合し、Canvas 2D + OffscreenCanvas Worker で描画 | 完了 · 目視確認済み · 2024年212か国 / 1990年96か国 · first frame p50 262.4 ms · frame p95 0.88 ms · 年変更 p95 68.11 ms · data gzip 346,550 B / code gzip 8,705 B |
-| 13 | Interactions | 都道府県間の通勤・滞在人口フローを、方向付きリンクと時間選択で描く。`hf:mlit-1km-fromto-2022-01` または Meta 移動統計（集計単位と CC BY 条件を確認） | TODO |
+| 13 | Interactions | 国交省の人流オープンデータで、市区町村別の月平均滞在人口と居住地4カテゴリの集計を地図化し、年月・曜日・時間帯を切り替える。発地市区町村は特定できないため地理的な経路線は描かない。`hf:mlit-1km-fromto-2022-01`（CC BY 4.0、加工内容と非公表値を明記） | 完了 · 3回計測・画面確認済み · frame p95 6.90 ms · draw p95 5.615 ms · month frame p95 14.365 ms · first frame p50 118.1 ms · data gzip 5,799,208 B / code gzip 8,443 B |
 | 14 | Borgesian map | OSM 建物・道路を地表と同じ縮尺で描く、領土に迫る地図の思考実験。東京の OSM 抽出（ODbL）、描画範囲を絞り密度を計測 | TODO |
 | 15 | Inside out | 地表の下を反転して見せる断面図。地震震源と地形・海底標高を組み合わせ、深さの次元を明示。`hf:usgs-comcat-2025-m45` + `hf:gebco-...-hokkaido-east`（個別ライセンス確認） | TODO |
 | 16 | Collaborative map | 人が共同編集してきた地物の履歴や貢献を題材にする。OSM データと履歴の取得可能性・ODbL を確認し、AI を「友人」として共同作成者扱いしない | 要件確認 |

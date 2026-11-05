@@ -1,0 +1,124 @@
+id: 30DayMapChallenge-2026-13
+request: >-
+  30DayMapChallenge 2026「Interactions」。国交省の人流オープンデータを使い、市区町村ごとの月平均滞在人口と4段階の居住地カテゴリを、月・曜日・時間帯を切り替えて対話的に探索する。
+requirements:
+  - id: nationwide-presence
+    need: 日本各地の実在する市区町村を人流データの目的地として描く
+    rationale: 2019–2021年月別データのある自治体を、同じ自治体内の1 kmメッシュ中心平均位置に配置する
+  - id: aggregated-interactions
+    need: 選択した自治体の滞在人口を、公開元の4種類の居住地カテゴリ別に比較できる
+    rationale: from_area は同じ市区町村・同じ都道府県内・同じ地方ブロック内・別地方ブロックの集計区分である
+    unmeasured: 特定の発地自治体や個人の経路を描かず、カテゴリ別人数と割合を表示する
+  - id: time-controls
+    need: 2019–2021年の月、休日・平日・全日、昼間・深夜・終日の集計を切り替えられる
+    rationale: 全36か月と dayflag/timezone 別に配布された集計を保持する
+  - id: suppression-disclosure
+    need: 10人未満の非公表値をゼロと解釈しない
+    rationale: データ出力で観測されないカテゴリは欠損表示し、元データの抑制規則を画面に記す
+    unmeasured: Browser disclosure check verifies that an absent category is explained as suppressed rather than zero.
+  - id: source-and-method
+    need: モバイル位置情報由来の月平均集計、加工、近似位置、出典と利用条件を表示する
+    rationale: 位置は個々の軌跡でも正確な自治体境界中心でもない
+    unmeasured: Browser text and source-link inspection verify provenance, CC BY credit and approximate-location wording.
+  - id: navigation
+    need: 地図をクリックして自治体を選択し、ドラッグ移動・ホイール拡大できる
+evaluation:
+  budgets:
+    - {metric: municipality_count, min: 1500, unit: municipalities, requirement: nationwide-presence}
+    - {metric: prefecture_count, min: 40, unit: prefectures, requirement: nationwide-presence}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+    - {metric: month_frame_ms, stat: p95, max: 400, unit: ms, requirement: time-controls}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: nationwide-presence}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: nationwide-presence}
+    - {metric: data_gzip_bytes, max: 6500000, unit: B, requirement: nationwide-presence}
+    - {metric: active_frame_gzip_bytes, max: 250000, unit: B, requirement: time-controls}
+  gates: [Japan municipality map, four source-defined origin bins, no precise routes, month/day/time controls, mobile-data origin and suppression caveats, CC BY 4.0 attribution]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/13/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-nationwide-map
+      what: 全国の市区町村位置と選択中の2021年11月人流カテゴリを描画する
+      metrics: [first_frame_ms]
+    - id: pan-zoom-and-hit-test
+      what: 画面移動、拡大縮小、自治体選択を80フレーム反復する
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: temporal-and-category-controls
+      what: 2019年1月から2021年12月まで月を順に切り替え、曜日・時間帯カテゴリを切り替える
+      metrics: [month_frame_ms, active_frame_gzip_bytes]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/13/bake.ts]
+  sources:
+    - id: mlit-1km-fromto-2022-01
+      origin: >-
+        国土交通省「全国の人流オープンデータ」。Agoop SDK を含むスマートフォンアプリの位置情報をもとにした月平均滞在人口。2019-01–2021-12。市区町村別表は目的地市区町村と、同一自治体/同一都道府県/同一地方ブロック/別地方ブロックの居住地カテゴリを集計。個別ユーザーや発地市区町村は含まない。
+      license: >-
+        CC BY 4.0（政府標準利用規約2.0準拠）。出典：「全国の人流オープンデータ」（国土交通省）（https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto）を加工して作成。加工内容: 年月・曜日・時間帯・目的地市区町村・居住地カテゴリで集約し、1 km メッシュ中心平均を目的地位置として付与。国土交通省による公開または承認を示すものではない。
+      url: https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto
+    - id: mlit-attribute-mesh1km-2022-01
+      origin: MLIT source's 2020 version of 1 km mesh attributes; WGS 84 mesh centers are averaged by municipality to place destination marks.
+      license: CC BY 4.0; same attribution and processing notice as the MLIT human-flow data.
+      url: https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto
+    - id: ne-japan-prefectures
+      origin: Natural Earth 10m Admin 1 prefecture outlines, Japan, Natural Earth v5.1.1.
+      license: Public domain; attribution appreciated.
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-1-states-provinces/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-13/frames
+    - data/baked/30DayMapChallenge-2026-13/municipalities.json
+    - data/baked/30DayMapChallenge-2026-13/prefectures.json
+    - data/baked/30DayMapChallenge-2026-13/stats.json
+  preparation:
+    - >-
+      Use the 2020 mesh-attribute version; average its published WGS 84 mesh-center coordinates by citycode and attach 2020 municipality names. This is an approximate mesh-location mean, not a legal boundary centroid.
+    - >-
+      Group all source rows for 2019–2021 by year, month, dayflag, timezone, destination citycode and from_area. Write one gzip-compressed MFR1 frame per month, with four unsigned 32-bit totals for each of the 3 × 3 day/time categories. Omit 120 grouped records whose destination citycodes lack a matching 2020 mesh-centre location. Retain absent/suppressed bins as zero internally but display their absence as “—” and disclose that unreported values are not zero.
+    - >-
+      Draw Natural Earth prefecture outlines and municipality marks with a dedicated Canvas 2D renderer. Mark size represents the sum of published category totals; hue represents the published non-local share, not a route or individual movement path.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Path2D + Pointer Events + DecompressionStream + per-month memory cache
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/13/index.html, examples/30DayMapChallenge/2026/13/main.ts, examples/30DayMapChallenge/2026/13/renderer.ts, examples/30DayMapChallenge/2026/13/mobility.ts]
+    dependencies: []
+    why: A few thousand municipality marks and 47 outlines can be redrawn directly in Canvas 2D; lazy month chunks keep first-view network transfer small while native controls expose all 36 months and category dimensions.
+  alternatives:
+    - option: geographic origin-to-destination arcs
+      rejected_because: The source only gives four broad residence-area categories and no origin municipality; drawing routes would fabricate geography.
+    - option: individual animated trajectories
+      rejected_because: The source is aggregated monthly presence and does not include person-level records or trajectories.
+    - option: generic map engine
+      rejected_because: A fixed national extent and a few thousand points need no runtime mapping library.
+  not_doing: [exact origin locations, individual tracking, day-level movement, official municipality boundary polygons, interpreting suppressed values as zero]
+performance_knowledge:
+  - claim: >-
+      The browser initially fetches one gzip-compressed year-month chunk with all weekday/holiday and time-of-day categories. It caches chunks by month and renders the active category slice.
+    evidence: >-
+      Three Chrome 156/Xvfb runs at 1280×800: p50 first frame 118.085 ms; frame p95 6.90 ms; Canvas draw CPU p95 5.615 ms; month-frame p95 14.365 ms across 108 switches; initial chunk 157,015 B, largest monthly chunk 160,400 B. All declared budgets and checks passed. The 36 frames plus metadata gzip to 5,799,208 B as shipped.
+    applies_when: The loaded dataset contains 2019–2021 monthly, day-type and time-of-day aggregate bins.
+verification:
+  checks:
+    - id: nationwide-geography
+      what: The map includes broad Japanese prefecture outlines and municipal destinations.
+      how: Check baked prefecture/municipality counts and visible marker pixels.
+      expected: At least 40 prefectures and 1,500 municipality marks.
+    - id: real-destination-rendered
+      what: A known municipality has actual MLIT aggregates and is rendered as a visible point.
+      how: Check Taito-ku (13106), November 2021, all-days daytime values and sample its canvas pixel.
+      expected: At least one published category value and a non-background marker.
+    - id: interactive-controls
+      what: A user can change temporal groupings and select a municipality through hit testing.
+      how: Assert the month, day type, time controls exist and a known marker hit maps back to its city index.
+      expected: Controls present and deterministic hit result.
+    - id: aggregation-disclosure
+      what: The page describes the grouped bins, suppression and approximate positions without implying exact routes.
+      how: Browser checks visible explanation and MLIT source link.
+      expected: Broad bins, under-10 suppression, averaged mesh center and CC BY source are disclosed.
