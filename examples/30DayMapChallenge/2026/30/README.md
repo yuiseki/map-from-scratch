@@ -40,4 +40,4 @@ bin/mfs bench 30DayMapChallenge-2026-30 -n 3
 
 画面キャプチャは [screenshot.png](../../../../results/30DayMapChallenge-2026-30/screenshot.png)、機械検査値は [latest.json](../../../../results/30DayMapChallenge-2026-30/latest.json)、印刷用データは [sheet.svg](../../../../data/baked/30DayMapChallenge-2026-30/sheet.svg) です。縮尺はEPSG:3857の中心緯度35.3605661°でcos補正し、100,000:1の地上距離として実装・テストしました。PDFや物理プリンターの出力結果は今回の検査には含めていません。
 
-Day30のテストは12/12件、Day30対象Node/Webのstrict型検査に合格しています。リポジトリ全体の `bin/mfs test` は983件通過、2件スキップ、1件失敗でした。失敗は並行開発中のDay29 `renderer.test.ts` にある緯度小数の1 ULP差の厳密比較で、Day30には失敗がありません。
+Day30のテストは12/12件、Day30対象Node/Webのstrict型検査に合格しています。全体suiteの過去記録では、Day30実装時にDay29の1 ULP厳密比較で失敗が1件ありました。その後、2026-11-06にDay18・28のベンチ回帰テストを追加した状態で `bin/mfs test` を再実行し、996件中994件通過、2件スキップ、失敗0件でした。Node・Web・testの3種類の型検査も通過しています。
