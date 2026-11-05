@@ -65,7 +65,7 @@
 |---|---|
 | `examples/<nn>-<slug>/` | 個別の依頼から作った描画器。ブラウザ (Canvas 2D、WebGL2)、デスクトップ (C + EGL/GLES3)、マイコン (C、RISC-V) |
 | `examples/<ライブラリ>/<nnn>-<slug>/` | MapLibre GL JS、Mapbox GL JS、deck.gl、Leaflet、D3、CesiumJS、OpenGlobus、Tangram、forge3d の公式ギャラリーの各例を、その目的だけ満たす描画器として作り直したもの。進み具合は [TODO.md](TODO.md) |
-| `examples/{webgpu,wasm,opfs,htmlcanvas}/` | 新しいブラウザの機能 (WebGPU、WebAssembly の JSPI、OPFS、HTML-in-Canvas) を地図に使う実験。対応する環境と、使えないときの表示を各例に書いてある |
+| `examples/{webgpu,wasm,opfs,htmlcanvas}/` | 新しいブラウザの機能 (WebGPU、WebAssembly の JSPI、OPFS、HTML-in-Canvas) を地図に使う例。対応する環境と、使えないときの表示を各例に書いてある。HTML-in-Canvas は Chrome 157 で正式に使えるようになったが、ほかのブラウザにはまだ無いので、DOM を重ねる表示に切り替える |
 | `baselines/` | 汎用エンジンで同じ依頼を作った、比較用の実装 |
 | `.agents/skills/` | 手順 (map-from-scratch)、目で確かめる手順 (visual-review)、データの置き場所 (yuiseki-open-data) と、地図を描くときの話題ごとのスキル |
 | `harness/` | 計測と検証のハーネス。依存のない TypeScript の CLI |
