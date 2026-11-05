@@ -1,0 +1,120 @@
+id: 30DayMapChallenge-2026-23
+request: >-
+  30DayMapChallenge 2026 · 23 Senses: Taste。実在する東京の食関連OpenStreetMapタグから食の語彙分布を作る。味、品質、人気、営業状況、地域全体の網羅性は推定しない。
+requirements:
+  - id: frozen-source-area
+    need: 2026-08-31の固定OpenStreetMapデータから浅草–上野の飲食関連地点を表示する
+    rationale: EPSG:3857の固定7,000m級矩形から4,905地物を再現可能に抽出し、point 4,794・area 111を保持する
+  - id: explicit-tag-vocabulary
+    need: OSMのamenity/shop分類とcuisineの明示タグを区別して見せる
+    rationale: 描画用4グループと元タグを同時に保存し、cuisineあり1,909・未指定2,996を推測なしで表示する
+  - id: distribution-and-detail
+    need: 食関連の空間的な語彙多様性を、汎用ベースマップではなくこのテーマ向けに描く
+    rationale: 220mセル643個にカテゴリ内訳を集計し、拡大時は個別地物と面形状を表示する
+  - id: accessible-interaction
+    need: カテゴリを操作でき、位置や元タグを調べられる
+    rationale: キーボード操作できる4フィルタ、矢印パン、+/-ズーム、選択ヒット領域、座標・スケール表示で検査する
+    unmeasured: >-
+      Keyboard focus and assistive-control usability are checked as browser interactions and visible semantics, not summarized as a single numeric renderer budget.
+  - id: provenance-and-interpretation
+    need: 出典、利用条件、解釈上の制限を明示する
+    rationale: © OpenStreetMap contributors、2026-08-31、ODbL 1.0/share-alikeを表示し、味・品質・人気・営業状況・網羅性を推測しない
+    unmeasured: Legal interpretation and OSM completeness are disclosed in page text and source links, not numerically evaluated.
+  - id: responsive-local-rendering
+    need: 地図を応答よく表示し外部サービスなしで動かす
+    rationale: 60Hzで16.7ms/frame、8msのCanvas draw CPU予算、1MB gzip data予算とsame-origin-only browser checkを設定する
+evaluation:
+  budgets:
+    - {metric: food_features, min: 4905, max: 4905, unit: features, requirement: frozen-source-area}
+    - {metric: point_features, min: 4794, max: 4794, unit: features, requirement: frozen-source-area}
+    - {metric: area_features, min: 111, max: 111, unit: features, requirement: frozen-source-area}
+    - {metric: cuisine_tagged, min: 1909, max: 1909, unit: features, requirement: explicit-tag-vocabulary}
+    - {metric: cuisine_unspecified, min: 2996, max: 2996, unit: features, requirement: explicit-tag-vocabulary}
+    - {metric: occupied_grid_cells, min: 643, max: 643, unit: cells, requirement: distribution-and-detail}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-local-rendering}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: responsive-local-rendering}
+    - {metric: first_frame_ms, stat: p50, max: 500, unit: ms, requirement: responsive-local-rendering}
+    - {metric: data_gzip_bytes, max: 300000, unit: bytes, requirement: responsive-local-rendering}
+  gates:
+    - All browser checks pass in all iterations.
+    - No JavaScript errors or cross-origin runtime requests.
+    - Screenshot is reviewed for label overlap, readable legend, coherent distribution and detail transition.
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/23/
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  iterations: 3
+  timeout_ms: 120000
+  scenarios:
+    - id: first-paint
+      what: Start timing before source fetch; stop immediately after dataset decode and first Canvas draw in mount().
+      metrics: [first_frame_ms]
+    - id: filter-and-inspection
+      what: Read screen pixels, filter one category, inspect the nearest centered original source feature, pan and zoom, verify page provenance and same-origin fetches.
+      metrics: [food_features, point_features, area_features, occupied_grid_cells, cuisine_tagged, cuisine_unspecified, visible_grid_pixels]
+    - id: animated-render-loop
+      what: Draw 48 stable-state frames and record direct draw CPU time and next-frame interval.
+      metrics: [draw_cpu_ms, frame_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/23/bake.ts]
+  sources:
+    - id: osm-tokyo23-src-2026-08
+      origin: Local frozen `planet_osm_point` and `planet_osm_polygon` GeoParquet rows from the OSM planet extract of 2026-08-31. Point/area bbox intersects fixed Web Mercator AOI x=15559600..15566400, y=4256800..4263800; allowed explicit amenity/shop tags select 4,905 source objects.
+      license: ODbL-1.0; © OpenStreetMap contributors. The derived data is shared under applicable ODbL share-alike terms.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs: [data/baked/30DayMapChallenge-2026-23/taste.json, data/baked/30DayMapChallenge-2026-23/stats.json]
+  preparation:
+    - Inspect local dataset card, ODbL notice, GeoParquet schema and GeoParquet 1.1 CRS metadata (EPSG:3857).
+    - Select point geometries and clip intersecting polygon geometries to the named rectangular AOI; retain original OSM primitive identity with node/way/relation prefix.
+    - Keep amenity/shop/cuisine and applicable name/diet/takeaway/delivery tags, then assign only a renderer grouping. Keep missing cuisine unspecified.
+    - Build exact category counts per fixed 220m projected square; preserve all underlying individual features for detail zoom and hit-testing.
+    - Export deterministic UTF-8 JSON with fixed source order and stats inventory; do not access public OSM APIs, tiles, Overpass or Nominatim.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/23/index.html, examples/30DayMapChallenge/2026/23/main.ts, examples/30DayMapChallenge/2026/23/renderer.ts, examples/30DayMapChallenge/2026/23/taste.ts, examples/30DayMapChallenge/2026/23/style.css]
+    dependencies: []
+    why: A fixed Tokyo extent and 4,905 features fit Canvas 2D. Overview uses 643 precomputed square summaries; zoomed detail draws source points and 111 area outlines. No general engine, road/building context, GPU buffers, or runtime external data is required.
+  alternatives:
+    - option: Generic basemap with food POI layer
+      rejected_because: Roads/buildings would repeat the adjacent OpenStreetMap challenge and obscure the food-tag distribution.
+    - option: Heatmap or single density scalar
+      rejected_because: Collapsing categories would hide the explicit amenity/shop vocabulary that defines this taste prompt.
+    - option: GPU id buffer for inspection
+      rejected_because: 4,905 positions are already resident in CPU memory; nearest-point hit testing avoids a second render/readback pass.
+  not_doing: [taste measurement, cuisine inference, quality/popularity/price ranking, opening-status inference, restaurant recommendations, customer counts, complete city inventory, public OSM service calls, runtime tile services, generic map engine]
+performance_knowledge:
+  - id: pending-browser-measurement
+    finding: Fixed AOI source data can be baked into a small Canvas-oriented feature set without using runtime map services.
+    evidence: "3-run browser benchmark: all 10 budgets and 6 checks pass; first frame p50 70.09 ms, draw CPU p95 2.035 ms, frame interval p95 8.855 ms, data gzip 207,700 B. The 1280×800 screenshot was visually reviewed."
+    applies_when: A single static Tokyo food-tag view needs point-level provenance and overview aggregation.
+verification:
+  checks:
+    - id: frozen-food-feature-count-and-visible-map
+      what: Source-count contract matches the frozen bake and actual thematic pixels reach the canvas.
+      how: Compare runtime count to 4,905 and sample canvas pixels outside the paper background.
+      expected: At least 5,000 sampled non-paper pixels and exactly 4,905 source records.
+    - id: keyboard-category-filter-control
+      what: A native keyboard accessible group filter changes only the visible count and can be restored.
+      how: Dispatch the checkbox change event for cafe off and on and check renderer counts.
+      expected: Count drops when disabled and returns to the initial total when enabled.
+    - id: feature-inspection-retains-osm-id-and-source-tags
+      what: Feature selection exposes the original source ID and a stored amenity or shop tag.
+      how: Select the real source feature closest to map center; inspect the rendered details panel.
+      expected: Original node/way/relation ID and amenity or shop key are visible.
+    - id: pan-zoom-and-scale-bar
+      what: Pan, zoom and ground-distance scale controls respond consistently.
+      how: Dispatch 34px/18px drag, use zoom buttons, check projected source delta and populated scale label.
+      expected: Projected feature follows the pointer delta, zoom changes and a scale value remains visible.
+    - id: attribution-odbl-and-interpretation-visible
+      what: OSM attribution, snapshot, ODbL share-alike and no-taste-claim limits are visible.
+      how: Inspect page copy and source links.
+      expected: Copyright, ODbL, date, and Japanese caveats about taste and quality are present.
+    - id: no-runtime-external-requests
+      what: The page loads the baked local file only.
+      how: Inspect Resource Timing entries after render.
+      expected: Zero cross-origin requests.

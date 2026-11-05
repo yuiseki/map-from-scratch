@@ -28,7 +28,7 @@
 | 20 | Hexagons | 世界人口を H3 六角形で色と高さに変換。`hf:kontur-population-2023-11-01-22km`（CC BY） | 完了 · 3回計測・9 checks / 12 budgets PASS・画面確認済み · 71,283セル / 推計人口合計8,031,924,024 · first frame p50 857.03 ms · frame p95 1.98 ms · GPU p95 1.02 ms · GPU buffers 30.23 MB · code/data gzip 12,348 / 2,668,475 B |
 | 21 | OpenStreetMap | OSM の東京データから建物・道路・水系を選択描画する、OSM データそのものを主役にした地図。`hf:osm-tokyo23-src-2026-08`（ODbL、帰属と派生データ条件を確認） | TODO |
 | 22 | Projections | Natural Earth の同一地物を複数投影に変換し、歪みをインタラクティブに比較。`hf:natural-earth`（public domain） | 完了 · 3回計測・8 budgets / 6 checks PASS・画面確認済み · 177か国 / 4投影 · first frame p50 30.3 ms · draw p95 6.01 ms · frame p95 16.31 ms · gzip data/code 177,700 / 6,825 B |
-| 23 | Senses: Taste | 東京の飲食店分布をカテゴリ・密度で描く。Overture Places または OSM の出典とライセンスを選定時に確認（CDLA / ODbL） | TODO |
+| 23 | Senses: Taste | 東京の飲食店分布をカテゴリ・密度で描く。Overture Places または OSM の出典とライセンスを選定時に確認（CDLA / ODbL） | 完了 · 3回計測・10 budgets / 6 checks PASS・画面確認済み · 4,905地点 / 643 grid cells · first frame p50 70.09 ms · draw p95 2.035 ms · frame p95 8.855 ms · gzip data/code 207,700 / 10,550 B |
 | 24 | Network | 日本の鉄道路線と駅をグラフ化し、接続性・乗換を探索。`hf:ksj` の鉄道データまたは GTFS（CC BY 4.0）、ネットワーク形状を検証 | TODO |
 | 25 | Is this a map? | 地図とデータ図表の境界を問う、場所を音・色・並びに変換する実験。出典が必要な場合はカタログの public-domain 地震データを使い、地理情報の符号化を明示 | TODO |
 | 26 | Water | 洪水想定深または海底地形を描き、水の分布と地形を表す。`z:ksj/A31a`（CC BY 4.0）または `hf:gebco-...-hokkaido-east`（採用範囲の条件確認） | TODO |

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2efe8">
+  <title>浅草から上野、食のタグ地図 — 30DayMapChallenge 2026 · 23</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="2026年8月31日のOpenStreetMapにある浅草・上野の飲食関連タグを色の格子で表示します。矢印キーで移動、プラスとマイナスで拡大縮小できます。">
+    この地図を表示するにはCanvas 2Dに対応したブラウザが必要です。
+  </canvas>
+  <main class="panel">
+    <header>
+      <p class="eyebrow">30DAYMAPCHALLENGE · 23 / SENSES</p>
+      <h1>浅草から上野、<br>食のタグ地図</h1>
+      <p class="lede">メニューの味ではなく、街に記された「食」の語彙を描く。</p>
+    </header>
+    <section aria-labelledby="layers-title">
+      <h2 id="layers-title">表示するタグのまとまり</h2>
+      <div class="filters">
+        <label class="filter"><input type="checkbox" data-category="eatery" checked><i class="swatch eatery" aria-hidden="true"></i><span>食事</span></label>
+        <label class="filter"><input type="checkbox" data-category="cafe" checked><i class="swatch cafe" aria-hidden="true"></i><span>喫茶</span></label>
+        <label class="filter"><input type="checkbox" data-category="drinks" checked><i class="swatch drinks" aria-hidden="true"></i><span>酒場</span></label>
+        <label class="filter"><input type="checkbox" data-category="food-shop" checked><i class="swatch food-shop" aria-hidden="true"></i><span>食料品店</span></label>
+      </div>
+    </section>
+    <section class="selection" id="selection" aria-live="polite">
+      <strong>場所を選ぶ</strong>
+      <span>色の点を押すと、元のOSMタグを表示します。</span>
+    </section>
+    <section class="controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">全体表示</button>
+      <span id="map-status" aria-live="polite">データを読み込み中</span>
+    </section>
+    <p class="interpretation">1マスは約220 m四方の集計です。近づくと個別地点に切り替わります。カテゴリ名は表示上の整理で、OSMの分類そのものではありません。</p>
+    <p class="caveat">タグは人が記録した情報です。味、品質、人気、営業中かどうか、地域の食全体を表すものではありません。タグがない場所や未登録の店もあります。</p>
+  </main>
+  <div class="map-tools"><div class="north" aria-label="北">N <span>↑</span></div><div class="scale"><span id="scale-label">1 km</span><i></i></div><span id="coordinate" aria-live="off">35.7100°N 139.7950°E</span></div>
+  <footer class="credits">
+    <a href="https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08" target="_blank" rel="noreferrer">OSM 東京23区スナップショット · 2026-08-31</a>
+    <span>·</span>
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
+    <span>·</span>
+    <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">ODbL 1.0 · share-alike</a>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
