@@ -6,7 +6,7 @@ FROM node:24-trixie-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates curl \
+      ca-certificates curl unzip \
       build-essential \
       rustc cargo \
       chromium \
@@ -41,4 +41,14 @@ RUN npm install -g --no-audit --no-fund typescript@6.0.3 @types/node@24.19.2
 RUN python3 -m venv /opt/mfs-python \
  && /opt/mfs-python/bin/pip install --no-cache-dir laspy==2.7.0 lazrs==0.8.2
 
-ENV CHROME_BIN=/usr/bin/chromium
+# The harness's browser is stable Chrome, the one visitors of the site run.
+# Debian's chromium package (still installed above, for the shared libraries
+# Chrome needs) lags behind: it was at 156 when Chrome 157 shipped
+# HTML-in-Canvas. Chrome for Testing is Google's build of a stable version,
+# pinned here; to upgrade, change the version (see
+# https://googlechromelabs.github.io/chrome-for-testing/).
+ARG CHROME_VERSION=157.0.8103.38
+RUN curl -fsSL -o /tmp/chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" \
+ && unzip -q /tmp/chrome.zip -d /opt && mv /opt/chrome-linux64 /opt/chrome && rm /tmp/chrome.zip \
+ && /opt/chrome/chrome --version
+ENV CHROME_BIN=/opt/chrome/chrome

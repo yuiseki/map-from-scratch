@@ -60,12 +60,27 @@ const GPU_FLAGS = [
   '--use-angle=vulkan',
   '--enable-features=Vulkan',
   '--enable-unsafe-webgpu',
-  '--enable-blink-features=CanvasDrawElement',
   '--disable-gpu-vsync',
   '--disable-frame-rate-limit',
   // WebGPU timestamp queries are rounded to 100 us without this.
   '--enable-webgpu-developer-features',
 ];
+
+// Without the nvidia container runtime (CI, a laptop) WebGL and WebGPU run on
+// SwiftShader. bin/mfs sets MFS_NO_GPU=1 then.
+const SWIFTSHADER_FLAGS = [
+  '--ignore-gpu-blocklist',
+  '--use-angle=swiftshader',
+  '--enable-unsafe-webgpu',
+  '--disable-gpu-vsync',
+  '--disable-frame-rate-limit',
+];
+
+// No --enable-blink-features here: examples are written for stable Chrome,
+// and a flag would hide a feature the visitors' browser does not have.
+export function browserFlags(gpu: boolean): string[] {
+  return gpu ? GPU_FLAGS : SWIFTSHADER_FLAGS;
+}
 
 // A headed browser hides and throttles tabs it thinks nobody looks at.
 const HEADED_FLAGS = [
@@ -79,7 +94,7 @@ export async function launchChrome(logFile?: string, display: Display = 'headles
   const profileBase = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.cache');
   mkdirSync(profileBase, { recursive: true });
   const userDir = mkdtempSync(join(profileBase, 'mfs-chrome-'));
-  const flags = process.env.MFS_CHROME_FLAGS ? process.env.MFS_CHROME_FLAGS.split(/\s+/) : GPU_FLAGS;
+  const flags = process.env.MFS_CHROME_FLAGS ? process.env.MFS_CHROME_FLAGS.split(/\s+/) : browserFlags(process.env.MFS_NO_GPU !== '1');
   const xvfb = display === 'xvfb' ? await startXvfb() : null;
   const proc = spawn(process.env.CHROME_BIN ?? 'chromium', [
     ...(xvfb ? HEADED_FLAGS : ['--headless=new']),

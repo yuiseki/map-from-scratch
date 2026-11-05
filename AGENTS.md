@@ -70,7 +70,7 @@ GitHub Actions (`.github/workflows/test.yml`) は、push とプルリクエス�
 - `MFS_TOOLCHAIN` : ツールチェーン用イメージ `mfs-<toolchain>:latest` (`docker/Dockerfile.<toolchain>`) で実行する。例: `MFS_TOOLCHAIN=emscripten bin/mfs build <id>`。spec.yaml の `architecture_selection.chosen.toolchain` を持つ例のビルドに必要
 - `MFS_SOURCES` : 原データのホスト側マウントディレクトリ（デフォルト: `/sata_hdd_24tb`）
 - `MFS_PAGE_QUERY` : ベンチマーク時にページ URL に追加するクエリ文字列（パラメータスイープ用）
-- `MFS_CHROME_FLAGS` : Headless Chromium に渡す追加フラグ
+- `MFS_CHROME_FLAGS` : ブラウザに渡すフラグ。指定すると既定のフラグ (`harness/runners/browser.ts` の `browserFlags`) を置き換える。ブラウザは Chrome for Testing の安定版 (`docker/base/Dockerfile` の `CHROME_VERSION`) で、Blink の機能をフラグで有効にしない。サイトを見る人のブラウザに無い機能で計測が通ってしまうため
 - `MFS_MEMORY` / `MFS_CPUS` : コンテナのメモリ上限（デフォルト `8g`）・CPU 枠（デフォルト `8`）
 
 ---

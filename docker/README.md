@@ -4,7 +4,7 @@ Everything runs through `bin/mfs`, which runs the harness in one of these images
 
 | image | Dockerfile | contents | used for |
 | --- | --- | --- | --- |
-| `mfs-base` | `base/Dockerfile` | Node 24, TypeScript, Chromium, rustc, clang, GDAL, osmium, DuckDB 1.5.5, laspy | the harness, every bake step, every renderer that needs nothing more |
+| `mfs-base` | `base/Dockerfile` | Node 24, TypeScript, Chrome for Testing (stable, pinned), rustc, clang, GDAL, osmium, DuckDB 1.5.5, laspy | the harness, every bake step, every renderer that needs nothing more |
 | `mfs-emscripten` | `Dockerfile.emscripten` | `mfs-base` plus Emscripten 6.0.13 (emcc, clang/wasm-ld, binaryen, prebuilt sysroot) | C/C++ to wasm32, including JSPI builds |
 
 ## Toolchain images
@@ -33,7 +33,7 @@ The image sets `MFS_TOOLCHAIN` to its own name. `bin/mfs build <id>` stops and s
 ## Emscripten
 
 - Version: Emscripten 6.0.13, copied from `emscripten/emsdk:6.0.13`, pinned by digest in `Dockerfile.emscripten`. To upgrade, change the tag and digest together.
-- Emscripten's own Node is not copied. Node 24 from the base image runs the output, and it supports JSPI (`WebAssembly.Suspending`) without flags. So does the base image's Chromium 156.
+- Emscripten's own Node is not copied. Node 24 from the base image runs the output, and it supports JSPI (`WebAssembly.Suspending`) without flags. So does the base image's Chrome 157.
 - The sysroot cache comes prebuilt and frozen (`EM_FROZEN_CACHE=1`). emcc never downloads a port or writes into the image while it runs, so a build is the same with or without network. A build that needs a library the cache lacks fails instead of fetching it.
 - `harness/test/emscripten.test.ts` is the check that the image works. It builds `harness/test/fixtures/emscripten/hello.c`, and `jspi.c`, in which C reads byte ranges through an async JS function. The JSPI build runs in Node and in the harness's Chromium, and the same C built without `-sJSPI` fails, which shows the suspension is JSPI's doing. It passes with `docker run --network none`.
 
