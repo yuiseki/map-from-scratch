@@ -62,7 +62,7 @@ datasets:
 performance_knowledge:
   - id: compute-per-view-grid
     finding: The GPU compute stage projects each source mesh for the active camera, culls offscreen squares and calculates its population display class; the render stage consumes those output records directly.
-    evidence: `bin/mfs bench 30DayMapChallenge-2026-27 -n 3` on 2026-11-05 with NVIDIA GeForce RTX 3060 / WebGPU timestamp-query: p95 frame 3.105 ms, p95 GPU 0.02867 ms; all eight browser verification checks passed. See results/30DayMapChallenge-2026-27/latest.json and screenshot.png.
+    evidence: "`bin/mfs bench 30DayMapChallenge-2026-27 -n 3` on 2026-11-05 with NVIDIA GeForce RTX 3060 / WebGPU timestamp-query: p95 frame 3.105 ms, p95 GPU 0.02867 ms; all eight browser verification checks passed. See results/30DayMapChallenge-2026-27/latest.json and screenshot.png."
     applies_when: a modest, source-backed grid needs a dynamic WebGPU view transform and per-feature display classes
   - id: no-row-is-not-zero
     finding: A source-absent mesh has its own state and null value. Suppression is the literal source marker `*`, never a numeric zero.

@@ -86,7 +86,7 @@ performance_knowledge:
   - claim: >-
       Baked one west-to-east 720-cell line and only hypocenters in the disclosed latitudinal slab; both layers are drawn directly in one Canvas without runtime decoding or reprojection.
     evidence: >-
-      Three Chrome/Xvfb runs: 720 cells, 13 local USGS events, first_frame_ms p50 53.58 ms, frame_ms p95 5.755 ms, draw_cpu_ms p95 1.22 ms, code_gzip_bytes 8,366 and data_gzip_bytes 2,192. All seven budgets and five browser pixel/disclosure/interaction checks passed; the screenshot was visually inspected after moving the chart clear of the control panel and separating the depth labels from the distance ruler.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas pixel checks: 720 profile cells and 13 local USGS events; first-frame p50 93.675 ms, frame p95 3.845 ms, draw CPU p95 2.415 ms, code/data gzip 8,366/2,192 B. All 7 budgets and 5 browser checks passed. The profile screenshot was visually reviewed.
     applies_when: This fixed 3° terrain section with 2025 M4.5+ events.
 verification:
   checks:

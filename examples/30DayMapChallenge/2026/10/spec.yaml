@@ -95,7 +95,7 @@ performance_knowledge:
   - claim: >-
       A one-time Canvas 2D raster of the projected land and categorized airport points makes camera interaction independent of the source point count; panning and zooming only resample the cached raster.
     evidence: >-
-      Three Chrome/Xvfb runs at 1280×800: 72,520 facilities (4,325 scheduled), 508,374 gzip data bytes, 9,272 gzip code bytes, 170 ms p50 first frame, 0.755 ms p95 frame interval, and 0.025 ms p95 draw CPU. Initial vector point drawing cost 45.58 ms p95 CPU and 255.1 ms p95 frame interval; caching the rendered map once reduced interaction redraw to a canvas image transform. Screenshot reviewed at the harness viewport.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas readback: 72,520 facilities including 4,325 scheduled airports; first-frame p50 171.730 ms, frame p95 1.335 ms, draw CPU p95 0.020 ms, code/data gzip 9,180/508,374 B. All 6 budgets and 4 checks passed. The cached world raster keeps redraw independent of the original point count. See results/30DayMapChallenge-2026-10/latest.json.
     applies_when: A static world overview distinguishes a few tens of thousands of point classes without labels or route topology.
 verification:
   checks:

@@ -91,7 +91,7 @@ performance_knowledge:
   - claim: >-
       A small pre-baked extent of 222 OSM buildings retains all 1,698 source vertices, allowing direct Canvas redraws with a small data payload.
     evidence: >-
-      Three Chrome/Xvfb runs: 222 buildings and 1,698 vertices; first_frame_ms samples 49.575/53.865/47.230 (p50 49.575), frame_ms p95 0.725, draw_cpu_ms p95 0.265, code_gzip_bytes 12,636 and data_gzip_bytes 12,461. All seven budget gates and seven browser checks passed; the captured overview screenshot was visually inspected.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas pixel checks: 222 buildings and 1,698 vertices; first-frame p50 72.085 ms, frame p95 2.080 ms, draw CPU p95 0.665 ms, code/data gzip 12,636/12,461 B. All 7 budgets and 7 browser checks passed. The overview screenshot was visually reviewed.
     applies_when: The frozen 500 m Shibuya-area extract and local detail window; not all Tokyo buildings.
 verification:
   checks:

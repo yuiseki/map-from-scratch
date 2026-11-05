@@ -73,9 +73,10 @@ architecture_selection:
     - {option: bake each projection separately, rejected_because: Separate datasets risk comparing different geometry and add duplicated payloads; the projection selector keeps one source.}
   not_doing: [panning, zooming, globe mode, labels, thematic data, interactive country inspection, external tiles, runtime projection libraries]
 performance_knowledge:
-  - id: projection-cost-pending
+  - id: projection-redraw-cost
     finding: Four low-detail world projections are recomputed on Canvas redraw from one compact source geometry.
-    evidence: "3-run browser benchmark: first frame p50 30.3 ms; draw CPU p95 6.01 ms; frame interval p95 16.31 ms; 8/8 budgets and 6/6 browser checks pass. The 1280×800 screenshot was visually reviewed."
+    evidence: >-
+      2026-11-06 Chrome 156, three runs after moving projection pixel checks to OffscreenCanvas and removing the readback-oriented context option: first-frame p50 27.130 ms, frame p95 15.125 ms, draw CPU p95 5.915 ms, code/data gzip 6,745/177,694 B. All 8 budgets and 6 browser checks passed. The 1280×800 screenshot was visually reviewed. See results/30DayMapChallenge-2026-22/latest.json.
     applies_when: A global overview with Natural Earth 1:110m geometry and projection-switch interaction.
 verification:
   checks:

@@ -87,7 +87,7 @@ performance_knowledge:
   - claim: >-
       The browser fetches one compact, pre-aggregated mesh payload and redraws the two fixed panels directly; no basemap, map library, runtime query, or external service is needed.
     evidence: >-
-      Three Chrome/Xvfb runs: 1016 mesh geometries, 682 daytime and 671 late-night published values; first_frame_ms p50 114.585 ms, frame_ms p95 13.145 ms, draw_cpu_ms p95 5.955 ms, code_gzip_bytes 12639 and data_gzip_bytes 11834. All 9 budgets and 8 browser checks pass; screenshot visually inspected with legends visible above the disclosure footer.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas pixel checks: 1,016 meshes, 682 daytime and 671 late-night published values; first-frame p50 104.085 ms, frame p95 6.910 ms, draw CPU p95 5.655 ms, code/data gzip 12,636/11,834 B. All 9 budgets and 8 browser checks passed. The paired map and disclosures were visually reviewed.
     applies_when: The frozen Tokyo 2021-12, all-days, daytime versus late-night comparison is used.
 verification:
   checks:
@@ -118,7 +118,7 @@ verification:
     - id: pointer-selects-matched-mesh
       what: Clicking either map selects the same mesh in both panels.
       how: Dispatch pointerup at a real paired mesh center.
-      expected: `selectedId` equals that mesh id, and the details show both periods.
+      expected: "`selectedId` equals that mesh id, and the details show both periods."
     - id: keyboard-moves-selection
       what: The map supports arrow-key movement and Escape clearing.
       how: Send ArrowRight after selecting a mesh and inspect the renderer selection.

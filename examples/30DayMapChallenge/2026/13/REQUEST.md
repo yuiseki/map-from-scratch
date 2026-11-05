@@ -32,8 +32,8 @@ The display is an independent processed visualization, not an MLIT publication o
 ## Results
 
 - Bake: 1,896 municipalities with mesh-centre locations, 47 Natural Earth prefecture features, 614,196 grouped municipality/month/day/time records. 120 groups have no matching 2020 mesh-centre location and are omitted. Raw compressed month frames total 5,648,905 B; largest is 160,400 B.
-- Three Chrome 156 / Xvfb runs at 1280×800: first frame 100.095 / 121.220 / 118.085 ms (p50 118.085 ms); frame p95 6.90 ms; Canvas draw CPU p95 5.615 ms; month switch p95 14.365 ms across 108 changes (max 44.85 ms); active initial chunk 157,015 B. All budget checks and browser checks passed. Site-shipped data footprint (recompressed files individually) is 5,799,208 B; code gzip is 8,443 B.
-- Full test suite: 848 tests, 846 passed, 0 failed, 2 skipped. Node, web and test TypeScript checks passed.
+- Initial three Chrome 156 / Xvfb runs at 1280×800 are retained as historical baseline values; the corrected OffscreenCanvas pixel-check run is recorded below.
+- Latest full test suite: 999 tests, 997 passed, 0 failed, 2 skipped. Node, web and test TypeScript checks passed.
 - The screenshot was opened and reviewed: [/Workspaces/repos/__yuiseki/map-from-scratch-30day-2026/results/30DayMapChallenge-2026-13/screenshot.png](/Workspaces/repos/__yuiseki/map-from-scratch-30day-2026/results/30DayMapChallenge-2026-13/screenshot.png). The national extent, selected Taito-ku point, category breakdown, controls and caveats are legible.
 - Bake and browser benchmark commands ran under a user systemd scope capped at MemoryMax=8G, MemorySwapMax=0, CPUQuota=400%.
 

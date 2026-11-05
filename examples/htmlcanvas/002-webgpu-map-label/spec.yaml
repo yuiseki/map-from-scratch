@@ -121,7 +121,7 @@ verification:
     - id: labels-rendered-on-webgpu
       what: WebGPU レンダーパスにより地図背景上に白いラベルカードがピクセルとして合成されていること
       how: Imperial Palace 付近の画面ピクセル読み戻しで背景色（暗青）と異なりカード色（白）であること
-      expected: !isBackground && isCardWhite
+      expected: "!isBackground && isCardWhite"
     - id: zero-uploads-during-pan
       what: パン・ズーム操作中にテクスチャアップロードが 1 回のまま増加しないこと
       how: 複数回 panBy / zoomBy 実行前後の textureUploadCount 比較

@@ -86,10 +86,7 @@ performance_knowledge:
   - claim: >-
       The renderer loads one aggregate JSON file, with no runtime API queries or map library. The 24 × 24 grid is redrawn directly for each month.
     evidence: >-
-      Three-run browser benchmark: 162 source features, 152 located contributions,
-      89 occupied cells; first-frame p50 4.265 ms (max 5.965 ms), draw CPU p95
-      1.045 ms, frame p95 7.035 ms; 10,160 gzip bytes of code and 2,007 gzip
-      bytes of data. All 9/9 browser checks pass. Screenshot visually inspected.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas pixel checks: first-frame p50 4.235 ms, frame p95 1.010 ms, draw CPU p95 0.860 ms, code/data gzip 10,157/2,007 B. All 8 budgets and 9 browser checks passed. See results/30DayMapChallenge-2026-16/latest.json.
     applies_when: The shipped payload contains 152 located features aggregated from a 2025 annual request.
 verification:
   checks:

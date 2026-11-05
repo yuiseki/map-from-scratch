@@ -102,7 +102,7 @@ performance_knowledge:
   - claim: >-
       The browser initially fetches one gzip-compressed year-month chunk with all weekday/holiday and time-of-day categories. It caches chunks by month and renders the active category slice.
     evidence: >-
-      Three Chrome 156/Xvfb runs at 1280×800: p50 first frame 118.085 ms; frame p95 6.90 ms; Canvas draw CPU p95 5.615 ms; month-frame p95 14.365 ms across 108 switches; initial chunk 157,015 B, largest monthly chunk 160,400 B. All declared budgets and checks passed. The 36 frames plus metadata gzip to 5,799,208 B as shipped.
+      Chrome 156, 1280×800, three runs after OffscreenCanvas pixel checks: first-frame p50 101.880 ms, frame p95 6.290 ms, draw CPU p95 5.075 ms, month-switch frame p95 17.565 ms, active chunk gzip 157,015 B, code/data gzip 8,443/5,799,465 B. All 9 budgets and 4 browser checks passed. See results/30DayMapChallenge-2026-13/latest.json.
     applies_when: The loaded dataset contains 2019–2021 monthly, day-type and time-of-day aggregate bins.
 verification:
   checks:

@@ -88,9 +88,10 @@ architecture_selection:
       rejected_because: 4,905 positions are already resident in CPU memory; nearest-point hit testing avoids a second render/readback pass.
   not_doing: [taste measurement, cuisine inference, quality/popularity/price ranking, opening-status inference, restaurant recommendations, customer counts, complete city inventory, public OSM service calls, runtime tile services, generic map engine]
 performance_knowledge:
-  - id: pending-browser-measurement
+  - id: baked-category-rendering
     finding: Fixed AOI source data can be baked into a small Canvas-oriented feature set without using runtime map services.
-    evidence: "3-run browser benchmark: all 10 budgets and 6 checks pass; first frame p50 70.09 ms, draw CPU p95 2.035 ms, frame interval p95 8.855 ms, data gzip 207,700 B. The 1280×800 screenshot was visually reviewed."
+    evidence: >-
+      2026-11-06 Chrome 156, three runs after moving rendered-pixel checks to OffscreenCanvas: first-frame p50 71.420 ms, draw CPU p95 2.295 ms, frame p95 10.320 ms, code/data gzip 10,553/207,656 B. All 10 budgets and 6 browser checks passed. The 1280×800 screenshot was visually reviewed. See results/30DayMapChallenge-2026-23/latest.json.
     applies_when: A single static Tokyo food-tag view needs point-level provenance and overview aggregation.
 verification:
   checks:

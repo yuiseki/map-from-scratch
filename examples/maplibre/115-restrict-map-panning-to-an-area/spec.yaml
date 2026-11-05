@@ -116,7 +116,7 @@ verification:
     - id: bounds-clamped-at-min-zoom
       what: 初期カメラが maxBounds に制約され、範囲より広い東西方向は中心固定、ズームは範囲が画面を満たす値に上がる
       how: 独立計算した bounds-fill ズームとカメラの zoom を比較し、東西へ大きくドラッグしても中心が動かないこと、範囲の東西端が画面端 x=0/1024 に一致することを確認
-      expected: |zoom - max(log2(w/(256Δmx)), log2(h/(256Δmy)))| < 1e-6、中心 mx = 範囲中心、西端 x=0、東端 x=1024
+      expected: "|zoom - max(log2(w/(256Δmx)), log2(h/(256Δmy)))| < 1e-6、中心 mx = 範囲中心、西端 x=0、東端 x=1024"
     - id: drag-east-stops-at-east-bound
       what: z14.5 で東へ大きくドラッグすると、東端が画面右端で止まる
       how: ポインタイベントで 2800 px 東へドラッグし、中心 mx が eastMx - 半画面幅 に一致し、東境界の画面 x が 1024 になることを確認

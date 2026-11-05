@@ -93,9 +93,9 @@ architecture_selection:
 performance_knowledge:
   - id: cached-raster-for-clipped-inundation
     finding: >-
-      Canvas 2Dで深さランク別に一度ラスタ化し、パン・ズーム中は画像を再配置する。2,264個・124,919頂点のクリップ済み形状で、1280×800のChrome 156 3-run計測は初回描画p50 213.5 ms、frame p95 4.48 ms、描画CPU p95 0.205 ms、コードgzip 9,678 B、データgzip 534,524 Bだった。
+      Canvas 2Dで深さランク別に一度ラスタ化し、パン・ズーム中は画像を再配置する。2,264個・124,919頂点のクリップ済み形状で、2026-11-06のChrome 156 3-run計測は初回描画p50 246.455 ms、frame p95 5.540 ms、描画CPU p95 0.145 ms、コードgzip 9,678 B、データgzip 534,524 Bだった。
     evidence: >-
-      `results/30DayMapChallenge-2026-26/latest.json` と `screenshot.png`。3反復すべての14予算・8 browser checksがPASSし、外部origin requestは0件。最大frame intervalは10.51 ms、最大描画CPUは1.27 ms。デスクトップ初期画面のスクリーンショットをレビューし、荒川の河道と色別の想定区域、スケール・選択bbox・出典が確認できた。headless ChromeのログにDBus/EGL初期化警告があるが、測定・画像・検査結果に失敗はない。
+      2026-11-06 Chrome 156, three runs after moving the flood-palette check to OffscreenCanvas: 2,264 polygons and 124,919 vertices; first-frame p50 246.455 ms, frame p95 5.540 ms, draw CPU p95 0.145 ms, code/data gzip 9,678/534,524 B. All 14 budgets and 8 browser checks passed. Zero off-origin runtime requests. The screenshot was visually reviewed. See results/30DayMapChallenge-2026-26/latest.json.
     applies_when: 一つの固定領域にある大量の静的な浸水ポリゴンを、地物の色分けを維持してパン・ズームする。モバイル画面や別領域・全域の性能を保証しない。
 verification:
   checks:
