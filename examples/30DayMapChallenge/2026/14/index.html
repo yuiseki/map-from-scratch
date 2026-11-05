@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>14 · Borgesian map — 30DayMapChallenge 2026</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background:#18252a; color:#e5e0d3; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; }
+    #map { position:absolute; inset:0; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+    #panel { position:absolute; top:16px; left:16px; z-index:2; width:min(410px,calc(100vw - 32px)); max-height:calc(100vh - 32px); overflow:auto; padding:18px; border:1px solid #72827c; border-radius:13px; background:rgba(24,37,42,.96); box-shadow:0 10px 34px #0008; }
+    h1 { font-size:19px; margin:0 0 6px; letter-spacing:.01em; }
+    p { margin:8px 0; font-size:13px; line-height:1.5; color:#cad3c9; }
+    .eyebrow { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#dca477; margin-bottom:7px; }
+    .row { display:flex; flex-wrap:wrap; gap:7px; margin:10px 0; }
+    button { border:1px solid #73837d; border-radius:7px; padding:8px 10px; background:#2b3d40; color:#f5eee0; font:inherit; font-size:12px; cursor:pointer; }
+    button:hover:not(:disabled),button[aria-pressed="true"] { background:#896447; border-color:#d2a377; }
+    button:disabled { opacity:.48; cursor:not-allowed; }
+    button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible { outline:2px solid #f2c899; outline-offset:2px; }
+    label { display:block; font-size:12px; color:#e2d9c7; }
+    input[type=range] { width:100%; accent-color:#dfa977; }
+    #card-reference { height:35px; border:1px solid #f2d7a9; border-radius:5px; background:linear-gradient(135deg,#e4d2ae,#a57a53); margin:8px 0; max-width:100%; }
+    .calibration { border-top:1px solid #51615d; border-bottom:1px solid #51615d; padding:11px 0; margin:10px 0; }
+    #overview { position:absolute; right:17px; bottom:70px; width:260px; height:205px; border:1px solid #f7e6c5; box-shadow:0 4px 18px #0008; background:#d1c9b7; cursor:crosshair; }
+    #scale-wrap { position:absolute; z-index:2; right:18px; top:18px; color:#f7edda; text-shadow:0 1px 3px #000; text-align:right; pointer-events:none; }
+    #scale-label { font-size:12px; font-variant-numeric:tabular-nums; }
+    #scale-bar { height:5px; max-width:calc(100vw - 40px); border:1px solid #fff4d8; border-top:0; margin:5px 0 0 auto; }
+    #foot { position:absolute; right:14px; bottom:12px; max-width:min(800px,calc(100vw - 30px)); padding:6px 9px; border-radius:6px; color:#e6e0d2; background:#18252ae8; font-size:10px; text-align:right; }
+    #foot a,#panel a { color:#e2bb91; }
+    details { margin-top:10px; font-size:12px; }
+    summary { cursor:pointer; color:#e2bb91; }
+    #prompt-text { white-space:pre-wrap; max-height:170px; overflow:auto; font-size:11px; color:#c9c3b5; }
+    .small { font-size:11px; color:#b8c3bb; }
+    #selection { padding:8px; background:#253437; border-radius:6px; min-height:38px; font-size:12px; }
+    .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:10px; color:#d2c8b6; }
+    .swatch { display:inline-block; width:9px; height:9px; margin-right:4px; border-radius:2px; }
+    .error { position:absolute; z-index:9; inset:20px; color:#fbb; background:#200e; padding:20px; white-space:pre-wrap; }
+    @media(max-width:600px) { #panel { top:8px; left:8px; width:min(370px,calc(100vw - 16px)); max-height:55vh; padding:12px; } #overview { width:180px; height:142px; right:8px; bottom:55px; } #foot { font-size:9px; bottom:5px; right:5px; } }
+  </style>
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter + -" aria-label="渋谷駅周辺のOpenStreetMap建物形状地図。ドラッグまたは矢印キーで移動、ホイールまたはプラス・マイナスキーで拡大縮小、Enterで中央の建物を選択します。"></canvas>
+  <section id="panel" aria-label="地図の説明と操作">
+    <div class="eyebrow">30DayMapChallenge · Day 14</div>
+    <h1>地図が領土になるまで</h1>
+    <p>東京・渋谷駅周辺のOSM建物フットプリント <strong id="counts">読込中</strong></p>
+    <div class="legend">
+      <span><i class="swatch" style="background:#d39867"></i>住宅</span><span><i class="swatch" style="background:#c67d59"></i>商業</span><span><i class="swatch" style="background:#dc9c68"></i>小売</span><span><i class="swatch" style="background:#be9c72"></i>公共・交通</span>
+    </div>
+    <div class="row">
+      <button id="overview-mode" aria-pressed="true">500 m 全体図</button>
+      <button id="physical-mode" disabled title="画面をカード実寸に合わせて校正すると有効になります">校正して実寸 1:1</button>
+      <button id="reset-scale">1:1 の窓に戻す</button>
+    </div>
+    <div class="calibration">
+      <label for="card-width">画面上の長方形を実物のカード幅 85.60 mm に合わせてください</label>
+      <div id="card-reference" aria-hidden="true"></div>
+    <input id="card-width" type="range" min="80" max="320" step="1" value="280" aria-label="カード幅に合わせる画面上の長方形の幅">
+      <p class="small">長方形をカードと同じ幅に調整してから校正ボタンを押します。OSの表示倍率・ブラウザー拡大率も含め、表示環境ごとに校正してください。</p>
+      <button id="calibrate">この画面をカード幅で校正</button>
+      <span id="calibration-status" class="small" aria-live="polite">未校正 — 画面上の実寸は不明です</span>
+    </div>
+    <p id="scale-status" aria-live="polite">縮尺: 画面スケール不明</p>
+    <p id="metrics" class="small"></p>
+    <p class="small">500 m 四方は表示用に切り出した矩形で、行政界ではありません。OSM は市民投稿データで測量成果ではありません。EPSG:3857 の局所縮尺を緯度の cos φ で補正しますが、地球の曲率と投影の変化があるため、地表全体の完全な1:1ではありません。</p>
+    <div id="selection" aria-live="polite">建物をクリックすると OSM ID と地表座標を表示します。</div>
+    <p class="small">ドラッグで移動、ホイールで拡大縮小。右下の全体図を押すと、その場所へ移動します。実寸モードの窓は画面に入る幅だけ領土を切り取ります。全体図の窓印は見やすさのため最小3pxに拡大しています。</p>
+    <details><summary>制作プロンプトを読む</summary><pre id="prompt-text">読込中</pre></details>
+  </section>
+  <div id="scale-wrap"><div id="scale-label">画面スケール不明</div><div id="scale-bar"></div></div>
+  <canvas id="overview" tabindex="0" role="application" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter" aria-label="渋谷駅周辺500メートルの全体図。クリックまたは矢印キーで詳細位置を移動します"></canvas>
+  <footer id="foot">
+    出典: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · ODbL 1.0 · 2026-08-31 東京23区抽出を加工。<br>
+    <a href="https://www.openstreetmap.org/way/904652357" target="_blank" rel="noreferrer">OSMデータ</a> · この作品は独立した加工物であり、OSM公式の測量図ではありません。
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

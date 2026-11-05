@@ -1,0 +1,125 @@
+id: 30DayMapChallenge-2026-14
+request: >-
+  30DayMapChallenge 2026「Borgesian map」。東京・渋谷駅周辺の実在するOSM建物フットプリントを描き、カード実寸で画面校正した場合だけ局所地表縮尺の1:1窓を表示する。広域overviewと物理実寸の両立不能さを作品の主題にする。
+requirements:
+  - id: real-openstreetmap-footprints
+    need: 凍結OSMデータの実在建物形状を選択したデータ窓内で詳細表示する
+    rationale: 2026-08-31 GeoParquetをEPSG:3857 bboxで抽出し、buildingタグ付き222地物の元頂点を保持して描画する
+    unmeasured: source geometryのknown relation/904652357内部点がヒットし、頂点数と範囲が再現可能であることをブラウザー検査する
+  - id: conditional-physical-scale
+    need: 未校正画面では1:1と表示せず、校正後のみ局所地表の1:1表示を提供する
+    rationale: 85.60 mmのカード参照でCSS px/mmを校正し、EPSG:3857縮尺をcos(latitude)で補正する
+    unmeasured: UIの初期無効状態、校正値と計算結果、1:1状態をブラウザー検査する
+  - id: overview-and-navigation
+    need: 500m overviewと移動可能なdetail viewを持ち、マウス・タッチ・キーボード操作を提供する
+    rationale: 独自Canvas描画器、建物ヒットテスト、overview click/arrow、detail drag/wheel/arrow/Enter selection
+    unmeasured: Mouse/touch affordance and map semantics are checked in browser verification; frame and draw CPU have numeric budgets.
+  - id: precision-and-projection-disclosure
+    need: OSM形状、EPSG:3857の局所補正、曲率と測位精度の限界を説明する
+    rationale: 大きなEPSG:3857絶対座標をFloat64で保持し、bbox基準の差分だけをFloat32で符号化して精度を検証する
+    unmeasured: Browser pixel values cannot prove the physical display dimensions; the manual calibration and projection caveats are checked as UI behavior.
+  - id: source-license-and-boundary
+    need: OSM帰属、ODbL条件、データ時点、矩形抽出範囲、非公式な範囲を表示する
+    rationale: ランタイムに公開OSM APIを呼ばず、カタログ済みローカルコピーを使う
+    unmeasured: Attribution and scope wording are checked in browser text and source link assertions.
+evaluation:
+  budgets:
+    - {metric: building_count, min: 200, max: 1000, unit: buildings, requirement: real-openstreetmap-footprints}
+    - {metric: vertex_count, min: 1000, unit: vertices, requirement: real-openstreetmap-footprints}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: overview-and-navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: overview-and-navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: real-openstreetmap-footprints}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: real-openstreetmap-footprints}
+    - {metric: data_gzip_bytes, max: 100000, unit: B, requirement: real-openstreetmap-footprints}
+  gates: [222 OSM building features and measured vertices, no 1:1 claim before calibration, cos(latitude) local scale correction, overview scale bar explicitly labels EPSG:3857 projected distance, map and overview keyboard operation, ODbL attribution and non-official bbox caveat]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/14/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: overview-building-footprints
+      what: 222 source building polygons, all rings and overview windowをCanvas描画する
+      metrics: [first_frame_ms]
+    - id: pans-and-zooms
+      what: 80回のパン・拡大縮小でframe intervalとdraw CPUを測る
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: calibration-and-keyboard
+      what: 表示校正後のcos(latitude)補正、物理1:1スケール、keyboard操作を検査する
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/14/bake.ts]
+  sources:
+    - id: osm-tokyo23-polygons
+      origin: >-
+        OpenStreetMap Tokyo 23-ward extract at 2026-08-31. osm2pgsql polygon table, GeoParquet 1.1, 1,437,105 rows, EPSG:3857, Hilbert order and bbox covering fields.
+      license: >-
+        Open Database License 1.0 (ODbL), derived from © OpenStreetMap contributors. Attribution: © OpenStreetMap contributors (https://www.openstreetmap.org/copyright). This processed extract is OSM-derived and distributed under ODbL terms.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs:
+    - data/baked/30DayMapChallenge-2026-14/buildings.bin
+    - data/baked/30DayMapChallenge-2026-14/stats.json
+  preparation:
+    - >-
+      Query the local frozen GeoParquet polygon table with bbox x=15551260.975–15551760.975, y=4253619.680–4254119.680 in EPSG:3857 (inverse WGS 84 lon=139.6993542117395–139.7038457881601, lat=35.6576752828918–35.66132466989101). 337 polygon bboxes intersect; 222 have building tags and unique ids. Keep full Polygon/MultiPolygon rings and clip only at render time to this rectangle.
+    - >-
+      Encode BRG1 with signed int64 OSM id, normalized building class and Float32 x/y offsets from bbox xmin/ymin. Parse and decode vertex coordinates as Float64 because absolute EPSG:3857 x≈15.5 million m would round away sub-metre detail as Float32.
+    - >-
+      Use OSM relation/904652357 ST_PointOnSurface at EPSG:3857 x=15551500.93321805, y=4253738.528960587 (WGS 84 lon=139.70150979308778, lat=35.658542749704964) to anchor the 1:1 detail view inside a mapped footprint. This is approximate OSM geometry, not a survey mark.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Path2D + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/14/index.html, examples/30DayMapChallenge/2026/14/main.ts, examples/30DayMapChallenge/2026/14/renderer.ts, examples/30DayMapChallenge/2026/14/territory.ts, examples/30DayMapChallenge/2026/14/PROMPT.md]
+    dependencies: []
+    why: >-
+      222 complete footprint polygons and 1,698 vertices fit in a small custom Canvas renderer. Direct paths avoid tile generalization, while display calibration and local projection correction make physical scale conditional and explicit.
+  alternatives:
+    - option: Label browser CSS pixels as physical metres without calibration
+      rejected_because: Browser zoom, OS scaling and display pixel density vary and would create a false 1:1 claim.
+    - option: Store absolute EPSG:3857 coordinates as Float32
+      rejected_because: At x≈15.5 million m, Float32 rounds at roughly metre precision and destroys building detail.
+    - option: Runtime MapLibre/Leaflet or public OSM tiles
+      rejected_because: A fixed local window can be drawn directly from the frozen extract without a map engine or remote service.
+  not_doing: [official administrative outline, cadastral survey, physical scale before manual calibration, global exact scale, basemap imagery, public OSM API requests]
+performance_knowledge:
+  - claim: >-
+      A small pre-baked extent of 222 OSM buildings retains all 1,698 source vertices, allowing direct Canvas redraws with a small data payload.
+    evidence: >-
+      Three Chrome/Xvfb runs: 222 buildings and 1,698 vertices; first_frame_ms samples 49.575/53.865/47.230 (p50 49.575), frame_ms p95 0.725, draw_cpu_ms p95 0.265, code_gzip_bytes 12,636 and data_gzip_bytes 12,461. All seven budget gates and seven browser checks passed; the captured overview screenshot was visually inspected.
+    applies_when: The frozen 500 m Shibuya-area extract and local detail window; not all Tokyo buildings.
+verification:
+  checks:
+    - id: real-building-and-geometry-hit
+      what: Count unique OSM building features and select the source relation interior.
+      how: Verify baked stats and hit-test its source ST_PointOnSurface.
+      expected: 222 distinct ids, 1,698 vertices and relation/904652357 selected.
+    - id: physical-calibration-control
+      what: Check calibration gating and latitude correction.
+      how: Inspect the initial disabled control, 85.60mm reference and caveat copy before bench calibrates.
+      expected: Uncalibrated screens cannot enter the 1:1 mode.
+    - id: calibrated-ground-scale
+      what: Check the measured local ground scale after calibration.
+      how: Compare px/projected-metre with px/mm × 1000 × cos(latitude).
+      expected: The formula matches and exact local 1:1 is available at zoom 1.
+    - id: overview-projection-scale-bar
+      what: Label the overview scale bar as a projected, not ground, distance.
+      how: Inspect its text and compare its pixel width with the Canvas projected scale.
+      expected: The label says EPSG:3857 projected 50 m and the bar matches 50 projected metres.
+    - id: calibration-invalidated-on-change
+      what: Ensure changing the card width invalidates the old measurement.
+      how: Change the reference slider after calibration and inspect state, mode, button and status.
+      expected: Physical mode exits and remains disabled until calibration is confirmed again.
+    - id: keyboard-map-interaction
+      what: Navigate both map canvases and select a building using a keyboard.
+      how: Dispatch arrow and Enter events on the focused canvases.
+      expected: Map arrows pan; Enter selects at map centre; overview arrows move the detail centre.
+    - id: source-odbl-and-scope
+      what: Display ODbL, source vintage, extract rectangle, curve/projection and non-survey caveats.
+      how: Browser text and source-link checks.
+      expected: OSM credit/license and conditional local-scale explanation are visible.
