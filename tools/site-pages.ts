@@ -22,6 +22,7 @@ export const galleries = [
   { id: 'opfs', label: 'OPFS', group: 'experiment' },
   { id: 'wasm', label: 'WebAssembly', group: 'experiment' },
   { id: 'htmlcanvas', label: 'HTML-in-Canvas', group: 'experiment' },
+  { id: '30DayMapChallenge', label: '30DayMapChallenge 2026', group: 'other' },
   { id: 'legacy', label: '既存の例', group: 'other' },
 ] as const;
 export type GalleryId = typeof galleries[number]['id'];

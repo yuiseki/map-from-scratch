@@ -24,6 +24,18 @@ test('Three.js examples have a dedicated gallery page', () => {
   assert.deepEqual(pages.map((page) => page.path), ['index.html', 'examples/threejs/index.html', 'tech/webgl2/index.html']);
 });
 
+test('30DayMapChallenge examples keep their year/day paths and get a dedicated gallery page', () => {
+  const dir = 'examples/30DayMapChallenge/2026/01';
+  assert.equal(galleryOf(dir), '30DayMapChallenge');
+  const pages = indexPages([{ dir, api: 'Canvas 2D' }]);
+  assert.deepEqual(pages.map((page) => page.path), [
+    'index.html',
+    'examples/30DayMapChallenge/index.html',
+    'tech/canvas-2d/index.html',
+  ]);
+  assert.deepEqual(pages[1].rows.map((row) => row.dir), [dir]);
+});
+
 test('the top page has every card, each gallery a page with only its own', () => {
   const pages = indexPages(rows);
   assert.deepEqual(pages.map((p) => p.path), ['index.html', 'examples/maplibre/index.html', 'examples/deckgl/index.html', 'examples/legacy/index.html', 'tech/canvas-2d/index.html', 'tech/webgl2/index.html']);
@@ -48,7 +60,7 @@ test('every gallery directory under examples/ is a known gallery', async () => {
   const { join, dirname } = await import('node:path');
   const { fileURLToPath } = await import('node:url');
   const examples = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples');
-  const galleryDirs = readdirSync(examples).filter((d) => !existsSync(join(examples, d, 'spec.yaml')) && !/^\d/.test(d));
+  const galleryDirs = readdirSync(examples).filter((d) => !existsSync(join(examples, d, 'spec.yaml')) && !/^\d{2}-/.test(d));
   for (const d of galleryDirs) assert.notEqual(galleryOf(`examples/${d}/001-x`), 'legacy', `examples/${d}/ is missing from galleries`);
 });
 
@@ -63,7 +75,7 @@ test('the gallery links are the libraries and the rest; technologies come from t
   const ids = (key: string) => galleryGroups.find((g) => g.key === key)!.galleries.map(({ id }) => id);
   assert.deepEqual(galleryGroups.map((g) => g.key), ['library', 'other']);
   assert.ok(ids('library').includes('maplibre') && ids('library').includes('luma') && ids('library').includes('threejs'));
-  assert.deepEqual(ids('other'), ['legacy']);
+  assert.deepEqual(ids('other'), ['30DayMapChallenge', 'legacy']);
 });
 
 test('technologies are read from chosen.api and the experiment directory', () => {
