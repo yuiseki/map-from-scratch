@@ -15,7 +15,11 @@ resize();
 const DATA_URL = '../../../data/baked/htmlcanvas-001-rich-map-popup/landmarks.json';
 
 const startTime = performance.now();
-const mapInstance = await mount(canvas, DATA_URL);
+// The first frame is drawn inside mount(), before it returns: the HUD reads
+// the map through this variable, unset until then (a const would throw in its
+// temporal dead zone).
+let view: MapPopupView | null = null;
+const mapInstance: MapPopupView = view = await mount(canvas, DATA_URL, () => updateHud());
 const firstFrameMs = performance.now() - startTime;
 // Registered after mount: a resize during the await read mapInstance in its
 // temporal dead zone and threw.
@@ -25,11 +29,13 @@ window.addEventListener('resize', () => {
 });
 
 function updateHud(): void {
+  const mapInstance = view;
+  if (!mapInstance) return;
   if (hudStatus) {
-    hudStatus.textContent = mapInstance.hasDrawElementImage
-      ? 'HTML-in-Canvas Active'
-      : 'Fallback Active (No drawElementImage)';
-    hudStatus.style.color = mapInstance.hasDrawElementImage ? '#4ade80' : '#f59e0b';
+    hudStatus.textContent = mapInstance.htmlInCanvas
+      ? 'HTML-in-Canvas (drawElementImage)'
+      : 'DOM overlay (this browser has no HTML-in-Canvas)';
+    hudStatus.style.color = mapInstance.htmlInCanvas ? '#4ade80' : '#f59e0b';
   }
   if (hudAnchor) hudAnchor.textContent = mapInstance.activeLandmark.name;
   if (hudBookmark) {
@@ -37,12 +43,6 @@ function updateHud(): void {
     hudBookmark.style.color = mapInstance.bookmarked ? '#4ade80' : '#94a3b8';
   }
 }
-
-const originalRender = mapInstance.render;
-mapInstance.render = async () => {
-  await originalRender();
-  updateHud();
-};
 updateHud();
 
 // Benchmark hook

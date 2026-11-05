@@ -46,3 +46,21 @@ HTML-in-Canvas で生成した HTML 要素を WebGPU レンダリングパイプ
 - 以前は headless の SwiftShader で測っていた。SwiftShader では毎フレーム画面全体を読み戻して Canvas 2D に写すので、`redraw_ms` の予算は 45 ms、`frame_interval_ms` は 35 ms だった。どちらも CPU で GPU をまねる速さで、GPU で描くこの例の速さではなかった。いまは 1 フレームを実際にパンさせてオフスクリーンに描き、`onSubmittedWorkDone` まで待つ。予算は要件どおり、再描画 5.0 ms と 60 fps の 16.7 ms にした。
 - 以前の計測ループは、フレーム間隔の 15 回は何も描かずに rAF を待つだけで、再描画の 20 回は同じ視点を描き直すだけだった。
 
+
+## 2026-11-06 Chrome 157 の正式版への移行
+
+- カードを、別の 2D canvas でなく WebGPU の canvas 自身の子 (`<canvas content="drawable">`) に置き、`device.queue.drawElementImageToTexture({ source: el }, { texture, origin })` でアトラスの枠へ直に描く。2D canvas と、その全面の消去と `copyExternalImageToTexture` が消えた。
+- 送るのは canvas の `paint` イベントの中で、`event.changedElements` に挙がったカードだけにした。最初は 6 枚、文字を変えたカードは 1 枚、パンは 0 枚。
+- 最初の `updateElementGeometry` は、全部のカードの描き直しを起こす (`paint` イベントが 6 枚とも挙げ直した)。最初の `paint` より前に位置を知らせて、全部を送るのを 1 回にした。
+- フレームごとに `canvas.updateElementGeometry(el, { canvasTransform, preserveHitTestOrder: true })` で、頂点シェーダーが置いたカードの位置をブラウザに知らせる。カードは本物のクリックを受け、クリックで黄色に変わる (`click-pins-card`)。
+- `document.elementFromPoint` は、同じ点への直前の答えを、`updateElementGeometry` で要素が動いた後も返すことがあった。CDP で送った本物のクリックは、新しい位置に届いた (元の位置は canvas、新しい位置はカード)。計測は、動かす前と後で同じ点を問わない。
+- SwiftShader の WebGPU では、`drawElementImageToTexture` の直後にデバイスが失われた。SwiftShader のときと API の無いブラウザでは、カードを DOM overlay にする (`?fallback` で強制できる)。
+
+| 計測 (3 回、2026-11-06、RTX 3060、Xvfb) | 値 | 予算 |
+| --- | --- | --- |
+| `cpu_ms` p95 | 0.385 ms | <= 5.0 ms |
+| `frame_ms` p95 | 5.02 ms | <= 16.7 ms |
+| `first_frame_ms` p50 | 824 ms | <= 2,000 ms |
+| コード (gzip) | 12,351 B (移行前 11,686 B) | <= 13,000 B |
+
+計測のあいだ、マシンの load average は 21 前後だった (ほかの計測と同時)。

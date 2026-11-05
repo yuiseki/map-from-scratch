@@ -1,14 +1,20 @@
 // WebGPU Map Label Renderer via HTML-in-Canvas with GSI Seamlessphoto Aerial Tiles
 //
-// Demonstrates rendering rich HTML elements (with CSS badges, Japanese typography, shadows)
-// into a WebGPU texture atlas using WICG HTML-in-Canvas (drawElementImage) over
-// 国土地理院「全国最新写真（シームレス）」PMTiles aerial raster tiles.
-// The WebGPU render pass composites the aerial map tiles, pins, and instanced label quads.
-// During pan and zoom, only camera uniforms update on the GPU; no HTML re-layout or texture
-// uploads occur per frame.
+// Rich HTML label cards (CSS badges, Japanese typography) are children of the
+// WebGPU canvas itself (<canvas content="drawable">) and are drawn straight
+// into a WebGPU texture atlas with device.queue.drawElementImageToTexture
+// (HTML-in-Canvas, Chrome 157), over 国土地理院「全国最新写真（シームレス）」
+// PMTiles aerial raster tiles. The render pass composites tiles, pins and
+// instanced label quads. During pan and zoom only camera uniforms change; a
+// label is uploaded again only when the canvas's paint event lists it in
+// changedElements. Each frame tells the browser where every label was drawn
+// (updateElementGeometry), so the cards take real clicks and hover.
+// Without HTML-in-Canvas, or on SwiftShader (where the device was lost right
+// after drawElementImageToTexture), the cards are a DOM overlay instead.
 
 import { openArchive } from './pmtiles.ts';
 import { labelScreenRect } from './geometry.ts';
+import { supportsHtmlInCanvas } from './support.ts';
 
 export interface MapLabelItem {
   id: string;
@@ -58,7 +64,11 @@ export interface WebGpuLabelMap {
   canvas: HTMLCanvasElement;
   landmarks: MapLabelItem[];
   gpuName: string;
-  hasDrawElementImage: boolean;
+  // true: cards drawn on the GPU from HTML-in-Canvas. false: DOM overlay.
+  htmlInCanvas: boolean;
+  labelElements: HTMLElement[];
+  paintLog: { t: number; changed: string[] }[];
+  // drawElementImageToTexture calls, one per card uploaded.
   textureUploadCount: number;
   renderCount: number;
   device: GPUDevice;
@@ -78,13 +88,10 @@ export interface WebGpuLabelMap {
 
 export async function mount(
   canvas: HTMLCanvasElement,
-  canvasHtml: HTMLCanvasElement,
   dataUrl: string,
 ): Promise<WebGpuLabelMap> {
-  const ctxHtml = canvasHtml.getContext('2d') as any;
-  if (!ctxHtml) throw new Error('Failed to get 2D context for HTML canvas');
-
-  const hasDrawElementImage = typeof ctxHtml.drawElementImage === 'function';
+  // ?fallback forces the DOM overlay, to look at what other browsers get.
+  const apiPresent = !new URLSearchParams(location.search).has('fallback') && supportsHtmlInCanvas(canvas);
 
   // Load landmarks data
   const res = await fetch(dataUrl);
@@ -115,6 +122,22 @@ export async function mount(
   let webgpuCtx: GPUCanvasContext | null = null;
   let onscreen2dCtx: CanvasRenderingContext2D | null = null;
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+
+  const htmlInCanvas = apiPresent && !isSwiftShader;
+  const labelElements = landmarks.map((_, i) => document.getElementById(`label-${i}`) as HTMLElement);
+  if (!htmlInCanvas) {
+    // Children of a canvas are fallback content, not rendered, where the API
+    // is missing: lift the cards into an overlay placed in CSS pixels.
+    const layer = document.createElement('div');
+    layer.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;';
+    canvas.after(layer);
+    for (const el of labelElements) {
+      el.style.position = 'absolute';
+      el.style.left = '0';
+      el.style.top = '0';
+      layer.append(el);
+    }
+  }
 
   if (isSwiftShader) {
     onscreen2dCtx = canvas.getContext('2d');
@@ -164,42 +187,33 @@ export async function mount(
   let textureUploadCount = 0;
   let renderCount = 0;
 
-  // Render HTML elements into canvasHtml and upload to WebGPU texture atlas
-  async function updateLabelTextureAtlas(): Promise<void> {
-    if (typeof (canvasHtml as any).requestPaint === 'function') {
-      await new Promise<void>((resolve) => {
-        canvasHtml.addEventListener('paint', () => resolve(), { once: true });
-        (canvasHtml as any).requestPaint();
-      });
-    } else {
-      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-    }
-
-    ctxHtml.clearRect(0, 0, atlasWidth, atlasHeight);
-
-    for (let i = 0; i < landmarks.length; i++) {
-      const el = document.getElementById(`label-${i}`);
-      if (!el) continue;
-      const slotX = (i % 6) * 165 + 10;
-      const slotY = 10;
-
-      if (hasDrawElementImage) {
-        ctxHtml.drawElementImage(el, slotX, slotY);
-      } else {
-        ctxHtml.fillStyle = '#ffffff';
-        ctxHtml.fillRect(slotX, slotY, labelCardWidth, labelCardHeight);
-        ctxHtml.fillStyle = '#0f172a';
-        ctxHtml.font = 'bold 12px sans-serif';
-        ctxHtml.fillText(landmarks[i].name, slotX + 8, slotY + 28);
+  // Upload the cards the browser repainted into their atlas slots. A card
+  // has a paint record only from the first paint on, so this runs in the
+  // canvas's paint event: changedElements lists exactly the cards whose
+  // rendering changed (all of them the first time; one after its text or
+  // hover state changed; none for a pan).
+  // Every paint event and the cards it listed, for the bench.
+  const paintLog: { t: number; changed: string[] }[] = [];
+  let paints: (() => void)[] = [];
+  const nextPaint = () => new Promise<void>((r) => paints.push(r));
+  if (htmlInCanvas) {
+    canvas.addEventListener('paint', (e: Event) => {
+      const changed: Element[] = (e as any).changedElements ?? [];
+      paintLog.push({ t: Math.round(performance.now()), changed: changed.map((el) => el.id) });
+      for (const el of changed) {
+        const i = labelElements.indexOf(el as HTMLElement);
+        if (i < 0) continue;
+        (device.queue as any).drawElementImageToTexture(
+          { source: el },
+          { texture: labelTexture, origin: [(i % 6) * 165 + 10, 10] },
+        );
+        textureUploadCount++;
       }
-    }
-
-    device.queue.copyExternalImageToTexture(
-      { source: canvasHtml },
-      { texture: labelTexture },
-      [atlasWidth, atlasHeight],
-    );
-    textureUploadCount++;
+      if (changed.length) void render();
+      const done = paints;
+      paints = [];
+      for (const r of done) r();
+    });
   }
 
   // GSI Seamlessphoto Tile Atlas (4096x4096, 8x8 grid of 512x512 tiles = 64
@@ -301,6 +315,26 @@ export async function mount(
       0, // pad
     ]);
     device.queue.writeBuffer(cameraUniformBuffer, 0, data);
+  }
+
+  // Where each card is on screen, for hit testing. On the GPU path the
+  // browser cannot know it (the vertex shader placed the quad), so every
+  // frame tells it with updateElementGeometry, in CSS pixels of the canvas.
+  // The overlay places the cards themselves.
+  function placeLabelElements(): void {
+    const box = canvas.getBoundingClientRect();
+    const k = box.width / canvas.width;
+    for (let i = 0; i < landmarks.length; i++) {
+      const r = getLabelScreenPos(i);
+      if (htmlInCanvas) {
+        (canvas as any).updateElementGeometry(labelElements[i], {
+          canvasTransform: new DOMMatrix().translate(r.x * k, r.y * k).scale(k),
+          preserveHitTestOrder: true,
+        });
+      } else {
+        labelElements[i].style.transform = `translate(${box.left + window.scrollX + r.x * k}px, ${box.top + window.scrollY + r.y * k}px) scale(${k})`;
+      }
+    }
   }
 
   // Label Instance storage buffer
@@ -717,11 +751,14 @@ export async function mount(
     pass.setPipeline(pinPipeline);
     pass.draw(6, landmarks.length, 0, 0);
 
-    // 3. Draw instanced HTML labels
-    pass.setPipeline(labelPipeline);
-    pass.draw(6, landmarks.length, 0, 0);
+    // 3. Draw instanced HTML labels (the overlay draws them otherwise)
+    if (htmlInCanvas) {
+      pass.setPipeline(labelPipeline);
+      pass.draw(6, landmarks.length, 0, 0);
+    }
 
     pass.end();
+    if (!offscreen) placeLabelElements();
 
     // In SwiftShader, transfer pixels to onscreen Canvas 2D
     if (isSwiftShader && !offscreen && onscreen2dCtx && targetTexture) {
@@ -792,7 +829,8 @@ export async function mount(
       if (ratingEl) ratingEl.textContent = rating;
     }
 
-    await updateLabelTextureAtlas();
+    // The browser repaints the card and the paint event uploads it alone.
+    if (htmlInCanvas) await nextPaint();
     await render();
   }
 
@@ -836,7 +874,15 @@ export async function mount(
   let dragStartX = 0;
   let dragStartY = 0;
 
+  // A card takes the real click where it was drawn and toggles its pin; the
+  // browser repaints it, and the paint event uploads that card alone.
+  for (const el of labelElements) {
+    el.addEventListener('click', () => el.classList.toggle('selected'));
+  }
+
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    // Pointer events on a card bubble up to the canvas, its parent.
+    if (labelElements.some((el) => el.contains(e.target as Node))) return;
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -898,8 +944,20 @@ export async function mount(
     return tileSlots.size > 0;
   }
 
-  // Initial setup: upload HTML labels to WebGPU texture atlas
-  await updateLabelTextureAtlas();
+  // The first paint uploads every card (drawElementImageToTexture before it
+  // throws InvalidStateError: no cached paint record).
+  if (htmlInCanvas) {
+    // A font that arrives later repaints every card, and the paint event
+    // uploads all of them again: wait for the fonts the cards use first.
+    await document.fonts.ready;
+    // The first updateElementGeometry repaints every card (the paint event
+    // listed all six again, 0.15 to 0.5 s later): place them before the
+    // first paint, so it is the only full upload.
+    placeLabelElements();
+    const first = nextPaint();
+    (canvas as any).requestPaint();
+    await first;
+  }
 
   // Open PMTiles archive & fetch center tile
   try {
@@ -919,7 +977,9 @@ export async function mount(
     canvas,
     landmarks,
     gpuName,
-    hasDrawElementImage,
+    htmlInCanvas,
+    labelElements,
+    paintLog,
     get textureUploadCount() {
       return textureUploadCount;
     },

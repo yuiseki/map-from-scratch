@@ -1,11 +1,11 @@
 id: htmlcanvas-002-webgpu-map-label
 request: >-
-  HTML-in-Canvas（WICG drawElementImage）で生成した実 HTML ラベルカードを WebGPU レンダリングパイプラインへ取り込み、
+  HTML-in-Canvas（Chrome 157、drawElementImageToTexture）で生成した実 HTML ラベルカードを WebGPU レンダリングパイプラインへ取り込み、
   地図上のラベルとして GPU インスタンス描画し、パン・ズーム時に HTML の再レイアウトやテクスチャ再アップロードなしで追従させたい。
 
 requirements:
   - id: html-labels-in-webgpu
-    need: 実 HTML 要素（バッジ・星評価・日本語見出し）を CanvasDrawElement 経由で WebGPU テクスチャアトラスに取り込み合成する
+    need: 実 HTML 要素（バッジ・星評価・日本語見出し）を drawElementImageToTexture で WebGPU テクスチャアトラスに取り込み合成する
     unmeasured: verification checks の html-in-canvas-supported と labels-rendered-on-webgpu で確認
   - id: webgpu-acceleration
     need: WebGPU パイプライン内で地図背景・ピン・ラベルクアッドを GPU 上で直接描画する
@@ -18,7 +18,10 @@ requirements:
     unmeasured: verification checks の texture-updated-on-change で確認
   - id: light-footprint
     need: 外部依存ゼロで配布コードサイズとデータサイズを最小限に抑える
-    rationale: 生 WebGPU API + WICG HTML-in-Canvas のみで実装し、コード gzip 7.5 KB 以下、データ gzip 5 KB 以下
+    rationale: >-
+      生 WebGPU API + HTML-in-Canvas のみで実装し、コード gzip 13 KB 以下、データ gzip 5 KB 以下。2026-11-06 に Chrome 157 の API へ移したとき、
+      カードが本物のクリックを受けるための updateElementGeometry と、API の無いブラウザ向けの DOM overlay を足して 11,686 B から 12,351 B (+665 B) になり、
+      12,000 B の予算を 13,000 B に上げた (2D canvas を経由する転送は消えた)
   - id: smooth-interaction
     need: パン・ズーム操作時に 60 fps で滑らかに再描画される
     rationale: 60 Hz の1フレーム 16.7 ms に対し、再描画時間を 5.0 ms 以下に
@@ -28,7 +31,7 @@ requirements:
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 12000, unit: B, requirement: light-footprint}
+    - {metric: code_gzip_bytes, max: 13000, unit: B, requirement: light-footprint}
     - {metric: data_gzip_bytes, max: 5000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: light-footprint}
     - {metric: cpu_ms, stat: p95, max: 5.0, unit: ms, requirement: smooth-interaction}
@@ -43,8 +46,6 @@ benchmarks:
   # headless Chromium only offers WebGPU on SwiftShader
   display: xvfb
   iterations: 3
-  chrome_flags:
-    - --enable-blink-features=CanvasDrawElement
   scenarios:
     - id: first-frame
       what: 初期化から初回 HTML-in-Canvas テクスチャ生成と WebGPU ラベル描画まで
@@ -73,8 +74,8 @@ performance_knowledge:
       地図上の情報カードやバッジラベルを WebGPU で描画する場合、従来は SDF（Signed Distance Field）フォント描画や
       Canvas 2D の fillText() によるテクスチャ生成が使われてきた。しかし角丸バッジ、星評価アイコン、複数行フォント、
       シャドウを伴うリッチなカードを自前描画で構成するのは実装コストが極めて高い。
-      WICG HTML-in-Canvas（drawElementImage）を用いることで、ブラウザ標準の CSS/HTML レイアウトエンジンが描画した
-      DOM 要素をテクスチャアトラスにブリットし、`device.queue.copyExternalImageToTexture` で WebGPU テクスチャに転送できる。
+      HTML-in-Canvas を用いることで、ブラウザ標準の CSS/HTML レイアウトエンジンが描画した DOM 要素を、
+      `device.queue.drawElementImageToTexture` で WebGPU テクスチャアトラスの枠へ直に描ける (Chrome 157)。
   - what: GPU 側でのアンカー変換とゼロ・リレイアウト
     why: >-
       パンやズームのたびに HTML 要素を再描画したりテクスチャを再アップロードすると、フレームあたり数十 ms の CPU スタイル計算と
@@ -82,6 +83,36 @@ performance_knowledge:
       本設計では各ラベルのサイズと UV 座標を一度だけ Storage Buffer に記録し、Vertex Shader がカメラの
       `viewProj` 行列（または center と scale）から地理座標アンカーを画面空間に投影し、クアッドの頂点オフセットを加算する。
       これにより、パン・ズーム操作中はテクスチャアップロード回数ゼロ・HTML 再計算ゼロで 60 fps の完全追従が実現する。
+
+  - id: draw-element-straight-to-the-texture
+    finding: >-
+      origin trial のころは、別の 2D canvas (1024×256、layoutsubtree) にカードを drawElementImage で並べ、それを
+      copyExternalImageToTexture でアトラスへ写していた。Chrome 157 では WebGPU の canvas 自身の子にカードを置き、
+      device.queue.drawElementImageToTexture({ source: el }, { texture, origin: [枠の x, y] }) で枠へ直に描ける。2D canvas と、
+      その全面の消去と転送が消えた。描けるのは canvas の paint イベントから (それより前は InvalidStateError: No cached paint record)。
+      paint イベントの changedElements が描き直しの要るカードだけを挙げるので、それだけを送る: 最初は 6 枚、文字を変えたカードは 1 枚、パンは 0 枚
+    evidence: >-
+      2026-11-06、Chrome for Testing 157.0.8103.38 (フラグなし)、RTX 3060、Xvfb。zero-uploads-during-pan で 6 回のまま、
+      texture-updated-on-change と click-pins-card でそれぞれ 1 回だけ増えた
+    applies_when: HTML を WebGPU のテクスチャにするとき
+
+  - id: tell-the-browser-where-the-quad-is
+    finding: >-
+      WebGL や WebGPU で描いた要素は、ブラウザには位置がわからない (頂点シェーダーが決める)。描いたフレームごとに
+      canvas.updateElementGeometry(el, { canvasTransform: DOMMatrix (CSS px), preserveHitTestOrder: true }) で知らせると、
+      カードが本物のクリックを受け、elementFromPoint もカードを返す。preserveHitTestOrder を付けないと、呼ぶたびにその要素が
+      ヒットテストの一番上へ移る。2D の drawElementImage でも preserveElementGeometry: true を付けて updateElementGeometry を
+      呼ばないと、要素はどこにもヒットしなくなる (元のレイアウト位置に残るのではない。htmlcanvas-001 でわざと壊して確かめた)
+    evidence: card-hit-where-drawn (描いた位置でカード、パン後は新しい位置でカード、元の位置ではカード以外)
+    applies_when: HTML を GPU で描き、操作も受けたいとき
+
+  - id: swiftshader-loses-the-device
+    finding: >-
+      headless の SwiftShader の WebGPU では、drawElementImageToTexture を呼んだ直後にデバイスが失われた
+      (lost: "A valid external Instance reference no longer exists.")。NVIDIA (Xvfb の上の画面あり) では正しい画素が入った。
+      SwiftShader のときと API の無いブラウザでは、カードを DOM overlay にする
+    evidence: 2026-11-06 のプローブ (32×32 の緑の要素を描いて読み戻す。NVIDIA は (0,255,0,255)、SwiftShader は device lost)
+    applies_when: HTML-in-Canvas を WebGPU で使い、ソフトウェアの GPU でも動かすとき
 
   - id: swiftshader-is-not-the-gpu
     finding: headless の Chromium の WebGPU は SwiftShader で、この例はそのとき毎フレーム画面全体を読み戻して Canvas 2D に写す。そこで測った時間は GPU で描くときの速さを表さないので、Xvfb 上の画面ありの Chromium でハードウェアの GPU を使い、オフスクリーンに描いて timestamp で測る
@@ -92,12 +123,13 @@ architecture_selection:
   chosen:
     language: TypeScript (erasableSyntaxOnly)
     runtime: browser
-    api: WebGPU + HTML-in-Canvas (CanvasDrawElement)
+    api: WebGPU + HTML-in-Canvas (drawElementImageToTexture, Chrome 157)
     gpu: hardware
     code:
       - examples/htmlcanvas/002-webgpu-map-label/index.html
       - examples/htmlcanvas/002-webgpu-map-label/main.ts
       - examples/htmlcanvas/002-webgpu-map-label/map.ts
+      - examples/htmlcanvas/002-webgpu-map-label/support.ts
       - examples/htmlcanvas/002-webgpu-map-label/pmtiles.ts
   not_doing:
     - 毎フレームの HTML 再レイアウト・再ラスタライズ (初回および内容変更時のみアトラス更新)
@@ -107,8 +139,8 @@ architecture_selection:
 verification:
   checks:
     - id: html-in-canvas-supported
-      what: ブラウザで CanvasRenderingContext2D.prototype.drawElementImage が有効であること
-      how: typeof ctxHtml.drawElementImage === 'function' の確認
+      what: フラグなしの安定版 Chrome で HTML-in-Canvas が使え、カードが GPU の経路で描かれていること
+      how: canvas.content が 'drawable' を返し、SwiftShader でないこと
       expected: true
     - id: webgpu-initialized
       what: WebGPU デバイスが正常に取得・初期化されていること
@@ -125,11 +157,19 @@ verification:
     - id: zero-uploads-during-pan
       what: パン・ズーム操作中にテクスチャアップロードが 1 回のまま増加しないこと
       how: 複数回 panBy / zoomBy 実行前後の textureUploadCount 比較
-      expected: uploadsBefore === uploadsAfter && uploadsBefore === 1
+      expected: uploadsBefore === uploadsAfter && uploadsBefore === 6 (最初の paint で 6 枚)
     - id: texture-updated-on-change
-      what: ラベル内容更新時にのみテクスチャアトラスが再生成されアップロード回数が 1 増加すること
+      what: ラベル内容更新時に、変わったカード 1 枚だけが paint イベントの changedElements から送り直されること
       how: updateLabelContent() 実行後の textureUploadCount 検証
       expected: uploadsAfterUpdate === uploadsAfter + 1
+    - id: card-hit-where-drawn
+      what: ブラウザ自身のヒットテストが、GPU が描いたカードの位置でカードを返し、パンに付いていくこと
+      how: カード 2 の中心で elementFromPoint を呼び、panBy(-90, 60) の後に新しい中心と元の中心で呼ぶ
+      expected: 描いた位置と新しい位置はカード、元の位置はカード以外
+    - id: click-pins-card
+      what: ヒットテストで見つけた要素のクリックがカードに届き、そのカードだけが送り直されて画面の色が変わること
+      how: elementFromPoint が返した要素に click() し、paint を待って描き直し、カードの右下の画素を読む
+      expected: selected クラスが付き、アップロードが 1 回増え、画素が琥珀色 (#fef3c7)
     - id: aerial-tile-rendered
       what: 国土地理院「全国最新写真（シームレス）」の空中写真タイルが取得され WebGPU 上に描画されていること
       how: PMTiles からのタイル読み込み完了確認

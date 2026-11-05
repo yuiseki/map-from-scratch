@@ -1,11 +1,15 @@
 // HTML-in-Canvas Map Renderer with Rich Native HTML Popup & GSI Seamlessphoto
 //
-// Uses WICG HTML-in-Canvas API (CanvasRenderingContext2D.prototype.drawElementImage)
-// to render a live HTML element subtree directly onto Canvas 2D pixels over
-// 国土地理院「全国最新写真（シームレス）」PMTiles aerial raster tiles.
+// Uses HTML-in-Canvas (shipped in Chrome 157): ctx.drawElementImage draws a
+// live HTML element, a child of <canvas content="drawable">, into Canvas 2D
+// pixels over 国土地理院「全国最新写真（シームレス）」PMTiles aerial raster
+// tiles. In 2D the browser moves the element's hit-test box to where it was
+// drawn, so the popup's button and link take real clicks, hover and focus.
+// A browser without the API gets the same popup as a DOM overlay.
 
 import { openArchive } from './pmtiles.ts';
 import { popupRectAtAnchor, projectWorld, unprojectWorld } from './geometry.ts';
+import { supportsHtmlInCanvas } from './support.ts';
 
 export interface Landmark {
   id: string;
@@ -23,14 +27,17 @@ export interface MapPopupView {
   landmarks: Landmark[];
   activeLandmark: Landmark;
   bookmarked: boolean;
-  hasDrawElementImage: boolean;
+  // true: drawn into the canvas with drawElementImage. false: the popup is a
+  // DOM overlay (a browser without HTML-in-Canvas).
+  htmlInCanvas: boolean;
+  popup: HTMLElement;
+  popupButton: HTMLButtonElement;
   render: () => Promise<void>;
   panBy: (dx: number, dy: number) => Promise<void>;
   zoomBy: (delta: number) => Promise<void>;
   getAnchorPos: () => { x: number; y: number };
   getPopupRect: () => { x: number; y: number; width: number; height: number };
   getButtonRect: () => { x: number; y: number; width: number; height: number };
-  clickButton: () => Promise<boolean>;
   readPixel: (x: number, y: number) => Uint8ClampedArray;
   waitForTile: (timeoutMs?: number) => Promise<boolean>;
   // Resolves true once every tile of the current view has arrived (or is
@@ -39,11 +46,14 @@ export interface MapPopupView {
   hasAerialTiles: () => boolean;
 }
 
-export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise<MapPopupView> {
+// onDraw runs after every frame, including those the popup's own button
+// asks for, so a HUD outside the canvas stays in step.
+export async function mount(canvas: HTMLCanvasElement, dataUrl: string, onDraw: () => void = () => {}): Promise<MapPopupView> {
   const ctx = canvas.getContext('2d') as any;
   if (!ctx) throw new Error('Failed to get 2D context');
 
-  const hasDrawElementImage = typeof ctx.drawElementImage === 'function';
+  // ?fallback forces the DOM overlay, to look at what other browsers get.
+  const htmlInCanvas = !new URLSearchParams(location.search).has('fallback') && supportsHtmlInCanvas(canvas);
 
   // Load landmarks
   const res = await fetch(dataUrl);
@@ -61,6 +71,14 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   const popupDesc = document.getElementById('popup-desc') as HTMLDivElement;
   const popupBtn = document.getElementById('popup-btn') as HTMLButtonElement;
   const popupLink = document.getElementById('popup-link') as HTMLAnchorElement;
+  // Without the API, children of a canvas are fallback content and never
+  // rendered: lift the popup out and place it over the canvas instead.
+  if (!htmlInCanvas) {
+    canvas.after(popup);
+    popup.style.position = 'absolute';
+    popup.style.left = '0';
+    popup.style.top = '0';
+  }
 
   // Write the popup's DOM only where it changed: setting textContent, even to
   // the same text, replaces the text node and lays the popup out again, and
@@ -80,14 +98,12 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     if (popupLink && popupLink.href !== activeLandmark.url) popupLink.href = activeLandmark.url;
   }
 
-  async function toggleBookmark(): Promise<boolean> {
-    bookmarked = !bookmarked;
-    await render();
-    return bookmarked;
-  }
-
+  // The button gets the real click: the browser hit-tests it where it was
+  // drawn. (Before Chrome 157 this example compared the pointer with the
+  // button's rectangle itself and called click().)
   popupBtn.addEventListener('click', () => {
-    toggleBookmark();
+    bookmarked = !bookmarked;
+    render();
   });
 
   // GSI Seamlessphoto PMTiles Tile Cache & State
@@ -158,19 +174,34 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     return { x: bx, y: by, width: bRect.width, height: bRect.height };
   }
 
-  async function render(): Promise<void> {
+  // A frame is drawn in the canvas's paint event: drawElementImage needs the
+  // element's paint record, which exists only from the first paint on, and
+  // in the event it is the one for this frame. render() writes the popup's
+  // DOM and asks for that event; every caller waiting resolves once it ran.
+  let waiting: (() => void)[] = [];
+  let frameQueued = false;
+  function render(): Promise<void> {
     updateDomContent();
+    return new Promise<void>((resolve) => {
+      waiting.push(resolve);
+      if (frameQueued) return;
+      frameQueued = true;
+      if (htmlInCanvas) (canvas as any).requestPaint();
+      else requestAnimationFrame(onFrame);
+    });
+  }
+  function onFrame(): void {
+    frameQueued = false;
+    draw();
+    onDraw();
+    const done = waiting;
+    waiting = [];
+    for (const r of done) r();
+  }
+  // Also fires by itself when the popup's rendering changes (hover, focus).
+  if (htmlInCanvas) canvas.addEventListener('paint', onFrame);
 
-    // Trigger HTML paint record update
-    if (typeof (canvas as any).requestPaint === 'function') {
-      await new Promise<void>((resolve) => {
-        canvas.addEventListener('paint', () => resolve(), { once: true });
-        (canvas as any).requestPaint();
-      });
-    } else {
-      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-    }
-
+  function draw(): void {
     const w = canvas.width;
     const h = canvas.height;
 
@@ -260,20 +291,15 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     ctx.closePath();
     ctx.fill();
 
-    // Draw native HTML element into canvas pixels
-    if (hasDrawElementImage) {
+    // Draw the live HTML element into canvas pixels. Its hit-test box moves
+    // with it. The fallback places the overlay at the same rectangle, in CSS
+    // pixels of the canvas box.
+    if (htmlInCanvas) {
       ctx.drawElementImage(popup, pRect.x, pRect.y);
     } else {
-      // Fallback for non-supporting environments
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(pRect.x, pRect.y, pRect.width, pRect.height);
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 15px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(activeLandmark.name, pRect.x + 14, pRect.y + 24);
-      ctx.font = '12px sans-serif';
-      ctx.fillStyle = '#334155';
-      ctx.fillText(activeLandmark.description.slice(0, 20), pRect.x + 14, pRect.y + 50);
+      const box = canvas.getBoundingClientRect();
+      const k = box.width / canvas.width;
+      popup.style.transform = `translate(${box.left + window.scrollX + pRect.x * k}px, ${box.top + window.scrollY + pRect.y * k}px)`;
     }
   }
 
@@ -283,21 +309,12 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   let dragStartY = 0;
 
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    // Events on the popup bubble up to the canvas, its parent: leave them to
+    // the popup's own button and link.
+    if (popup.contains(e.target as Node)) return;
     const rect = canvas.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-
-    // Check click on button inside popup
-    const bRect = getButtonRect();
-    if (
-      cx >= bRect.x &&
-      cx <= bRect.x + bRect.width &&
-      cy >= bRect.y &&
-      cy <= bRect.y + bRect.height
-    ) {
-      popupBtn.click();
-      return;
-    }
 
     // Check click on pins
     for (const lm of landmarks) {
@@ -386,10 +403,6 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
     return scratch.getImageData(0, 0, 1, 1).data;
   }
 
-  async function clickButton(): Promise<boolean> {
-    return await toggleBookmark();
-  }
-
   async function waitForTile(timeoutMs = 6000): Promise<boolean> {
     const start = performance.now();
     while (performance.now() - start < timeoutMs) {
@@ -443,18 +456,21 @@ export async function mount(canvas: HTMLCanvasElement, dataUrl: string): Promise
   return {
     canvas,
     landmarks,
-    activeLandmark,
+    get activeLandmark() {
+      return activeLandmark;
+    },
     get bookmarked() {
       return bookmarked;
     },
-    hasDrawElementImage,
+    htmlInCanvas,
+    popup,
+    popupButton: popupBtn,
     render,
     panBy,
     zoomBy,
     getAnchorPos,
     getPopupRect,
     getButtonRect,
-    clickButton,
     readPixel,
     waitForTile,
     waitForView,

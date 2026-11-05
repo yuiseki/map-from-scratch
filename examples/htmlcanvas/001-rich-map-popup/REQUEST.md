@@ -43,3 +43,20 @@
    - `canvas.requestPaint()` を呼び出し、`canvas.addEventListener('paint', resolve, { once: true })` で paint イベントの完了を待機してから `drawElementImage` を呼ぶことで安全に描画できる。
 4. **ヒットテスト**:
    - 現行 Chromium 実装では canvas 上の `document.elementFromPoint` は `HTMLCanvasElement` 自体を返すため、Canvas 側のクリックリスナーでポップアップ矩形・ボタン矩形に対する交差判定を行い、該当子要素の `.click()` をディスパッチすることで完全なインタラクションが成立する。
+
+## 2026-11-06 Chrome 157 の正式版への移行
+
+上の 1、2、4 は origin trial のころの事実で、正式版では違う。
+
+- フラグは要らない。harness は Chrome for Testing 157.0.8103.38 を、Blink の機能フラグなしで動かす。
+- `layoutsubtree` 属性は無くなった (`'layoutSubtree' in canvas` が false)。`<canvas content="drawable">` と子の `drawable` だけで描ける。機能の有無は `canvas.content === 'drawable'` で見る (`support.ts`)。
+- 2D の `drawElementImage` は、要素のヒットテストの箱を描いた位置へ自分で動かす。`elementFromPoint` は canvas でなくボタンを返し、ボタンは本物のクリック、hover、focus を受ける。そこで、ボタンの矩形と指の位置を比べて `click()` を呼ぶ処理を消し、ポップアップから canvas へ泡立つ `pointerdown` を地図の操作から外すだけにした。
+- `drawElementImage` に `{ preserveElementGeometry: true }` を付けて `updateElementGeometry` を呼ばないと、ボタンはどこにもヒットしなくなる (元のレイアウト位置に残るのではない)。わざとこう壊すと、`button-hit-where-drawn`、`button-interactive`、`button-hit-follows-pan` が落ちた。
+- 1 フレームは canvas の `paint` イベントの中で描く。hover や focus でポップアップの見た目が変わったときも、`paint` イベントは自分で来る。
+- API の無いブラウザ (2026-11-06 時点で Firefox は立場を出していない。WebKit は 2026-08 に support とする旨を書いた) では、ポップアップを canvas の外へ出して DOM overlay にする。`?fallback` でこの経路を強制できる。強制したときは、canvas の画素を読む検査 (`popup-rendered-on-canvas` など) が落ち、ヒットテストの検査は通る。ポップアップが canvas の画素に入らないことが、DOM overlay の欠点そのものである。
+
+| 計測 (3 回、2026-11-06) | 値 | 予算 |
+| --- | --- | --- |
+| `redraw_ms` p95 | 1.87 ms | <= 5.0 ms |
+| `first_frame_ms` p50 | 45 ms | <= 1,500 ms |
+| コード (gzip) | 8,683 B | <= 9,000 B |

@@ -2,10 +2,9 @@
 import { mount, type WebGpuLabelMap } from './map.ts';
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const canvasHtml = document.getElementById('canvas-html') as HTMLCanvasElement;
 const hudGpu = document.getElementById('hud-gpu');
 const hudUploads = document.getElementById('hud-uploads');
-const hudRelayouts = document.getElementById('hud-relayouts');
+const hudPath = document.getElementById('hud-path');
 const hudCount = document.getElementById('hud-count');
 const btnUpdate = document.getElementById('btn-update');
 
@@ -18,7 +17,7 @@ resize();
 const DATA_URL = '../../../data/baked/htmlcanvas-002-webgpu-map-label/landmarks.json';
 
 const startTime = performance.now();
-const mapInstance = await mount(canvas, canvasHtml, DATA_URL);
+const mapInstance = await mount(canvas, DATA_URL);
 const firstFrameMs = performance.now() - startTime;
 // Registered after mount: a resize during the await read mapInstance in its
 // temporal dead zone and threw.
@@ -27,13 +26,13 @@ window.addEventListener('resize', () => {
   mapInstance.render();
 });
 
-let relayoutCount = 1; // Initial HTML layout
-
 function updateHud(): void {
   if (hudGpu) hudGpu.textContent = mapInstance.gpuName;
   if (hudCount) hudCount.textContent = String(mapInstance.landmarks.length);
   if (hudUploads) hudUploads.textContent = String(mapInstance.textureUploadCount);
-  if (hudRelayouts) hudRelayouts.textContent = String(relayoutCount);
+  if (hudPath) hudPath.textContent = mapInstance.htmlInCanvas
+    ? 'HTML-in-Canvas → WebGPU texture'
+    : 'DOM overlay (no HTML-in-Canvas, or SwiftShader)';
 }
 
 const originalRender = mapInstance.render;
@@ -42,10 +41,11 @@ mapInstance.render = async () => {
   updateHud();
 };
 updateHud();
+// Cards are uploaded in the canvas's paint event, outside render().
+canvas.addEventListener('paint', () => requestAnimationFrame(updateHud));
 
 if (btnUpdate) {
   btnUpdate.addEventListener('click', async () => {
-    relayoutCount++;
     await mapInstance.updateLabelContent(
       0,
       '東京タワー [更新]',

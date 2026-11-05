@@ -12,10 +12,10 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
   // Check 1: HTML-in-Canvas native support
   emit({
     check: 'html-in-canvas-supported',
-    pass: map.hasDrawElementImage,
-    detail: map.hasDrawElementImage
-      ? 'CanvasRenderingContext2D.prototype.drawElementImage is available'
-      : 'drawElementImage is missing; running in fallback mode',
+    pass: map.htmlInCanvas,
+    detail: map.htmlInCanvas
+      ? 'canvas.content reflects "drawable"; cards drawn with drawElementImageToTexture'
+      : 'DOM overlay (no HTML-in-Canvas, or SwiftShader)',
   });
 
   // Check 2: WebGPU Initialized
@@ -55,9 +55,10 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
   await map.zoomBy(0.2);
   const uploadsAfter = map.textureUploadCount;
 
+  emit({ info: { paint_log_before_pan: JSON.stringify(map.paintLog) } });
   emit({
     check: 'zero-uploads-during-pan',
-    pass: uploadsBefore === uploadsAfter && uploadsBefore === 1,
+    pass: uploadsBefore === uploadsAfter && uploadsBefore === map.landmarks.length,
     detail: `Uploads before pan: ${uploadsBefore}, Uploads after pan: ${uploadsAfter}`,
   });
 
@@ -70,6 +71,47 @@ export async function runBench(map: WebGpuLabelMap, firstFrameMs: number): Promi
     pass: uploadsAfterUpdate === uploadsAfter + 1,
     detail: `Uploads after label content update: ${uploadsAfterUpdate} (expected ${uploadsAfter + 1})`,
   });
+
+  // The browser's own hit testing finds a card where the vertex shader drew
+  // it (told by updateElementGeometry each frame), follows it through a pan,
+  // and a click on what it found pins the card: the paint event uploads that
+  // one card again and its new colour reaches the screen.
+  {
+    const box = canvas.getBoundingClientRect();
+    const k = box.width / canvas.width;
+    const cardAt = (r: { x: number; y: number; width: number; height: number }) =>
+      document.elementFromPoint(box.left + (r.x + r.width / 2) * k, box.top + (r.y + r.height / 2) * k);
+    const card = map.labelElements[2];
+    const name = (e: Element | null) => (e?.closest('.map-label-card')?.id ?? e?.id) || e?.tagName || '-';
+    const r0 = map.getLabelScreenPos(2);
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    // Not at r0's centre: elementFromPoint keeps its last answers for a point
+    // even after updateElementGeometry moved the element (real clicks get the
+    // new geometry), so the old place is asked only once, after the pan.
+    const hit0 = document.elementFromPoint(box.left + (r0.x + 20) * k, box.top + (r0.y + 20) * k);
+    await map.panBy(-90, 60);
+    const r1 = map.getLabelScreenPos(2);
+    await new Promise(requestAnimationFrame);
+    const hit1 = cardAt(r1), hitOld = cardAt(r0);
+    emit({
+      check: 'card-hit-where-drawn',
+      pass: card.contains(hit0) && card.contains(hit1) && !card.contains(hitOld),
+      detail: `elementFromPoint at card 2: ${name(hit0)}; after a pan at its new place: ${name(hit1)}, at its old place: ${name(hitOld)}`,
+    });
+    const uploads = map.textureUploadCount;
+    const painted = new Promise<void>((r) => canvas.addEventListener('paint', () => r(), { once: true }));
+    (hit1 as HTMLElement | null)?.click();
+    if (map.htmlInCanvas) await painted;
+    await map.render();
+    const px = await map.readPixel(r1.x + r1.width - 12, r1.y + r1.height - 10);
+    const amber = px[0] > 240 && px[1] > 225 && px[2] > 170 && px[2] < 225;
+    emit({
+      check: 'click-pins-card',
+      pass: card.classList.contains('selected') && map.textureUploadCount === uploads + 1 && amber,
+      detail: `selected ${card.classList.contains('selected')}, uploads ${uploads} -> ${map.textureUploadCount}, card pixel rgba(${Array.from(px).join(',')})`,
+    });
+  }
 
   // Check 7: GSI Seamlessphoto aerial tiles loaded and rendered on WebGPU
   const hasTiles = await map.waitForTile(4000);

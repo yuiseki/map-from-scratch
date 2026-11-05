@@ -1,7 +1,7 @@
 id: htmlcanvas-001-rich-map-popup
 request: >-
   地図上の地点をクリックしたときに表示する rich popup を DOM overlay や Canvas 自前描画ではなく、
-  HTML-in-Canvas（WICG drawElementImage）で実 HTML として Canvas 内に描画・操作できることを検証したい。
+  HTML-in-Canvas（Chrome 157 で正式リリース、drawElementImage）で実 HTML として Canvas 内に描画・操作できることを検証したい。
 
 requirements:
   - id: native-html-popup
@@ -11,8 +11,8 @@ requirements:
     need: 日本語を含む複数行レイアウト・バッジ・CSS 背景・境界線・シャドウをブラウザ HTML エンジンで描画する
     unmeasured: verification checks の popup-rendered-on-canvas で確認
   - id: interactive-button
-    need: Canvas 内に描画されたポップアップのボタンがクリック可能で、状態変化が Canvas ピクセルに反映される
-    unmeasured: verification checks の button-interactive で確認
+    need: Canvas 内に描画されたポップアップのボタンが、ブラウザ自身のヒットテストで本物のクリックを受け、状態変化が Canvas ピクセルに反映される
+    unmeasured: verification checks の button-hit-where-drawn、button-interactive、button-hit-follows-pan で確認
   - id: geographic-tracking
     need: 地図のパン・ズーム操作時にもポップアップのアンカーが地理座標に追従する
     unmeasured: verification checks の anchor-follows-pan で確認
@@ -41,8 +41,6 @@ benchmarks:
   viewport: {width: 1024, height: 768, device_scale_factor: 1, mobile: false}
   cpu_throttle: 1
   iterations: 3
-  chrome_flags:
-    - --enable-blink-features=CanvasDrawElement
   scenarios:
     - id: first-frame
       what: 初期化から初回 HTML-in-Canvas ポップアップ描画まで
@@ -75,15 +73,35 @@ performance_knowledge:
       2. Canvas 自前描画: fillText() や自前矩形描画でポップアップを再実装する。しかし日本語の禁則処理・折り返し・
          フォントメトリクス・角丸クリッピング・シャドウ・ボタンの hover/active 状態をすべて自前で計算する必要があり、
          コード量が肥大化しレイアウトが破綻しやすい。
-      WICG HTML-in-Canvas（layoutsubtree + ctx.drawElementImage）は、ブラウザネイティブの HTML/CSS レイアウト・
+      HTML-in-Canvas（<canvas content="drawable"> + ctx.drawElementImage、Chrome 157）は、ブラウザネイティブの HTML/CSS レイアウト・
       タイポグラフィエンジンをそのまま使って Canvas 内部のピクセルバッファに直接描画できる。
       これにより、コード量を劇的に削減しながら、完全同期・エクスポート可能・ピクセル読み戻し検証可能なリッチ UI が実現する。
   - what: requestPaint と paint イベントによる非同期同期化
     why: >-
       HTML 要素の内容やスタイルが更新された直後は、ブラウザのスタイル計算とレイアウト記録が未完了であるため、
       即座に drawElementImage() を呼ぶと `InvalidStateError: No cached paint record for element` が発生する。
-      canvas.requestPaint() を発行し、paint イベントの完了を待機してから drawElementImage() を呼ぶことで、
-      常に最新のスタイルが適用された paint record を安全に Canvas にブリットできる。
+      canvas.requestPaint() を発行し、paint イベントの中で drawElementImage() を呼ぶ。paint イベントは
+      ポップアップの見た目が変わったとき (hover、focus) にも自分で来るので、1 フレームを描く関数をそのまま listener にする。
+
+  - id: chrome-157-shipped-api
+    finding: >-
+      Chrome 157 の正式版では layoutsubtree 属性が無くなり (canvas に layoutSubtree プロパティが無い)、<canvas content="drawable"> と
+      子の drawable 属性だけで描ける。機能の有無は canvas.content === 'drawable' で見る (メソッド名は drawElement、drawHTMLElement、
+      drawElementImage と変わってきたので、名前で見ない)。2D の drawElementImage は undefined を返し、要素のヒットテストの箱を描いた位置へ
+      自分で動かす。だからボタンの矩形と指の位置を自前で比べて click() を呼ぶ処理を消し、ポップアップから canvas へ泡立つ pointerdown を
+      地図の操作から外すだけにした
+    evidence: >-
+      2026-11-06、Chrome for Testing 157.0.8103.38 (フラグなし) の bench で、描いたボタンの中心の elementFromPoint がボタンを返し、
+      地図の隅は canvas を返し、120, 80 px のパンの後は新しい位置でボタン、元の位置ではボタン以外を返した (3 回とも)。
+      redraw_ms p50 0.945 ms、p95 3.485 ms (3 回 × 60 フレーム)、first_frame_ms p50 49 ms
+    applies_when: 2D の canvas に HTML-in-Canvas で操作できる UI を描くとき
+
+  - id: dom-overlay-fallback
+    finding: >-
+      HTML-in-Canvas の無いブラウザでは canvas の子はフォールバックの中身で、描かれない。ポップアップを canvas の外へ出し、
+      同じ矩形へ CSS transform で置く。WebKit は 2026-08 に support とする旨を書いたが、Firefox の立場は出ていない (2026-11-06 時点)
+    evidence: main.ts と map.ts の htmlInCanvas が false の経路。HUD がどちらで動いているかを出す
+    applies_when: 正式リリース直後の機能を、対応していないブラウザでも使える形で出すとき
 
   - id: write-the-dom-only-when-it-changes
     finding: textContent は同じ文字列でも代入するとテキストノードを置き換え、ポップアップを組み直す。パンでは何も変わらないので、変わったときだけ書くと 1 フレームが 4 分の 1 になる
@@ -98,23 +116,24 @@ architecture_selection:
   chosen:
     language: TypeScript (erasableSyntaxOnly)
     runtime: browser
-    api: Canvas 2D + HTML-in-Canvas (CanvasDrawElement)
+    api: Canvas 2D + HTML-in-Canvas (drawElementImage, Chrome 157)
     gpu: none
     code:
       - examples/htmlcanvas/001-rich-map-popup/index.html
       - examples/htmlcanvas/001-rich-map-popup/main.ts
       - examples/htmlcanvas/001-rich-map-popup/map.ts
+      - examples/htmlcanvas/001-rich-map-popup/support.ts
       - examples/htmlcanvas/001-rich-map-popup/pmtiles.ts
   not_doing:
-    - DOM overlay (DOM 追従レイヤの作成を禁止し、ジッターと合成ズレを排除)
+    - DOM overlay を主経路にすること (ジッターと合成ズレを避ける。HTML-in-Canvas の無いブラウザのフォールバックとしてだけ使う)
     - Canvas fillText / roundRect による UI の自前再実装 (自前レイアウトエンジンの肥大化を排除)
     - 外部地図エンジンや UI フレームワーク（MapLibre, React, Vue, D3 等）の使用
 
 verification:
   checks:
     - id: html-in-canvas-supported
-      what: ブラウザで CanvasRenderingContext2D.prototype.drawElementImage が有効であること
-      how: typeof ctx.drawElementImage === 'function' の確認
+      what: フラグなしの安定版 Chrome で HTML-in-Canvas が使えること
+      how: canvas に content="drawable" を付け、canvas.content が 'drawable' を返すかを見る
       expected: true
     - id: landmarks-loaded
       what: 5 件の東京都心ランドマークが正しく読み込まれていること
@@ -124,10 +143,18 @@ verification:
       what: Canvas ピクセル読み戻しによりポップアップ背景（白）およびボタン（青）が Canvas 内に描画されていること
       how: readPixel によるポップアップカードおよびボタン座標の RGB 値確認
       expected: isCardWhite && isBtnBlue
+    - id: button-hit-where-drawn
+      what: ブラウザ自身のヒットテストが、canvas に描いたボタンの位置でボタンを返し、地図の上では canvas を返すこと
+      how: 描いたボタンの中心と地図の隅で document.elementFromPoint を呼ぶ
+      expected: ボタンの位置は popup-btn、地図の隅は canvas
     - id: button-interactive
-      what: ポップアップ内のボタンがクリック可能で、状態変化（緑色）が Canvas ピクセルに反映されること
-      how: clickButton() 実行後の bookmarked フラグおよびボタンピクセル値確認
+      what: ヒットテストで見つけた要素のクリックがボタンの処理に届き、状態変化（緑色）が Canvas ピクセルに反映されること
+      how: elementFromPoint が返した要素に click() し、描き終えてから bookmarked フラグとボタンの画素を読む
       expected: map.bookmarked && isBtnGreen
+    - id: button-hit-follows-pan
+      what: パンした後、ヒットテストの箱がポップアップと一緒に動くこと
+      how: panBy(120, 80) の後、新しいボタンの中心と元の中心で elementFromPoint を呼ぶ
+      expected: 新しい位置は popup-btn、元の位置は popup-btn 以外
     - id: anchor-follows-pan
       what: 地図パン後にアンカー座標およびポップアップ描画位置がデルタ分シフトし Canvas に正しく追従すること
       how: panBy(120, 80) 前後のアンカー・矩形座標差分および移動先ピクセル値確認

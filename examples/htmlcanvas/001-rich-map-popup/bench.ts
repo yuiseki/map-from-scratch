@@ -8,13 +8,14 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
   await new Promise(requestAnimationFrame);
   emit({ metric: 'first_frame_ms', value: firstFrameMs });
 
-  // Check 1: HTML-in-Canvas native support
+  // Check 1: the harness browser (stable Chrome, no flags) has the API. The
+  // fallback is for other browsers; a ?fallback run would measure that.
   emit({
     check: 'html-in-canvas-supported',
-    pass: map.hasDrawElementImage,
-    detail: map.hasDrawElementImage
-      ? 'CanvasRenderingContext2D.prototype.drawElementImage is available'
-      : 'drawElementImage is missing; running in fallback mode',
+    pass: map.htmlInCanvas,
+    detail: map.htmlInCanvas
+      ? 'canvas.content reflects "drawable"; popup drawn with drawElementImage'
+      : 'no HTML-in-Canvas; popup is a DOM overlay',
   });
 
   // Check 2: Landmarks loaded
@@ -45,8 +46,22 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
     detail: `Popup card pixel: rgba(${cardPixel.join(',')}), Button pixel: rgba(${btnPixel.join(',')})`,
   });
 
-  // Check 4: Button interactive and state updates in canvas pixels
-  await map.clickButton();
+  // Check 4: the browser's own hit testing finds the button where it was
+  // drawn, and a click on what it found reaches the button's handler. In 2D
+  // the hit-test box follows drawElementImage by itself.
+  const box = canvas.getBoundingClientRect();
+  const k = box.width / canvas.width;
+  const atButton = (r: { x: number; y: number; width: number; height: number }) =>
+    document.elementFromPoint(box.left + (r.x + r.width / 2) * k, box.top + (r.y + r.height / 2) * k);
+  const hitButton = atButton(bRectInitial);
+  const hitMap = document.elementFromPoint(box.left + 5, box.top + box.height - 5);
+  emit({
+    check: 'button-hit-where-drawn',
+    pass: hitButton === map.popupButton && hitMap === canvas,
+    detail: `elementFromPoint at the drawn button: ${hitButton?.id || hitButton?.tagName}, at a map corner: ${hitMap?.id || hitMap?.tagName}`,
+  });
+  (hitButton as HTMLElement | null)?.click();
+  await map.render();
   const btnPixelActive = map.readPixel(
     bRectInitial.x + bRectInitial.width / 2,
     bRectInitial.y + bRectInitial.height / 2,
@@ -78,6 +93,14 @@ export async function runBench(map: MapPopupView, firstFrameMs: number): Promise
   // Verify pixels at new shifted popup location
   const newCardPixel = map.readPixel(pRectAfter.x + 40, pRectAfter.y + 40);
   const isNewCardWhite = newCardPixel[0] > 240 && newCardPixel[1] > 240 && newCardPixel[2] > 240;
+
+  // The hit-test box moved with the popup.
+  const hitAfterPan = atButton(map.getButtonRect());
+  emit({
+    check: 'button-hit-follows-pan',
+    pass: hitAfterPan === map.popupButton && atButton(bRectInitial) !== map.popupButton,
+    detail: `after the pan, elementFromPoint at the new button: ${hitAfterPan?.id || hitAfterPan?.tagName}, at the old one: ${atButton(bRectInitial)?.id || atButton(bRectInitial)?.tagName}`,
+  });
 
   emit({
     check: 'anchor-follows-pan',

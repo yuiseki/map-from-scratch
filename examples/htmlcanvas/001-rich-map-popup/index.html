@@ -53,6 +53,10 @@
       cursor: pointer;
     }
     .popup-btn.active { background: #16a34a; }
+    /* Real hover and keyboard focus: the browser repaints the popup and the
+       canvas's paint event draws the frame. */
+    .popup-btn:hover { filter: brightness(1.12); }
+    .popup-btn:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
     .popup-link {
       font-size: 11px;
       color: #2563eb;
@@ -75,10 +79,10 @@
   </style>
 </head>
 <body>
-  <!-- Native Canvas with HTML-in-Canvas attribute layoutsubtree content="drawable" -->
-  <canvas id="canvas" layoutsubtree content="drawable">
+  <!-- HTML-in-Canvas (Chrome 157): content="drawable" lays out the children of
+       the canvas, and drawElementImage draws those marked drawable. -->
+  <canvas id="canvas" content="drawable">
     <!-- Real HTML Popup element rendered inside canvas -->
-    <!-- drawElementImage draws only children marked drawable (Chrome 159). -->
     <div id="map-popup" class="popup-card" drawable>
       <div class="popup-header">
         <div id="popup-title" class="popup-title">東京タワー</div>

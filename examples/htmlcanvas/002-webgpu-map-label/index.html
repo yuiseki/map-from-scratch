@@ -41,15 +41,6 @@
     #hud button:hover { background: #1d4ed8; }
 
     /* Hidden behind display canvas but within viewport to ensure Blink paint records are generated */
-    #canvas-html {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 1024px;
-      height: 256px;
-      z-index: -1;
-      pointer-events: none;
-    }
 
     /* HTML Map Label Cards rendered directly into WebGPU Texture */
     .map-label-card {
@@ -63,7 +54,10 @@
       height: 60px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", sans-serif;
+      cursor: pointer;
     }
+    /* Toggled by a real click on the card drawn in the WebGPU canvas. */
+    .map-label-card.selected { background: #fef3c7; border: 1.5px solid #f59e0b; }
     .label-header {
       display: flex;
       justify-content: space-between;
@@ -108,13 +102,10 @@
   </style>
 </head>
 <body>
-  <!-- Visible WebGPU display canvas -->
-  <canvas id="canvas"></canvas>
-
-  <!-- HTML-in-Canvas offscreen texture atlas generator -->
-  <canvas id="canvas-html" width="1024" height="256" layoutsubtree content="drawable">
-    <!-- 6 HTML label card elements MUST be direct children of <canvas layoutsubtree>,
-         each marked drawable (Chrome 159 draws only those). -->
+  <!-- The WebGPU canvas. content="drawable" (HTML-in-Canvas, Chrome 157) lays
+       out its children; drawElementImageToTexture draws those marked
+       drawable into the label atlas. -->
+  <canvas id="canvas" content="drawable">
     <div id="label-0" class="map-label-card" drawable>
       <div class="label-header">
         <span class="label-badge" style="background: #0284c7;">総合電波塔</span>
@@ -164,9 +155,9 @@
     <div class="row">GPU: <span class="val" id="hud-gpu">Detecting...</span></div>
     <div class="row">Labels Count: <span class="val" id="hud-count">6</span></div>
     <div class="row">Texture Uploads: <span class="val" id="hud-uploads">0</span></div>
-    <div class="row">Frame HTML Re-layouts: <span class="val" id="hud-relayouts">0</span></div>
+    <div class="row">Path: <span class="val" id="hud-path">…</span></div>
     <button id="btn-update">Update Label Content</button>
-    <div class="sub">Drag to pan • Wheel to zoom • Labels transformed by GPU vertex shader</div>
+    <div class="sub">Drag to pan • Wheel to zoom • Click a card to pin it</div>
   </div>
 
   <div id="attribution">
