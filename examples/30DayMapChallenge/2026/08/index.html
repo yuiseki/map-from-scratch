@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>08 · Utopia · 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101c23;color:#e3ede9;font:14px/1.45 system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}.panel{position:absolute;top:16px;left:16px;max-width:390px;padding:18px 20px;background:rgba(14,28,35,.94);border:1px solid #344d54;border-radius:14px;box-shadow:0 16px 48px #07101480}.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#91c4ac}h1{font-size:21px;margin:2px 0 8px}.summary{color:#b9ccca;margin:0 0 12px}.count{font-weight:650;color:#e9f3ed}.legend{display:flex;gap:14px;margin:12px 0;color:#d1dfda;font-size:12px}.swatch{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-2px;border-radius:3px}.note{color:#a7bcbb;font-size:11px;margin:10px 0 0}.attribution{position:absolute;right:12px;bottom:12px;max-width:min(700px,calc(100% - 24px));padding:8px 11px;background:#101c23df;border:1px solid #344d54;border-radius:8px;color:#bccdca;font-size:10px}.attribution a{color:#a7d7c2}.error{position:absolute;bottom:16px;left:16px;background:#32141a;padding:12px;color:white}
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="練馬駅周辺の250メートル人口メッシュと、公園・学校の近さ"></canvas>
+  <section class="panel">
+    <div class="eyebrow">30DayMapChallenge · Day 08</div>
+    <h1>Utopia / 近隣の理想形</h1>
+    <p class="summary">練馬駅周辺。人口メッシュに、公園と学校までの直線距離を重ねます。</p>
+    <div id="counts" class="count">読み込み中…</div>
+    <div id="sources" class="note"></div>
+    <div class="legend"><span><i class="swatch" style="background:#4ba77b"></i>両方400 m以内</span><span><i class="swatch" style="background:#53616b"></i>人口メッシュ</span><span><i class="swatch" style="background:#7fdc9c"></i>公園</span><span><i class="swatch" style="background:#f4d28b"></i>学校</span></div>
+    <p class="note">緑は人口のある250 m区画から公園の縁と学校まで両方400 m以内。濃さは人口（対数）。直線距離で、道路経路ではありません。</p>
+  </section>
+  <footer class="attribution">
+    <span>人口: <a href="https://www.e-stat.go.jp/gis/statmap-search?aggregateUnit=Q&amp;page=1&amp;serveyId=Q002005112020&amp;statsId=T001102&amp;toukeiCode=00200521&amp;toukeiYear=2020&amp;type=1">政府統計の総合窓口(e-Stat)「令和2年国勢調査」(総務省統計局)</a>を加工して作成。</span>
+    <span>公園: 出典 <a href="https://www.mlit.go.jp/toshi/tosiko/toshi_tosiko_tk_000087.html">「都市計画決定GISデータ」(国土交通省)</a>を加工して作成。区域は概略で、参考情報です。学校: 出典 <a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P29-2023.html">国土数値情報 (学校データ) (国土交通省)</a>。</span>
+    <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · 地図をドラッグ、ホイールで拡大縮小
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

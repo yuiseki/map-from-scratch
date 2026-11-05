@@ -252,6 +252,27 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/gsi-dem-fuji-z14-100m-2026-10-25/resolve/main/data/elevation_100m.parquet',
     copy: true,
   },
+  // 2020 census total population by 250 m JGD2011 mesh; CC BY 4.0.
+  'estat-census-mesh-250m-2020-jgd2011': {
+    out: 'estat_census_mesh_250m_2020_T001142.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/estat-census-mesh-250m-2020/data/parquet/T001142.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/estat-census-mesh-250m-2020/resolve/main/data/parquet/T001142.parquet',
+    copy: true,
+  },
+  // MLIT FY2025 urban-planning park areas; PDL1.0 / CC BY 4.0.
+  'mlit-toshi-keikaku-parks-2025': {
+    out: 'mlit_toshi_keikaku_kouen_2025.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-toshi-keikaku-jp/data/parquet/fy2025/kouen.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-toshi-keikaku-jp/resolve/main/data/parquet/fy2025/kouen.parquet',
+    copy: true,
+  },
+  // MLIT National Land Numerical Information schools, 2023 Tokyo GeoParquet; CC BY 4.0.
+  'ksj-p29-schools-tokyo-2023': {
+    out: 'ksj_p29_schools_tokyo_2023.parquet',
+    local: '/sata_hdd_24tb/www/html/static/ksj/P29/P29-23_13_GML.parquet',
+    remote: 'https://z.yuiseki.net/static/ksj/P29/P29-23_13_GML.parquet',
+    copy: true,
+  },
   // kepler.gl demo datasets (commit 49c3101)
   'kepler-earthquakes': {
     out: 'kepler_earthquakes.csv',

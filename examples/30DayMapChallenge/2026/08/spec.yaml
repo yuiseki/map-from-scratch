@@ -1,0 +1,120 @@
+id: 30DayMapChallenge-2026-08
+request: >-
+  30DayMapChallenge 2026 の「Utopia」。練馬駅周辺の2020年250 m人口メッシュに、公園と学校への近さを重ね、歩いて行ける理想の近隣を描く。
+requirements:
+  - id: population-mesh
+    need: e-Stat 2020年国勢調査のJGD2011 250 m人口メッシュを表示する
+    rationale: 小さな区画単位で人の暮らしと施設配置を読む
+  - id: green-and-public-access
+    need: 都市計画決定GISの公園ポリゴンと国土数値情報の学校点を重ね、両方400 m以内のメッシュを示す
+    rationale: 公共の緑地と教育施設の身近さを「こうあってほしい」近隣の指標として表す
+  - id: honest-distance
+    need: 直線距離の400 m指標とデータ年・加工内容を明記する
+    rationale: 道路に沿った徒歩経路や現在の施設アクセスと誤認しない
+    unmeasured: 出典・距離の但し書きはブラウザベンチマークの文字列チェックで確認する
+  - id: navigation
+    need: ドラッグで移動し、ホイールで拡大縮小する
+    rationale: 250 m区画と個別施設を確認できる
+  - id: quick-start
+    need: 練馬駅周辺の人口・公園・学校を初期画面に描く
+    unmeasured: 初回描画時間はブラウザ計測で確認する
+evaluation:
+  budgets:
+    - {metric: mesh_count, min: 200, unit: cells, requirement: population-mesh}
+    - {metric: park_count, min: 20, unit: polygons, requirement: green-and-public-access}
+    - {metric: school_count, min: 20, unit: points, requirement: green-and-public-access}
+    - {metric: both_accessible_mesh_count, min: 1, unit: cells, requirement: green-and-public-access}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 4, unit: ms, requirement: navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+  gates: [2020 census population mesh, MLIT park polygons, KSJ school points, CC BY 4.0 credits and straight-line distance caveat]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/08/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: nerima-utopia
+      what: 250 m population meshes, green spaces and schools in the initial view
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 80 frames of panning and zooming over meshes and facility overlays
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/08/bake.ts]
+  sources:
+    - id: hf:estat-census-mesh-250m-2020
+      origin: >-
+        令和2年国勢調査 250 m メッシュ「人口及び世帯」JGD2011版 T001142。KEY_CODEはJIS 10桁メッシュコード、T001142001は総人口。東京都分から練馬駅を中心に抽出。
+      license: >-
+        e-Stat利用規約はCC BY 4.0互換。出典: 政府統計の総合窓口(e-Stat)「令和2年国勢調査」(総務省統計局)。メッシュ境界を復元し、施設距離を計算して加工。
+      url: https://huggingface.co/datasets/yuiseki/estat-census-mesh-250m-2020
+    - id: hf:mlit-toshi-keikaku-jp
+      origin: >-
+        令和7年度都市計画決定GISデータ GeoParquet fy2025/kouen.parquet の練馬区 (13120) 公園ポリゴン。座標はJGD2011 (EPSG:6668)。
+      license: >-
+        CC BY 4.0互換の公共データ利用規約第1.0版。出典：「都市計画決定GISデータ」（国土交通省）を加工して作成。参考データであり、区域は概略。
+      url: https://huggingface.co/datasets/yuiseki/mlit-toshi-keikaku-jp
+    - id: hf:ksj-p29
+      origin: >-
+        国土数値情報 学校データ P29 2023年度 東京都 GeoParquet P29-23_13_GML.parquet。EPSG:6668。練馬区コード13120の学校点を抽出。
+      license: >-
+        CC BY 4.0。出典: 国土数値情報 (学校データ) (国土交通省)。
+      url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P29-2023.html
+  outputs:
+    - data/baked/30DayMapChallenge-2026-08/utopia.json
+    - data/baked/30DayMapChallenge-2026-08/stats.json
+  preparation:
+    - >-
+      国勢調査の10桁JIS 250 m メッシュコードから5次メッシュ矩形を復元し、メッシュ中心が練馬駅周辺の指定範囲にある人口セルを選ぶ。
+    - >-
+      練馬区の公園ポリゴンと学校点について各セル中心からの最短直線距離を計算する。公園はポリゴン境界、学校は点との距離とし、400 m以内の両方があるセルを理想的近隣として着色する。経路距離、横断可能性、入口位置は表さない。
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/08/index.html, examples/30DayMapChallenge/2026/08/main.ts, examples/30DayMapChallenge/2026/08/renderer.ts]
+    dependencies: []
+    why: A local Canvas renderer draws a compact baked mesh set and simplified park outlines without map SDK setup or per-frame spatial queries.
+  alternatives:
+    - option: straight-line 400 m access band
+      rejected_because: It does not model street routes, barriers, entrances or actual walking time; it is disclosed as a proximity sketch instead.
+    - option: use only mapped park centroids
+      rejected_because: Polygon-edge distances better represent proximity to the park area than distance to a representative center point.
+  not_doing: [walking-network routing, park entrances, school catchments, current population, legal planning boundaries]
+performance_knowledge:
+  - claim: >-
+      The map bakes census and facility distances once, leaving pan and zoom to repaint only a few hundred cells and simplified outlines.
+    evidence: >-
+      Chrome 156, Xvfb, 1280×800, 3 runs: 737 population meshes, 109 clipped park polygons,
+      106 schools, and 328 meshes with both facilities within 400 m. First-frame p50 77.1 ms;
+      draw CPU p95 1.715 ms; frame p95 6.31 ms. Code gzip 4,430 B; baked data gzip 50,970 B.
+    applies_when: The precomputed Nerima study area is rendered in a desktop browser at 1280 by 800 pixels.
+verification:
+  checks:
+    - id: population-mesh
+      what: Tokyo 2020 census cells decode to valid 250 m bounds and contain population values.
+      how: Validate mesh code and population records during bake and benchmark.
+      expected: At least 200 finite, nonnegative population cells.
+    - id: dual-access-coverage
+      what: Some inhabited mesh centers lie within 400 m of both a park and a school.
+      how: Calculate shortest point-to-park-edge and point-to-school distances during bake.
+      expected: At least one dual-access cell plus 20 source features of each kind.
+    - id: study-area-clip
+      what: Outside the designated study rectangle, no facility polygon is drawn.
+      how: Sample a canvas pixel well outside the clipped map area.
+      expected: The pixel remains the background color.
+    - id: empty-outer-margin
+      what: The area outside the study rectangle remains empty.
+      how: Compare pixels in a canvas margin outside the map rectangle to the background.
+      expected: No changed pixels outside the study area.
+    - id: source-disclosure
+      what: Dataset years, credits, license and straight-line limitation are visible.
+      how: Inspect footer and benchmark source check.
+      expected: e-Stat, MLIT planning GIS, KSJ, CC BY 4.0, and straight-line note are present.
