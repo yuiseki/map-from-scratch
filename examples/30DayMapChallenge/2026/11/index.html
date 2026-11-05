@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>11 · Senses: Sound · 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#09151d;color:#edf2e8;font:14px/1.5 system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}.panel{position:absolute;top:16px;left:16px;width:min(390px,calc(100% - 32px));padding:17px 18px;background:#10232beF;border:1px solid #526d70;border-radius:13px;box-shadow:0 12px 36px #0010168a;backdrop-filter:blur(10px)}.eyebrow{font-size:10px;letter-spacing:.17em;text-transform:uppercase;color:#8fd8d2}.title{font-size:23px;font-weight:750;margin:2px 0 4px;letter-spacing:.01em}.sub{margin:0;color:#c9d6d1;font-size:12px}.counts{margin:12px 0 2px;color:#f2d39b;font-size:12px}.source-counts{margin:0;color:#a8bdb8;font-size:10px}.legend{display:flex;gap:14px;margin:13px 0 8px;color:#dce5dc;font-size:11px}.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.road{background:#ed7043}.rail{background:#45d0d8}.meter{height:6px;margin:6px 0 8px;border-radius:9px;background:linear-gradient(90deg,#ed7043 var(--road,0%),#344b50 var(--road,0%),#344b50 calc(100% - var(--rail,0%)),#45d0d8 calc(100% - var(--rail,0%)))}#location{font-size:12px;color:#f4e2bd;margin-top:10px}#places{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}button{appearance:none;border:1px solid #648488;border-radius:7px;background:#193843;color:#eef3e9;padding:7px 10px;font:inherit;font-size:11px;cursor:pointer}button:hover{background:#24515a}button:focus-visible{outline:2px solid #f4d39a;outline-offset:2px}#audio-toggle{background:#d96a43;border-color:#f19b71;color:#fff;font-weight:700;padding:8px 13px}.status{margin:8px 0 0;color:#aebfba;font-size:10px}.model{margin-top:12px;border-top:1px solid #466166;padding-top:9px;color:#c4d2ce;font-size:10px}.credit{position:absolute;right:14px;bottom:13px;max-width:min(730px,calc(100% - 28px));padding:7px 10px;background:#10232bea;border:1px solid #526d70;border-radius:8px;color:#c4d2ce;font-size:10px}.credit a{color:#9fe0d5}.error{position:absolute;left:16px;bottom:16px;padding:12px;background:#401b21;color:white}@media(max-width:600px){.panel{top:9px;left:9px;padding:13px;width:min(370px,calc(100% - 18px))}.title{font-size:19px}.credit{left:9px;right:9px;bottom:8px;font-size:9px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="東京23区の道路と鉄道の分布から作った音の強さのモデル地図。クリックで地点選択、ドラッグで移動、ホイールで拡大縮小"></canvas>
+  <aside class="panel">
+    <div class="eyebrow">30DayMapChallenge · Day 11</div>
+    <div class="title">Senses: Sound</div>
+    <p class="sub">道路のざわめきと、鉄道の低い響き。地図から音の景色を組み立てます。</p>
+    <p id="counts" class="counts">地図を読み込み中</p>
+    <p id="source-counts" class="source-counts"></p>
+    <div class="legend"><span><i class="swatch road"></i>道路</span><span><i class="swatch rail"></i>鉄道</span></div>
+    <div id="location">地点を選択してください</div>
+    <div id="model-values" class="meter" aria-label="道路・鉄道モデルの相対値"></div>
+    <div id="places" aria-label="地点を選択"></div>
+    <button id="audio-toggle" type="button" aria-pressed="false">音を再生</button>
+    <p id="status" class="status">地図をクリックして地点を選びます</p>
+    <div class="model">音と色は OSM の道路・鉄道線密度を種別別に重み付けしたモデルです。実測音・騒音値・デシベルではありません。</div>
+  </aside>
+  <footer class="credit">地理データ: © OpenStreetMap contributors · 2026-08-31 · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">ODbL 1.0</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">著作権と帰属表示</a> · 音は Web Audio API による合成</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

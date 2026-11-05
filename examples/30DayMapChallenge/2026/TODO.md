@@ -16,7 +16,7 @@
 | 08 | Utopia | 練馬駅周辺の2020年250 m人口メッシュに、国交省の公園ポリゴンと学校点への近さを重ね、両方400 m以内の区画を理想的近隣として描く。直線距離・区域概略の注意書きとCC BY 4.0出典を表示。`hf:estat-census-mesh-2020` + `hf:mlit-toshi-keikaku-jp` + `hf:ksj-p29` | 完了 · 目視確認済み · 737 meshes / 109 parks / 106 schools · dual access 328 meshes · frame p95 6.31 ms · first frame p50 77.1 ms |
 | 09 | Urban-rural | GHSL 2020人口密度を明るさ、建成地比率を色相にした日本の連続分布。別々の格子を形状包含で対応付け、選択5タイルから331,296セルを抽出（人口あり321,955、建成のみ9,341、空間対応311,442）。`hf:ghsl-japan-core-2020-30arcsec`（CC BY 4.0） | 完了 · 目視確認済み · gzip 2,025,074 B · first frame p50 457.1 ms · frame p95 0.295 ms · draw p95 0.035 ms |
 | 10 | Prompting only | AI コードエージェントに制作プロンプトを与え、OurAirports 2026-08 固定スナップショットと Natural Earth を Canvas 2D の独自描画器で地図化。閉鎖・座標なし13,482件を除く72,520施設、うち定期便あり4,325件。Public domain（OurAirports帰属表示）・Natural Earth public domain。航空路は創作しない | 完了 · 3回計測・全check PASS · frame p95 0.755 ms · draw p95 0.025 ms · first frame p50 170.0 ms · data gzip 508,374 B · code gzip 9,272 B |
-| 11 | Senses: Sound | 東京の鉄道・道路を音の強さに変換した合成サウンドスケープ。`hf:osm-tokyo23-src-2026-08` 等を使用し、実測音ではなくモデルであることを表示 | TODO |
+| 11 | Senses: Sound | 東京23区の OSM 道路163,329本・鉄道8,004本から重み付き線密度を320×320セルに集計し、Canvas 2Dで表示。クリック地点の道路ノイズと鉄道低音をWeb Audio APIで合成。実測音・デシベルではないことと ODbL 帰属を表示 | 完了 · 3回計測・全check PASS · 道路54,883 / 鉄道8,400セル · first frame p50 62.29 ms · frame p95 0.315 ms · draw p95 0.055 ms · gzip 79,700 B data / 7,571 B code |
 | 12 | Power | 国別の再生可能電力比率を時系列で描き、発電の地域差を比較。カタログの country tables からライセンスと列を確認して選定 | TODO |
 | 13 | Interactions | 都道府県間の通勤・滞在人口フローを、方向付きリンクと時間選択で描く。`hf:mlit-1km-fromto-2022-01` または Meta 移動統計（集計単位と CC BY 条件を確認） | TODO |
 | 14 | Borgesian map | OSM 建物・道路を地表と同じ縮尺で描く、領土に迫る地図の思考実験。東京の OSM 抽出（ODbL）、描画範囲を絞り密度を計測 | TODO |
