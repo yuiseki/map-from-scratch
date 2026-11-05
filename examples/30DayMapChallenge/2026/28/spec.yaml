@@ -19,7 +19,7 @@ requirements:
     unmeasured: 人が感じる休息・癒やし・健康・安全を土地被覆から測れないため、これらの主観的意味は数値化しない
   - id: dedicated-interaction
     need: 地図を移動・拡大縮小・初期範囲へ戻し、100m相当セルを調べられる
-    rationale: 204×168セルの専用Canvas2Dオフスクリーンラスターを再配置する。描画CPU p95 8 ms、requestAnimationFrameコールバック間隔p95 16.7 msを目標とする
+    rationale: 204×168セルの専用Canvas2Dオフスクリーンラスターを再配置する。描画器の合否基準はdraw_cpu_ms p95 8 ms。frame_msはブラウザーとOSのRAFスケジューリングを含む診断値として記録し、描画器の予算にはしない。
   - id: compact-startup
     need: 固定データを一度読み、外部地図・データサービスなしに表示する
     rationale: 初回描画p50 1.5秒以内、コードgzip 35 KB以下、ベイクデータgzip 1 MB以下
@@ -43,7 +43,6 @@ evaluation:
     - {metric: rendered_band_4_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
     - {metric: rendered_band_5_pixels, min: 1, unit: pixels, requirement: geographic-distribution-and-inspection}
     - {metric: rendered_nodata_pixels, min: 0, max: 0, unit: pixels, requirement: no-data-semantics}
-    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: dedicated-interaction}
     - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: dedicated-interaction}
     - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: compact-startup}
     - {metric: code_gzip_bytes, max: 35000, unit: B, requirement: compact-startup}
@@ -102,9 +101,17 @@ architecture_selection:
       rejected_because: The prompt requires a data-specific renderer with no external map runtime, and the AOI is fully represented by the source grid.
   not_doing: [infer emotional state or restorative benefit, infer park or public-access boundaries, infer safety or health, include subjective survey or individual data, treat crops as natural green respite, add roads or basemap, draw cells at 10m source resolution, use generated imagery, general-purpose map engine]
 performance_knowledge:
-  - The benchmark records 60 consecutive requestAnimationFrame callback timestamp intervals per iteration, with one camera update and synchronous cached-raster draw in each callback. After moving pixel readback to OffscreenCanvas, the 2026-11-06 three-run result had frame p95 17.750 ms (target 16.7 ms, miss), draw CPU p95 0.110 ms (target 8 ms), and first-frame p50 62.785 ms (target 1,500 ms). Host load averages were 22.08, 21.77, and 21.68 in the first corrected run. A repeat run at 18.49, 18.69, and 20.21 still measured frame p95 17.700 ms (p50 17.340 ms) with draw CPU p95 0.200 ms. These are concurrent measurements, not an established cause. Both initial corrected runs passed all eight functional checks and 22/23 budgets. A third run added a no-draw RAF control: idle callback p95 17.525 ms, active frame p95 17.710 ms (0.185 ms higher), draw CPU p95 0.255 ms, first-frame p50 61.510 ms, code/data gzip 9,959/65,070 B. It also passed all eight checks and 22/23 budgets. The idle cadence already misses 16.7 ms, so this run cannot attribute the miss to drawing; retain the frame budget miss and do not infer a pass from low draw CPU.
-  - An Xvfb three-run measurement under the same four-CPU cap produced idle RAF p95 17.705 ms, active frame p95 17.780 ms, and draw CPU p95 0.310 ms; 8/8 checks passed and 22/23 budgets passed. The Xvfb result confirms that switching from headless display mode does not remove the idle RAF overrun in this environment. Keep the 16.7 ms budget marked unmet.
-  - A headless three-run measurement with GPU disabled produced idle RAF p95 17.870 ms, active frame p95 17.745 ms, draw CPU p95 0.185 ms, and first-frame p50 52.740 ms. All 8 checks passed and only the frame budget failed (22/23 budgets). Disabling GPU compositing did not improve RAF cadence; keep the 16.7 ms budget unmet.
+  - >-
+    A cached-raster redraw benchmark records synchronous draw_cpu_ms separately from requestAnimationFrame callback cadence (frame_ms).
+    Under the earlier rubric, corrected three-run measurements had frame p95 17.700–17.750 ms and draw CPU p95 0.110–0.200 ms; an idle control measured 17.525 ms p95.
+    Xvfb measured idle/active p95 17.705/17.780 ms, and disabling GPU compositing measured 17.870/17.745 ms with draw CPU p95 0.185 ms.
+    The idle cadence exceeded the former 16.7 ms target in every display/GPU condition, so these comparisons do not identify the renderer as the cause.
+    The prior 22/23 totals refer to the earlier rubric.
+  - >-
+    The owner selected acceptance policy B on 2026-11-06. frame_ms and idle_frame_ms remain browser/OS cadence diagnostics, not renderer acceptance budgets.
+    The renderer's work criterion is draw_cpu_ms p95 <= 8 ms.
+    Following removal of the cadence budget, the standard Chrome 156 three-run result passed 22/22 budgets and 8/8 checks: frame p95 17.720 ms, idle RAF p95 17.720 ms, draw CPU p95 0.180 ms, first-frame p50 61.150 ms, and code/data gzip 9,959/65,070 B.
+    Load averages were 20.99/20.06/19.70; they are contextual observations, not a causal explanation.
 verification:
   checks:
     - id: source-counts-and-green-formula

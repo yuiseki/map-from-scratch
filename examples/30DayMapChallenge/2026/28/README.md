@@ -58,14 +58,18 @@ All real-data reads, bakes, tests, type checks, builds, and browser measurements
 
 The capped three-run browser benchmark reports exact source totals and passes all eight interaction, rendering, attribution, caveat, and request-origin checks. The canvas is keyboard-focusable and arrow keys inspect adjacent cells. The earlier run reported frame p95 17.735 ms against a 16.7 ms target, draw CPU p95 0.20 ms, and first-frame p50 55.025 ms. Host load averages were 24.45, 21.35, and 20.68. Code gzip was 9,739 B and baked-data gzip was 65,071 B.
 
-2026-11-06 corrected three-run Chrome 156 measurement after pixel checks were moved to an OffscreenCanvas copy: all 8 browser checks passed and 22/23 budgets passed. The callback-to-callback frame p95 is 17.750 ms against a 16.7 ms target; draw CPU p95 is 0.110 ms and first-frame p50 is 62.785 ms. Host load averages were 22.08/21.77/21.68; this is concurrent environment data, not an established cause. The frame target remains unmet. Gzip code/data is 9,739/65,071 B. See `results/30DayMapChallenge-2026-28/latest.json`.
+2026-11-06 corrected three-run Chrome 156 measurement after pixel checks were moved to an OffscreenCanvas copy: all 8 browser checks passed and 22/23 budgets passed under the then-current rubric. The callback-to-callback frame p95 is 17.750 ms; draw CPU p95 is 0.110 ms and first-frame p50 is 62.785 ms. Host load averages were 22.08/21.77/21.68; this is concurrent environment data, not an established cause. Gzip code/data is 9,739/65,071 B. See `results/30DayMapChallenge-2026-28/latest.json`. Acceptance criteria were later updated below.
 
 
 再現確認（2026-11-06、Chrome 156 / headless、CPU 4コア上限）でも frame p95 17.700 ms・p50 17.340 ms、draw CPU p95 0.200 msとなり、22/23 budgets・8/8 checksでした。実行時load averageは18.49/18.69/20.21です。先の未達が負荷の低下後にも再現しました。最新JSONは同じ `results/30DayMapChallenge-2026-28/latest.json` にあります。
 
 
-描画なしのRAF対照計測を追加した3回目（2026-11-06）は、アイドル時p95 17.525 ms、描画時frame p95 17.710 ms、draw CPU p95 0.255 ms、first-frame p50 61.510 msでした。アイドル時から16.7 ms目標を超え、描画時との差は0.185 msです。したがってこの実行環境では16.7 ms予算の未達を描画器単体の遅さとは判定できませんが、予算未達として記録を維持します。22/23 budgets、8/8 checks。host load averageは19.71/18.53/19.24でした。gzip code/data 9,959/65,070 B。
+描画なしのRAF対照計測を追加した3回目（2026-11-06）は、アイドル時p95 17.525 ms、描画時frame p95 17.710 ms、draw CPU p95 0.255 ms、first-frame p50 61.510 msでした。アイドル時から当時の16.7 ms目標を超え、描画時との差は0.185 msです。この結果を受けてその時点では予算未達を記録しました。22/23 budgets、8/8 checks。host load averageは19.71/18.53/19.24でした。gzip code/data 9,959/65,070 B。現在の合否基準は末尾に記載しています。
 
-表示方式の影響を切り分けるためXvfbでも同じ資源上限・3反復で計測しました（2026-11-06）。アイドルRAF p95 17.705 ms、描画時frame p95 17.780 ms、draw CPU p95 0.310 msで、22/23 budgets・8/8 checksでした。headless時と同じくアイドル周期が16.7 msを超えたため、Xvfbへの切り替えでも目標未達は解消しませんでした。描画器が遅いという結論にはせず、未達を維持します。測定値は `results/30DayMapChallenge-2026-28/latest.json` にあります。
+表示方式の影響を切り分けるためXvfbでも同じ資源上限・3反復で計測しました（2026-11-06）。アイドルRAF p95 17.705 ms、描画時frame p95 17.780 ms、draw CPU p95 0.310 msで、旧基準では22/23 budgets・8/8 checksでした。headless時と同じくアイドル周期が当時の16.7 ms閾値を超えました。測定値は `results/30DayMapChallenge-2026-28/latest.json` にあります。
 
 GPU合成を無効にした3反復も行いました（2026-11-06）。アイドルRAF p95 17.870 ms、描画時frame p95 17.745 ms、draw CPU p95 0.185 ms、初回描画p50 52.740 msでした。8/8 checksが通り、未達はframe budgetだけでした（22/23）。GPU表示経路を切ってもRAF周期は改善しなかったため、現計測環境で描画器やGPU負荷を主因とする根拠はありません。スクリーンショットも再確認しました。
+
+### 合否基準の更新（2026-11-06）
+
+ユーザー判断Bに従い、16.7 msの `frame_ms` 閾値を合否予算から外しました。RAF周期はブラウザー・OS側のスケジューリングを含む診断値として記録し、描画器の合否は `draw_cpu_ms` p95 8 ms以下で判定します。標準Chrome 156・3反復の再計測は22/22 budgets・8/8 checksに合格しました。frame p95 17.720 ms、アイドルRAF p95 17.720 ms、draw CPU p95 0.180 ms、初回描画p50 61.150 ms、gzip code/data 9,959/65,070 Bです。以前の22/23表記は旧基準での記録です。
