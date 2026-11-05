@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>29 · Raster — Is this a map?</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" aria-label="中央本州から日本海溝までの海底・地形標高ラスターマップ"></canvas>
+  <aside id="panel" aria-label="地図の凡例とデータ説明">
+    <header>
+      <p class="eyebrow">30 DAY MAP CHALLENGE · 29 · RASTER</p>
+      <h1>Is this a map?</h1>
+      <p class="subhead">中央本州から日本海溝まで、ひとつの標高面として見る</p>
+    </header>
+    <p id="status" role="status">公式 ETOPO GeoTIFF の必要範囲を取得しています…</p>
+    <div class="legend" aria-label="標高の色分け">
+      <p class="legend-title">標高 · 海面からの高さ（m）</p>
+      <div class="ramp"><i></i><span>−9,000 m</span><span>海面 0 m</span><span>+4,000 m</span></div>
+      <p class="legend-note"><b class="sea">●</b> 海底 · 深いほど濃い青　 <b class="land">●</b> 陸地 · 高いほど暖色</p>
+    </div>
+    <section id="selection" aria-live="polite">
+      <h2>標高を調べる</h2>
+      <p>地図をクリックすると、選んだ位置と元ラスターピクセルの標高を表示します。</p>
+    </section>
+    <nav class="controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">範囲をリセット</button>
+    </nav>
+    <p id="coordinates" class="context">座標 · —</p>
+    <p id="scale" class="context">縮尺 · —</p>
+    <p class="caveat">ETOPO は全球の地形・海底地形モデルです。海図の測深値、航海用情報、浸水予測、現在の地形測量ではありません。</p>
+    <footer>
+      <a href="https://doi.org/10.25921/fd45-gt74">NOAA NCEI · ETOPO 2022</a> · 30 arc-second bedrock relief<br>
+      標高基準: WGS 84 + EGM2008 · 単位 m · 海岸線は表示用モデルの解像度に依存
+    </footer>
+    <p class="controls-note">ドラッグで移動 · ホイールまたはボタンで拡大縮小 · クリックして標高を調査</p>
+  </aside>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

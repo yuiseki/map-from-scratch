@@ -1,0 +1,109 @@
+id: 30DayMapChallenge-2026-29
+request: >-
+  NOAA ETOPO 2022 の標高 Float32 ラスターを公式 GeoTIFF から必要な HTTP Range だけ読み、専用 WebGL2 シェーダーで中央本州から日本海溝を描く。
+  現実の標高を使い、架空の地図にはしない。
+requirements:
+  - id: source-faithful
+    need: NOAA ETOPO 2022 30 arc-second bedrock GeoTIFF の元 Float32 値と NoData を保持する
+    unmeasured: the live browser additionally checks exact Content-Length/body lengths and decoded Tokyo/Fuji/Trench values because CORS hides Content-Range
+  - id: bounded-range-reads
+    need: 選択した TIFF block だけを正確な Range 読み込みで取得し、200応答の本文を消費しない
+    unmeasured: fixtures verify exact Content-Range, CORS fallback rules, exact lengths, immediate 200 cancellation and one retry; official server has not produced a live 200 in this measurement
+  - id: webgl2-raster
+    need: WebGL2 texture と fragment shader が元標高値から海底・海面・陸地・NoData を描く
+    unmeasured: browser pixel readback and GPU timing are reported by the serialized browser measurement
+  - id: inspect-and-navigate
+    need: 初期 AOI 内を移動・拡大縮小し、位置を選んで座標と元標高を調べる
+    unmeasured: browser pointer and visible-pixel checks are reported by the serialized browser measurement
+  - id: attribution-and-caveat
+    need: NOAA ETOPO の出典、標高基準、航海用途ではない注意を表示する
+    unmeasured: checked in browser screenshot review
+  - id: bounded-startup
+    need: 固定 AOI の必要 metadata と圧縮 TIFF block のみを取得して初期表示する
+    rationale: metadata + selected compressed blocks target under 5 MB and five exact Range requests
+    unmeasured: first-frame, live request timings and range response metadata are reported by the browser bench
+evaluation:
+  budgets:
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: webgl2-raster}
+    - {metric: draw_cpu_ms, stat: p95, max: 4, unit: ms, requirement: webgl2-raster}
+    - {metric: gpu_ms, stat: p95, max: 16.7, unit: ms, requirement: webgl2-raster}
+    - {metric: first_frame_ms, stat: p50, max: 5000, unit: ms, requirement: bounded-startup}
+    - {metric: source_bytes, max: 5000000, unit: B, requirement: bounded-startup}
+    - {metric: source_range_count, max: 6, unit: count, requirement: bounded-startup}
+  gates: [WebGL2 renderer initialized, all observed ranges are exact bounded 206 responses, source and pixel checks pass]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/29/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 120000
+  scenarios:
+    - id: first-frame
+      what: source metadata and the selected AOI's compressed TIFF blocks through first WebGL2 submission
+      metrics: [first_frame_ms, source_bytes, source_range_count]
+    - id: fixed-view
+      what: repeated WebGL2 draws at the opening extent and at 4x zoom
+      metrics: [frame_ms, draw_cpu_ms, gpu_ms]
+datasets:
+  sources:
+    - id: noaa-etopo2022-30s-global-bedrock
+      origin: NOAA NCEI ETOPO 2022 30 arc-second global bedrock GeoTIFF; https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/30s/30s_bed_elev_gtif/ETOPO_2022_v1_30s_N90W180_bed.tif
+      license: NOAA NCEI public data; retain NOAA/ETOPO 2022 attribution and source use limitations
+  outputs: [data/baked/30DayMapChallenge-2026-29/source-stats.json]
+  preparation:
+    - Read classic TIFF metadata and block index from a bounded 131,072-byte prefix; verify 43,200×21,600 Float32, 30 arc-second WGS 84 + EGM2008, nodata −99,999, 256×256 tiles, DEFLATE and Predictor=3, no overviews.
+    - Select blocks intersecting `[138.5,34.5,144.5,40.5]`; read 16 blocks (2,123,065 compressed bytes) in four adjacent spans and decode via bounded DEFLATE and Predictor=3. Browser CORS does not expose Content-Range, so verify exact offsets separately with capped curl; in-browser require 206 and exact response/body lengths against a fixed known object length, then validate TIFF and Tokyo/Fuji/Japan Trench samples.
+    - Build only the AOI Float32 array in memory; never bake, commit or request the full source raster.
+    - Original local 15 arc-second COG checks were all nodata and its official Japan tile was unavailable (404); use the verified 30 arc-second official global source instead.
+performance_knowledge:
+  - id: tiled-raster-range-selection
+    finding: Classic TIFF block offsets and byte counts permit exact bounded reads of the 16 blocks intersecting the central-Honshu to Japan-Trench AOI; no overview exists in the source.
+    evidence: official TIFF tag arrays end below byte 131,072; capped source bake selected 16 tiles, 2,123,065 compressed bytes in four parallel spans, 2,254,137 B total, and decoded 518,400 pixels. Tokyo 37.60469 m, Fuji 3,666.33643 m and Japan Trench −7,534.5415 m all remain inside the AOI.
+    applies_when: a large tiled TIFF has directly readable block indexes and the desired viewport maps to a bounded block set
+  - id: etopo-network-startup
+    finding: Narrowing the AOI to `[138.5,34.5,144.5,40.5]` reduces startup wait while retaining the Tokyo, Fuji and Japan Trench sentinels; renderer draw cost remains far below one display frame.
+    evidence: three browser runs transferred 2,254,137 B across five HTTP 206 ranges, first-frame p50/p95 2,582/3,021 ms, RAF frame interval p95 1.145 ms, CPU draw p95 0.030 ms and GPU draw p95 0.0297 ms. All six browser checks and six declared budgets passed.
+    applies_when: selecting a smaller study region is acceptable if the named geographic samples and map context remain visible
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 Float32 texture and fragment-shader raster renderer
+    language: TypeScript, executed without a build after type erasure
+    gpu: hardware
+    code: [examples/30DayMapChallenge/2026/29/index.html, examples/30DayMapChallenge/2026/29/main.ts, examples/30DayMapChallenge/2026/29/renderer.ts, examples/30DayMapChallenge/2026/29/source.ts, examples/30DayMapChallenge/2026/29/range.ts, examples/30DayMapChallenge/2026/29/cog.ts, examples/30DayMapChallenge/2026/29/deflate.ts, examples/30DayMapChallenge/2026/29/raster.ts]
+    dependencies: []
+    why: The shader samples the original Float32 elevation raster directly; application code selects and safely retrieves only the TIFF blocks required for the fixed AOI.
+  alternatives:
+    - option: Canvas 2D colorized ImageData
+      rejected_because: would move raster colorization onto CPU and would not exercise a dedicated raster shader
+    - option: MapLibre raster source
+      rejected_because: would require converting the source to tiles or relying on a raster layer instead of the source TIFF block index
+  not_doing: [whole TIFF download, generated imagery, cached tile assets, navigation charts, current terrain survey, regions outside the loaded AOI]
+verification:
+  checks:
+    - id: source-selection
+      what: source origin, selected TIFF blocks and observed reads match the documented bounds
+      how: compare live fetch metrics and decoded pixels with the parser-derived plan
+      expected: official NCEI origin only, five HTTP 206 responses, 16 blocks, four tile spans, exact Content-Length/body lengths, and 2,254,137 total range bytes; capped curl confirms live Content-Range offsets
+    - id: range-contract
+      what: invalid range responses are rejected without reading an unbounded 200 body
+      how: synthetic Fetch response verifies body cancellation and at most one retry
+      expected: cancellation precedes retry; second unexpected 200 stops
+    - id: raster-colors
+      what: valid bathymetry and land pixels render on screen while NoData remains transparent
+      how: compare browser WebGL readback for known real source samples
+      expected: distinct negative and positive colors, transparent NoData
+    - id: selected-elevation
+      what: selection shows coordinates and the matching real source pixel elevation
+      how: click known visible positions and compare the panel with source Float32 values
+      expected: selected value matches the decoded pixel
+    - id: attribution-caveat
+      what: source citation, elevation reference and navigation limitation are visible
+      how: inspect rendered page and screenshot
+      expected: NOAA ETOPO 2022 citation, EGM2008 and non-navigation caveat are visible
+    - id: bounded-view
+      what: pan and zoom remain within loaded coverage and no unrelated source is requested
+      how: exercise controls and inspect all external requests
+      expected: view remains in the AOI and requests use only the official NCEI raster origin
