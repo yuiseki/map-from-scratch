@@ -86,12 +86,12 @@ performance_knowledge:
   - claim: >-
       frame_ms means elapsed time between adjacent requestAnimationFrame callback timestamps; draw_cpu_ms is the synchronous renderer.draw() duration performed during the second and subsequent callbacks. This separates browser frame cadence from the renderer's own CPU time.
     evidence: >-
-      The pre-correction benchmark instead measured from immediately before renderer.draw() until the following callback. Its three historical p95 pairs (frame / draw CPU) were 16.215 / 6.045 ms, 17.19 / 7.10 ms, and 125.555 / 4.68 ms. Those frame measurements combine drawing and callback wait and cannot serve as callback-to-callback intervals. The 16.7 ms frame target remains pending a new browser run; all three historical frame results are retained as legacy measurements and none establishes the corrected metric's pass status.
-    applies_when: Day18 browser performance is measured after changing the timing method.
+      The pre-correction benchmark instead measured from immediately before renderer.draw() until the following callback. Its three historical p95 pairs (frame / draw CPU) were 16.215 / 6.045 ms, 17.19 / 7.10 ms, and 125.555 / 4.68 ms. Those frame measurements combine drawing and callback wait and cannot serve as callback-to-callback intervals. A corrected three-iteration run at 2026-11-05T15:52:17.920Z produced frame p50/p95/p99/max 115.705 / 132.485 / 365.370 / 904.465 ms, draw CPU p95 4.015 ms, first-frame p50 80.670 ms, code/data gzip 14,312 / 26,120 B, and host load average 20.56 / 20.81 / 20.51 recorded during the run; display was xvfb. All nine functional checks passed; nine of ten budgets passed, with only frame_ms p95 failing at 132.485 ms versus 16.7 ms. The target is not met. Host load and display type are contemporaneous context, not an established cause of the long callback intervals; retain the failure and investigate a lower-contention run before any pass claim.
+    applies_when: Day18 browser performance is measured.
   - claim: >-
       固定範囲2,016セルを事前に一度だけ展開し、Canvasは矩形を直接再描画する。ブラウザ起動時のデータは小さな同一オリジンJSON一つである。
     evidence: >-
-      3回計測の描画CPU p95は初回6.045 ms、2回目7.10 ms、3回目4.68 ms。フレーム間隔p95は16.215 ms、17.19 ms、125.555 ms。最終回のホスト負荷はload average 19.53 / 21.19 / 20.61、同時にllama-serverと複数Tesseractが稼働していた。描画CPU予算8 msは全回通過、フレーム間隔予算16.7 msは2回目・3回目に超過し、最終回はホスト負荷の影響を除外できないため合格扱いにしない。データ状態・文言・出典・描画・操作のブラウザ検査は通過した。
+      3回計測の描画CPU p95は初回6.045 ms、2回目7.10 ms、3回目4.68 ms。旧方式のフレーム値p95は16.215 ms、17.19 ms、125.555 msで、現定義のcallback間隔とは比較できない。最終回と同時にhost load average 19.53 / 21.19 / 20.61およびllama-serverと複数Tesseractの稼働が記録されていた。描画CPU予算8 msは全回通過し、旧方式のフレーム値は2回目・3回目で16.7 msを超過した。環境情報は同時観測として残し因果は断定しない。データ状態・文言・出典・描画・操作のブラウザ検査は通過した。
     applies_when: 東京の固定AOI、2020年国勢調査、250 m格子を表示する。
 verification:
   checks:

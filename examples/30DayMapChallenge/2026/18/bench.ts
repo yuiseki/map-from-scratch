@@ -33,7 +33,7 @@ export async function run(renderer: NullRenderer) {
   emit({ check: 'estat-source-credit-and-license', pass: body.includes('令和2年国勢調査') && body.includes('総務省統計局') && body.includes('CC BY 4.0') && sourceLink,
     detail: 'The e-Stat census source, Statistics Bureau attribution, license and source link are visible.' });
   const suppressionLink = [...document.querySelectorAll('a')].some((anchor) => anchor.href === 'https://www.stat.go.jp/data/mesh/pdf/ryuijikou.pdf');
-  emit({ check: 'official-null-and-suppression-semantics-linked', pass: suppressionLink && plainBody.includes('人口がないメッシュはレコードなし') && plainBody.includes('秘匿対象は*で表章'),
+  emit({ check: 'official-null-and-suppression-semantics-linked', pass: suppressionLink && /人口がないメッシュは\s*レコードなし/.test(plainBody) && /秘匿対象は\s*\*\s*で表章/.test(plainBody),
     detail: 'Official Statistics Bureau notes back the meanings of absent rows and asterisk suppression.' });
   emit({ check: 'study-area-and-metric-visible', pass: body.includes('250 m') && body.includes('75歳以上女性') && body.includes('139.65–139.78°E') && body.includes('35.62–35.72°N'),
     detail: 'Year, spatial resolution, metric and exact fixed bounds are stated.' });
