@@ -1,0 +1,131 @@
+id: 30DayMapChallenge-2026-18
+request: >-
+  30DayMapChallenge 2026「NULL」。東京都心の2020年国勢調査・250 mメッシュで、75歳以上女性人口の公表値、ゼロ、秘匿値、元表に行がない格子を地理的に区別する。
+requirements:
+  - id: four-null-states
+    need: 正の公表値・公表された0・秘匿値*・行なしを異なる地図記号で表す
+    rationale: 欠損や秘匿をゼロと誤読せず、データ製品が表す空間の違いを見せる
+  - id: missing-is-a-geographic-hole
+    need: 元表の行がないメッシュを人口0人と断定せず、固定範囲の格子上に空白として示す
+    rationale: e-Statの説明では人口のないメッシュはレコードがない
+    unmeasured: 土地利用や居住可能性はこの表だけから判断しない
+  - id: suppression-remains-unknown
+    need: `*`を秘匿パターンで描き、値や人数に変換しない
+    rationale: 統計局の秘匿処理は小さな地域メッシュの結果を隠すため
+  - id: readable-mesh-map
+    need: 250 mメッシュを独自Canvas描画器で読み、ドラッグ・ズーム・選択を提供する
+    rationale: 状態の差を個別の格子単位で確認する
+  - id: transparent-source-and-scope
+    need: 対象指標・年・解像度・固定範囲・加工・出典・利用条件を表示する
+    rationale: 公表統計の意味と利用元を確認できる
+    unmeasured: 自動検査は表示文面とリンクを確認するが、利用条件の法的解釈までは検証しない
+evaluation:
+  budgets:
+    - {metric: lattice_cells, min: 2016, max: 2016, unit: meshes, requirement: four-null-states}
+    - {metric: positive_cells, min: 1716, max: 1716, unit: meshes, requirement: four-null-states}
+    - {metric: zero_cells, min: 27, max: 27, unit: meshes, requirement: four-null-states}
+    - {metric: suppressed_cells, min: 49, max: 49, unit: meshes, requirement: suppression-remains-unknown}
+    - {metric: missing_cells, min: 224, max: 224, unit: meshes, requirement: missing-is-a-geographic-hole}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: readable-mesh-map}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: readable-mesh-map}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: readable-mesh-map}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: readable-mesh-map}
+    - {metric: data_gzip_bytes, max: 100000, unit: B, requirement: readable-mesh-map}
+  gates: [four separate visual states, no-row meshes are not assigned zero, asterisk is retained as unknown, exact study extent and metric shown, e-Stat attribution and CC BY 4.0 shown, no external map services]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/18/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: four-census-states
+      what: 2020 census 250 m grid with absent, suppressed, zero and positive records
+      metrics: [first_frame_ms]
+    - id: inspect-cell-and-zoom
+      what: Select one suppressed mesh and zoom into the mesh map
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: source-meaning-and-real-pixels
+      what: Check source labels, counts and representative canvas cells for all states
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/18/bake.ts]
+  sources:
+    - id: hf:estat-census-mesh-250m-2020
+      origin: >-
+        令和2年国勢調査 250 m地域メッシュ「人口及び世帯」JGD2011版のParquet表 T001142。東京都(13)のKEY_CODEと、75歳以上人口・女性(T001142024)を使用。行は固定AOIのメッシュ中心で選択。
+      license: >-
+        e-Stat利用規約に基づくCC BY 4.0互換条件。出典: 政府統計の総合窓口(e-Stat)「令和2年国勢調査」(総務省統計局)を加工して作成。秘匿とレコードなしの意味は総務省統計局「地域メッシュ統計 ダウンロードデータに関する留意事項等について」を参照。
+      url: https://www.e-stat.go.jp/help/data-definition-information/downloaddata/T001142.pdf
+  outputs: [data/baked/30DayMapChallenge-2026-18/null.json, data/baked/30DayMapChallenge-2026-18/stats.json]
+  preparation:
+    - >-
+      JIS X 0410の250 m quarter-mesh codeから固定範囲139.65–139.78°E、35.62–35.72°Nの格子を復元する。元表の格子中心が範囲に入る行だけを結び、値文字列`*`、`0`、正の整数を保持する。範囲内格子に元表行がないときだけ`missing`として追加する。
+    - >-
+      行なしをゼロとして追加しない。`*`に数値を割り当てない。利用者がホバー・選択してもその秘匿値を推定しない。
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver + native keyboard events
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/18/index.html, examples/30DayMapChallenge/2026/18/main.ts, examples/30DayMapChallenge/2026/18/renderer.ts, examples/30DayMapChallenge/2026/18/nullmap.ts, examples/30DayMapChallenge/2026/18/bench.ts, examples/30DayMapChallenge/2026/18/PROMPT.md]
+    dependencies: []
+    why: 2016個の静的な格子セルと4状態の記号を直接描画し、地図SDKや外部タイルなしで操作・検証できる。
+  alternatives:
+    - option: 行なしを0人のセルとして塗る
+      rejected_because: 国勢調査表に存在しないセルは0人と公表された結果ではない。
+    - option: 秘匿値をゼロか人口推定値に置き換える
+      rejected_because: `*`は秘匿で、公開結果から人数を断定できない。
+    - option: Web地図SDKと地理院タイルを背景にする
+      rejected_because: このテーマでは格子の空白状態に視線を向け、通信なしで状態を再現可能にする。
+  not_doing: [居住可能地の推定, 行なしメッシュの0人断定, 秘匿値の推定, 2020年以外の推移, 個人単位データ, 外部ベースマップ]
+performance_knowledge:
+  - claim: >-
+      固定範囲2,016セルを事前に一度だけ展開し、Canvasは矩形を直接再描画する。ブラウザ起動時のデータは小さな同一オリジンJSON一つである。
+    evidence: >-
+      3回計測の描画CPU p95は初回6.045 ms、2回目7.10 ms、3回目4.68 ms。フレーム間隔p95は16.215 ms、17.19 ms、125.555 ms。最終回のホスト負荷はload average 19.53 / 21.19 / 20.61、同時にllama-serverと複数Tesseractが稼働していた。描画CPU予算8 msは全回通過、フレーム間隔予算16.7 msは2回目・3回目に超過し、最終回はホスト負荷の影響を除外できないため合格扱いにしない。データ状態・文言・出典・描画・操作のブラウザ検査は通過した。
+    applies_when: 東京の固定AOI、2020年国勢調査、250 m格子を表示する。
+verification:
+  checks:
+    - id: four-states-and-data-meaning-visible
+      what: 凡例と本文で4つの状態の意味を説明する
+      how: ブラウザ上の文言を検査する
+      expected: 正値・ゼロ・秘匿`*`・行なしを区別し、行なしと秘匿がゼロではないと明記する
+    - id: lattice-state-counts-match-baked-data
+      what: AOI格子数と4つの状態数が固定スナップショットに一致する
+      how: bake statisticsを比較する
+      expected: 2016格子、1716正値、27ゼロ、49秘匿、224行なし
+    - id: suppressed-zero-and-missing-not-coerced
+      what: 不明値は整数ゼロに変換されない
+      how: bakedデータのセル値と状態を検査する
+      expected: 数値valueを持つのは正値セルのみ
+    - id: each-null-state-has-distinct-drawing-treatment
+      what: 各状態は独立した記号・色で描画される
+      how: 代表セルの色とCanvasピクセルを確認する
+      expected: 4状態すべて描画され、色が重複しない
+    - id: estat-source-credit-and-license
+      what: e-Stat出典、総務省統計局、CC BY 4.0を表示する
+      how: ページ上のリンク・本文を確認する
+      expected: source URLと出典・利用条件が見える
+    - id: official-null-and-suppression-semantics-linked
+      what: 行なしと秘匿値の説明を総務省統計局の公式資料へ結び付ける
+      how: 秘匿・特例表章の説明リンクと画面上の意味を検査する
+      expected: 人口がないメッシュはレコードなし、秘匿対象項目は`*`と説明する
+    - id: study-area-and-metric-visible
+      what: 対象範囲と指標の年・解像度を示す
+      how: ページ上の本文を確認する
+      expected: 2020年、250 m、75歳以上女性人口、固定範囲が見える
+    - id: cell-selection-and-zoom
+      what: 選択で該当格子状態を表示し、操作で地図を拡大する
+      how: 実セルを選択し、ズームボタンを押す
+      expected: cell codeと秘匿状態を示し、zoom値が増加する
+    - id: no-runtime-external-map-services
+      what: 外部タイルや実行時地理データを取得しない
+      how: Resource Timingのoriginを検査する
+      expected: 全リソースが同一origin
+footprint:
+  code: [examples/30DayMapChallenge/2026/18/index.html, examples/30DayMapChallenge/2026/18/main.ts, examples/30DayMapChallenge/2026/18/renderer.ts, examples/30DayMapChallenge/2026/18/nullmap.ts, examples/30DayMapChallenge/2026/18/bench.ts, examples/30DayMapChallenge/2026/18/PROMPT.md]
+  data: [data/baked/30DayMapChallenge-2026-18/null.json, data/baked/30DayMapChallenge-2026-18/stats.json]
