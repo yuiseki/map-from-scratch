@@ -12,7 +12,7 @@
 | 04 | Clusters | 東京23区の OSM 2026-08-31 点施設を境界内で抽出し、飲食・買い物・交通・公共観光の4分類を表示倍率に沿った画面セルで GPU 集約。カタログ `hf:osm-tokyo23-src-2026-08` の ODbL 条件と出典表示を確認。141,092 点（29,077 / 29,496 / 25,091 / 57,428）。 | 完了 · 目視確認済み · frame p95 0.455 ms · first frame p50 511.8 ms |
 | 05 | Senses: Sight | GSI DEM10B の富士山周辺約95.55 m 格子を WebGL2 の照明付き 3D 地形にし、視点を軌道操作。カタログ `hf:gsi-dem-fuji-z14-100m-2026-10-25` の GSI コンテンツ利用規約 / PDL1.0 と指定帰属、「編集済み・非公式」を明示。256×256・65,536 格子。 | 完了 · 目視確認済み · frame p95 0.675 ms · first frame p50 553.5 ms |
 | 06 | Vintage | Natural Earth 1:10m の258か国を、紙地・国別の落ち着いた色・経緯線・彫版ハッチで描く専用 Canvas 2D 描画器。小さな国は簡略化で消えないよう元の輪郭を保持。Public domain（credit appreciated）。 | 完了 · 目視確認済み · frame p95 2.20 ms · first frame p50 79.7 ms |
-| 07 | 10 minute map | 台東区から徒歩10分圏をネットワーク探索で塗り分ける。東京の OSM 道路データを抽出・焼き込み（ODbL）。徒歩速度と通行可能性を明記 | TODO |
+| 07 | 10 minute map | 2026-08-31 OSM 道路網から上野駅起点の歩行グラフを作り、1.2 m/s の仮定で10分圏をDijkstra探索。到達道路を所要時間別に、圏外道路を暗色で表示。ODbL帰属と速度仮定を明記。 | 完了 · 目視確認済み · graph 12,780 nodes / 16,080 edges · reachable 1,376 segments · frame p95 1.715 ms · first frame p50 79.9 ms |
 | 08 | Utopia | 東京の人口メッシュに、緑地・公共施設への近接性を重ねた「こうあってほしい」案を描く。`hf:estat-census-mesh-2020` + `hf:ksj-p29`（各 CC BY 4.0） | TODO |
 | 09 | Urban-rural | 人口密度と建成地を連続尺度で描き、都市・農村の境界を問う。`hf:ghsl-japan-core-2020-30arcsec`（CC BY 4.0） | TODO |
 | 10 | Prompting only | 公式ルールに従い、地図の構想・仕様決定をプロンプトだけで行った成果を記録する日。AI によるコード生成を「prompting only」と偽らず、実装例として成立する表現方法を公式説明に照らして決める | 要件確認 |

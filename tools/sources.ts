@@ -231,6 +231,13 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_point.parquet',
     copy: true,
   },
+  // Frozen Tokyo 23-ward OSM line table, EPSG:3857 GeoParquet; ODbL-derived.
+  'osm-tokyo23-lines': {
+    out: 'tokyo23_osm_lines.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/parquet/planet_osm_line.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_line.parquet',
+    copy: true,
+  },
   'osm-tokyo23-boundary': {
     out: 'tokyo23_osm_boundary.geojson',
     local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23_osm_boundary.geojson',
