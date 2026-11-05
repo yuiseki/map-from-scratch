@@ -1,0 +1,103 @@
+id: 30DayMapChallenge-2026-30
+request: >-
+  30DayMapChallenge 2026「Pen & paper」。富士山周辺の実在するGSI標高データから印刷用の等高線ガイドを作り、紙にルートや注記を手で描き込めるようにする。
+requirements:
+  - id: source-faithful-dem
+    need: GSIの標高値を出典と処理履歴付きで使用し、nodataを標高0mに変換しない
+    rationale: z14の100タイルを検証し、出典グリッドのセル平均標高から100m間隔の等高線を作る。DEM10Bは補間・集約値であることを紙面に記載する
+    unmeasured: source tiles, schema, selected rows and nodata semantics are checked by the capped deterministic bake and source tests
+  - id: printable-vector-sheet
+    need: A4横のベクター地図を正しい地上縮尺で出力し、ルート記入用の余白を設ける
+    rationale: SVG専用描画器が297×210mmのページ、地上1:100,000、2kmスケールバー、北向き、座標範囲、薄い100m線と太い500m線、手書きエリアを出力する
+  - id: reproducible-contours
+    need: 等高線の補間・接続をテストし、範囲外に線を出さない
+    rationale: nodataマスクを保つmarching squares、双線形中心値によるサドル判定、共有交点での線接続を純粋関数テストとブラウザー検査で確認する
+  - id: print-provenance
+    need: 完成した手描き地図と誤認させず、GSIの帰属・加工内容・データ限界を明記する
+    rationale: SVGと画面に出典、10×10ピクセル集約、非公式データ、補間・測量精度の注意を表示する
+    unmeasured: disclosures are verified by the artifact text check and visual screenshot review
+  - id: standalone-preview
+    need: ブラウザー内プレビューと保存するSVGを同一にする
+    rationale: 実行時はローカルの生成済みSVGだけを読み込み、保存リンクも同じファイルを返す
+evaluation:
+  budgets:
+    - {metric: first_render_ms, stat: p50, max: 1500, unit: ms, requirement: standalone-preview}
+    - {metric: svg_bytes, max: 220000, unit: B, requirement: printable-vector-sheet}
+    - {metric: contour_levels, min: 30, max: 40, unit: levels, requirement: reproducible-contours}
+    - {metric: contour_paths, min: 40, max: 60, unit: paths, requirement: reproducible-contours}
+    - {metric: map_ink_pixels, min: 1500, unit: pixels, requirement: printable-vector-sheet}
+  gates: [all source tiles match manifest size and SHA-256, nodata is separate from zero, 100m contour levels match the bake, every contour coordinate stays inside the disclosed map frame, A4 physical SVG opens and matches the preview, exact GSI attribution and DEM10B limits are visible, no cross-origin runtime dependency, all browser checks pass in three iterations]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/30/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: headless
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: svg-load-and-preview
+      what: Loads the local standalone SVG, waits for image decode, and checks actual rendered pixels.
+      metrics: [first_render_ms, svg_bytes]
+    - id: vector-and-print-integrity
+      what: Reads SVG levels, paths, extent, visible map pixels, page units, attribution, and the saved SVG response.
+      metrics: [contour_levels, contour_paths, map_ink_pixels]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/30/bake.ts]
+  sources:
+    - id: hf:gsi-dem-fuji-z14-100m-2026-10-25
+      origin: /sata_hdd_24tb/hf_data/gsi-dem-fuji-z14-100m-2026-10-25/data/elevation_100m.parquet; 10×10 aggregated z14 DEM10B cells, EPSG:3857, 95.546279 m per cell; AOI grid_x [371218,371456), grid_y [165525,165718).
+      license: Japan Public Data License 1.0 and GSI Content Terms; attribution and processing notice are embedded in the SVG.
+      url: https://maps.gsi.go.jp/development/ichiran.html
+  outputs: [data/baked/30DayMapChallenge-2026-30/dem.json, data/baked/30DayMapChallenge-2026-30/stats.json, data/baked/30DayMapChallenge-2026-30/sheet.svg]
+  preparation:
+    - Read the frozen local GeoParquet through DuckDB under the required 8 GiB / 400% CPU scope; select a contiguous 238×193 cell AOI by source grid indexes.
+    - Preserve every source mean as a number only when valid_pixels is positive and the mean exists; otherwise store null and a zero validity mask.
+    - Derive EPSG:3857 cell bounds from the z14 Web Mercator tile matrix; calculate the local ground scale using cos(center latitude), then generate a deterministic A4 SVG with custom marching squares.
+    - Record source CRS, exact AOI bounds, source checksums, row and nodata counts, elevation and contour ranges, segment/path counts, and output byte sizes.
+verification:
+  checks:
+    - id: svg-parse-and-physical-page
+      what: The generated standalone output is a valid A4 landscape physical SVG.
+      how: Parse the exact downloaded response as XML and compare width, height, viewBox and preview intrinsic ratio.
+      expected: 297mm × 210mm and the same SVG file is used by the preview.
+    - id: source-contours-visible
+      what: Every expected 100m contour level is serialized into paths and visible inside the map frame.
+      how: Compare `data-level` values and stitched path count with bake stats; count rendered non-white pixels from the SVG image in the map rectangle.
+      expected: Source level set and path count match; map-frame ink exceeds the pixel threshold.
+    - id: extent-clipping
+      what: Vector paths stay within the source AOI and page map frame.
+      how: Parse all path coordinate pairs and verify they lie within the clipped map rectangle.
+      expected: All paths are inside the frame and SVG declares the matching clip path.
+    - id: standalone-svg-matches-preview
+      what: The downloadable print artifact is byte-identical to the preview source.
+      how: Fetch the visible image URL and compare its response with the source loaded for the preview.
+      expected: Exact byte equality and successful SVG decoding.
+    - id: attribution-and-print-guide
+      what: GSI attribution, aggregation/interpolation limits, guide status and print instruction are visible.
+      how: Inspect SVG text and metadata nodes.
+      expected: Source, processor notice, non-official status, interpolated-data caveat and 100% print guidance all appear.
+    - id: no-external-runtime-assets
+      what: The printable preview has no map engine, tiles, API or linked external SVG assets.
+      how: Inspect Resource Timing and external href/src attributes.
+      expected: Runtime requests are same-origin and SVG contains no external asset references.
+performance_knowledge:
+  - id: vector-field-sheet
+    finding: A regular aggregated DEM grid can be turned into compact, crisp print vectors by extracting contours at build time and stitching crossings on a shared source grid; the browser only displays the finished SVG.
+    evidence: 45,934 source cells generated 10,611 contour segments and 49 stitched paths at 33 intervals, serialized as a 179,003-byte standalone A4 SVG.
+    applies_when: A static terrain guide needs predictable physical dimensions, print scale and a local preview without shipping a map engine or raster tiles.
+architecture_selection:
+  chosen:
+    platform: browser preview and standalone SVG print artifact
+    api: custom marching-squares contour extractor and XML SVG serializer
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/30/print.ts, examples/30DayMapChallenge/2026/30/bake.ts]
+    dependencies: []
+    why: Physical page units, scale correction, contour topology, labels and blank annotation layout are explicit and independently testable in a dedicated print renderer.
+  alternatives:
+    - option: general-purpose interactive map renderer
+      rejected_because: Runtime camera and map-engine behavior do not help produce fixed physical page geometry or accurate local ground scale.
+    - option: raster screenshot or generated image
+      rejected_because: Pixel output cannot preserve vector contour paths or deterministic print dimensions and is prohibited for this map.
+  not_doing: [basemap, roads, trails, summit marker, raster imagery, live network data, finished hand-drawn styling]

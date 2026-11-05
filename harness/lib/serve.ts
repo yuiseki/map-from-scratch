@@ -12,6 +12,7 @@ const TYPES: Record<string, string> = {
   '.wgsl': 'text/plain; charset=utf-8',
   '.css': 'text/css',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml',
   '.bin': 'application/octet-stream',
   '.wasm': 'application/wasm',
 };

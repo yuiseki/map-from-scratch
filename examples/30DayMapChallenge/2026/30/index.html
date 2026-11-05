@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Day 30 · 富士山の手書き地図ガイド</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main id="stage" aria-label="印刷用A4地図プレビュー">
+    <img id="sheet" src="../../../../data/baked/30DayMapChallenge-2026-30/sheet.svg" alt="富士山周辺のGSI標高データから作った100メートル間隔の等高線ガイド。手書きルート・注記エリア、縮尺、北方向、出典付き。">
+  </main>
+  <nav id="tools" aria-label="地図出力">
+    <strong>30 DAY MAP CHALLENGE · 30 PEN &amp; PAPER</strong>
+    <span id="status" role="status">印刷シートを読み込み中…</span>
+    <a id="download" href="../../../../data/baked/30DayMapChallenge-2026-30/sheet.svg" download="fuji-pen-and-paper.svg">SVGを保存</a>
+    <button id="print" type="button">印刷 / PDF</button>
+  </nav>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
