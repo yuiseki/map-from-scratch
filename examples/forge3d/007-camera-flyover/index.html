@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>forge3d: Camera flyover</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1220; color: #e2e8f0; font-family: system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+      background: linear-gradient(#9ec9ef 0%, #bfdbf5 55%, #dcebf8 100%); }
+    .panel { position: absolute; top: 12px; left: 12px; max-width: calc(100% - 52px); background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: grid; gap: 8px; }
+    .panel b { color: #a7f3d0; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    button { font: inherit; font-size: 12px; color: #e2e8f0; background: #1e293b; border: 1px solid #475569; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+    button[aria-pressed="true"] { background: #059669; border-color: #059669; color: #fff; }
+    input[type=range] { width: min(260px, 50vw); }
+    output { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #a7f3d0; }
+    .strip { position: absolute; right: 12px; bottom: 28px; display: flex; gap: 6px; }
+    .strip figure { margin: 0; background: rgba(15,23,42,0.85); border-radius: 6px; padding: 4px; font-size: 11px; text-align: center; color: #cbd5e1; }
+    .strip canvas { display: block; width: min(150px, 26vw); height: min(100px, 17vw); border-radius: 3px; }
+    .attr { position: absolute; right: 6px; bottom: 4px; background: rgba(15,23,42,0.72); color: #cbd5e1; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .error { position: absolute; bottom: 140px; left: 8px; color: #fecaca; font-size: 12px; max-width: 70%; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="panel">
+    <div><b>forge3d 007</b>: Camera flyover · Mount Rainier</div>
+    <div class="row">
+      <button type="button" data-rig="orbit" aria-pressed="true">Orbit</button>
+      <button type="button" data-rig="follow" aria-pressed="false">Follow</button>
+      <button type="button" data-rig="rail" aria-pressed="false">Rail</button>
+      <button type="button" id="play">再生</button>
+    </div>
+    <div class="row"><input id="time" type="range" min="0" max="360" value="0" aria-label="時刻"><output id="clock">0.00 s</output></div>
+  </div>
+  <div class="strip">
+    <figure><canvas data-phi="0"></canvas>Frame 0°</figure>
+    <figure><canvas data-phi="120"></canvas>Frame 120°</figure>
+    <figure><canvas data-phi="240"></canvas>Frame 240°</figure>
+  </div>
+  <div class="attr">Elevation: USGS 3DEP via Mapzen Terrarium (public domain)</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

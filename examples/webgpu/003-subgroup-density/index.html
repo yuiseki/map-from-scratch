@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>webgpu-003-subgroup-density: 1M Point WebGPU Subgroup Density Heatmap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a14; font-family: monospace; color: #fff; }
+    #map { width: 100%; height: 100%; display: block; }
+    #hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(10, 10, 20, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+    #hud h1 { font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #ffb86c; }
+    #hud .val { font-weight: bold; color: #50fa7b; }
+    #hud .sub { font-size: 11px; color: #8be9fd; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div id="hud">
+    <h1>WebGPU 1M Point Subgroup Density</h1>
+    <div>Points: <span class="val" id="hud-points">1,048,576</span></div>
+    <div>Grid: <span class="val" id="hud-grid">-</span></div>
+    <div>Subgroups: <span class="val" id="hud-subgroups">Detecting...</span></div>
+    <div>Peak Density: <span class="val" id="hud-peak">-</span> / cell</div>
+    <div class="sub">Drag to pan • Scroll to zoom • WGSL Compute atomicMax</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

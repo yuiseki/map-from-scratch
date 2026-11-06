@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sky, Fog, Terrain</title>
+  <meta name="description" content="Northern Japan Alps in 3D with a sky gradient and distance fog, from Mapterhorn elevation, in WebGL2 without a map engine.">
+  <script>window.__mfsPageStart = performance.now();</script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    .listing-group {
+      font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; font-size: 13px;
+      position: absolute; bottom: 10px; left: 10px; color: #fff; background-color: gray;
+      padding: 10px; border-radius: 4px;
+    }
+    #credit {
+      position: absolute; right: 0; bottom: 0; padding: 2px 6px; max-width: calc(100% - 12px);
+      font: 11px/1.4 'Helvetica Neue', Arial, sans-serif; color: #333; background: rgba(255, 255, 255, 0.75);
+    }
+    #credit a { color: #333; }
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="北アルプス (槍ヶ岳・穂高) の 3D 地形と空と霧"></canvas>
+  <table id="listing-group" class="listing-group">
+    <tr><td><label for="sky-enabled">enabled</label></td><td><input type="checkbox" id="sky-enabled" checked></td></tr>
+    <tr><td><label for="sky-color-picker">sky-color</label></td><td><input type="color" id="sky-color-picker" value="#1f5fbf" style="width: 100%"></td></tr>
+    <tr><td><label for="horizon-color-picker">horizon-color</label></td><td><input type="color" id="horizon-color-picker" value="#dce8f2" style="width: 100%"></td></tr>
+    <tr><td><label for="fog-color-picker">fog-color</label></td><td><input type="color" id="fog-color-picker" value="#aebfd0" style="width: 100%"></td></tr>
+    <tr><td><label for="sky-horizon-blend-slider">sky-horizon-blend</label></td><td><input type="range" id="sky-horizon-blend-slider" min="0" max="1" step="0.01" value="0.5"></td></tr>
+    <tr><td><label for="horizon-fog-blend-slider">horizon-fog-blend</label></td><td><input type="range" id="horizon-fog-blend-slider" min="0" max="1" step="0.01" value="0.5"></td></tr>
+    <tr><td><label for="fog-ground-blend-slider">fog-ground-blend</label></td><td><input type="range" id="fog-ground-blend-slider" min="0" max="1" step="0.01" value="0.1"></td></tr>
+  </table>
+  <div id="credit">
+    © <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a>
+    (2026-01-06) / 国土交通省国土地理院 基盤地図情報 数値標高モデル (測量法に基づく国土地理院長承認 (使用) R 8JHs 131)、再標本化して使用
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

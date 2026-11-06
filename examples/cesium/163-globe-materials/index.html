@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cesium 163 - Globe Materials</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #05070f; font-family: sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: #fff;
+      background: rgba(10, 15, 28, 0.88);
+      border: 1px solid rgba(0, 220, 180, 0.4);
+      border-radius: 8px;
+      padding: 14px 18px;
+      backdrop-filter: blur(4px);
+    }
+    #ui h1 { font-size: 16px; margin-bottom: 6px; color: #00e5ff; }
+    #ui p { font-size: 12px; color: #bbb; margin-bottom: 10px; }
+    .controls { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+    .controls label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #eee; }
+    .controls input[type="checkbox"] { accent-color: #00e5ff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <h1>Cesium 163: Globe Materials</h1>
+    <p>Procedural topographic contour lines, hypsometric elevation tint, and radar sweep on 3D globe</p>
+    <div class="controls">
+      <label><input type="checkbox" id="chk-contours" checked> Topographic Contours</label>
+      <label><input type="checkbox" id="chk-elevation" checked> Hypsometric Elevation Ramp</label>
+      <label><input type="checkbox" id="chk-radar" checked> Radar Sweep & Rings</label>
+      <label><input type="checkbox" id="chk-rotate" checked> Auto Rotate</label>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

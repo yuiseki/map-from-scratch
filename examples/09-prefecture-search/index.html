@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>都道府県を地図で探す</title>
+<style>
+  body { margin: 0; padding: 20px; background: #f4f6fa; color: #20314a; font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 620px; margin: auto; }
+  h1 { margin: 0 0 8px; font-size: 1.5rem; }
+  label { display: block; margin: 16px 0 5px; font-weight: 600; }
+  input { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #8396b4; border-radius: 6px; font: inherit; }
+  #result { min-height: 1.5em; margin: 10px 0; }
+  canvas { display: block; width: min(100%, 480px); margin: 10px auto; }
+</style>
+<main>
+  <h1>都道府県を地図で探す</h1>
+  <p>県名を入力すると、候補の場所を日本地図で示します。</p>
+  <label for="query">都道府県名</label>
+  <input id="query" list="names" placeholder="例: 長野" autocomplete="off">
+  <datalist id="names"></datalist>
+  <p id="result" aria-live="polite">県名を入力してください。</p>
+  <canvas id="map" aria-label="検索結果を示す日本地図"></canvas>
+  <p>地図データ: <a href="https://www.naturalearthdata.com/">Natural Earth</a>（Public Domain）</p>
+</main>
+<script type="module" src="./main.js"></script>

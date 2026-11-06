@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CesiumJS | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / CesiumJS</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>184</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>41</span></a>
+<a href="../../examples/mapbox/">Mapbox GL JS <span>18</span></a>
+<a href="../../examples/cesium/" aria-current="page">CesiumJS <span>23</span></a>
+<a href="../../examples/openglobus/">OpenGlobus <span>8</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>14</span></a>
+<a href="../../examples/d3/">D3 <span>9</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>5</span></a>
+<a href="../../examples/forge3d/">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>11</span></a>
+<a href="../../examples/luma/">luma.gl <span>1</span></a>
+<a href="../../examples/threejs/">Three.js <span>1</span></a></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>92</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>82</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>14</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>3</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>1</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../examples/legacy/">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">23 件</p>
+<ul>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-034-3d-tiles-point-cloud-shading</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS Sandcastle の「3D Tiles Point Cloud Shading」 （https://sandcastle.cesium.com/?src=3d-tiles-point-cloud-shading）のように、 密な点群を、点の減衰（幾何誤差と距離で点の大きさを決める）とアイドームライティング（EDL）で 陰影をつけて見たい。減衰と EDL のオン・オフ、最大スクリーン空間誤差、幾何誤差スケール、 最大減衰、基準解像度、EDL 強度、EDL 半径を操作できること。 データは東京の実在の密な点群（GSJ 統合点群タイル、東京都の区部点群）で、 街路と建物の輪郭が EDL で際立つ場所にする。</p>
+  <p class="how">WebGL2（点のパスを RGBA8 + DEPTH_COMPONENT32F のテクスチャへ、全画面パスで EDL） / TypeScript（型ストリップ配信）</p><p class="num">計測 2026-11-06 ・ コード 9.1 KB gzip ・ データ 32764 KB gzip ・ 初回描画 431 ms ・ フレーム p95 1.56 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/034-3d-tiles-point-cloud-shading">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/034-3d-tiles-point-cloud-shading/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/034-3d-tiles-point-cloud-shading/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=3d-tiles-point-cloud-shading">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/034-3d-tiles-point-cloud-shading/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-048-ambient-occlusion</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Ambient Occlusion」のように、3D 都市ジオメトリの ビル間の谷間や建物の接地面、陰影の窪みに生じる接触影（Contact Shadows）を リアルタイムのスクリーンスペース・アンビエントオクルージョン（SSAO）パイプライン （G-Buffer 生成、16 サンプル半球カーネル、4x4 回転ノイズ、バイラテラルブラー、アンビエント乗算合成）で 対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 7.7 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/048-ambient-occlusion">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/048-ambient-occlusion/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/048-ambient-occlusion/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=ambient-occlusion">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/048-ambient-occlusion/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-052-atmosphere</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Atmosphere」のように、Rayleigh 散乱と Mie 散乱による リアルな青空散乱・夕焼けターミネーター減衰・宇宙から見た大気リム（Limb）発光を伴う 3D 地球大気散乱レンダリングを行いたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.4 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/052-atmosphere">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/052-atmosphere/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/052-atmosphere/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=atmosphere">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/052-atmosphere/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-060-bloom</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Bloom」のように、暗夜の都市ジオメトリに配された 超高輝度なネオンライトビーコンや発光エッジから光が周囲の空間へと拡散・滲み出る HDR ブルーム後処理パイプライン（Bright pass 抽出・分離型ガウシアンブラー・加算合成トーンマッピング）を 対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 7.0 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/060-bloom">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/060-bloom/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/060-bloom/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=bloom">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/060-bloom/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-089-clouds</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Clouds」のように、立体的な積雲（Cumulus Cloud）の マルチパフ構造、太陽光による陰影（上面の銀白色と下面の散乱影）、風によるドリフト移動、 および丘陵地表への動的雲影（Cloud Shadow）の投影をレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.6 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/089-clouds">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/089-clouds/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/089-clouds/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=clouds">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/089-clouds/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-143-elevation-band-material</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Elevation Band Material」のように、3D 山岳地形に対して標高帯スライス（森林・高山植物・岩稜・山頂積雪）ごとに 色分けを行い、シャープな等高線境界線と太陽光シェーディングを備えた 3D 地形マテリアルをレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.4 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/143-elevation-band-material">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/143-elevation-band-material/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/143-elevation-band-material/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=elevation-band-material">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/143-elevation-band-material/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-163-globe-materials</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Globe Materials」のように、3D 地球儀メッシュ表面上に 等高線（Topographic Contours）、標高段彩カラーランプ（Hypsometric Elevation Ramp）、 および回転レーダービームと距離リング（Radar Sweep）をプロシージャルに描画し、 大気フレネルリム発光を伴う惑星シェーダーを対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.2 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/163-globe-materials">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/163-globe-materials/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/163-globe-materials/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=globe-materials">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/163-globe-materials/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-166-globe-translucency</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Globe Translucency」のように、半透明な地球地殻を通して 地下に存在するマグマ溜まり・震源などの地下地物、およびマントル層と中心核（コア）を 多層構造として可視化し、視線角度依存のフレネル透過率で対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.6 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/166-globe-translucency">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/166-globe-translucency/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/166-globe-translucency/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=globe-translucency">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/166-globe-translucency/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-180-hello-world</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">CesiumJS の最も基本的な「Hello World」のように、暗黒の宇宙空間に浮かぶ 3D 地球儀を表示したい。 マウスのドラッグで地球を全方向に回転し、ホイールでカメラの拡大・縮小ができること。外部ライブラリゼロ、Canvas 2D による直接描画で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 2.9 KB gzip ・ データ 27 KB gzip ・ 初回描画 138 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/180-hello-world">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/180-hello-world/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/180-hello-world/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=hello-world">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/180-hello-world/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-202-japan-buildings</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS Sandcastle の「Japan Buildings」のように、日本の建物を地球儀の上に 3D で流し込み、 名所のあいだを飛んで見たい。PLATEAU の建物で、少なくとも東京の都心区を、画面の詳細度に応じて読み込み、 高い斜めの視点から数万棟が見えること。関東平野の上空から東京の高層ビル群へ降りていき、 いくつかの場所へボタンで滑らかに飛べること。建物は太陽で陰影を付け、高さで色分けし、地面の上に建つ。 出典 (Project PLATEAU と自治体) を画面に出す。</p>
+  <p class="how">WebGL2 (MSAA、深度 24 bit、画面全体の 1 パスで地球儀、gl_FragDepth) / TypeScript (型を外して配信)</p><p class="num">計測 2026-11-06 ・ コード 16.3 KB gzip ・ データ 8283 KB gzip ・ 初回描画 388 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/202-japan-buildings">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/202-japan-buildings/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/202-japan-buildings/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=japan-buildings">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/202-japan-buildings/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-209-lighting</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">CesiumJS Sandcastle の「Lighting」のように、太陽に照らされた 3D 地球儀を表示したい。 太陽はワールド座標に固定し、スライダーで太陽直下点の経度（分点なので緯度 0）を動かすと 昼夜の境界（terminator）が地図の上を移動する。ドラッグで地球を回転、ホイールでズーム。 外部ライブラリなし、Canvas 2D で最速・最小に実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 3.9 KB gzip ・ データ 27 KB gzip ・ 初回描画 39 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/209-lighting">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/209-lighting/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/209-lighting/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=lighting">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/209-lighting/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-213-map-pins</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">CesiumJS の「Map Pins」例のように、宇宙空間の 3D 地球儀上の指定地理座標（ワシントン、東京、ロンドン）に 色分けされたピン（マップピン）を配置し、地球の回転に応じて前面（可視）と背面（地平線遮蔽・非表示）が 正しく切り替わる地図を表示したい。ドラッグで回転、ホイールでズームできること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 3.5 KB gzip ・ データ 27 KB gzip ・ 初回描画 150 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/213-map-pins">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/213-map-pins/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/213-map-pins/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=map-pins">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/213-map-pins/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-231-particle-system</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Particle System」のように、ロケットエンジンや噴出孔から立ち上る 高速な火炎コア・上昇する煙プルーム・舞い散る火の粉（エンバー）を 3D 空間でシミュレートし、 発熱する金属製発射パッドと共に対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 5.8 KB gzip ・ 初回描画 3 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/231-particle-system">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/231-particle-system/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/231-particle-system/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=particle-system">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/231-particle-system/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-232-particle-system-fireworks</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Particle System Fireworks」のように、夜空に打ち上がるロケットの光跡、 多色（真紅・黄金・翡翠・シアン・マゼンタ）の球面爆発バースト、重力加速度と空気抵抗による火花の減速・落下、 発光コアルミネセンスを備えた 3D パーティクルシステム花火をレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 5.8 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/232-particle-system-fireworks">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/232-particle-system-fireworks/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/232-particle-system-fireworks/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=particle-system-fireworks">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/232-particle-system-fireworks/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-233-particle-system-tails</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Particle System Tails」のように、惑星の周囲を楕円軌道で周回する 天体および探査機から射出される 3D 煙条パーティクルテイル（黄金の火花テールとシアンのプラズマテール）、 粒子の経時膨張・拡散・減衰をレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.2 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/233-particle-system-tails">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/233-particle-system-tails/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/233-particle-system-tails/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=particle-system-tails">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/233-particle-system-tails/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-234-particle-system-weather</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Particle System Weather」のように、降雨（Rain）と降雪（Snow）の 3D 体積パーティクルシステムをシミュレーションし、雨の縦長ストリークや雪の揺らぎ・風ドリフト、 天候に連動した地面の質感と大気クリアカラーをレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 5.7 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/234-particle-system-weather">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/234-particle-system-weather/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/234-particle-system-weather/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=particle-system-weather">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/234-particle-system-weather/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-244-points</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">CesiumJS Sandcastle の「Points」のように、3D 地球儀上に 5,000 個の点プリミティブを配置し、 視線に応じた地平線オクルージョン判定（裏面カリング）とカラーバッチ描画により 60 fps で高速に回転・ズーム表示したい。 ドラッグで回転、ホイールで拡大縮小できること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 3.6 KB gzip ・ データ 49 KB gzip ・ 初回描画 205 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/244-points">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/244-points/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/244-points/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=points">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/244-points/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-254-polyline-volume</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS Sandcastle の「Polyline Volume」(https://sandcastle.cesium.com/?src=polyline-volume) のように、 2D の断面（円・箱・星）をポリラインに沿って掃引した 3D のチューブを地球上に描きたい。角は丸めるか マイター（上限つき）で継ぐ。データは実在の線: ローカルの OSM から日本の新幹線の全線を取り出し、 地球の曲率に沿ってチューブにする。ねじれない（回転最小化フレーム）こと、断面は元の例と同じく 円・箱・星から選べること、線ごとに色を変えて光を当て、Natural Earth の暗い陸地の上でほのかに光らせる。 各線の実際の運転速度に比例した速さで光のパルスが走る。ドラッグで回転、ホイールでズーム、ボタンで 日本全体から富士山近くの東海道新幹線を斜めから見る近景へ飛ぶ。ODbL の帰属表示を画面に出す。</p>
+  <p class="how">WebGL2 / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 15.9 KB gzip ・ データ 227 KB gzip ・ 初回描画 766 ms ・ フレーム p95 1.48 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/254-polyline-volume">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/254-polyline-volume/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/254-polyline-volume/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=polyline-volume">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/254-polyline-volume/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-261-procedural-terrain</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Procedural Terrain」のように、多重オクターブのフラクタルノイズによる 鋭い山脈と平坦な谷底を持つプロシージャル 3D 地形を生成し、標高と傾斜に応じたマルチバイオーム （湖水・砂浜・草地・岩壁・冠雪峰）の質感分けと大気距離フォグをレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.3 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/261-procedural-terrain">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/261-procedural-terrain/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/261-procedural-terrain/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=procedural-terrain">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/261-procedural-terrain/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-272-shadows</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Shadows」のように、太陽光の軌道角に応じたリアルタイムの ディレクショナルソフトシャドウ（シャドウマップ深度テクスチャレンダリング、 3x3 PCF フィルタリング、アクネ防止バイアス補正）を 3D 都市ジオメトリと地上面に対して対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 6.4 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/272-shadows">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/272-shadows/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/272-shadows/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=shadows">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/272-shadows/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-281-star-burst</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Star Burst」のように、放射状に広がる数千の 3D 星条光跡、 相対論的光速ワープ表現（速度に比例したストリーク伸長）、加算合成による高輝度発光コア、 ドップラー分光カラーをレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 5.1 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/281-star-burst">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/281-star-burst/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/281-star-burst/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=star-burst">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/281-star-burst/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-291-time-dynamic-point-cloud</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Time Dynamic Point Cloud」のように、 数千〜数万の点群（Point Cloud）が時間経過に伴って調和波動（Harmonic Surface Waves）を描いて 4次元的に脈動・うねり、標高に応じた科学的カラーパレットで輝く 3D 点群サーフェスを対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 5.4 KB gzip ・ 初回描画 0 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/291-time-dynamic-point-cloud">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/291-time-dynamic-point-cloud/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/291-time-dynamic-point-cloud/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=time-dynamic-point-cloud">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/291-time-dynamic-point-cloud/">操作する ↗</a></li>
+<li data-gallery="cesium"><div class="card-head"><span class="id">cesium-298-volumecloud</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/cesium/">CesiumJS</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">CesiumJS の showcase である「Volumecloud」のように、3D 地球儀の上空に広がる 対流圏の大気球殻（Spherical Tropospheric Shell）に対して、 光学的放射伝達（Beer-Lambert 則による吸収、Henyey-Greenstein 位相関数による前方散乱、 太陽方向への二次レイマーチによる雲の自己遮蔽）を伴うリアルタイム・ボリュメトリッククラウドを 対話的にレンダリングしたい。 外部ライブラリを使わず、WebGL2 直接制御で最速・最小に実装する。</p>
+  <p class="how">WebGL2</p><p class="num">計測 2026-11-06 ・ コード 7.4 KB gzip ・ 初回描画 1 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/cesium/298-volumecloud">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/298-volumecloud/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/cesium/298-volumecloud/REQUEST.md">設計と計測</a> ・ <a href="https://sandcastle.cesium.com/?src=volumecloud">元例 ↗</a></p>
+  <a class="open" href="../../examples/cesium/298-volumecloud/">操作する ↗</a></li>
+</ul>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H3 人口地図 · Kontur 2023</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.5 system-ui, sans-serif; background: #0b1d29; color: #f2eee3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 11px 16px; background: #112b3a; border-bottom: 1px solid #325162; }
+  h1 { margin: 0 20px 0 0; font-size: 1.2rem; letter-spacing: .01em; }
+  button { padding: 7px 11px; border: 1px solid #587889; border-radius: 6px; color: #f2eee3; background: #234357; cursor: pointer; font: inherit; }
+  button:hover, button:focus-visible { background: #39647a; }
+  .divider { width: 1px; height: 24px; background: #587889; margin: 0 4px; }
+  #zoom { min-width: 3em; text-align: center; color: #bacdd3; }
+  #view { position: relative; flex: 1; min-height: 300px; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #map { cursor: grab; touch-action: none; }
+  #map:active { cursor: grabbing; }
+  #overlay { pointer-events: none; }
+  #status, #detail, #legend, #credit { position: absolute; border: 1px solid #7694a251; border-radius: 8px; background: #102b39e8; backdrop-filter: blur(6px); box-shadow: 0 4px 18px #07172188; }
+  #status { top: 12px; left: 12px; padding: 7px 10px; font-size: .82rem; }
+  #detail { top: 52px; left: 12px; min-width: 190px; padding: 10px 12px; }
+  #detail strong { display: block; font-size: 1.22rem; font-variant-numeric: tabular-nums; }
+  #detail small { display: block; color: #b9cbd0; }
+  #legend { left: 12px; bottom: 14px; padding: 10px 12px; }
+  #legend h2 { margin: 0 0 5px; font-size: .79rem; font-weight: 600; }
+  .ramp { display: flex; width: 230px; height: 10px; border-radius: 3px; overflow: hidden; }
+  .ramp i { flex: 1; }
+  .ticks { display: flex; justify-content: space-between; color: #b9cbd0; font-size: .72rem; }
+  #credit { right: 12px; bottom: 14px; max-width: min(400px, calc(100% - 24px)); padding: 8px 10px; font-size: .72rem; }
+  a { color: #b8e4e6; }
+  @media (max-width: 700px) { header { gap: 6px; } h1 { width: 100%; } #credit { right: 8px; bottom: 8px; max-width: 190px; } #legend { left: 8px; bottom: 8px; } .ramp { width: 150px; } }
+</style>
+<header>
+  <h1>H3 人口地図</h1>
+  <button type="button" data-place="world">世界</button>
+  <button type="button" data-place="tokyo">東京</button>
+  <button type="button" data-place="india">デリー</button>
+  <button type="button" data-place="europe">欧州</button>
+  <span class="divider"></span>
+  <button id="minus" type="button" aria-label="縮小">−</button><span id="zoom">1×</span><button id="plus" type="button" aria-label="拡大">＋</button>
+</header>
+<main id="view">
+  <canvas id="map" aria-label="H3 セル別の世界人口地図。ドラッグで移動、ホイールで拡大できます"></canvas>
+  <canvas id="overlay" aria-hidden="true"></canvas>
+  <div id="status" role="status">人口データを読み込み中…</div>
+  <div id="detail"><strong>セルを選択</strong><small>六角形にカーソルを合わせてください</small></div>
+  <div id="legend"><h2>セル内の推計人口</h2><div class="ramp"><i style="background:#325a6d"></i><i style="background:#386f76"></i><i style="background:#42877a"></i><i style="background:#63a679"></i><i style="background:#9fbd70"></i><i style="background:#d7c970"></i><i style="background:#e9aa61"></i><i style="background:#e47a54"></i><i style="background:#cb4e49"></i></div><div class="ticks"><span>1人</span><span>1万人</span><span>100万人以上</span></div></div>
+  <div id="credit">出典: <a href="https://www.kontur.io/datasets/population-dataset/">Kontur Population dataset © Kontur</a>（2023-11-01 版、<a href="https://opendefinition.org/licenses/cc-by/">CC BY</a>）。<a href="https://huggingface.co/datasets/yuiseki/kontur-population-2023-11-01-22km">元データ</a>。人口は推計値です。</div>
+</main>
+<script type="module" src="./main.js"></script>

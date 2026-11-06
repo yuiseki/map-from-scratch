@@ -1,0 +1,145 @@
+export const FOVY = Math.PI / 3;
+export const MIN_DISTANCE = 30, MAX_DISTANCE = 6000;
+const rad = Math.PI / 180;
+const dot = (a, b)=>a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+export function viewOf(o, width, height) {
+    const h = o.heading * rad, p = o.pitch * rad;
+    const forward = [
+        Math.sin(h) * Math.cos(p),
+        Math.cos(h) * Math.cos(p),
+        -Math.sin(p)
+    ];
+    const right = [
+        Math.cos(h),
+        -Math.sin(h),
+        0
+    ];
+    const up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0]
+    ];
+    const eye = [
+        o.tx - forward[0] * o.distance,
+        o.ty - forward[1] * o.distance,
+        o.tz - forward[2] * o.distance
+    ];
+    const near = Math.max(1.5, o.distance / 400), far = o.distance * 6 + 3000;
+    const f = 1 / Math.tan(FOVY / 2), aspect = width / Math.max(1, height);
+    const view = [
+        right[0],
+        up[0],
+        -forward[0],
+        0,
+        right[1],
+        up[1],
+        -forward[1],
+        0,
+        right[2],
+        up[2],
+        -forward[2],
+        0,
+        -dot(right, eye),
+        -dot(up, eye),
+        dot(forward, eye),
+        1
+    ];
+    const proj = [
+        f / aspect,
+        0,
+        0,
+        0,
+        0,
+        f,
+        0,
+        0,
+        0,
+        0,
+        (far + near) / (near - far),
+        -1,
+        0,
+        0,
+        2 * far * near / (near - far),
+        0
+    ];
+    const viewProj = new Float32Array(16);
+    for(let c = 0; c < 4; c++)for(let r = 0; r < 4; r++){
+        let s = 0;
+        for(let k = 0; k < 4; k++)s += proj[k * 4 + r] * view[c * 4 + k];
+        viewProj[c * 4 + r] = s;
+    }
+    return {
+        eye,
+        forward,
+        right,
+        up,
+        near,
+        far,
+        fovy: FOVY,
+        viewProj
+    };
+}
+export function project(v, p, width, height) {
+    const m = v.viewProj;
+    const x = m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12];
+    const y = m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13];
+    const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+    return [
+        (x / w + 1) * width / 2,
+        (1 - y / w) * height / 2,
+        w
+    ];
+}
+export function orbitDrag(o, dx, dy) {
+    o.heading = ((o.heading + dx * 0.3) % 360 + 360) % 360;
+    o.pitch = Math.max(5, Math.min(90, o.pitch + dy * 0.25));
+}
+export function panDrag(o, dx, dy, heightPx) {
+    const metres = o.distance * 2 * Math.tan(FOVY / 2) / Math.max(1, heightPx);
+    const h = o.heading * rad, along = dy * metres / Math.max(0.2, Math.sin(o.pitch * rad));
+    o.tx += -Math.cos(h) * dx * metres + Math.sin(h) * along;
+    o.ty += Math.sin(h) * dx * metres + Math.cos(h) * along;
+}
+export function wheelZoom(o, deltaY) {
+    o.distance = Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, o.distance * Math.exp(deltaY * 0.0015)));
+}
+export function frustumPlanes(m) {
+    const row = (i)=>[
+            m[i],
+            m[4 + i],
+            m[8 + i],
+            m[12 + i]
+        ];
+    const r0 = row(0), r1 = row(1), r2 = row(2), r3 = row(3);
+    return [
+        r0,
+        r1,
+        r2
+    ].flatMap((r)=>[
+            r3.map((v, i)=>v + r[i]),
+            r3.map((v, i)=>v - r[i])
+        ]);
+}
+export function boxVisible(planes, min, max) {
+    for (const [a, b, c, d] of planes){
+        const x = a >= 0 ? max[0] : min[0], y = b >= 0 ? max[1] : min[1], z = c >= 0 ? max[2] : min[2];
+        if (a * x + b * y + c * z + d < 0) return false;
+    }
+    return true;
+}
+export function distanceToBox(p, min, max) {
+    let s = 0;
+    for(let a = 0; a < 3; a++){
+        const d = Math.max(min[a] - p[a], 0, p[a] - max[a]);
+        s += d * d;
+    }
+    return Math.sqrt(s);
+}
+export const HOME = {
+    tx: 60,
+    ty: -140,
+    tz: 10,
+    heading: 270,
+    pitch: 45,
+    distance: 650
+};

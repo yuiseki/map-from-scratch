@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2025年の地震</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #212b3a; color: #eee; font: 14px/1.5 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: calc(100% - 56px); }
+  #bar { display: flex; gap: 12px; align-items: center; height: 56px; padding: 0 16px; box-sizing: border-box; }
+  #bar input { flex: 1; }
+  #bar button { width: 72px; }
+  #when { width: 170px; font-variant-numeric: tabular-nums; }
+  #big { width: 40%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #f9b; }
+</style>
+<canvas id="map"></canvas>
+<div id="bar">
+  <button id="play">再生</button>
+  <input id="slider" type="range" min="0" max="525599" step="1" value="0">
+  <span id="when"></span>
+  <span id="big"></span>
+</div>
+<script type="module" src="./main.js"></script>

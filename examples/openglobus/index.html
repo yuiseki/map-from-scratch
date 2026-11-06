@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenGlobus | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / OpenGlobus</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>184</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>41</span></a>
+<a href="../../examples/mapbox/">Mapbox GL JS <span>18</span></a>
+<a href="../../examples/cesium/">CesiumJS <span>23</span></a>
+<a href="../../examples/openglobus/" aria-current="page">OpenGlobus <span>8</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>14</span></a>
+<a href="../../examples/d3/">D3 <span>9</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>5</span></a>
+<a href="../../examples/forge3d/">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>11</span></a>
+<a href="../../examples/luma/">luma.gl <span>1</span></a>
+<a href="../../examples/threejs/">Three.js <span>1</span></a></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>92</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>82</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>14</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>3</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>1</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../examples/legacy/">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">8 件</p>
+<ul>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-002-base-layers</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">OpenGlobus の Base Layers 例のように、UI の切り替えボタン（「OSM」と「Satellite」）でベースレイヤー （標準地図スタイルと衛星写真風ダークスタイル）を瞬時に切り替えられる地図を表示したい。 ドラッグでパン、ホイールでズームでき、スタイル切り替え時も位置・ズームが保持されること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-03 ・ コード 2.8 KB gzip ・ データ 30 KB gzip ・ 初回描画 71 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/002-base-layers">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/002-base-layers/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/002-base-layers/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/baseLayers/baseLayers.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/002-base-layers/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-004-billboards</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">OpenGlobus の「Billboards」例のように、世界主要都市（パリ、東京、ニューヨーク、シドニー、カイロ）に ビルボードマーカー（アイコンバッジ）を配置した地図を表示したい。 ドラッグでパン、ホイールで拡大縮小でき、マーカーが地理座標に固定されて追従すること。外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-03 ・ コード 3.0 KB gzip ・ データ 30 KB gzip ・ 初回描画 13 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/004-billboards">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/004-billboards/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/004-billboards/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/billboards/billboards.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/004-billboards/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-009-circles-on-the-ground</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">OpenGlobus の &quot;Circles on the ground&quot; 例と同じく、東京・ニューヨーク・ロンドンを中心とする 半径 1,500 / 1,200 / 1,000 km の地面円を半透明の色で陸地の上に描き、 ドラッグとホイールで操作したい。外部ライブラリなしで、最速・最小で。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-03 ・ コード 2.9 KB gzip ・ データ 32 KB gzip ・ 初回描画 62 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/009-circles-on-the-ground">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/009-circles-on-the-ground/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/009-circles-on-the-ground/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/circlesOnTheGround/circlesOnTheGround.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/009-circles-on-the-ground/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-043-lighting</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">OpenGlobus の Lighting Control 例のように、太陽に照らされた地球儀を表示し、ambient・diffuse・specular・ shininess・夜側の明かりなどのライティングパラメータをスライダーで操作したい。太陽の向きは実際の日時 （太陽赤緯と時角）から求め、時刻スライダーと再生ボタンで昼夜の境界を地球上に走らせる。海の鏡面反射、 柔らかな昼夜境界、大気の縁、夜側だけに滑らかに現れる街の明かりを描き、ドラッグで回転、ホイールでズームする。</p>
+  <p class="how">WebGL2 / TypeScript (browser uses the repository's type stripper)</p><p class="num">計測 2026-11-03 ・ コード 9.3 KB gzip ・ データ 844 KB gzip ・ 初回描画 512 ms ・ フレーム p95 0.80 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/043-lighting">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/043-lighting/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/043-lighting/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/lighting/lighting.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/043-lighting/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-050-point-popup</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">世界地図上に東京・ニューヨーク・ロンドンの3つの点を色分けして表示し、 クリックした点の名前をポップアップで出したい。ドラッグでパン、ホイールで拡大縮小でき、 外部ライブラリなし・Canvas 2D で最速・最小に実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-03 ・ コード 3.2 KB gzip ・ データ 30 KB gzip ・ 初回描画 60 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/050-point-popup">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/050-point-popup/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/050-point-popup/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/pointPopup/pointPopup.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/050-point-popup/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-062-vector-layer</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">OpenGlobus の公式例「Natural Vector Layers」のように、3D 地球儀上に世界の国境ベクター境界線および 領土ポリゴンを高精細に投影描画したい。ダークスレート調グローブとシアン発光の国境境界線を用い、 視線による裏面カリングを行いながらドラッグで回転、ホイールで拡大縮小でき、60 fps で滑らかに再描画すること。 外部ライブラリなし、Canvas 2D で最速・最小で実装する。</p>
+  <p class="how">Canvas 2D / TypeScript (型ストリップ配信)</p><p class="num">計測 2026-11-06 ・ コード 3.4 KB gzip ・ データ 53 KB gzip ・ 初回描画 51 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/062-vector-layer">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/062-vector-layer/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/062-vector-layer/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/vectorLayer/vectorLayer.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/062-vector-layer/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-075-wind-farm</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">OpenGlobus の Wind Farm Instanced Objects Animation 例のように、たくさんの風車をインスタンス描画で 立体地形の上に並べ、ローターを回したい。風車の位置は OSM の実データ (power=generator, generator:source=wind) で日本の密な風力発電所の一帯をすべて置き、地形は Mapterhorn の標高に 陰影をつけて敷く。全風車は共通の風向にヨー角を合わせ、風向と風速を画面の操作で変えられること。</p>
+  <p class="how">WebGL2 / TypeScript (type stripped by the local server and Pages builder)</p><p class="num">計測 2026-11-03 ・ コード 11.7 KB gzip ・ データ 183 KB gzip ・ 初回描画 313 ms ・ フレーム p95 0.85 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/075-wind-farm">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/075-wind-farm/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/075-wind-farm/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/windFarm/windFarm.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/075-wind-farm/">操作する ↗</a></li>
+<li data-gallery="openglobus"><div class="card-head"><span class="id">openglobus-076-mapterhorn</span></div>
+  <p class="labels"><a class="label lib" href="../../examples/openglobus/">OpenGlobus</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">OpenGlobus の Mapterhorn Terrain 例のように、Mapterhorn の標高データから斜面陰影と標高段彩のある 立体地形を表示し、ドラッグで回転、ホイールでズームしたい。</p>
+  <p class="how">WebGL2 / TypeScript (type stripped by the local server and Pages builder)</p><p class="num">計測 2026-11-03 ・ コード 5.3 KB gzip ・ データ 357 KB gzip ・ 初回描画 172 ms ・ フレーム p95 0.27 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/openglobus/076-mapterhorn">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/076-mapterhorn/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/openglobus/076-mapterhorn/REQUEST.md">設計と計測</a> ・ <a href="https://sandbox.openglobus.org/examples/mapterhorn/mapterhorn.html">元例 ↗</a></p>
+  <a class="open" href="../../examples/openglobus/076-mapterhorn/">操作する ↗</a></li>
+</ul>

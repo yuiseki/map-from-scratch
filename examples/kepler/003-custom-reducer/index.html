@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Custom Reducer Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #131519; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d3d8e2; }
+    #app { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    /* Top Reducer Action Header */
+    #action-header {
+      height: 52px;
+      background: #1e2229;
+      border-bottom: 1px solid #2a313d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      gap: 16px;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: #fff; }
+    .brand-k { color: #00d1b2; font-weight: 900; }
+    .action-groups { display: flex; align-items: center; gap: 12px; }
+    .action-group { display: flex; align-items: center; gap: 6px; }
+    .action-label { font-size: 11px; color: #838d9d; font-weight: 600; text-transform: uppercase; }
+    .btn {
+      padding: 6px 12px;
+      background: #282e38;
+      border: 1px solid #3c4554;
+      border-radius: 4px;
+      color: #d3d8e2;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: #333b47; color: #fff; }
+    .btn.active { background: #00d1b2; color: #131519; border-color: #00d1b2; }
+
+    /* Main Area: Sidebar + Map */
+    #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      height: 100%;
+      background: #242730;
+      border-right: 1px solid #1f2227;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #sidebar.collapsed { margin-left: -280px; }
+
+    .state-card {
+      background: #1b1e26;
+      border: 1px solid #2d3442;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .state-title { font-size: 11px; font-weight: 700; color: #00d1b2; text-transform: uppercase; }
+    .state-item { font-size: 12px; display: flex; justify-content: space-between; }
+    .state-val { color: #fff; font-family: monospace; }
+    .action-log {
+      flex: 1;
+      background: #15181f;
+      border: 1px solid #262c38;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 10px;
+      overflow-y: auto;
+      color: #838d9d;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-entry { color: #a0a7b4; }
+    .log-entry .action-name { color: #00d1b2; }
+
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map-canvas { width: 100%; height: 100%; display: block; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 180px;
+      background: #242730;
+      border: 1px solid #3a414e;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: #8c96a5; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Header with Reducer Dispatches -->
+    <div id="action-header">
+      <div class="brand">
+        <span class="brand-k">K</span> kepler.gl Custom Reducer
+      </div>
+
+      <div class="action-groups">
+        <div class="action-group">
+          <span class="action-label">Filter:</span>
+          <button id="btn-filter-all" class="btn active">All (≥2.5)</button>
+          <button id="btn-filter-mod" class="btn">Mod (≥4.0)</button>
+          <button id="btn-filter-str" class="btn">Strong (≥5.5)</button>
+        </div>
+
+        <div class="action-group">
+          <span class="action-label">View:</span>
+          <button id="btn-view-ca" class="btn active">Full CA</button>
+          <button id="btn-view-bay" class="btn">Bay Area</button>
+          <button id="btn-view-socal" class="btn">SoCal</button>
+        </div>
+
+        <div class="action-group">
+          <button id="btn-toggle-sidebar" class="btn">Toggle Sidebar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="main-container">
+      <div id="sidebar">
+        <div class="state-card">
+          <div class="state-title">Reducer State</div>
+          <div class="state-item"><span>minMagnitude:</span><span id="st-min-mag" class="state-val">2.5</span></div>
+          <div class="state-item"><span>viewPreset:</span><span id="st-view" class="state-val">Full CA</span></div>
+          <div class="state-item"><span>sidebarOpen:</span><span id="st-sidebar" class="state-val">true</span></div>
+          <div class="state-item"><span>lastAction:</span><span id="st-action" class="state-val">INIT</span></div>
+        </div>
+
+        <div class="state-title">Action Stream</div>
+        <div id="action-log" class="action-log">
+          <div class="log-entry">● @@INIT</div>
+        </div>
+      </div>
+
+      <div id="map-container">
+        <canvas id="map-canvas"></canvas>
+        <div id="legend">
+          <span class="legend-title">Magnitude</span>
+          <div class="legend-gradient"></div>
+          <div class="legend-ticks">
+            <span>2.5</span>
+            <span>4.5</span>
+            <span>6.5+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
