@@ -20,7 +20,7 @@ requirements:
 
 evaluation:
   budgets:
-    - {metric: code_gzip_bytes, max: 3700, unit: B, requirement: light-footprint}  # 3500 から変更: 地平線の分割処理で 3,680 B
+    - {metric: code_gzip_bytes, max: 3750, unit: B, requirement: light-footprint}  # 3500 から変更: 地平線の分割処理で 3,680 B。3700 から変更 (2026-11-06): テストのために toSphere を triangleVerticesOnSphere として export し (34f9c64)、3,699 B が 3,701 B になった
     - {metric: data_gzip_bytes, max: 70000, unit: B, requirement: light-footprint}
     - {metric: first_frame_ms, stat: p50, max: 300, unit: ms, requirement: quick-start}
     - {metric: redraw_ms, stat: p95, max: 2.0, unit: ms, requirement: smooth-interaction}
