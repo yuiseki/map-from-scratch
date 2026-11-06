@@ -45,3 +45,9 @@ Add one only when an example needs it, not ahead of time.
 2. Install everything at image build time, so a build does not reach the network.
 3. Add `harness/test/<toolchain>.test.ts`, skipped unless `MFS_TOOLCHAIN` is that toolchain, building and running the smallest program that needs it.
 4. Add a row to the table above.
+
+## The browser
+
+The harness runs Chrome for Testing, pinned by `CHROME_VERSION` in `base/Dockerfile`, without Blink feature flags (`harness/test/browser.test.ts` checks both). Debian's `chromium` package stays installed for the shared libraries Chrome needs; it was at 156 when Chrome 157 shipped HTML-in-Canvas.
+
+Chrome for Testing starts a page a little slower than Debian's build on the first load of a fresh browser. On 17-fuji-terrain-3d (`--site`, one run each, alternated four times, load average about 20, 2026-11-06) `first_frame_ms` averaged 441 ms with Chrome for Testing 156.0.8078.80, 425 ms with 157.0.8103.38 and 389 ms with Debian's 156.0.8078.73: the build, not the version. Debian's wrapper flags (`--enable-gpu-rasterization`, `--disable-dev-shm-usage`, from `/etc/chromium.d/default-flags`) did not close the gap (429 ms against 390 ms). `first_coarse_frame_ms` did not differ by build (300, 284, 301 ms). Runs after the first are not slower (17: p50 151-183 ms with 157 against 191-193 ms with 156). Compare startup numbers measured before 2026-11-06 with this in mind.

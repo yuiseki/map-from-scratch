@@ -52,7 +52,19 @@ if [[ "${1:-}" != --no-check ]]; then
     # time out here (08-10, 18-24).
     spec=$(grep -l "^id: $id\$" examples/*/spec.yaml examples/*/*/spec.yaml baselines/*/spec.yaml 2>/dev/null | head -1)
     [[ -n "$spec" ]] && grep -q '^  scenarios: \[\]' "$spec" && { echo "site check skipped (no bench scenarios): $id"; continue; }
-    bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 </dev/null || { cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1; }
+    bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 </dev/null && continue
+    # One run is the first load of a fresh browser, and a budget's p50 over
+    # one run is that run. On a busy machine (load average 20+, 2026-11-06)
+    # 17-fuji-terrain-3d's first_coarse_frame_ms was 240-420 ms on the first
+    # load and 150-190 ms after it, with Chrome 156 and 157 alike. When only
+    # budgets failed, measure three runs and judge the p50 the spec states.
+    # A failed check or an error stops the deploy at once.
+    if grep -q 'budget FAIL' /tmp/mfs-site-check.log && ! grep -qE 'check  FAIL|^error|Error:' /tmp/mfs-site-check.log; then
+      grep 'budget FAIL' /tmp/mfs-site-check.log | sed 's/^/  one run: /'
+      echo "site check: $id over budget in one run, measuring three"
+      bin/mfs bench "$id" -n 3 --site >/tmp/mfs-site-check.log 2>&1 </dev/null && { echo "site check passed on three runs: $id"; continue; }
+    fi
+    cat /tmp/mfs-site-check.log; echo "site check failed: $id"; exit 1
   done
 fi
 
