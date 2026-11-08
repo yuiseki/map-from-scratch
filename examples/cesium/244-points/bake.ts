@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { source } from '../../../tools/sources.ts';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 
 const OUT_DIR = 'data/baked/cesium-244-points';
 mkdirSync(OUT_DIR, { recursive: true });

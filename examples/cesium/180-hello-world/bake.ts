@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { source } from '../../../tools/sources.ts';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 
 type Ring = number[][];
 type LandFeature = { geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: Ring[] | Ring[][] } };

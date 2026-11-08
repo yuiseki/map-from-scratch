@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { source } from '../../../tools/sources.ts';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 
 function projectMercator(lon: number, lat: number): [number, number] {
   const x = (lon + 180) / 360;

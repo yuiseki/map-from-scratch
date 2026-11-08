@@ -142,6 +142,7 @@ CesiumGS/cesium-native                    native-3d-tiles   Apache-2.0
 NASA-AMMOS/3DTilesRendererJS              web-3d-tiles      Apache-2.0
 potree/potree                             web-point-cloud   see LICENSE
 geotiffjs/geotiff.js                      web-raster-io     MIT
+mapbox/earcut                             triangulation     ISC; kits/earcut is checked and benchmarked against it
 mapbox/martini                            terrain-mesh      ISC
 mapbox/geojson-vt                         geojson-tiler     see LICENSE
 mourner/flatbush                          spatial-index     ISC

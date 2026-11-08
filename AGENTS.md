@@ -12,7 +12,7 @@
    - 既存の例を拡張して汎用エンジンや共通ライブラリに育ててはいけません。
    - 新しい依頼には、最も近い既存の `examples/<nn>-<slug>/` をコピーして不要な部分を削るところから始めます。
 2. **実行時の外部依存ゼロ**
-   - 描画器（`examples/`）が実行時に使ってよい外部コードは、ポリゴン三角形分割用の `vendor/earcut`（および例22で版固定された Draco デコーダー等の明示された例外）のみです。
+   - 描画器（`examples/`）が実行時に使ってよい外部コードは、例22で版固定された Draco デコーダー等の明示された例外のみです。ポリゴンの三角形分割には自前の `kits/earcut` を使います（mapbox/earcut と同じ三角形を返す）。
    - Canvas 2D、WebGL2、WebGPU、EGL/GLES3、X11、libc などのプラットフォーム標準 API を直接使います。
    - 汎用地図エンジン（MapLibre など）は比較計測用の `baselines/` 配下にのみ置きます。
 3. **ランタイムではなくベイク時に仕事をする**
@@ -37,7 +37,7 @@
 - `baselines/` : 汎用エンジンとの比較用ベースライン（例: `b02-maplibre`）。
 - `tools/` : ベイク時・サイト構築時の共通ツール（`sources.ts`, `geo.ts`, `pmtiles.ts`, `build-site.ts`, `deploy-pages.sh`）。
 - `kits/` : 描画器にコピーして使える最小限の自前リーダー・デコーダー（`kits/geoparquet/` の Thrift / Zstd など）とその単体テスト。
-- `vendor/earcut/` : ベンダー同梱された earcut。
+- `kits/earcut/` : ポリゴンの三角形分割。mapbox/earcut のアルゴリズムを型付き配列で書き直したもので、同じ入力に同じ三角形を返す。テストの判定基準は本家のテスト一式（`fixtures/`）。本家との速度比較は `tools/earcut-bench.ts`（`ref-repos/clone.sh earcut` が要る）。
 - `.agents/skills/`（`.claude/skills`, `skills/map-from-scratch` からリンク）:
   - `map-from-scratch/` : 全体の手順 (`SKILL.md`)、`spec.yaml` 仕様 (`references/spec-yaml.md`)、設計パターン (`references/patterns.md`)、計測の落とし穴 (`references/pitfalls.md`)。
   - 31個の技術トピックスキル（`line-tessellation`, `polygon-triangulation`, `label-placement`, `text-rendering`, `float-precision`, `data-range-requests`, `plateau-3d-tiles`, `html-in-canvas`, `visual-review` など）とデータカタログ (`yuiseki-open-data`)。

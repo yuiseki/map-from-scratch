@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 import { source } from '../../../tools/sources.ts';
 
 // forge3d's "3D Buildings": the 3DBAG CityJSON tile 10-270-592 parsed into

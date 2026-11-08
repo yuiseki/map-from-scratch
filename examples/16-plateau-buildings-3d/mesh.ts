@@ -2,7 +2,7 @@
 // tile assignment, triangulation, welding and 1 cm quantisation. The bake
 // uses it to write PLB1 blocks; the ?citygml=1 page mode uses the same code
 // on the original files, so both paths draw the same triangles.
-import earcut from '../../vendor/earcut/earcut.js';
+import earcut from '../../kits/earcut/earcut.ts';
 import type { Building, Poly } from './gml.ts';
 
 // Tokyo Station; the area is the 2 km square around it, in 8 x 8 tiles.

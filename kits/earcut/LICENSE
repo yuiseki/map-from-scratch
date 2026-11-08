@@ -1,3 +1,8 @@
+kits/earcut/earcut.ts follows the algorithm of mapbox/earcut
+(https://github.com/mapbox/earcut), and fixtures/ is copied from its test/
+directory. Both are under the licence below. The rest of this repository is
+GPL-3.0-or-later (../../LICENSE).
+
 ISC License
 
 Copyright (c) 2026, Mapbox

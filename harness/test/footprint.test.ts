@@ -23,10 +23,10 @@ test('a listed file that does not exist is an error, not zero bytes', () => {
   assert.throws(() => measureFootprint(d, { code: ['missing.js'] }), /missing.js/);
 });
 
-test('earcut is the only allowed external dependency', () => {
+test('no external dependency is allowed, earcut included (it is kits/earcut)', () => {
   assert.deepEqual(checkDependencies([]), []);
-  assert.deepEqual(checkDependencies(['earcut']), []);
-  assert.deepEqual(checkDependencies(['earcut', 'three']), ['three']);
+  assert.deepEqual(checkDependencies(['earcut']), ['earcut']);
+  assert.deepEqual(checkDependencies(['earcut', 'three']), ['earcut', 'three']);
 });
 
 test('software rasterisers are recognised', () => {

@@ -80,7 +80,8 @@ export function measureElf(root: string, files: string[]) {
   return sum;
 }
 
-export const ALLOWED_DEPENDENCIES = ['earcut'];
+// No external code at run time. The one there was, earcut, is kits/earcut.
+export const ALLOWED_DEPENDENCIES: string[] = [];
 
 export function checkDependencies(deps: string[]): string[] {
   return deps.filter((d) => !ALLOWED_DEPENDENCIES.includes(d));

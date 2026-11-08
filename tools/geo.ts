@@ -1,7 +1,7 @@
 // Geometry used at bake time. Nothing here ships to a renderer: the point of
 // baking is that the renderer receives coordinates already projected,
 // simplified and triangulated for exactly the map it draws.
-import earcut from '../vendor/earcut/earcut.js';
+import earcut from '../kits/earcut/earcut.ts';
 
 export type Point = number[];          // [x, y, ...extra] — extra values ride along
 export type Ring = Point[];

@@ -25,7 +25,7 @@ test('a directory that only shares a prefix with an example is not that example'
 });
 
 test('the harness, tools, kits, vendor, docker, bin and project files check every example', () => {
-  for (const f of ['harness/page/bench.ts', 'tools/build-site.ts', 'kits/geoparquet/reader.ts', 'vendor/earcut/earcut.js', 'docker/base/Dockerfile', 'bin/mfs', 'package.json', 'tsconfig.web.json']) {
+  for (const f of ['harness/page/bench.ts', 'tools/build-site.ts', 'kits/geoparquet/reader.ts', 'kits/earcut/earcut.ts', 'docker/base/Dockerfile', 'bin/mfs', 'package.json', 'tsconfig.web.json']) {
     assert.equal(examplesToCheck([f], examples), 'all', f);
   }
 });

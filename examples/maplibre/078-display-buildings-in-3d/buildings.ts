@@ -1,4 +1,4 @@
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 
 export interface BuildingFootprint {
   id: string;

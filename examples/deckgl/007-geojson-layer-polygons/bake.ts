@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 import { source } from '../../../tools/sources.ts';
 
 type Feature = { geometry: { type: 'Polygon'; coordinates: number[][][] }; properties: { valuePerSqm: number; growth: number } };

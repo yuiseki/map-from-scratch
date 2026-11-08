@@ -133,7 +133,7 @@ What was built and why, and what was not.
 | `chosen.toolchain` | the image the build needs, `docker/Dockerfile.<toolchain>` (e.g. `emscripten`); build with `MFS_TOOLCHAIN=<toolchain> bin/mfs build <id>` (docker/README.md) |
 | `chosen.code` | files that ship (browser: the page and modules it needs, not the bench code; native: the executable) |
 | `chosen.elf` | microcontroller object files, sized with `llvm-size` |
-| `chosen.dependencies` | external dependencies; only `earcut` is allowed outside baselines |
+| `chosen.dependencies` | external dependencies; none is allowed outside baselines (triangulate with `kits/earcut`) |
 | `chosen.why` | why this choice fits the request |
 | `alternatives` | `{option, rejected_because}`; say "not compared" when it was not measured |
 | `not_doing` | the features this renderer deliberately lacks |

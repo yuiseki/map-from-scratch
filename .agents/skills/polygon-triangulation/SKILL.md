@@ -21,15 +21,31 @@ Per-engine detail, with all numbers: [references/engines.md](references/engines.
 
 ## Where this repo stands
 
-- earcut is the only run-time dependency allowed, vendored at 3.2.4 in
-  `vendor/earcut` [1][4]. Triangulation belongs in `bake.ts` [2].
+- No run-time dependency is allowed. Triangulate with `kits/earcut`
+  (`import earcut from '.../kits/earcut/earcut.ts'`), which returns the
+  same triangles as mapbox/earcut for the same input [1][4].
+  Triangulation belongs in `bake.ts` [2].
 - `tools/geo.ts` `triangulatePolygon(rings)` drops a repeated closing
   vertex and passes holes by index. It does not normalise winding, clip,
   drop holes or check its output [3].
 - earcut reorients every ring itself (outer ring one way, holes the
-  other) and so does not depend on input winding [4]. It also exports
-  `deviation()`, the relative difference between polygon area and
-  triangle area, and `refine()`, Lawson flips that remove slivers [4].
+  other) and so does not depend on input winding [4]. `kits/earcut` also
+  exports `deviation()`, the relative difference between polygon area
+  and triangle area, and `flatten()`. Upstream's `refine()` (Lawson flips
+  that remove slivers) is not ported [4].
+- `kits/earcut` is upstream's algorithm step for step, with the nodes in
+  typed arrays instead of one object per vertex. It is faster than
+  upstream (main 934e54d and 3.2.4) on upstream's own MVT benchmark, in
+  node 24 and Chrome 157, on every size class: 1.06-1.20x on MVT
+  polygons, 1.05-1.95x on 20k-60k-vertex stars (`tools/earcut-bench.ts`,
+  2026-11-09). What made it fast, measured: the arrays must be `const`,
+  so V8 compiles them as constants. As reassigned `let`s (to grow them),
+  it was 0.76-0.86x upstream; as a resizable ArrayBuffer, 0.5x. So the
+  pool is fixed (8,192 nodes) and a larger input runs in a second pool
+  compiled from source with `new Function`, because a second closure of
+  the same function makes V8 drop the constants in the first one too
+  (triangles 51 -> 119 ns). Interleaving x/y or masking indices to drop
+  bounds checks was slower [4].
 - 02 bakes 127,820 earcut triangles with delta-coded indices and shares
   the vertices with the border lines [5]. 07 skipped triangulation and
   fills land by per-ring fans with stencil INVERT (even-odd): 88 KB to
@@ -242,7 +258,7 @@ the local clone.
 1. README.md
 2. skills/map-from-scratch/SKILL.md; skills/map-from-scratch/references/patterns.md
 3. tools/geo.ts
-4. vendor/earcut/earcut.js; vendor/earcut/package.json
+4. kits/earcut/earcut.ts; kits/earcut/earcut.test.ts; tools/earcut-bench.ts
 5. examples/02-world-population-mobile/spec.yaml; examples/02-world-population-mobile/REQUEST.md
 6. examples/07-world-cities-hover/spec.yaml
 7. ref-repos/maplibre__maplibre-gl-js/developer-guides/globe.md

@@ -1,7 +1,7 @@
 // Bake the deck.gl TripsLayer demo's taxi paths and building footprints into
 // fixed-layout buffers for one-purpose WebGL2 rendering.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 import { source } from '../../../tools/sources.ts';
 
 type Position = [number, number];

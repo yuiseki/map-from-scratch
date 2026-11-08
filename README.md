@@ -6,7 +6,7 @@
 
 - 言語、描画 API、ランタイムは依頼に合わせて選ぶ (Canvas 2D、WebGL2、C + EGL/GLES3、マイコン向けの C など)。
 - ブラウザでは WebGPU、WebAssembly、HTML-in-Canvas なども、データ量・処理内容・ブラウザ対応を見て選ぶ。実験段階の機能を使う例は、対応環境と代替表示を明記する。
-- 描画エンジンとして外部ライブラリは使わない。ポリゴンの三角形分割には `vendor/earcut`、例22の Draco 圧縮建物データの復号には版を固定したデコーダーを使う。
+- 描画エンジンとして外部ライブラリは使わない。ポリゴンの三角形分割は自前の `kits/earcut` (mapbox/earcut と同じ三角形を返す)。例22の Draco 圧縮建物データの復号だけは版を固定したデコーダーを使う。
 - 各例を `spec.yaml` で定義する。要件 (requirements)、評価 (evaluation)、計測 (benchmarks)、データ (datasets)、性能の知見 (performance_knowledge)、構成の選択 (architecture_selection)、検証 (verification) の 7 節からなる。
 - 計測済みの例では要件を測定値の上限や下限 (予算) にし、ハーネスが合否を出す。検証の項目は描画器が ID つきで報告し、1 つでも報告がないか失敗すれば不合格にする。未計測の例はその旨を明記する。
 - 描画器を作るたびに、`ref-repos/` に集めた地図エンジン、空間処理ライブラリ、データ変換ツールの解き方を読んで参考にする。
@@ -69,7 +69,7 @@
 | `baselines/` | 汎用エンジンで同じ依頼を作った、比較用の実装 |
 | `.agents/skills/` | 手順 (map-from-scratch)、目で確かめる手順 (visual-review)、データの置き場所 (yuiseki-open-data) と、地図を描くときの話題ごとのスキル |
 | `harness/` | 計測と検証のハーネス。依存のない TypeScript の CLI |
-| `kits/` | 描画器にコピーして使う最小の読み込み器 (GeoParquet の Thrift、Zstd など) |
+| `kits/` | 描画器にコピーして使う最小の読み込み器 (GeoParquet の Thrift、Zstd など) と、ポリゴンの三角形分割 (`kits/earcut`) |
 | `tools/` | ベイク、データの出典、サイトの組み立てと公開 |
 | `ref-repos/` | 参考にする地図エンジンと空間データ処理ツール。`ref-repos/clone.sh` で集める (中身はリポジトリに含めない) |
 
@@ -169,4 +169,4 @@ tools/deploy-pages.sh  # サイトを組み立て、全ページを確かめて 
 
 ## ライセンス
 
-GPL-3.0-or-later です ([LICENSE](LICENSE))。`ref-repos/` の GPL のエンジン (QGIS、ortho-earth など) の解き方を取り入れるためです。`vendor/earcut` は earcut の ISC ライセンス、例22の Draco デコーダーは [Apache License 2.0](examples/22-plateau-tokyo-tiles/DRACO-LICENSE.txt) のままです。`ref-repos/` の中身はこのリポジトリに含めず、`ref-repos/clone.sh` で取得します。それぞれのライセンスは各リポジトリのファイルに従います。
+GPL-3.0-or-later です ([LICENSE](LICENSE))。`ref-repos/` の GPL のエンジン (QGIS、ortho-earth など) の解き方を取り入れるためです。`kits/earcut` は mapbox/earcut のアルゴリズムとテストの fixture に基づくので、earcut の ISC ライセンス ([kits/earcut/LICENSE](kits/earcut/LICENSE))、例22の Draco デコーダーは [Apache License 2.0](examples/22-plateau-tokyo-tiles/DRACO-LICENSE.txt) のままです。`ref-repos/` の中身はこのリポジトリに含めず、`ref-repos/clone.sh` で取得します。それぞれのライセンスは各リポジトリのファイルに従います。

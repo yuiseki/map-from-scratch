@@ -27,7 +27,7 @@ import { encodeTile, quantize, type FootprintIn } from './tile.ts';
 import { Mask, type Grid } from './mask.ts';
 import type { IndexJson } from './lod.ts';
 import { simplify } from '../../../tools/geo.ts';
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');

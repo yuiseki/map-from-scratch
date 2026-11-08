@@ -15,6 +15,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["**/*.test.ts", "vendor/earcut/*.d.ts"],
+  "include": ["**/*.test.ts"],
   "exclude": ["node_modules", "data", "results", "build", "ref-repos", ".cache"]
 }

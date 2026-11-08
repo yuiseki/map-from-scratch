@@ -1,6 +1,6 @@
 // Bake side: a PLATEAU LOD1 solid becomes footprint rings in local metres,
 // a height and an earcut roof (format.ts ships them; decode() extrudes).
-import earcut from '../../../vendor/earcut/earcut.js';
+import earcut from '../../../kits/earcut/earcut.ts';
 import { bandOf, type Building } from './format.ts';
 import type { Poly } from './gml.ts';
 

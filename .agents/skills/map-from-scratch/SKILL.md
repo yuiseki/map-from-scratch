@@ -27,8 +27,8 @@ for GPU examples, the nvidia container runtime. The repo is GPL-3.0-or-later.
   GPL-2.0-or-later, LGPL or a permissive licence may be adapted with a comment
   naming the source file; GPL-2.0-only code (GeoServer, parts of Navit) may be
   read but not copied. Check the repository's own licence files.
-- No external dependencies at run time, except earcut (vendored in
-  `vendor/earcut`) for polygon triangulation. Platform APIs (Canvas 2D,
+- No external dependencies at run time. Polygon triangulation is
+  `kits/earcut`, written here and giving mapbox/earcut's triangles. Platform APIs (Canvas 2D,
   WebGL2, WebGPU, EGL/GLES, X11, libc) are not dependencies. A general engine
   may appear only under `baselines/`, to measure against.
 - Do the work at bake time, not at run time: projection, simplification,
