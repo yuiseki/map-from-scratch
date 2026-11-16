@@ -1,0 +1,46 @@
+{
+  "source": "OpenStreetMap Tokyo 23 wards snapshot 2026-08-31; JMA Tokyo hourly wind observation 2026-11-04 18:00 JST",
+  "osmSourceUrl": "https://www.openstreetmap.org/way/23690250",
+  "osmLicense": "ODbL-1.0; © OpenStreetMap contributors",
+  "osmCrs": "EPSG:3857 source transformed to WGS84 longitude/latitude",
+  "facility": {
+    "id": "way/23690250",
+    "name": "芝浦水再生センター",
+    "lon": 139.74406946837271,
+    "lat": 35.63459638427046,
+    "kind": "wastewater_reclamation_candidate",
+    "outlineRings": 1
+  },
+  "jma": {
+    "station": "Tokyo",
+    "stationLon": 139.75,
+    "stationLat": 35.69,
+    "observedAt": "2026-11-04T18:00:00+09:00",
+    "from": "北北西",
+    "fromDegrees": 337.5,
+    "speedMps": 1.9
+  },
+  "bounds": {
+    "west": 139.64,
+    "east": 139.86,
+    "south": 35.58,
+    "north": 35.72
+  },
+  "roads": {
+    "features": 8350,
+    "lines": 8353,
+    "vertices": 17978
+  },
+  "waterways": {
+    "features": 689,
+    "lines": 689,
+    "vertices": 2515
+  },
+  "plume": {
+    "lengthM": 5000,
+    "halfWidthAtOriginM": 250,
+    "halfWidthAtEndM": 850
+  },
+  "payloadBytes": 722421,
+  "interpretation": "Illustrative downwind fan, not an odor measurement or concentration model. No source emissions, atmospheric stability, turbulence, topography or building flow are modeled."
+}

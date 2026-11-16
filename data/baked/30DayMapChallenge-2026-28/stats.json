@@ -1,0 +1,61 @@
+{
+  "dataset": "ESA WorldCover 10 m 2021 v200, tile N33E138, 10x10 source-pixel block aggregation",
+  "datasetId": "yuiseki/esa-worldcover-tokyo-2021-100m",
+  "sourcePath": "/sata_hdd_24tb/hf_data/esa-worldcover-tokyo-2021-100m/data/parquet/esa_worldcover_tokyo_2021_v200_100m.parquet",
+  "sourceSha256": "5c645c746f818467b7d0eaaaf599414fc1f7e3def94f0a0b8eec05759fcb29bb",
+  "sourceDoi": "https://doi.org/10.5281/zenodo.7254221",
+  "sourceYear": 2021,
+  "sourceVersion": "v200",
+  "crs": "EPSG:4326",
+  "licence": "CC BY 4.0",
+  "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+  "selectedArea": "Fixed 168×204 source-cell window, rows 288–455 and columns 192–395 inclusive; source grid indices are zero-based from the north-west corner of the 139.5–140.0°E, 35.5–36.0°N crop.",
+  "gridBounds": {
+    "west": 139.66,
+    "east": 139.83,
+    "north": 35.76,
+    "south": 35.62
+  },
+  "grid": {
+    "west": 139.5,
+    "north": 36,
+    "step": 0.0008333333333333334,
+    "firstRow": 288,
+    "rows": 168,
+    "firstCol": 192,
+    "cols": 204
+  },
+  "selectionMethod": "Filter exact source row/column index ranges; retain complete, unmodified 10×10-source-pixel cell blocks. The rectangle is an AOI, not an administrative boundary.",
+  "cellCount": 34272,
+  "validPixels": 3427200,
+  "nodataPixels": 0,
+  "allNoDataCells": 0,
+  "classPixelCounts": {
+    "10": 273652,
+    "20": 0,
+    "30": 34282,
+    "40": 9964,
+    "50": 2779755,
+    "60": 17594,
+    "70": 0,
+    "80": 311752,
+    "90": 201,
+    "95": 0,
+    "100": 0
+  },
+  "greenNumerator": "ESA classes 10 tree cover + 20 shrubland + 30 grassland + 90 herbaceous wetland.",
+  "excludedFromGreenNumerator": "40 cropland is kept separate because cultivated land is not treated as natural green respite; 50 built-up, 60 bare/sparse vegetation, 70 snow/ice, 80 water, 95 mangroves and 100 moss/lichen are not included in the selected green proxy.",
+  "greenPixels": 308135,
+  "greenShare": 0.08990867180205415,
+  "greenBandCells": {
+    "0": 20637,
+    "1": 6809,
+    "2": 2764,
+    "3": 1953,
+    "4": 1032,
+    "5": 1077,
+    "6": 0
+  },
+  "outputBytes": 1090581,
+  "interpretation": "Green share is a physical source-class proportion within a WorldCover cell. It does not measure emotion, perceived relief, park boundaries, public access, safety, health or experience. This AOI has no NoData source pixels; NoData is still retained as a separate value state."
+}

@@ -1,0 +1,45 @@
+{
+  "snapshot": "2022",
+  "bounds": {
+    "minX": 139.55,
+    "minY": 35.52,
+    "maxX": 139.95,
+    "maxY": 35.82
+  },
+  "coordinateReferenceSystem": "EPSG:6668 geographic longitude/latitude; projected to EPSG:3857 for display",
+  "modification": "N07 Tokyo records whose LineString intersects the fixed bbox were retained and clipped into LineString fragments; P11 Tokyo Points inside the same bbox were retained with original name, operator, routes, kinds and n_routes. No N07-to-P11 join was performed.",
+  "sources": {
+    "n07": {
+      "id": "hf:ksj-n07-bus-route-greater-tokyo",
+      "name": "国土数値情報（バスルートデータ）",
+      "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N07-v2_0.html",
+      "license": "CC BY 4.0",
+      "attribution": "出典：「国土数値情報（バスルートデータ）」（国土交通省）（https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N07-v2_0.html）を加工して作成",
+      "edition": "2022",
+      "sourceRows": 17540,
+      "selectedRows": 9545
+    },
+    "p11": {
+      "id": "hf:ksj-p11-bus-stop-jp",
+      "name": "国土数値情報（バス停留所データ）",
+      "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P11-v3_0.html",
+      "license": "CC BY 4.0",
+      "attribution": "出典：「国土数値情報（バス停留所データ）」（国土交通省）（https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P11-v3_0.html）を加工して作成",
+      "edition": "2022",
+      "sourceRows": 12389,
+      "selectedRows": 6664
+    }
+  },
+  "counts": {
+    "routeLines": 9545,
+    "stops": 6664,
+    "n07Operators": 57,
+    "p11Operators": 57,
+    "stopRouteMemberships": 15286,
+    "exactOperatorRouteLabelGroups": 915,
+    "stopsWithMultipleRouteLabels": 3180,
+    "maxRecordedRouteLabels": 27,
+    "n07ClippedVertices": 87107
+  },
+  "payloadBytes": 5637159
+}

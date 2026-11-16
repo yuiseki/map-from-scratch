@@ -1,0 +1,31 @@
+{
+  "source": "全国の人流オープンデータ（国土交通省）",
+  "sourceUrl": "https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto",
+  "sourceVintage": "2022-01 snapshot; records cover 2019-01 through 2021-12",
+  "license": "Government of Japan Standard Terms of Use 2.0 (equivalent to CC BY 4.0)",
+  "attribution": "出典：「全国の人流オープンデータ」（国土交通省）（https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto）を加工して作成",
+  "modification": "Selected Tokyo prefecture 13, 2021-12, all days (dayflag=2), times 0/1, and 2020 WGS84 1 km mesh centres inside the half-open AOI bounds; summed values by mesh id.",
+  "coordinateReferenceSystem": "WGS84 longitude/latitude",
+  "units": "monthly average number of people present per 1 km mesh; values under 10 are suppressed and absent records are unknown, not zero",
+  "bounds": {
+    "west": 139.55,
+    "east": 139.98,
+    "south": 35.53,
+    "north": 35.82
+  },
+  "year": 2021,
+  "month": 12,
+  "dayflag": "2 (all days)",
+  "daytimeTimezone": "0 (11:00–14:00)",
+  "lateNightTimezone": "1 (01:00–04:00)",
+  "geometryCount": 1016,
+  "daytimeRecords": 682,
+  "lateNightRecords": 671,
+  "daytimeSuppressedOrAbsent": 334,
+  "lateNightSuppressedOrAbsent": 345,
+  "daytimePopulationTotal": 11951622,
+  "lateNightPopulationTotal": 10198442,
+  "sharedMaximum": 190197,
+  "payloadBytes": 125463,
+  "limitation": "Presence counts are monthly daily averages of published estimates, not observed illumination or night-light imagery. Counts below 10 are suppressed; absent cells are not zero. The data does not identify individuals or movement between cells."
+}

@@ -1,0 +1,56 @@
+{
+  "source": {
+    "dataset": "USGS ComCat 2025 M4.5+ preferred-network snapshot",
+    "url": "https://huggingface.co/datasets/yuiseki/usgs-comcat-2025-m45",
+    "file": "/sata_hdd_24tb/hf_data/usgs-earthquake-catalog-2025-m45/data/parquet/earthquakes.parquet",
+    "format": "GeoParquet 1.0.0",
+    "crs": "OGC:CRS84 (2D longitude, latitude)",
+    "license": "U.S. public domain; attribution requested: U.S. Geological Survey, ComCat",
+    "snapshotRetrieved": "2026-10-25T09:29:29.667943+00:00",
+    "filter": {
+      "type": "earthquake",
+      "preferredNetwork": "us",
+      "magnitudeMinimum": 4.5,
+      "startInclusive": "2025-01-01T00:00:00Z",
+      "endInclusive": "2025-12-31T23:59:59.999Z"
+    },
+    "fields": [
+      "event_id",
+      "longitude",
+      "latitude",
+      "mag",
+      "depth_km",
+      "time"
+    ],
+    "count": 8502,
+    "uniqueIds": 8502,
+    "eventIdSha256": "c597ab0c3d217708f1bd3b474b246cc081bb061f40e2164b48b9c710bc4fbed1",
+    "firstTime": 1735696019538,
+    "lastTime": 1767222268213,
+    "magnitudeRange": [
+      4.5,
+      8.8
+    ],
+    "depthRangeKm": [
+      1.181,
+      669.556
+    ]
+  },
+  "context": {
+    "source": "Natural Earth v5.1.1 admin-0 countries, 1:10m",
+    "license": "Public domain",
+    "sourceFile": "/sata_hdd_24tb/hf_data/__published/ne-admin0-10m/v5.1.1/shapefile/ne_10m_admin_0_countries.shp",
+    "features": 258,
+    "sourceExteriorParts": 4274,
+    "simplificationToleranceDegrees": 0.12,
+    "antimeridianSplitCoastlineParts": 4274
+  },
+  "output": {
+    "events": 8502,
+    "eventBytes": 463096,
+    "coastlineParts": 4274,
+    "coastlineVertices": 29841,
+    "coastlineBytes": 683428
+  },
+  "interpretation": "Concentric afterimage rings are artistic symbols only. They do not represent physical wave propagation, shaking, impact footprints or hazard contours."
+}

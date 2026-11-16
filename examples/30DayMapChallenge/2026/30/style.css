@@ -1,0 +1,23 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; background: #555650; color: #fff; }
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+#stage { width: 100%; height: 100%; display: grid; place-items: center; padding: 18px; }
+#sheet { display: block; width: min(100%, calc((100vh - 36px) * 297 / 210)); height: auto; max-height: calc(100vh - 36px); object-fit: contain; background: #fff; box-shadow: 0 12px 36px #1118; }
+#tools { position: fixed; inset: 12px auto auto 8px; display: flex; flex-direction: column; align-items: stretch; gap: 7px; width: 84px; max-width: 84px; padding: 8px; border: 1px solid #ffffff36; border-radius: 8px; background: #20221edc; color: #f7f5ed; box-shadow: 0 2px 12px #0005; font-size: 10px; }
+#tools strong { white-space: normal; line-height: 1.25; letter-spacing: .04em; }
+#status { color: #c8d6c0; }
+#tools a, #tools button { color: #fff; border: 1px solid #ffffff70; border-radius: 5px; padding: 6px 9px; background: #ffffff12; font: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
+#tools a:hover, #tools button:hover { background: #ffffff28; }
+@media (max-width: 720px) {
+  #stage { padding: 10px; }
+  #sheet { width: 100%; max-height: calc(100vh - 20px); }
+  #tools { inset: auto 8px 8px; width: auto; flex-wrap: wrap; gap: 7px; }
+  #tools { flex-direction: row; align-items: center; max-width: calc(100vw - 16px); }
+  #tools strong { width: 100%; }
+}
+@media print {
+  @page { size: A4 landscape; margin: 0; }
+  :root, html, body, #stage { width: 297mm; height: 210mm; margin: 0; padding: 0; overflow: visible; background: #fff; }
+  #sheet { width: 297mm; height: 210mm; max-width: none; max-height: none; box-shadow: none; }
+  #tools { display: none; }
+}

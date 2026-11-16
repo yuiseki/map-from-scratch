@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>踊る東京駅のビル (PLATEAU)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #171f36; color: #e6edf3; font: 13px/1.5 system-ui, sans-serif; overflow: hidden; }
+  #map { display: block; width: 100%; height: 100%; touch-action: none; }
+  #panel { position: absolute; top: 12px; left: 12px; max-width: 340px; padding: 8px 12px; background: rgba(11, 16, 32, 0.85); border-radius: 6px; }
+  #panel h1 { font-size: 14px; margin: 0 0 4px; }
+  button { margin: 4px 6px 0 0; padding: 4px 10px; font: inherit; color: inherit; background: #1f2a44; border: 1px solid #3a4a70; border-radius: 4px; cursor: pointer; }
+  #credit { position: absolute; right: 0; bottom: 0; max-width: 70%; padding: 2px 6px; background: rgba(11, 16, 32, 0.8); font-size: 11px; }
+  a { color: #9cc3ff; }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+<div id="panel">
+  <h1>踊る東京駅のビル</h1>
+  <div>音の 16 の周波数帯が、東京駅から外へ向かう 16 の輪の建物の高さと光を動かします (低音は中心、高音は外側)。ドラッグで移動、右ドラッグか Shift+ドラッグで回転と傾き、ホイールでズーム。</div>
+  <button id="mic">マイクで踊らせる</button><button id="play">リズムを鳴らす / 止める</button>
+  <div id="status">読み込み中…</div>
+</div>
+<div id="credit">建物: 国土交通省 Project PLATEAU、
+  <a href="https://www.geospatial.jp/ckan/dataset/plateau-13101-chiyoda-ku-2025">3D都市モデル 千代田区 (2025年度)</a>、
+  <a href="https://www.geospatial.jp/ckan/dataset/plateau-13102-chuo-ku-2025">中央区 (2025年度)</a>
+  (G空間情報センター)。<a href="https://www.mlit.go.jp/plateau/site-policy/">PDL1.0</a> (CC BY 4.0 互換) に基づき LOD1 を加工して表示</div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

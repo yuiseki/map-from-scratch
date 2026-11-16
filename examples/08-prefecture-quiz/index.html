@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>都道府県クイズ</title>
+<style>
+  body { margin: 0; padding: 20px; background: #f5f7f2; color: #24362d; font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 620px; margin: auto; }
+  h1 { margin: 0 0 8px; font-size: 1.5rem; }
+  p { margin: 8px 0; }
+  #map { width: min(100%, 480px); display: block; margin: 16px auto; cursor: pointer; touch-action: manipulation; }
+  #target { font-size: 1.25rem; font-weight: 700; }
+  #status { min-height: 1.5em; }
+  button { padding: 8px 14px; border: 1px solid #237150; border-radius: 6px; background: white; color: #17553a; cursor: pointer; }
+</style>
+<main>
+  <h1>都道府県クイズ</h1>
+  <p>示された都道府県を地図上で選んでください。</p>
+  <p id="target" aria-live="polite">読み込み中…</p>
+  <p id="status" aria-live="polite"></p>
+  <canvas id="map" aria-label="都道府県を選ぶ日本地図"></canvas>
+  <button id="restart" type="button">最初から</button>
+  <p>地図データ: <a href="https://www.naturalearthdata.com/">Natural Earth</a>（Public Domain）</p>
+</main>
+<script type="module" src="./main.js"></script>

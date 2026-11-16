@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>紛争の出来事 1989–2025 · UCDP GED</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.5 system-ui, sans-serif; color: #e9e7df; background: #101921; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; padding: 12px 17px; border-bottom: 1px solid #344350; background: #17242e; }
+  h1 { margin: 0 18px 0 0; font-size: 1.22rem; font-weight: 650; }
+  button { padding: 6px 10px; border: 1px solid #546879; border-radius: 6px; color: inherit; background: #243744; cursor: pointer; font: inherit; }
+  button:hover, button:focus-visible { background: #375267; }
+  .sep { width: 1px; height: 25px; margin: 0 3px; background: #546879; }
+  #view { position: relative; flex: 1; min-height: 260px; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #summary, #detail, #credit { position: absolute; border: 1px solid #65798966; border-radius: 8px; background: #162530eb; box-shadow: 0 4px 16px #0005; backdrop-filter: blur(6px); }
+  #summary { left: 13px; top: 12px; padding: 10px 13px; }
+  #summary strong { display: block; font-size: 1.55rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  #summary small, #detail small { display: block; color: #aebbc4; }
+  #summary .figures { margin-top: 4px; color: #f1d3b9; font-variant-numeric: tabular-nums; }
+  #detail { top: 12px; right: 13px; max-width: min(310px, 48%); padding: 10px 13px; }
+  #detail strong { display: block; font-size: 1.02rem; }
+  #credit { right: 13px; bottom: 12px; max-width: min(600px, calc(100% - 26px)); padding: 8px 10px; font-size: .72rem; color: #c2cbd0; }
+  a { color: #add5e7; }
+  #timeline { padding: 11px 16px 14px; background: #17242e; border-top: 1px solid #344350; }
+  .row { display: flex; gap: 11px; align-items: center; }
+  #year { min-width: 5ch; font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #slider { flex: 1; accent-color: #e1a36b; }
+  #bars { display: grid; grid-template-columns: repeat(37, minmax(0, 1fr)); align-items: end; gap: 2px; height: 27px; margin: 4px 0 0 76px; }
+  #bars button { min-width: 0; width: 100%; height: var(--h); padding: 0; border: 0; border-radius: 2px 2px 0 0; background: #7a8991; }
+  #bars button.active { background: #e1a36b; }
+  #bars button:hover { background: #f2c797; }
+  #legend { display: flex; gap: 13px; flex-wrap: wrap; margin-top: 9px; color: #c8d0d2; font-size: .82rem; }
+  #legend label { cursor: pointer; white-space: nowrap; }
+  #legend input { accent-color: #e1a36b; vertical-align: middle; }
+  #legend b { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; }
+  @media (max-width: 660px) { h1 { width: 100%; } #detail { top: auto; bottom: 67px; right: 8px; max-width: 55%; } #summary { left: 8px; top: 8px; } #credit { right: 8px; bottom: 8px; max-width: 55%; } #timeline { padding: 8px; } #bars { margin-left: 66px; } }
+</style>
+<header>
+  <h1>紛争の出来事</h1>
+  <button data-place="world" type="button">世界</button>
+  <button data-place="ukraine" type="button">ウクライナ周辺</button>
+  <button data-place="sudan" type="button">スーダン周辺</button>
+  <button data-place="middle-east" type="button">中東</button>
+  <span class="sep"></span>
+  <button id="minus" type="button" aria-label="縮小">−</button>
+  <button id="plus" type="button" aria-label="拡大">＋</button>
+</header>
+<main id="view">
+  <canvas id="map" aria-label="年別の UCDP GED の出来事。ドラッグとホイールで移動できます"></canvas>
+  <div id="summary" role="status"><strong>読み込み中…</strong><small>UCDP GED 26.1</small><div class="figures"></div></div>
+  <div id="detail"><strong>点を選択</strong><small>点をクリックすると出来事の情報を表示します</small></div>
+  <div id="credit">出典: <a href="https://ucdp.uu.se/downloads/">UCDP GED 26.1</a> · <a href="https://huggingface.co/datasets/yuiseki/ucdp-ged">GeoParquet</a>（CC BY 4.0）。死者数は best 推計、位置は概略の場合があります。引用: <a href="https://doi.org/10.1093/jopres/xjag046">Daviesほか (2026)</a>・<a href="https://doi.org/10.1177/0022343313484347">Sundberg & Melander (2013)</a>。</div>
+</main>
+<section id="timeline">
+  <div class="row"><button id="play" type="button">再生</button><span id="year">2025</span><input id="slider" type="range" min="1989" max="2025" value="2025" step="1" aria-label="表示年"></div>
+  <div id="bars" aria-label="年別死者数の推計"></div>
+  <div id="legend">
+    <label><input type="checkbox" data-type="1" checked><b style="background:#ebaa6d"></b>国家を含む紛争</label>
+    <label><input type="checkbox" data-type="2" checked><b style="background:#75bdc4"></b>非国家間の紛争</label>
+    <label><input type="checkbox" data-type="3" checked><b style="background:#d989a8"></b>一方的な暴力</label>
+  </div>
+</section>
+<script type="module" src="./main.js"></script>

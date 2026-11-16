@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shinkansen Volumes</title>
+  <meta name="description" content="Japan's Shinkansen lines from OpenStreetMap as 3D tubes swept along the curved Earth: circle, box or star cross-sections, rounded or mitred corners, light pulses at each line's speed.">
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #02040a; color: #dbe6f5; }
+    #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .label { position: absolute; left: 0; top: 0; font-size: 11px; white-space: nowrap; color: #c9d6e8; text-shadow: 0 0 3px #000, 0 0 6px #000; padding-left: 7px; margin-top: -7px; }
+    .label::before { content: ''; position: absolute; left: -2px; top: 5px; width: 5px; height: 5px; border-radius: 50%; background: #fff; box-shadow: 0 0 4px #fff; }
+    .label.peak { color: #f3e6c4; font-weight: 600; }
+    .label.peak::before { background: #f3e6c4; border-radius: 0; transform: rotate(45deg); }
+    .panel { position: fixed; top: 12px; left: 12px; width: 268px; max-width: calc(100vw - 48px); background: rgba(8, 13, 24, 0.86); border: 1px solid rgba(120, 160, 220, 0.22); border-radius: 10px; padding: 12px 14px; font-size: 12px; backdrop-filter: blur(6px); }
+    h1 { margin: 0 0 2px; font-size: 16px; font-weight: 650; letter-spacing: 0.01em; }
+    .sub { color: #8ea2bd; font-size: 11px; margin-bottom: 10px; }
+    .ctl { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; margin-bottom: 10px; }
+    select, button { font: inherit; color: #e4ecf8; background: #142037; border: 1px solid #2c3f5f; border-radius: 6px; padding: 4px 6px; }
+    button { cursor: pointer; }
+    button:hover, select:hover { border-color: #4f73a8; }
+    .buttons { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    #legend .row { display: grid; grid-template-columns: 12px auto 1fr auto; gap: 6px; align-items: center; line-height: 1.6; }
+    #legend i { width: 10px; height: 4px; border-radius: 2px; display: block; }
+    #legend .en { color: #7f93ad; font-size: 10.5px; }
+    #legend .kmh { color: #a9bcd6; font-variant-numeric: tabular-nums; font-size: 11px; }
+    .note { color: #7f93ad; font-size: 10.5px; margin-top: 8px; line-height: 1.45; }
+    #credit { position: fixed; right: 8px; bottom: 6px; font-size: 10.5px; color: #8796ad; text-shadow: 0 0 3px #000; }
+    #credit a { color: inherit; }
+    #hint { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); font-size: 11px; color: #8796ad; text-shadow: 0 0 3px #000; }
+    @media (max-width: 600px) { #hint { display: none; } .panel { width: auto; right: 12px; } }
+  </style>
+  <script>window.__mfsPageStart = performance.now();</script>
+</head>
+<body>
+  <canvas id="map" aria-label="Globe with Shinkansen lines drawn as 3D tubes"></canvas>
+  <div id="labels"></div>
+  <div class="panel">
+    <h1>新幹線 Polyline Volume</h1>
+    <div class="sub">Cross-sections swept along every Shinkansen line</div>
+    <div class="ctl">
+      <label for="shape">Shape</label>
+      <select id="shape"><option value="circle">Circle (tube)</option><option value="box">Box</option><option value="star">Star (7 arms)</option></select>
+      <label for="corner">Corners</label>
+      <select id="corner"><option value="round">Rounded</option><option value="mitre">Mitred (limit 2)</option></select>
+      <label for="pulse">Pulses</label>
+      <span><input id="pulse" type="checkbox" checked> at line speed</span>
+    </div>
+    <div class="buttons">
+      <button id="fuji">Fly to Tokaido near Mt Fuji</button>
+      <button id="japan">All of Japan</button>
+    </div>
+    <div id="legend"></div>
+    <div class="note">Pulse speed is each line's OSM maxspeed; 1 s on screen = 6 min of running. Tube radius 0.8 km, never thinner than 2 px. <span id="tris"></span></div>
+  </div>
+  <div id="hint">drag: move · wheel: zoom · right-drag or shift-drag: tilt and turn</div>
+  <div id="credit">Lines and stations © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL), 2026-08-31 · Land: Natural Earth</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

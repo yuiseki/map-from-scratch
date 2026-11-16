@@ -1,0 +1,61 @@
+{
+  "source": "hf:osm-tokyo23-src-2026-08, frozen OpenStreetMap planet extract 2026-08-31",
+  "sourceUrl": "https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08",
+  "license": "ODbL 1.0; © OpenStreetMap contributors",
+  "sourceTablesRows": {
+    "planet_osm_point": 306642,
+    "planet_osm_line": 347735,
+    "planet_osm_polygon": 1437105,
+    "planet_osm_roads": 33113
+  },
+  "crs": "EPSG:3857 (WGS 84 / Pseudo-Mercator; metres)",
+  "extentName": "Shibuya–Yoyogi rectangular extract (not an official administrative boundary)",
+  "boundsWgs84": {
+    "west": 139.685,
+    "south": 35.65,
+    "east": 139.715,
+    "north": 35.675
+  },
+  "boundsEpsg3857": {
+    "xmin": 15549663.07145842,
+    "ymin": 4252568.169330002,
+    "xmax": 15553002.656182218,
+    "ymax": 4255993.530861105
+  },
+  "extraction": "bbox covering intersection, preserving selected osm2pgsql source rows and signed osm_id; intersect with rectangular envelope; topology-preserving simplification at 0.4 m for polygons and 1.2 m for lines; point geometry unchanged; keep non-null source tag columns and extended hstore JSON tags.",
+  "sourceRowsSelected": {
+    "planet_osm_roads": 543,
+    "planet_osm_line": 27,
+    "planet_osm_polygon": 15257,
+    "planet_osm_point": 4121
+  },
+  "renderedCategoryFeatures": {
+    "road": 355,
+    "railway": 188,
+    "water": 44,
+    "building": 14958,
+    "green": 282,
+    "public-place": 4121
+  },
+  "verticesByCategory": {
+    "road": 1328,
+    "railway": 725,
+    "water": 754,
+    "building": 94019,
+    "green": 4200,
+    "public-place": 4121
+  },
+  "featureCount": 19948,
+  "uniqueSourceIdsByTable": {
+    "planet_osm_roads": 543,
+    "planet_osm_line": 27,
+    "planet_osm_polygon": 15255,
+    "planet_osm_point": 4121
+  },
+  "vertexCount": 105147,
+  "payloadBytes": 3617535,
+  "representative": {
+    "id": "relation/19862716",
+    "featureRowsMayShareRelationId": true
+  }
+}

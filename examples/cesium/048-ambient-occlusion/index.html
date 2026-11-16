@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cesium 048 - Screen Space Ambient Occlusion (SSAO)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #080c14; font-family: sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(8, 12, 20, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: #e0e6ed;
+      font-size: 13px;
+      line-height: 1.5;
+      backdrop-filter: blur(8px);
+      max-width: 320px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+    #ui h1 {
+      font-size: 15px;
+      margin-bottom: 8px;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .control-row label {
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 130px;
+    }
+    .hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <h1>Screen Space Ambient Occlusion (SSAO)</h1>
+    <div class="control-row">
+      <label for="chk-ssao">Enable SSAO:</label>
+      <input type="checkbox" id="chk-ssao" checked>
+    </div>
+    <div class="control-row">
+      <label for="chk-rotate">Auto Rotate:</label>
+      <input type="checkbox" id="chk-rotate" checked>
+    </div>
+    <div class="control-row">
+      <label for="range-intensity">SSAO Intensity:</label>
+      <input type="range" id="range-intensity" min="0.5" max="4.0" step="0.1" value="2.0">
+    </div>
+    <div class="control-row">
+      <label for="range-radius">Sample Radius:</label>
+      <input type="range" id="range-radius" min="0.5" max="5.0" step="0.1" value="2.5">
+    </div>
+    <div class="hint">16-sample hemisphere kernel with 4x4 rotation noise and bilateral blur. Drag to orbit, wheel to zoom.</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+[
+{"code":1,"name":"Water","ja":"水域","colour":"#419bdf","index":1,"cells":8398,"share":0.035526},
+{"code":2,"name":"Trees","ja":"森林","colour":"#397d49","index":2,"cells":81979,"share":0.346794},
+{"code":4,"name":"Flooded vegetation","ja":"湿地","colour":"#7a87c6","index":3,"cells":8,"share":0.000034},
+{"code":5,"name":"Crops","ja":"農地","colour":"#e49635","index":4,"cells":44586,"share":0.188611},
+{"code":7,"name":"Built area","ja":"市街地","colour":"#c4281b","index":5,"cells":14143,"share":0.059829},
+{"code":8,"name":"Bare ground","ja":"裸地","colour":"#a59b8f","index":6,"cells":7378,"share":0.031211},
+{"code":9,"name":"Snow/ice","ja":"雪氷","colour":"#a8ebff","index":7,"cells":9231,"share":0.03905},
+{"code":10,"name":"Clouds","ja":"雲","colour":"#616161","index":8,"cells":1,"share":0.000004},
+{"code":11,"name":"Rangeland","ja":"草地","colour":"#e3e2c3","index":9,"cells":70667,"share":0.298941}
+]

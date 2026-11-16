@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>forge3d: Swiss land cover</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; color: #1f2328; font-family: system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+    #map:active { cursor: grabbing; }
+    h1 { position: absolute; top: 14px; left: 0; right: 0; margin: 0; text-align: center; font-size: clamp(18px, 3.2vw, 32px); font-weight: 800; pointer-events: none; }
+    .legend { position: absolute; top: 64px; left: 16px; pointer-events: none; }
+    .legend b { font-size: 16px; }
+    .legend ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; line-height: 1.7; }
+    .legend i { display: inline-block; width: 13px; height: 13px; border-radius: 50%; margin-right: 6px; vertical-align: -2px; }
+    .legend span { color: #59636e; font-size: 11px; }
+    .caption { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 11px; color: #59636e; pointer-events: none; }
+    .hint { position: absolute; bottom: 28px; left: 0; right: 0; text-align: center; font-size: 12px; color: #8b949e; pointer-events: none; }
+    .error { position: absolute; bottom: 40px; left: 8px; color: #b91c1c; font-size: 12px; max-width: 70%; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <h1>スイスの土地被覆 2024</h1>
+  <div class="legend"><b>土地被覆</b><ul id="legend"></ul></div>
+  <div class="hint">ドラッグで回転、ホイールで拡大縮小</div>
+  <div class="caption">土地被覆: Sentinel-2 10m Land Use/Land Cover 2024, Esri, Impact Observatory, Microsoft (CC BY 4.0) · 標高: Mapzen Terrarium (AWS Open Data) · 国境: Natural Earth</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

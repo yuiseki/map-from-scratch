@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canvas を地図に重ねる</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  #map { position: relative; height: 100%; overflow: hidden; background: #D8F2FF; }
+  #credit { position: absolute; right: 4px; bottom: 2px; font: 11px system-ui, sans-serif; color: #333; background: #fffc; padding: 0 4px; }
+</style>
+<div id="map"><div id="credit">Natural Earth</div></div>
+<link rel="modulepreload" href="./canvasmap.js">
+<script type="module" src="./main.js"></script>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cesium-261-procedural-terrain — 3D Procedural Fractal Terrain</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #708090; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    .overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      color: #fff;
+      max-width: 320px;
+      pointer-events: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    h1 { font-size: 15px; margin-bottom: 6px; font-weight: 600; color: #10b981; }
+    p { font-size: 12px; color: #94a3b8; line-height: 1.4; margin-bottom: 12px; }
+    .controls { display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+    .control-row { display: flex; justify-content: space-between; align-items: center; }
+    label { color: #cbd5e1; }
+    input[type="range"] {
+      background: #1e293b;
+      accent-color: #10b981;
+    }
+    .stats { margin-top: 12px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="overlay">
+    <h1>Cesium Procedural Terrain</h1>
+    <p>Real-time ridged fractal mountain landscape with multi-biome slope shading (lakes, beaches, alpine meadows, rocky scree, snow summits) and aerial fog.</p>
+    <div class="controls">
+      <div class="control-row">
+        <label for="waterSlider">Water Level</label>
+        <input type="range" id="waterSlider" min="-40" max="30" value="-10">
+      </div>
+      <div class="control-row">
+        <label for="snowSlider">Snow Line</label>
+        <input type="range" id="snowSlider" min="40" max="150" value="95">
+      </div>
+      <div class="control-row">
+        <label for="sunSlider">Sun Angle</label>
+        <input type="range" id="sunSlider" min="0" max="6.28" step="0.05" value="0.9">
+      </div>
+      <div class="control-row">
+        <label for="autoRotate">Auto-Orbit View</label>
+        <input type="checkbox" id="autoRotate" checked>
+      </div>
+    </div>
+    <div class="stats">
+      <span>Drag to orbit • Wheel to zoom</span>
+      <div id="gridStats">Mesh: 128x128 (32,768 tris)</div>
+      <div id="fps">FPS: --</div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

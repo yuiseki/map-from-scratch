@@ -1,0 +1,17 @@
+{
+  "source": "Natural Earth v5.1.2 collection; ne_110m_admin_0_countries layer v5.1.1",
+  "sourceUrl": "https://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-admin-0-countries/",
+  "localSourcePath": "/sata_hdd_24tb/hf_data/__published/natural-earth/data/parquet/v5.1.2/110m_cultural/ne_110m_admin_0_countries.parquet",
+  "sourceLayer": "ne_110m_admin_0_countries",
+  "sourceFileBytes": 231079,
+  "license": "Public domain; attribution optional (Made with Natural Earth)",
+  "sourceCrs": "EPSG:4326 (WGS 84 longitude/latitude)",
+  "features": 177,
+  "geometryTypes": {
+    "Polygon": 148,
+    "MultiPolygon": 29
+  },
+  "vertices": 10654,
+  "processing": "Selected ADM0_A3, NAME and geometry; preserved all 177 geometries and coordinates without filtering, simplifying, repairing or changing CRS; sorted by ADM0_A3 and serialized as deterministic JSON. Projection is applied at render time to this single frozen geometry set.",
+  "payloadBytes": 420863
+}

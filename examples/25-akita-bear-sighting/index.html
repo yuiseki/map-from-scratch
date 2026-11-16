@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>秋田県ツキノワグマ・野生鳥獣出没タイムライン (2022-2026)</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%; width: 100%;
+      background: #141c24; color: #eceff4;
+      font: 14px/1.4 system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    header {
+      background: #1c2632;
+      border-bottom: 1px solid #2e3d4f;
+      padding: 8px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-shrink: 0;
+      z-index: 10;
+    }
+    .title-area h1 {
+      margin: 0; font-size: 16px; font-weight: 600; color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+    .title-area .sub {
+      font-size: 11px; color: #94a3b8;
+    }
+    .controls {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .toggles {
+      display: flex; align-items: center; gap: 10px; font-size: 13px;
+    }
+    .toggles label {
+      display: flex; align-items: center; gap: 4px; cursor: pointer;
+      user-select: none;
+    }
+    .color-dot {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    }
+    .dot-bear { background: #ff7300; }
+    .dot-boar { background: #20c997; }
+    .dot-deer { background: #fcc419; }
+    .dot-injury { background: #ff3333; box-shadow: 0 0 4px #ff3333; }
+
+    #map-wrap {
+      flex: 1; position: relative; width: 100%; min-height: 0;
+    }
+    canvas {
+      display: block; width: 100%; height: 100%;
+    }
+    #tooltip {
+      position: absolute; display: none; pointer-events: none;
+      background: rgba(15, 23, 42, 0.92); border: 1px solid #38bdf8;
+      border-radius: 6px; padding: 8px 12px; font-size: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 20;
+      max-width: 280px; transform: translate(-50%, -120%);
+    }
+    #tooltip .tt-head {
+      font-weight: 600; color: #38bdf8; margin-bottom: 2px;
+    }
+    #tooltip .tt-info {
+      color: #e2e8f0; margin-bottom: 4px;
+    }
+    #tooltip .tt-desc {
+      color: #cbd5e1; font-size: 11px; border-top: 1px solid #334155;
+      padding-top: 4px; line-height: 1.3;
+    }
+
+    footer {
+      background: #1c2632;
+      border-top: 1px solid #2e3d4f;
+      padding: 10px 16px;
+      display: flex; flex-direction: column; gap: 6px;
+      flex-shrink: 0; z-index: 10;
+    }
+    .timeline-row {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+    }
+    .btn {
+      background: #2563eb; color: #fff; border: none; border-radius: 4px;
+      padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .btn:hover { background: #1d4ed8; }
+    #slider {
+      flex: 1; cursor: pointer; accent-color: #38bdf8; height: 6px;
+    }
+    .date-display {
+      font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600;
+      color: #38bdf8; min-width: 110px; text-align: center;
+    }
+    .stats-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: #94a3b8;
+    }
+    .stat-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; background: #253342; border-radius: 12px;
+    }
+    .stat-badge b { color: #f8fafc; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>秋田県ツキノワグマ・野生鳥獣出没タイムライン</h1>
+      <div class="sub">秋田県オープンデータ「クマダス」2022年4月〜2026年9月 (全 24,757 件)</div>
+    </div>
+    <div class="controls">
+      <div class="toggles">
+        <label><input type="checkbox" id="chk-bear" checked><span class="color-dot dot-bear"></span> クマ</label>
+        <label><input type="checkbox" id="chk-boar" checked><span class="color-dot dot-boar"></span> イノシシ</label>
+        <label><input type="checkbox" id="chk-deer" checked><span class="color-dot dot-deer"></span> シカ</label>
+        <label><input type="checkbox" id="chk-injury" checked><span class="color-dot dot-injury"></span> 人身被害</label>
+      </div>
+    </div>
+  </header>
+
+  <div id="map-wrap">
+    <canvas id="map"></canvas>
+    <div id="tooltip">
+      <div class="tt-head" id="tt-head"></div>
+      <div class="tt-info" id="tt-info"></div>
+      <div class="tt-desc" id="tt-desc"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="timeline-row">
+      <button class="btn" id="play-btn">再生</button>
+      <input type="range" id="slider" min="0" max="1643" step="1" value="560">
+      <div class="date-display" id="date-label">2023-10-15</div>
+      <select id="window-select" style="background:#253342; color:#fff; border:1px solid #3e5064; border-radius:4px; padding:4px 8px; font-size:12px;">
+        <option value="30" selected>過去30日</option>
+        <option value="60">過去60日</option>
+        <option value="90">過去90日</option>
+        <option value="180">過去半年</option>
+        <option value="365">過去1年</option>
+        <option value="2000">全累積</option>
+      </select>
+    </div>
+    <div class="stats-row">
+      <div style="display:flex; gap:10px;">
+        <span class="stat-badge">表示中: <b id="stat-visible">0</b> 件</span>
+        <span class="stat-badge"><span class="color-dot dot-bear"></span> クマ: <b id="stat-bear">0</b></span>
+        <span class="stat-badge"><span class="color-dot dot-boar"></span> イノシシ: <b id="stat-boar">0</b></span>
+        <span class="stat-badge"><span class="color-dot dot-deer"></span> シカ: <b id="stat-deer">0</b></span>
+        <span class="stat-badge"><span class="color-dot dot-injury"></span> 人身被害: <b id="stat-injury">0</b></span>
+      </div>
+      <div>出典: 秋田県 クマダス (CC BY 4.0)</div>
+    </div>
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

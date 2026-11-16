@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>30DayMapChallenge 2026 | map-from-scratch</title>
+<style>
+  :root { --bg: #fafaf7; --fg: #1f2328; --muted: #59636e; --line: #d8dee4; --accent: #0b6e4f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #30363d; --accent: #3fb950; } }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 1200px; padding: 32px 20px 72px; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 30px; max-width: 780px; }
+  .filters { display: grid; gap: 10px; margin: 0 0 12px; }
+  .group { display: grid; grid-template-columns: 6em 1fr; align-items: baseline; gap: 8px; }
+  .group-label { color: var(--muted); font-size: 0.88rem; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 600px) { .group { grid-template-columns: 1fr; gap: 6px; } .group-label:empty { display: none; } }
+  .filters a, .filters .empty { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--fg); text-decoration: none; }
+  .filters a:hover { border-color: var(--accent); }
+  .filters a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .filters .empty { opacity: 0.45; }
+  .filters span span, .filters a span { font-size: 0.85em; opacity: 0.75; }
+  h1 a { color: inherit; text-decoration: none; }
+  .visible-count { margin: 0 0 16px; color: var(--muted); font-size: 0.88rem; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  li[hidden] { display: none; }
+  li { min-width: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, var(--fg)); box-shadow: 0 3px 14px #0000000b; }
+  li:hover { border-color: var(--accent); box-shadow: 0 8px 22px #00000018; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .id { font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
+  .req { margin: 10px 0 12px; font-size: 1.05rem; font-weight: 600; }
+  .how, .num, .links { margin: 3px 0; color: var(--muted); font-size: 0.88rem; }
+  .links { margin-top: auto; padding-top: 14px; }
+  .open { display: inline-block; align-self: flex-start; margin-top: 14px; padding: 7px 12px; border-radius: 7px; background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .label { font-size: 0.74rem; font-weight: 600; border-radius: 4px; padding: 1px 7px; text-decoration: none; }
+  .label.lib { background: var(--accent); color: white; }
+  .label.tech { border: 1px solid var(--accent); color: var(--accent); }
+  .label:hover { text-decoration: underline; }
+  .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+<h1><a href="../../">map-from-scratch</a> / 30DayMapChallenge 2026</h1>
+<p class="lead">「X をしたいから地図を作って」という依頼ごとに作った例です。ブラウザ用の例は操作できます。表示した性能値はリポジトリのハーネスで測ったものです。 <a href="https://github.com/yuiseki/map-from-scratch/blob/main/docs/gallery-comparison.md">比較計測の条件</a> ・ <a href="https://github.com/yuiseki/map-from-scratch">GitHub</a></p>
+<nav class="filters" aria-label="元ギャラリー">
+<div class="group"><span class="group-label"></span><div class="chips"><a href="../../">すべて <span>214</span></a></div></div>
+<div class="group"><span class="group-label">ライブラリ</span><div class="chips"><a href="../../examples/maplibre/">MapLibre GL JS <span>41</span></a>
+<a href="../../examples/mapbox/">Mapbox GL JS <span>18</span></a>
+<a href="../../examples/cesium/">CesiumJS <span>23</span></a>
+<a href="../../examples/openglobus/">OpenGlobus <span>8</span></a>
+<a href="../../examples/deckgl/">deck.gl <span>14</span></a>
+<a href="../../examples/d3/">D3 <span>9</span></a>
+<a href="../../examples/leaflet/">Leaflet <span>3</span></a>
+<a href="../../examples/tangram/">Tangram <span>5</span></a>
+<a href="../../examples/forge3d/">forge3d <span>10</span></a>
+<a href="../../examples/kepler/">kepler.gl <span>11</span></a>
+<a href="../../examples/luma/">luma.gl <span>1</span></a>
+<a href="../../examples/threejs/">Three.js <span>1</span></a></div></div>
+<div class="group"><span class="group-label">技術</span><div class="chips"><a href="../../tech/canvas-2d/">Canvas 2D <span>112</span></a>
+<a href="../../tech/webgl2/">WebGL2 <span>91</span></a>
+<a href="../../tech/webgpu/">WebGPU <span>15</span></a>
+<a href="../../tech/wasm/">WebAssembly <span>1</span></a>
+<a href="../../tech/opfs/">OPFS <span>1</span></a>
+<a href="../../tech/html-in-canvas/">HTML-in-Canvas <span>3</span></a>
+<a href="../../tech/web-worker/">Web Worker <span>2</span></a>
+<a href="../../tech/opengl-es/">OpenGL ES <span>1</span></a></div></div>
+<div class="group"><span class="group-label">その他</span><div class="chips"><a href="../../30DayMapChallenge/2026/" aria-current="page">30DayMapChallenge 2026 <span>30</span></a>
+<a href="../../examples/legacy/">既存の例 <span>22</span></a></div></div>
+</nav>
+<p class="visible-count">30 件</p>
+<ul>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-01</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Points」。2025 年に発生した M4.5 以上の地震を、震央の位置・規模・深さが読み取れる世界地図として表示する。</p>
+  <p class="how">WebGL2 / TypeScript (ブラウザで型を除去)</p><p class="num">計測 2026-11-16 ・ コード 5.1 KB gzip ・ データ 166 KB gzip ・ 初回描画 663 ms ・ フレーム p95 0.29 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/01">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/01/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/01/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/01/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-02</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Lines」。1980 年以降の熱帯低気圧の観測位置を ストームごとの線としてつなぎ、盆地別に色分けした世界地図を表示する。</p>
+  <p class="how">WebGL2 / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 6.1 KB gzip ・ データ 1717 KB gzip ・ 初回描画 516 ms ・ フレーム p95 0.58 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/02">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/02/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/02/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/02/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-03</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Polygons」。2024 年の国別総人口を国境ポリゴンへ 結合し、対数色スケールで世界地図上に比較表示する。</p>
+  <p class="how">WebGL2 / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 5.8 KB gzip ・ データ 202 KB gzip ・ 初回描画 508 ms ・ フレーム p95 0.56 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/03">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/03/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/03/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/03/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-04</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Clusters」。東京23区にある飲食・買い物・交通・ 公共観光施設の点を、表示倍率に沿った画面セルにGPU集約して密度と代表カテゴリを示す。</p>
+  <p class="how">WebGL2 / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 7.7 KB gzip ・ データ 540 KB gzip ・ 初回描画 512 ms ・ フレーム p95 0.45 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/04">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/04/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/04/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/04/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-05</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Senses: Sight」。富士山周辺の GSI DEM10B 標高格子を 3D 地形として照明し、ドラッグによる軌道視点とホイール拡大縮小で立体形状を観察する。</p>
+  <p class="how">WebGL2 / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 7.8 KB gzip ・ データ 124 KB gzip ・ 初回描画 553 ms ・ フレーム p95 0.67 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/05">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/05/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/05/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/05/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-06</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Vintage」。Natural Earth の世界国境を、彫版風の細線、色褪せた紙、落ち着いた土地色で描く。</p>
+  <p class="how">Canvas 2D / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 3.2 KB gzip ・ データ 398 KB gzip ・ 初回描画 80 ms ・ フレーム p95 2.20 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/06">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/06/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/06/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/06/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-07</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 の「10 minute map」。上野駅から歩行可能な道路を一様速度の経路探索でたどり、10分以内に到達できる道路を到達時間別に描く。</p>
+  <p class="how">Canvas 2D + Path2D / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 3.8 KB gzip ・ データ 106 KB gzip ・ 初回描画 80 ms ・ フレーム p95 1.72 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/07">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/07/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/07/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/07/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-08</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Utopia」。練馬駅周辺の2020年250 m人口メッシュに、公園と学校への近さを重ね、歩いて行ける理想の近隣を描く。</p>
+  <p class="how">Canvas 2D / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 4.3 KB gzip ・ データ 50 KB gzip ・ 初回描画 76 ms ・ フレーム p95 3.15 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/08">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/08/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/08/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/08/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-09</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Urban-rural」。日本の人口密度を明るさ、建成地面積の比率を色相にした連続表示で、都市と農村の境界がどこで曖昧になるかを示す。</p>
+  <p class="how">WebGL2 point renderer / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 5.1 KB gzip ・ データ 1978 KB gzip ・ 初回描画 457 ms ・ フレーム p95 0.30 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/09">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/09/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/09/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/09/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-10</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Prompting only」。AI コードエージェントに一つの制作プロンプトを渡して、実在する公開地理データを使った世界の空港・飛行場地図を専用描画器で作る。画像生成は使わず、プロンプトとAIによる実装であることを開示する。</p>
+  <p class="how">Canvas 2D / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 9.0 KB gzip ・ データ 496 KB gzip ・ 初回描画 172 ms ・ フレーム p95 1.34 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/10">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/10/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/10/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/10/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-11</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Senses: Sound」。東京23区の道路・鉄道の分布から相対的な音の強さをモデル化し、独自のCanvas描画器とWeb Audio合成音で場所ごとのサウンドスケープを表す。</p>
+  <p class="how">Canvas 2D + Web Audio API / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 7.4 KB gzip ・ データ 78 KB gzip ・ 初回描画 62 ms ・ フレーム p95 0.31 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/11">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/11/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/11/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/11/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-12</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a><a class="label tech" href="../../tech/web-worker/">Web Worker</a></p>
+  <p class="req">30DayMapChallenge 2026 の「Power」。世界銀行の電力アクセス率を国別ポリゴンへ結合し、1990–2024年の変化を独自描画器で比較する。</p>
+  <p class="how">Canvas 2D + Path2D + Dedicated Worker + OffscreenCanvas / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 8.5 KB gzip ・ データ 338 KB gzip ・ 初回描画 262 ms ・ フレーム p95 0.88 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/12">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/12/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/12/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/12/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-13</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Interactions」。国交省の人流オープンデータを使い、市区町村ごとの月平均滞在人口と4段階の居住地カテゴリを、月・曜日・時間帯を切り替えて対話的に探索する。</p>
+  <p class="how">Canvas 2D + Path2D + Pointer Events + DecompressionStream + per-month memory cache / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 8.2 KB gzip ・ データ 5664 KB gzip ・ 初回描画 102 ms ・ フレーム p95 6.29 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/13">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/13/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/13/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/13/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-14</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Borgesian map」。東京・渋谷駅周辺の実在するOSM建物フットプリントを描き、カード実寸で画面校正した場合だけ局所地表縮尺の1:1窓を表示する。広域overviewと物理実寸の両立不能さを作品の主題にする。</p>
+  <p class="how">Canvas 2D + Path2D + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 12.3 KB gzip ・ データ 12 KB gzip ・ 初回描画 72 ms ・ フレーム p95 2.08 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/14">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/14/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/14/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/14/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-15</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Inside out」。北海道東方の実在するGEBCO地形断面を上下反転し、同じ経度帯に含まれる実在のUSGS震源深さを別軸で示す。</p>
+  <p class="how">Canvas 2D + Path2D + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 8.2 KB gzip ・ データ 2 KB gzip ・ 初回描画 94 ms ・ フレーム p95 3.84 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/15">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/15/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/15/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/15/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-16</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Collaborative map」。OpenStreetMapに記録された渋谷の建物編集履歴を、個人識別情報を持ち込まず場所と月の累積件数として表す。</p>
+  <p class="how">Canvas 2D + native range input + pointer events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 9.9 KB gzip ・ データ 2 KB gzip ・ 初回描画 4 ms ・ フレーム p95 1.01 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/16">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/16/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/16/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/16/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-17</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Light &amp; dark」。東京都の同じ1 kmメッシュを使い、国土交通省の月平均滞在人口推計を昼間（11–14時）と深夜（1–4時）で比較する。照明や衛星夜間光として表現しない。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver + native keyboard events / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 12.3 KB gzip ・ データ 12 KB gzip ・ 初回描画 104 ms ・ フレーム p95 6.91 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/17">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/17/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/17/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/17/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-18</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「NULL」。東京都心の2020年国勢調査・250 mメッシュで、75歳以上女性人口の公表値、ゼロ、秘匿値、元表に行がない格子を地理的に区別する。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver + native keyboard events / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 14.0 KB gzip ・ データ 26 KB gzip ・ 初回描画 77 ms ・ フレーム p95 6.10 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/18">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/18/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/18/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/18/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-19</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Senses: Smell」。東京の実在施設候補とJMAの時刻付き風観測を示し、仮定に基づく風下の広がりを地図化する。臭気・濃度・曝露の実測と誤認させない。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 10.6 KB gzip ・ データ 152 KB gzip ・ 初回描画 49 ms ・ フレーム p95 2.89 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/19">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/19/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/19/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/19/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-20</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026「Hexagons」。Konturの実在するH3解像度4人口グリッドを、六角形セルの形を保った回転可能な3D地球儀として表示する。各セルの色と放射方向の高さで、元の人口推計を読み取れるようにする。</p>
+  <p class="how">WebGL2 / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 12.1 KB gzip ・ データ 2606 KB gzip ・ 初回描画 857 ms ・ フレーム p95 1.98 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/20">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/20/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/20/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/20/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-21</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「OpenStreetMap」。凍結したOSM東京データの道路・鉄道・建物・水域・緑地・公共施設タグを専用描画器で見せ、元OSM IDとタグを調べられる地図を作る。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 15.0 KB gzip ・ データ 1452 KB gzip ・ 初回描画 366 ms ・ フレーム p95 1.30 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/21">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/21/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/21/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/21/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-22</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Projections」。同じ世界の国境を少なくとも4つの数式的に異なる全球投影で切り替え、同じ描画スケール・データ・視覚表現で比較する。格子線と赤道を示し、保存する性質と歪みを説明する。</p>
+  <p class="how">Canvas 2D / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 6.6 KB gzip ・ データ 174 KB gzip ・ 初回描画 27 ms ・ フレーム p95 15.13 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/22">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/22/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/22/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/22/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-23</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026 · 23 Senses: Taste。実在する東京の食関連OpenStreetMapタグから食の語彙分布を作る。味、品質、人気、営業状況、地域全体の網羅性は推定しない。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 10.3 KB gzip ・ データ 203 KB gzip ・ 初回描画 71 ms ・ フレーム p95 10.32 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/23">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/23/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/23/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/23/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-24</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Network」。2022年の東京都バスルート線とバス停を別ソース層として地図に描き、事業者カバレッジと停留所の記録系統数を比較する。系統表記とルート線を結合したり、運行頻度や現況を推測したりしない。</p>
+  <p class="how">Canvas 2D + Pointer Events + ResizeObserver + native keyboard events / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 10.0 KB gzip ・ データ 1424 KB gzip ・ 初回描画 304 ms ・ フレーム p95 15.78 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/24">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/24/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/24/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/24/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-25</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">30DayMapChallenge 2026「Is this a map?」。USGS ComCat 2025 M4.5+地震の震央位置を保ち、マグニチュードと深さを別々の視覚チャンネルにした同心円のアフターイメージで、地図表現の慣習を崩す。</p>
+  <p class="how">WebGL2 instanced ring renderer + Canvas 2D geographic context + Pointer Events + ResizeObserver / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 13.6 KB gzip ・ データ 412 KB gzip ・ 初回描画 534 ms ・ フレーム p95 6.96 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/25">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/25/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/25/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/25/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-26</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Water」。国土数値情報A31aの洪水浸水想定区域から一つの河川・想定シナリオを選び、浸水深ランクと水がもたらす地理的な広がりを専用描画器で示す。これはモデルに基づく想定であり、実際の洪水記録や予報として示さない。</p>
+  <p class="how">Canvas 2D + OffscreenCanvas-compatible HTMLCanvasElement + Pointer Events / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 9.5 KB gzip ・ データ 522 KB gzip ・ 初回描画 246 ms ・ フレーム p95 5.54 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/26">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/26/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/26/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/26/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-27</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgpu/">WebGPU</a></p>
+  <p class="req">WebGPU を新しい地図作成ツールとして学び、2020年国勢調査の日本の人口メッシュから実在する地理的パターンを描く。 実在データを使い、架空の地図にはしない。</p>
+  <p class="how">WebGPU compute projection/classification and instanced WebGPU render pipeline / TypeScript, executed without a build after type erasure</p><p class="num">計測 2026-11-05 ・ コード 10.3 KB gzip ・ データ 15 KB gzip ・ 初回描画 23 ms ・ フレーム p95 3.10 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/27">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/27/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/27/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/27/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-28</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/canvas-2d/">Canvas 2D</a></p>
+  <p class="req">30DayMapChallenge 2026「Senses: Feeling」。実在する土地被覆から緑被率を物理的な代理指標として地図化する。個人の感情・心理状態、公園アクセス、体験の質を表す地図にはしない。</p>
+  <p class="how">Canvas 2D offscreen source-grid raster + Pointer Events + keyboard arrows / TypeScript</p><p class="num">計測 2026-11-05 ・ コード 9.7 KB gzip ・ データ 64 KB gzip ・ 初回描画 61 ms ・ フレーム p95 17.72 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/28">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/28/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/28/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/28/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-29</span></div>
+  <p class="labels"><a class="label tech" href="../../tech/webgl2/">WebGL2</a></p>
+  <p class="req">NOAA ETOPO 2022 の標高 Float32 ラスターを公式 GeoTIFF から必要な HTTP Range だけ読み、専用 WebGL2 シェーダーで中央本州から日本海溝を描く。 現実の標高を使い、架空の地図にはしない。</p>
+  <p class="how">WebGL2 Float32 texture and fragment-shader raster renderer / TypeScript, executed without a build after type erasure</p><p class="num">計測 2026-11-05 ・ コード 15.6 KB gzip ・ データ 1 KB gzip ・ 初回描画 2582 ms ・ フレーム p95 1.14 ms ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/29">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/29/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/29/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/29/">操作する ↗</a></li>
+<li data-gallery="30DayMapChallenge"><div class="card-head"><span class="id">30DayMapChallenge-2026-30</span></div>
+  <p class="labels"></p>
+  <p class="req">30DayMapChallenge 2026「Pen &amp; paper」。富士山周辺の実在するGSI標高データから印刷用の等高線ガイドを作り、紙にルートや注記を手で描き込めるようにする。</p>
+  <p class="how">custom marching-squares contour extractor and XML SVG serializer / TypeScript</p><p class="num">計測 2026-11-16 ・ コード 6.6 KB gzip ・ データ 298 KB gzip ・ 予算・表示確認OK</p>
+  <p class="links"><a href="https://github.com/yuiseki/map-from-scratch/tree/main/examples/30DayMapChallenge/2026/30">ソース</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/30/spec.yaml">spec.yaml</a> ・ <a href="https://github.com/yuiseki/map-from-scratch/blob/main/examples/30DayMapChallenge/2026/30/REQUEST.md">設計と計測</a></p>
+  <a class="open" href="../../examples/30DayMapChallenge/2026/30/">操作する ↗</a></li>
+</ul>

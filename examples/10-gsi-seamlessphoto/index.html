@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>シームレス空中写真</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 14px/1.45 system-ui, sans-serif; color: #fff; background: #253441; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: #132332; }
+  h1 { margin: 0 12px 0 0; font-size: 1.1rem; }
+  button { padding: 6px 10px; border: 1px solid #8194a3; border-radius: 5px; color: #fff; background: #294456; cursor: pointer; }
+  button:hover, button:focus-visible { background: #426477; }
+  #view { position: relative; flex: 1; min-height: 240px; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  canvas:active { cursor: grabbing; }
+  #status { position: absolute; top: 12px; left: 12px; padding: 5px 8px; border-radius: 4px; background: #142633d9; }
+  footer { position: absolute; right: 10px; bottom: 10px; left: 10px; max-width: max-content; padding: 6px 9px; border-radius: 4px; background: #142633e6; font-size: 12px; }
+  a { color: #d7f0ff; }
+</style>
+<header>
+  <h1>シームレス空中写真</h1>
+  <button data-place="tokyo" type="button">東京駅</button>
+  <button data-place="fuji" type="button">富士山</button>
+  <button data-place="osaka" type="button">大阪城</button>
+  <button id="out" type="button" aria-label="縮小">−</button>
+  <button id="in" type="button" aria-label="拡大">＋</button>
+  <span>ドラッグで移動、ホイールで拡大・縮小</span>
+</header>
+<main id="view">
+  <canvas id="map" aria-label="国土地理院のシームレス空中写真"></canvas>
+  <div id="status" role="status">写真を読み込み中…</div>
+  <footer>出典: <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院「全国最新写真（シームレス）」</a>。一部に他機関の写真を含みます。<a href="https://maps.gsi.go.jp/legend/seamlessphoto.pdf">データソースと撮影時期について</a>・<a href="https://cyberjapandata.gsi.go.jp/legend/seamlessphoto_precaution.pdf">利用上の注意</a>。データ配信: <a href="https://z.yuiseki.net/static/gsi/seamlessphoto/">z.yuiseki.net</a></footer>
+</main>
+<script type="module" src="./main.js"></script>

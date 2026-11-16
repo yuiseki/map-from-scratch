@@ -1,0 +1,42 @@
+{
+  "source": "OpenStreetMap historical contributions via ohsome API",
+  "sourceUrl": "https://api.ohsome.org/v1/contributions/centroid",
+  "docsUrl": "https://docs.ohsome.org/ohsome-api/development/endpoints.html",
+  "apiVersion": "1.10.4",
+  "retrievedAt": "2026-11-05",
+  "license": "Open Database License 1.0 (ODbL)",
+  "attribution": "© OpenStreetMap contributors",
+  "query": {
+    "url": "https://api.ohsome.org/v1/contributions/centroid",
+    "bbox": "139.696,35.65,139.706,35.66",
+    "time": "2025-01-01,2026-01-01",
+    "filter": "building=*",
+    "properties": "contributionTypes",
+    "clipGeometry": "true"
+  },
+  "boundsWgs84": {
+    "west": 139.696,
+    "south": 35.65,
+    "east": 139.706,
+    "north": 35.66
+  },
+  "coordinateReferenceSystem": "WGS84 longitude/latitude",
+  "gridSize": 24,
+  "inputFeatureCount": 162,
+  "mappedFeatureCount": 152,
+  "unmappedNoGeometry": 10,
+  "unmappedOutsideYear": 0,
+  "unmappedOutsideBounds": 0,
+  "cellCount": 89,
+  "locatedEditTypeCounts": {
+    "creation": 11,
+    "geometryChange": 36,
+    "tagChange": 97,
+    "deletion": 0,
+    "other": 13
+  },
+  "responseBytes": 52781,
+  "payloadBytes": 89925,
+  "privacy": "Raw OSM element IDs, changeset IDs, tags and person-related metadata are not retained.",
+  "aggregation": "Contribution centroids are assigned to a 24 × 24 grid. Grid marks are approximate locations, not exact edit footprints. Deletions without returned geometry are omitted from the spatial map."
+}

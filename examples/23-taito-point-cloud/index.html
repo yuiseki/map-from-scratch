@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台東区の点群 3D | map from scratch</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.45 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0e1620; color: #f0f6f8; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #panel { position: fixed; top: 14px; left: 14px; max-width: min(425px, calc(100vw - 28px)); padding: 15px; border-radius: 13px; border: 1px solid #ffffff30; background: #10212de6; backdrop-filter: blur(10px); box-shadow: 0 12px 32px #0007; }
+  h1 { margin: 0 0 4px; font-size: 19px; }
+  p { margin: 0 0 9px; color: #c0d0d8; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0; }
+  button { padding: 6px 10px; border: 1px solid #87abb461; border-radius: 7px; background: #294756; color: inherit; font: inherit; cursor: pointer; }
+  button:hover, button:focus-visible { background: #416674; }
+  label { display: flex; align-items: center; gap: 10px; margin: 8px 0; color: #c0d0d8; }
+  input { flex: 1; accent-color: #70c5bc; }
+  #detail, #status { color: #bfd2dc; font-variant-numeric: tabular-nums; }
+  #status { font-size: 12px; min-height: 2.5em; overflow-wrap: anywhere; }
+  #credit { position: fixed; right: 12px; bottom: 10px; max-width: min(620px, calc(100vw - 24px)); padding: 6px 9px; border-radius: 6px; background: #0b1722e8; font-size: 11px; }
+  a { color: #a9e0da; }
+  @media(max-width:600px) { #panel { top: 8px; left: 8px; padding: 11px; max-width: calc(100vw - 16px); } }
+</style>
+<canvas id="map" aria-label="台東区の点群データを立体表示"></canvas>
+<section id="panel">
+  <h1>台東区の点群 3D</h1>
+  <p>地形と建物の実測点を、点群 PNG タイルから直接描画します。</p>
+  <div class="row" aria-label="視点">
+    <button data-place="asakusa">雷門</button><button data-place="sensoji">浅草寺</button><button data-place="ueno">上野</button><button data-place="okachimachi">御徒町</button>
+  </div>
+  <label for="size">点の大きさ <input id="size" type="range" min="1" max="7" value="3.2" step="0.2"></label>
+  <p>ドラッグで回転、右ドラッグか Shift＋ドラッグで移動、ホイールで拡大縮小</p>
+  <div id="detail"></div>
+  <div id="status" role="status">点群タイルを読み込み中…</div>
+</section>
+<div id="credit">点群: <a href="https://tiles.gsj.jp/tiles/pcpng/mixed/index.html#taito">産総研・地質調査総合センター 点群 PNG</a> / <a href="https://info.tokyo-digitaltwin.metro.tokyo.lg.jp/">東京都デジタルツイン実現プロジェクト 区部点群データ</a></div>
+<script type="module" src="./main.js"></script>

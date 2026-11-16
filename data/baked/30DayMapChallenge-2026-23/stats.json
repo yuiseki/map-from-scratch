@@ -1,0 +1,63 @@
+{
+  "source": "hf:osm-tokyo23-src-2026-08, local frozen extract from 2026-08-31",
+  "sourceUrl": "https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08",
+  "license": "ODbL-1.0; © OpenStreetMap contributors; derived database share-alike",
+  "sourceLicenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "sourceCopyrightUrl": "https://www.openstreetmap.org/copyright",
+  "sourceCrs": "EPSG:3857 meters, GeoParquet 1.1 geo metadata",
+  "boundsMercator": {
+    "minX": 15559600,
+    "minY": 4256800,
+    "maxX": 15566400,
+    "maxY": 4263800
+  },
+  "boundsWgs84Approx": {
+    "west": 139.765,
+    "east": 139.825,
+    "south": 35.685,
+    "north": 35.735
+  },
+  "sourceCounts": [
+    {
+      "source": "point",
+      "candidates": 40350,
+      "withAmenityOrShop": 13904,
+      "supported": 4794,
+      "omittedWithAmenityOrShop": 9110
+    },
+    {
+      "source": "polygon",
+      "candidates": 115617,
+      "withAmenityOrShop": 3498,
+      "supported": 111,
+      "omittedWithAmenityOrShop": 3387
+    }
+  ],
+  "filteredRows": 4905,
+  "renderedFeatures": 4905,
+  "uniqueSourceIds": 4905,
+  "duplicateRowsRemoved": 0,
+  "sourceGeometry": {
+    "point": 4794,
+    "polygon": 111
+  },
+  "categoryCounts": {
+    "eatery": 2312,
+    "cafe": 566,
+    "drinks": 1080,
+    "food-shop": 947
+  },
+  "cuisineTagged": 1909,
+  "cuisineUnspecified": 2996,
+  "renderedCategories": [
+    "eatery",
+    "cafe",
+    "drinks",
+    "food-shop"
+  ],
+  "gridCellMeters": 220,
+  "occupiedGridCells": 643,
+  "payloadBytes": 1022090,
+  "vertices": 5423,
+  "dataDisclaimer": "This map records only explicit amenity/shop/cuisine tags in one frozen community-mapped snapshot. It does not measure taste, food quality, popularity, open status or completeness."
+}

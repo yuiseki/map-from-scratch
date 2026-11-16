@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl UMD Client Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #131519; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #d3d8e2; }
+    #kepler-container { width: 100vw; height: 100vh; position: relative; }
+
+    /* Kepler UI injected by UMD client */
+    .kepler-app { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
+    .kepler-sidebar { width: 280px; min-width: 280px; height: 100%; background: #242730; border-right: 1px solid #1f2227; display: flex; flex-direction: column; }
+    .kepler-header { padding: 14px 16px; border-bottom: 1px solid #1f2227; display: flex; align-items: center; gap: 8px; font-weight: 700; color: #fff; font-size: 14px; }
+    .kepler-badge { width: 20px; height: 20px; background: linear-gradient(135deg, #00d1b2, #10b981); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #131519; }
+    .kepler-tabs { display: flex; background: #1f242c; border-bottom: 1px solid #181c22; }
+    .kepler-tab { flex: 1; padding: 10px 0; font-size: 11px; font-weight: 600; text-align: center; color: #7b8494; }
+    .kepler-tab.active { color: #00d1b2; border-bottom: 2px solid #00d1b2; background: #242730; }
+    .kepler-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .kepler-card { background: #2c313d; border: 1px solid #394250; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .kepler-card-title { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #fff; }
+    .kepler-ramp { height: 6px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .kepler-meta { font-size: 11px; color: #838d9d; display: flex; justify-content: space-between; }
+
+    .kepler-map-area { flex: 1; height: 100%; position: relative; }
+    .kepler-canvas { width: 100%; height: 100%; display: block; }
+    .kepler-legend {
+      position: absolute; bottom: 16px; right: 16px; width: 180px; background: #242730; border: 1px solid #3a414e; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: #8c96a5; }
+    .umd-pill { position: absolute; top: 12px; right: 12px; background: #00d1b222; border: 1px solid #00d1b288; color: #00d1b2; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 12px; z-index: 10; }
+  </style>
+</head>
+<body>
+  <!-- Clean host container with zero hardcoded inner DOM -->
+  <div id="kepler-container"></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

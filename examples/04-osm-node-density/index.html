@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東京23区 OSM ノード密度</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #08080f; color: #ddd; font: 13px/1.5 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #note { position: fixed; left: 12px; bottom: 10px; opacity: 0.8; }
+</style>
+<canvas id="map"></canvas>
+<div id="note">東京23区の OSM ノード密度 (1 ピクセルあたりの点数、対数)。データ © OpenStreetMap contributors</div>
+<script type="module" src="./main.js"></script>

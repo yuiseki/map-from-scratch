@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Population globe, extruded</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #090c18; overflow: hidden; font: 13px/1.4 system-ui, sans-serif; color: #e8ecf4; }
+    #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    #proj { position: absolute; top: 10px; right: 10px; padding: 6px 12px; border: 0; border-radius: 4px; background: #fff; color: #222; font: inherit; box-shadow: 0 0 0 2px rgba(0,0,0,.15); cursor: pointer; }
+    #legend { position: absolute; left: 12px; bottom: 12px; width: min(280px, calc(100vw - 24px)); padding: 8px 12px 22px; background: rgba(9, 12, 24, .82); border-radius: 6px; box-sizing: border-box; }
+    #legend .bar { height: 10px; border-radius: 2px; margin-top: 4px; }
+    #legend .ticks { position: relative; height: 0; }
+    #legend .ticks span { position: absolute; top: 3px; transform: translateX(-50%); font-size: 11px; white-space: nowrap; }
+    #legend .ticks span:first-child { transform: none; }
+    #legend .ticks span:last-child { transform: translateX(-100%); }
+    #tip { position: absolute; left: 0; top: 0; pointer-events: none; padding: 4px 8px; background: rgba(255,255,255,.95); color: #111; border-radius: 4px; white-space: nowrap; }
+    #attr { position: absolute; right: 0; bottom: 0; padding: 2px 8px; font-size: 11px; color: #333; background: rgba(255,255,255,.75); }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <button id="proj" type="button">Flat</button>
+  <div id="legend">Population (POP_EST), height and colour on a square-root scale<div class="bar"></div><div class="ticks"></div></div>
+  <div id="tip" hidden></div>
+  <div id="attr">Natural Earth 1:10m admin 0 v5.1.1 (public domain)</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

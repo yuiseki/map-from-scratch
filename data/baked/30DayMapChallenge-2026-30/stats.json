@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "source": {
+    "id": "hf:gsi-dem-fuji-z14-100m-2026-10-25",
+    "file": "/sata_hdd_24tb/hf_data/gsi-dem-fuji-z14-100m-2026-10-25/data/elevation_100m.parquet",
+    "fetchedAt": "2026-10-25",
+    "zoom": 14,
+    "sourceTileCount": 100,
+    "sourceTileBytes": 51751171,
+    "sourceTileHashVerification": "100/100 manifest SHA-256 and byte sizes matched before bake",
+    "table": "read_parquet",
+    "crs": "EPSG:3857",
+    "fields": [
+      "grid_x",
+      "grid_y",
+      "elevation_mean_m",
+      "elevation_min_m",
+      "elevation_max_m",
+      "valid_pixels"
+    ],
+    "method": "Each cell aggregates a 10×10 block of z14 raster pixels; DEM10B values are interpolated from Fundamental Geospatial Data elevation data."
+  },
+  "aoi": {
+    "sourceGrid": {
+      "minGridX": 371218,
+      "maxGridX": 371456,
+      "minGridY": 165525,
+      "maxGridY": 165718
+    },
+    "boundsEpsg3857": {
+      "minX": 15430992.614668954,
+      "maxX": 15453732.630583795,
+      "minY": 4203769.026085694,
+      "maxY": 4222209.459159493
+    },
+    "boundsWgs84": {
+      "west": 138.61896514892578,
+      "east": 138.82324218750003,
+      "south": 35.29299061106026,
+      "north": 35.428085159150044
+    },
+    "grid": {
+      "width": 238,
+      "height": 193,
+      "cellSizeM": 95.54628535647032,
+      "originX": 15430992.614668954,
+      "originY": 4222209.459159493,
+      "rowOrder": "north-to-south"
+    },
+    "print": {
+      "paper": "A4 landscape",
+      "scale": "1:100,000 ground scale at center latitude",
+      "centerLatitude": 35.360566139983455,
+      "mapFrameMm": {
+        "xMm": 12,
+        "yMm": 37,
+        "widthMm": 185.45080888782707,
+        "heightMm": 150.38658031659762,
+        "scale": 100000,
+        "centerLatitude": 35.360566139983455
+      },
+      "scaleCorrection": "EPSG:3857 projected coordinates multiplied by cos(center latitude) to retain local ground scale."
+    }
+  },
+  "elevations": {
+    "field": "elevation_mean_m",
+    "unit": "m",
+    "minMeanM": 439.6814880371094,
+    "maxMeanM": 3760.01123046875,
+    "minCellMinM": 435.05999755859375,
+    "maxCellMaxM": 3773.8701171875,
+    "contourIntervalM": 100,
+    "contourLevelsM": [
+      500,
+      600,
+      700,
+      800,
+      900,
+      1000,
+      1100,
+      1200,
+      1300,
+      1400,
+      1500,
+      1600,
+      1700,
+      1800,
+      1900,
+      2000,
+      2100,
+      2200,
+      2300,
+      2400,
+      2500,
+      2600,
+      2700,
+      2800,
+      2900,
+      3000,
+      3100,
+      3200,
+      3300,
+      3400,
+      3500,
+      3600,
+      3700
+    ]
+  },
+  "contours": {
+    "segmentCount": 10611,
+    "pathCount": 49,
+    "algorithm": "marching squares with bilinear center-value saddle decider; paths stitched on shared interpolated cell edges"
+  },
+  "counts": {
+    "rows": 45934,
+    "validCells": 45934,
+    "nodataCells": 0,
+    "validPixels": "positive pixel count with finite mean only; null/zero valid_pixels remain nodata"
+  },
+  "outputBytes": 910486
+}

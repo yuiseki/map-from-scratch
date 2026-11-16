@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cesium 272 - Dynamic Directional Soft Shadows</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0f1a; font-family: sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(10, 15, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: #e0e6ed;
+      font-size: 13px;
+      line-height: 1.5;
+      backdrop-filter: blur(8px);
+      max-width: 320px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+    #ui h1 {
+      font-size: 15px;
+      margin-bottom: 8px;
+      color: #60a5fa;
+      font-weight: 600;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .control-row label {
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 140px;
+    }
+    .hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <h1>Dynamic Soft Shadows (PCF 3x3)</h1>
+    <div class="control-row">
+      <label for="chk-shadows">Enable Shadows:</label>
+      <input type="checkbox" id="chk-shadows" checked>
+    </div>
+    <div class="control-row">
+      <label for="chk-rotate-sun">Orbit Sun:</label>
+      <input type="checkbox" id="chk-rotate-sun" checked>
+    </div>
+    <div class="control-row">
+      <label for="range-elevation">Sun Elevation:</label>
+      <input type="range" id="range-elevation" min="10" max="85" value="32">
+    </div>
+    <div class="hint">Drag to orbit camera, mouse wheel to zoom.</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

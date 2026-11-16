@@ -1,0 +1,48 @@
+{
+  "dataset": "KSJ A31a FY2025 maximum-scale flood-inundation polygons",
+  "sourceUrl": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A31a-2025.html",
+  "sourceLicense": "CC BY 4.0; processed under MLIT KSJ terms",
+  "sourceCredit": "出典：「国土数値情報（洪水浸水想定区域データ（河川単位））」（国土交通省）を加工して作成",
+  "sourceDatasetCard": "hf:ksj-a31a-flood-tokyo23, source card and A31a FY2025 metadata",
+  "sourcePath": "/sata_hdd_24tb/www/html/static/ksj/A31a/A31a-25_83_10_GEOJSON-part*.parquet",
+  "sourceFiles": [
+    "A31a-20-25_83_8303040001_10.geojson"
+  ],
+  "sourceCrs": "EPSG:6668 (JGD2011 geographic coordinates)",
+  "renderedCoordinates": "JGD2011 longitude/latitude; locally projected at runtime to a north-up equirectangular metre view centered on bbox midpoint",
+  "category": "maximum (想定最大規模), A31a_201..A31a_208 attribute group; only 荒川, manager 関東地方整備局",
+  "selectionBoundsJgd2011": {
+    "west": 139.79,
+    "south": 35.7,
+    "east": 139.85,
+    "north": 35.76
+  },
+  "selectionNote": "Rectangular visual selection, not an administrative boundary; polygons were clipped to this bbox after source geometry intersection.",
+  "depthField": "A31a_205: source inundation-depth rank; not a continuous observed depth",
+  "depthClassDefinitionsMeters": {
+    "1": "0–<0.5",
+    "2": "0.5–<3",
+    "3": "3–<5",
+    "4": "5–<10",
+    "5": "10–<20",
+    "6": ">=20"
+  },
+  "features": 2264,
+  "uniqueFeatureIds": 2264,
+  "vertices": 124919,
+  "byDepthClass": {
+    "1": 163,
+    "2": 423,
+    "3": 757,
+    "4": 919,
+    "5": 2,
+    "6": 0
+  },
+  "sourceFilesPresent": [
+    "A31a-20-25_83_8303040001_10.geojson"
+  ],
+  "geometryParts": 2276,
+  "holes": 1812,
+  "jsonBytes": 4177970,
+  "interpretation": "A modeled flood-inundation assumption for the selected river and maximum-scale scenario. Absence of a polygon is not a measured zero and does not guarantee safety; not an observation, forecast, live warning, address guarantee, or individual risk assessment."
+}

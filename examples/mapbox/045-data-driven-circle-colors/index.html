@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapbox GL JS: Data driven circle colors</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #b8dcf2; font-family: system-ui, sans-serif; }
+    #land, #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #land { pointer-events: none; }
+    #map { touch-action: none; cursor: grab; }
+    #map:active { cursor: grabbing; }
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #1f2937;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+      z-index: 10;
+    }
+    .panel b { font-size: 14px; }
+    .ramp {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #4b5563;
+    }
+    .ramp i {
+      display: block;
+      height: 8px;
+      border-radius: 4px;
+    }
+    /* The shader's stops: M1 amber to M3 blue, then M3 blue to M6 red,
+       widths in proportion to the magnitude span (2 and 3). */
+    .ramp i.low { width: 64px; background: linear-gradient(90deg, #fca107, #2e53ff); }
+    .ramp i.high { width: 96px; background: linear-gradient(90deg, #2e53ff, #ff0040); }
+    .ramp .size {
+      display: inline-block;
+      border-radius: 50%;
+      background: #ff0040;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="land" aria-hidden="true"></canvas>
+  <canvas id="map" aria-label="マグニチュードで色と大きさが変わる世界の地震"></canvas>
+  <div class="panel">
+    <div><b>Mapbox GL JS 045</b>: data driven circle colors</div>
+    <div id="status">読み込み中…</div>
+    <div class="ramp">
+      <span>M1</span><i class="low"></i><span>M3</span><i class="high"></i><span>M6</span>
+    </div>
+    <div class="ramp">
+      <span class="size" style="width: 6px; height: 6px;"></span><span>M1</span>
+      <span class="size" style="width: 12px; height: 12px;"></span><span>M3</span>
+      <span class="size" style="width: 28px; height: 28px;"></span><span>M6</span>
+    </div>
+    <div style="margin-top: 6px; font-size: 11px; color: #6b7280;">ドラッグで移動、ホイールで拡大・縮小</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cesium-234-particle-system-weather — 3D Volumetric Weather</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #202428; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    .overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+      color: #fff;
+      max-width: 320px;
+      pointer-events: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    h1 { font-size: 15px; margin-bottom: 6px; font-weight: 600; color: #38bdf8; }
+    p { font-size: 12px; color: #94a3b8; line-height: 1.4; margin-bottom: 12px; }
+    .controls { display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+    .control-row { display: flex; justify-content: space-between; align-items: center; }
+    label { color: #cbd5e1; }
+    select, input[type="range"] {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .stats { margin-top: 12px; font-size: 11px; color: #64748b; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="overlay">
+    <h1>Cesium 3D Particle Weather</h1>
+    <p>Volumetric rain streaks and swirling snowflakes in a 3D simulation with wind drift and dynamic atmospheric styling.</p>
+    <div class="controls">
+      <div class="control-row">
+        <label for="weatherType">Weather Mode</label>
+        <select id="weatherType">
+          <option value="rain" selected>Rain Storm</option>
+          <option value="snow">Snow Blizzard</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label for="windSlider">Wind Speed</label>
+        <input type="range" id="windSlider" min="-120" max="120" value="40">
+      </div>
+      <div class="control-row">
+        <label for="autoRotate">Auto-Rotate View</label>
+        <input type="checkbox" id="autoRotate" checked>
+      </div>
+    </div>
+    <div class="stats">
+      <span>Drag to orbit • Wheel to zoom</span>
+      <div id="particleCount">Particles: 2,500</div>
+      <div id="fps">FPS: --</div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

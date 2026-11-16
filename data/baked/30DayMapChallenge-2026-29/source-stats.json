@@ -1,0 +1,156 @@
+{
+  "source": {
+    "url": "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/30s/30s_bed_elev_gtif/ETOPO_2022_v1_30s_N90W180_bed.tif",
+    "bytes": 1624895430,
+    "format": "classic TIFF",
+    "dimensions": [
+      43200,
+      21600
+    ],
+    "pixelSizeDegrees": 0.008333333333333333,
+    "crs": "WGS 84 + EGM2008 height (EPSG:9518)",
+    "transform": [
+      -180,
+      0.008333333333333333,
+      0,
+      90,
+      0,
+      -0.008333333333333333
+    ],
+    "sampleType": "Float32",
+    "unit": "metres",
+    "nodata": -99999,
+    "tile": [
+      256,
+      256
+    ],
+    "compression": "DEFLATE (TIFF tag 8)",
+    "predictor": "floating point Predictor=3",
+    "overviews": 0
+  },
+  "aoi": {
+    "bounds": [
+      138.5,
+      34.5,
+      144.5,
+      40.5
+    ],
+    "pixelWindow": {
+      "x": 38220,
+      "y": 5940,
+      "width": 720,
+      "height": 720
+    }
+  },
+  "selection": {
+    "tileCount": 16,
+    "tileBytes": 2123065,
+    "tileIndices": [
+      4036,
+      4037,
+      4038,
+      4039,
+      4205,
+      4206,
+      4207,
+      4208,
+      4374,
+      4375,
+      4376,
+      4377,
+      4543,
+      4544,
+      4545,
+      4546
+    ],
+    "tileRanges": [
+      {
+        "start": 1072702852,
+        "end": 1073220395,
+        "bytes": 517544,
+        "attempts": 1,
+        "elapsedMs": 1212.587441,
+        "status": 206,
+        "contentRange": "bytes 1072702852-1073220395/1624895430",
+        "responseType": "basic"
+      },
+      {
+        "start": 1077671000,
+        "end": 1078252225,
+        "bytes": 581226,
+        "attempts": 1,
+        "elapsedMs": 1402.17121,
+        "status": 206,
+        "contentRange": "bytes 1077671000-1078252225/1624895430",
+        "responseType": "basic"
+      },
+      {
+        "start": 1082898113,
+        "end": 1083488211,
+        "bytes": 590099,
+        "attempts": 1,
+        "elapsedMs": 1272.761991,
+        "status": 206,
+        "contentRange": "bytes 1082898113-1083488211/1624895430",
+        "responseType": "basic"
+      },
+      {
+        "start": 1088148696,
+        "end": 1088582891,
+        "bytes": 434196,
+        "attempts": 1,
+        "elapsedMs": 1357.028189,
+        "status": 206,
+        "contentRange": "bytes 1088148696-1088582891/1624895430",
+        "responseType": "basic"
+      }
+    ],
+    "metadataRange": {
+      "start": 0,
+      "end": 131071,
+      "bytes": 131072,
+      "attempts": 1,
+      "elapsedMs": 1230.919695,
+      "status": 206,
+      "contentRange": "bytes 0-131071/1624895430",
+      "responseType": "basic"
+    },
+    "totalBytes": 2254137
+  },
+  "values": {
+    "valid": 518400,
+    "nodata": 0,
+    "belowSea": 360510,
+    "aboveSea": 157882,
+    "minM": -9245,
+    "maxM": 3666.33642578125,
+    "samples": [
+      {
+        "label": "Tokyo",
+        "lon": 139.7,
+        "lat": 35.7,
+        "x": 38364,
+        "y": 6516,
+        "elevationM": 37.60469055175781
+      },
+      {
+        "label": "Fuji",
+        "lon": 138.73,
+        "lat": 35.36,
+        "x": 38247,
+        "y": 6556,
+        "elevationM": 3666.33642578125
+      },
+      {
+        "label": "Japan Trench",
+        "lon": 144,
+        "lat": 38,
+        "x": 38880,
+        "y": 6240,
+        "elevationM": -7534.54150390625
+      }
+    ]
+  },
+  "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model (30 arc-second global bedrock GeoTIFF used here). NOAA National Centers for Environmental Information. https://doi.org/10.25921/fd45-gt74. Accessed 2026-11-06.",
+  "elapsedMs": 2775.7
+}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kepler.gl Custom Theme Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* Dark Theme (Default) */
+    body.theme-dark {
+      --bg-app: #131519;
+      --bg-header: #1e2229;
+      --bg-sidebar: #242730;
+      --bg-card: #2c313d;
+      --border-color: #2e3746;
+      --text-main: #ffffff;
+      --text-muted: #8c96a5;
+      --accent: #00d1b2;
+      --legend-bg: #242730;
+    }
+
+    /* Light Theme */
+    body.theme-light {
+      --bg-app: #d9e0ea;
+      --bg-header: #ffffff;
+      --bg-sidebar: #f5f7fa;
+      --bg-card: #ffffff;
+      --border-color: #d1d9e4;
+      --text-main: #1a202c;
+      --text-muted: #64748b;
+      --accent: #0ea5e9;
+      --legend-bg: #ffffff;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-app);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text-muted);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    #app { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+
+    #header {
+      height: 48px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 10;
+    }
+    .brand { font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+    .brand-k { color: var(--accent); font-weight: 900; }
+    
+    #theme-toggle-btn {
+      padding: 6px 14px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      height: 100%;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      gap: 12px;
+    }
+    .theme-info-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .theme-title { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+    .theme-desc { font-size: 11px; line-height: 1.5; color: var(--text-muted); }
+    .theme-indicator { font-size: 12px; font-weight: 700; color: var(--text-main); }
+
+    .layer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .layer-card-title { font-size: 12px; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; }
+    .color-ramp { height: 6px; border-radius: 2px; }
+    body.theme-dark .color-ramp { background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    body.theme-light .color-ramp { background: linear-gradient(to right, #00a896, #2563eb, #dc2626); }
+
+    #map-container { flex: 1; height: 100%; position: relative; }
+    #map-canvas { width: 100%; height: 100%; display: block; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 180px;
+      background: var(--legend-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .legend-title { font-size: 10px; font-weight: 600; color: var(--text-main); text-transform: uppercase; }
+    .legend-gradient { height: 8px; border-radius: 2px; }
+    body.theme-dark .legend-gradient { background: linear-gradient(to right, #fde725, #fca35d, #e35933, #b52f6b, #721f81); }
+    body.theme-light .legend-gradient { background: linear-gradient(to right, #00a896, #2563eb, #dc2626); }
+    .legend-ticks { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); }
+  </style>
+</head>
+<body class="theme-dark">
+  <div id="app">
+    <div id="header">
+      <div class="brand">
+        <span class="brand-k">K</span> kepler.gl Custom Theme
+      </div>
+      <button id="theme-toggle-btn">Switch to Light Theme</button>
+    </div>
+
+    <div id="main-container">
+      <div id="sidebar">
+        <div class="theme-info-card">
+          <div class="theme-title">Active Theme</div>
+          <div id="theme-name" class="theme-indicator">Dark Theme</div>
+          <div class="theme-desc">Synchronizes UI components, WebGL clear color, land palette, and point color ramp.</div>
+        </div>
+
+        <div class="layer-card">
+          <div class="layer-card-title">
+            <span>earthquakes</span>
+            <span style="font-size: 10px; color: var(--text-muted);">Point</span>
+          </div>
+          <div class="color-ramp"></div>
+          <div style="font-size: 11px; display: flex; justify-content: space-between;">
+            <span>Mag 2.5 - 7.2</span>
+            <span>54,936 pts</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="map-container">
+        <canvas id="map-canvas"></canvas>
+        <div id="legend">
+          <span class="legend-title">Magnitude</span>
+          <div class="legend-gradient"></div>
+          <div class="legend-ticks">
+            <span>2.5</span>
+            <span>4.5</span>
+            <span>6.5+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

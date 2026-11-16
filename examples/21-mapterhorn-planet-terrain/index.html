@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地球の標高 3D | map from scratch</title>
+<style>
+  :root { color-scheme: dark; font: 14px/1.45 system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #09131e; color: #eef5fa; }
+  #map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #map:active { cursor: grabbing; }
+  #panel { position: fixed; top: 16px; left: 16px; max-width: min(380px, calc(100vw - 32px)); padding: 16px; border: 1px solid #ffffff30; border-radius: 14px; background: #111d2bdc; backdrop-filter: blur(12px); box-shadow: 0 12px 40px #0006; }
+  h1 { font-size: 18px; margin: 0 0 3px; letter-spacing: .02em; }
+  p { margin: 0 0 12px; color: #b8ccd9; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 10px 0; }
+  button { border: 1px solid #8bb4c063; border-radius: 8px; padding: 6px 10px; background: #284452; color: inherit; cursor: pointer; font: inherit; }
+  button:hover, button:focus-visible { background: #3b6472; }
+  label { display: block; margin-top: 12px; }
+  input[type=range] { width: 100%; accent-color: #86d8c0; }
+  #zoom, #pitch, #status { color: #b8ccd9; font-variant-numeric: tabular-nums; }
+  #status { min-height: 1.4em; font-size: 12px; overflow-wrap: anywhere; }
+  #credits { position: fixed; right: 12px; bottom: 10px; max-width: min(700px, calc(100vw - 24px)); padding: 6px 9px; border-radius: 6px; background: #09131edb; color: #d7e2e8; font-size: 11px; }
+  a { color: #a8e1e0; }
+  @media (max-width: 600px) { #panel { top: 8px; left: 8px; padding: 12px; max-width: calc(100vw - 16px); } #credits { right: 8px; bottom: 8px; } }
+</style>
+<canvas id="map" aria-label="地球の標高を表示する3D地球儀"></canvas>
+<section id="panel" aria-label="地球儀の操作">
+  <h1>地球の標高 3D</h1>
+  <p>全球は CDN タイル、地域の詳細は PMTiles の Range で読み込みます。</p>
+  <div class="row" aria-label="場所">
+    <button data-place="earth">地球</button><button data-place="fuji">富士山</button><button data-place="alps">アルプス</button><button data-place="himalaya">ヒマラヤ</button><button data-place="canyon">グランドキャニオン</button>
+  </div>
+  <div class="row"><button id="minus" aria-label="縮小">−</button><button id="plus" aria-label="拡大">＋</button><span id="zoom"></span><span id="pitch"></span></div>
+  <label for="exaggeration">高さの強調 <span id="exaggeration-value">8×</span></label>
+  <input id="exaggeration" type="range" min="1" max="20" step="1" value="8">
+  <p style="margin:8px 0">ドラッグで移動、ホイールで拡大縮小、右ドラッグか Shift＋ドラッグで傾斜を変更</p>
+  <div id="status" role="status">PMTiles の索引を読み込み中…</div>
+</section>
+<div id="credits">標高 © <a href="https://mapterhorn.com/attribution/">Mapterhorn</a>。日本の地形には<a href="https://service.gsi.go.jp/kiban/app/">国土地理院 基盤地図情報（数値標高モデル）</a>を含むデータを加工して使用。測量法に基づく国土地理院長承認（使用）R 8JHs 131</div>
+<script type="module" src="./main.js"></script>

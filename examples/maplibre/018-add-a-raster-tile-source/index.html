@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MapLibre: Add a raster tile source</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e9eef2; font-family: system-ui, sans-serif; }
+    #map { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+    #map:active { cursor: grabbing; }
+    .bar { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.92); color: #1f2937; padding: 6px 10px; border-radius: 8px; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .bar b { margin-right: 6px; }
+    .bar button { font: inherit; padding: 3px 9px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; cursor: pointer; }
+    .bar button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .attr { position: absolute; right: 6px; bottom: 4px; background: rgba(255,255,255,0.82); color: #334155; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <div class="bar">
+    <b>maplibre 018</b>
+    <button data-style="osm-carto" class="on">Carto</button>
+    <button data-style="osm-liberty">Liberty</button>
+    <button data-style="osm-bright">Bright</button>
+  </div>
+  <div class="attr" id="attr"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
