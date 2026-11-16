@@ -1,0 +1,127 @@
+id: 30DayMapChallenge-2026-03
+request: >-
+  30DayMapChallenge 2026 の「Polygons」。2024 年の国別総人口を国境ポリゴンへ
+  結合し、対数色スケールで世界地図上に比較表示する。
+requirements:
+  - id: joined-population
+    need: WDI 2024 の総人口値を Natural Earth の行政区域コードに結合する
+    rationale: 217 件の値から 213 件を地物へ結合し、無結合コードを集計する
+  - id: population-choropleth
+    need: 国別人口の大小を対数色スケールのポリゴン塗りで比較できる
+    rationale: 人口規模が大きく異なる各国を同一の色階調で視認可能にする
+  - id: missing-data
+    need: 人口値のないポリゴンは実データと異なる色で区別する
+    rationale: No Data を人口ゼロとして扱わない
+  - id: responsive-map
+    need: ドラッグとホイールで地図を移動・拡大縮小できる
+    unmeasured: 操作時 frame p95 16.7 ms 以内
+  - id: quick-start
+    need: ページを開いて国別ポリゴンがすぐ見える
+    unmeasured: 初回描画 1 秒以内
+evaluation:
+  budgets:
+    - {metric: joined_country_count, min: 213, unit: countries, requirement: joined-population}
+    - {metric: polygon_count, min: 250, unit: polygons, requirement: population-choropleth}
+    - {metric: no_data_polygon_count, min: 1, unit: polygons, requirement: missing-data}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-map}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 24000, unit: B, requirement: quick-start}
+  gates: [213 country joins, all checks pass, GPU rendering, visible borders and no-data class]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/03/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-world
+      what: 全ポリゴンを塗り、readPixels で GPU 完了を待つ
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 世界地図を80フレーム移動・拡大縮小する
+      metrics: [frame_ms, gpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/03/bake.ts]
+  sources:
+    - id: worldbank-wdi-basic-annual
+      origin: >-
+        World Bank World Development Indicators `SP.POP.TOTL` total population,
+        2024. The 2026-10-01 catalog snapshot has 217 country codes.
+      license: >-
+        CC BY 4.0 plus World Bank mandatory dispute terms. Attribution:
+        The World Bank: World Development Indicators: World Population Prospects,
+        United Nations (UN); Statistical databases and publications from national
+        statistical offices (NSOs); Eurostat: Demographic Statistics; Population
+        and Vital Statistics Report, UN Statistics Division. The World Bank does
+        not endorse this copy.
+      url: https://databank.worldbank.org/source/world-development-indicators
+    - id: ne-countries
+      origin: Natural Earth 10m Admin 0 countries v5.1.1, `ADM0_A3` join code
+      license: Public domain
+  outputs:
+    - data/baked/30DayMapChallenge-2026-03/countries.bin
+    - data/baked/30DayMapChallenge-2026-03/stats.json
+  preparation:
+    - >-
+      World Bank annual Parquet から `SP.POP.TOTL`, year 2024 を選択し、Natural
+      Earth の `ADM0_A3` へ結合する。値のない地物は class 0 として保持する。
+    - >-
+      Natural Earth 国境ポリゴンを Equal Earth 投影後 0.4 px 相当で単純化し、
+      16-bit 座標・人口対数クラス・三角形・国境線を GPC1 メッシュへ焼く。
+      10m の国境形状は加工再配布条件を確認してから使用する。
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/03/index.html
+      - examples/30DayMapChallenge/2026/03/main.ts
+      - examples/30DayMapChallenge/2026/03/renderer.ts
+      - examples/30DayMapChallenge/2026/03/polygons.ts
+    dependencies: []
+    why: >-
+      国別の塗り分けポリゴンと境界線を静的 GPU メッシュにして一括描画し、
+      実行時のデータ通信や地図ライブラリを使わない。
+  alternatives:
+    - option: 国別 Canvas path を毎フレーム描く
+      rejected_because: 投影済み三角形と境界を GPU に一度だけアップロードするため
+  not_doing: [時間アニメーション, 人口密度, 1人当たり値, 国名ラベル, 国別クリック]
+performance_knowledge:
+  - claim: >-
+      Projected, simplified country polygons fit in one indexed fill draw and one
+      indexed border draw, keeping pan and zoom below 1 ms per frame on the
+      measured GPU.
+    evidence: >-
+      RTX 3060, Chrome 156, Xvfb, 1280×800, 3 runs: 917 polygons, 18,158
+      triangles, 20,019 border segments; frame p95 0.565 ms, GPU p95 0.214 ms,
+      first-frame p50 508.2 ms, JS heap p50 1.188 MB, code gzip 5,938 B,
+      data gzip 206,400 B. The measured screenshot shows all populated classes
+      and the distinct missing-data fill.
+    applies_when: >-
+      A static world choropleth has hundreds of simplified polygon features and
+      does not need feature picking or frequent data updates.
+verification:
+  checks:
+    - id: joined-country-count
+      what: 213 の WDI country codes が Natural Earth に結合される
+      how: bake stats の join 数を renderer の loaded stats と照合する
+      expected: 213
+    - id: population-colors
+      what: 中国・インド・米国・小人口国の値が別の連続クラスに分かれる
+      how: World Bank 2024 値から作ったクラス数を数える
+      expected: at least 4 distinct classes including minimum and maximum
+    - id: missing-data
+      what: データのない国が別の色で描画される
+      how: no-data クラスの読み込み数と実画面色を確認する
+      expected: no-data count is positive and color differs from populated polygons
+    - id: polygons-visible
+      what: 塗りと境界線が海面と区別できる
+      how: 実画面で陸・海・人口ポリゴンのピクセルを比較する
+      expected: each sampled class differs from ocean by RGB distance above 20
+  harness:
+    - webglcontextlost はエラー
+    - info.gpu がソフトウェア描画なら失敗

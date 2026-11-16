@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080f1d">
+  <title>Is this a map? — 30DayMapChallenge 2026 · 25</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="marks" aria-hidden="true"></canvas>
+  <canvas id="map" tabindex="0" role="img" aria-label="Global map of 2025 magnitude 4.5 and larger USGS earthquakes. Concentric afterimage rings are artistic symbols, colored by source depth. Drag to pan and use the wheel to zoom."></canvas>
+  <main class="panel">
+    <p class="eyebrow">30DAYMAPCHALLENGE · 25 / IS THIS A MAP?</p>
+    <h1>Seismic afterimage</h1>
+    <p class="intro">A year of earthquakes, translated into a field of location, magnitude and depth.</p>
+    <label class="timeline-label" for="timeline"><span>2025 time sweep</span><strong id="cutoff-date">Loading…</strong></label>
+    <input id="timeline" type="range" min="0" max="8501" value="8501" step="1" aria-label="Select a source event to reveal events through its exact timestamp">
+    <div class="timeline-foot"><span id="visible-count">8,502 events</span><span>← earlier · later →</span></div>
+    <div class="legend" aria-label="Afterimage legend">
+      <div class="legend-title">Rings: magnitude increases radius and intensity</div>
+      <small class="formula">q = clamp((M − 4.5) / 4.3, 0, 1) · outer radius = (2 + 9q) × √zoom px · intensity = 0.18 + 0.68q</small>
+      <small class="formula">WebGL2 draws three 0.38, 0.69 and 1 × radius rings per event; radii are screen marks, not wave distances.</small>
+      <div class="ring-key"><span class="rings" aria-hidden="true">◎</span><span>M4.5 smaller · M8.8 larger</span></div>
+      <div class="depth-keys">
+        <span><i class="shallow"></i>Shallow &lt;70 km</span>
+        <span><i class="intermediate"></i>Intermediate 70–300 km</span>
+        <span><i class="deep"></i>Deep ≥300 km</span>
+      </div>
+    </div>
+    <section class="selected" aria-live="polite">
+      <h2>Selected source event</h2>
+      <dl>
+        <dt>USGS ID</dt><dd id="event-id">—</dd>
+        <dt>Origin time</dt><dd id="event-time">—</dd>
+        <dt>Epicentre</dt><dd id="event-coordinate">—</dd>
+        <dt>Magnitude / depth</dt><dd id="event-measure">—</dd>
+      </dl>
+    </section>
+    <div class="controls" aria-label="Map controls">
+      <button id="zoom-in" type="button" aria-label="Zoom in">＋</button>
+      <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+      <button id="reset" type="button">Reset view</button>
+    </div>
+    <p class="keyboard">Use the timeline with ← and → to step through exact source times. Click an epicentre to select it.</p>
+  </main>
+  <aside class="notice" id="notice">
+    <strong>These rings are an artistic symbol, not a physical model.</strong>
+    <span>They do not show measured wave propagation, shaking, impact footprints, forecasts or hazard contours. This is a filtered 2025 snapshot, not a complete or uniformly detected earthquake inventory.</span>
+  </aside>
+  <footer class="credits">
+    <a href="https://earthquake.usgs.gov/fdsnws/event/1/" target="_blank" rel="noreferrer">U.S. Geological Survey · ComCat</a>
+    <span>·</span><span>U.S. public domain · source acknowledgement requested</span>
+    <span>·</span><a href="https://www.usgs.gov/faqs/are-usgs-reportspublications-copyrighted" target="_blank" rel="noreferrer">USGS credit policy</a>
+    <span>·</span><a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">Natural Earth v5.1.1 · public domain</a>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

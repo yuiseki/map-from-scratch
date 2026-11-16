@@ -1,0 +1,101 @@
+id: 30DayMapChallenge-2026-06
+request: >-
+  30DayMapChallenge 2026 の「Vintage」。Natural Earth の世界国境を、彫版風の細線、色褪せた紙、落ち着いた土地色で描く。
+requirements:
+  - id: world-countries
+    need: Natural Earth の全世界 admin-0 国境を描画する
+    rationale: 世界地図の地理形状を保ったまま古地図風の表現をつくる
+  - id: engraved-style
+    need: 紙色・国別の低彩度塗り・経緯線・彫版風ハッチを重ねる
+    rationale: 色調と線の密度で古い印刷地図の外観を表現する
+    unmeasured: 外観はブラウザ描画で確認し、評価基準は国数・頂点数・描画時間で代替する
+  - id: navigation
+    need: ドラッグ移動とホイール拡大縮小を操作できる
+    rationale: 世界全体から島嶼・国境の細部へ移動できる
+  - id: source-context
+    need: データ出典・縮尺・ライセンスを画面内で表示する
+    rationale: 収録内容と利用条件を把握できる
+    unmeasured: 表示内容はベンチマークの可視文字列チェックで確認する
+  - id: quick-start
+    need: 初期表示で全世界の地図が見える
+    unmeasured: 初回描画 1 秒以内
+evaluation:
+  budgets:
+    - {metric: country_count, min: 258, unit: countries, requirement: world-countries}
+    - {metric: polygon_vertex_count, min: 10000, unit: vertices, requirement: world-countries}
+    - {metric: frame_ms, stat: p95, max: 100, unit: ms, requirement: navigation}
+    - {metric: first_frame_ms, stat: p50, max: 2000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+  gates: [Natural Earth admin-0 geometry, paper tint, graticule, engraved hatch, visible public-domain credit]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/06/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-atlas
+      what: 258か国の世界地図・経緯線・ハッチを初回描画する
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 地図を変形しながら80フレーム描画する
+      metrics: [frame_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/06/bake.ts]
+  sources:
+    - id: hf:natural-earth
+      origin: Natural Earth 1:10m admin-0 country polygons, v5.1.1; 258 features in WGS 84
+      license: Public domain. Credit appreciated; no attribution required. https://www.naturalearthdata.com/about/terms-of-use/
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-06/countries.json
+    - data/baked/30DayMapChallenge-2026-06/stats.json
+  preparation:
+    - >-
+      Read the catalogued local Natural Earth 10m admin-0 GeoJSON, unwrap each ring across the antimeridian,
+      simplify at 0.16 degrees, and quantize lon/lat to unsigned 16-bit normalized world coordinates.
+      Preserve polygon and hole ring grouping; keep unsimplified rings where 0.16-degree simplification collapses a small country.
+      Verify all 258 source features and drawable countries.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D
+    language: TypeScript
+    gpu: none
+    code:
+      - examples/30DayMapChallenge/2026/06/index.html
+      - examples/30DayMapChallenge/2026/06/main.ts
+      - examples/30DayMapChallenge/2026/06/renderer.ts
+    dependencies: []
+    why: A custom Canvas 2D renderer composes pre-simplified country paths, paper texture, graticules and engraved hatch without a mapping library.
+  alternatives:
+    - option: WebGL2
+      rejected_because: The static atlas uses composited 2D strokes and fills; a GPU mesh adds complexity without helping pan/zoom at the reduced geometry size.
+  not_doing: [political boundary variants, labels for every country, interactive feature picking]
+performance_knowledge:
+  - claim: >-
+      Pre-simplified, quantized country rings make a Canvas 2D world atlas practical to redraw with paper grain and hatch.
+    evidence: >-
+      Chrome 156, Xvfb, 1280×800: 258 country paths and 97,436 vertices;
+      first-frame p50 79.7 ms, 80-frame redraw p95 2.20 ms, code gzip 3,320 B,
+      baked data gzip 407,300 B. Under host load average 9.63, one first-frame
+      sample reached 6.08 s and one redraw reached 8.79 s; remaining redraws
+      were near 1–2 ms. The cause of these outliers is not established.
+    applies_when: >-
+      A one-time global atlas uses reduced vector detail and the renderer composes 2D paths without rebuilding topology.
+verification:
+  checks:
+    - id: source-coverage
+      what: Every country feature with drawable geometry survives baking.
+      how: Compare baked feature and vertex counts with the catalogued 258-feature source.
+      expected: 258 countries and at least 10,000 quantized vertices.
+    - id: vintage-style
+      what: Paper, graticule, country fills, and hatch appear on the map.
+      how: Inspect the browser-rendered page and verify the paper background and paths.
+      expected: Map fills the framed canvas and shows the vintage palette with fine hatching.
+    - id: source-credit
+      what: The source, scale and public-domain status are disclosed.
+      how: Check visible page footer.
+      expected: Natural Earth, admin-0, 1:10m, public domain.

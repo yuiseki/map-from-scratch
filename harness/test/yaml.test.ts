@@ -14,6 +14,13 @@ test('quoted strings keep colons, hashes and leading zeros', () => {
   });
 });
 
+test('a plain scalar cannot start with a reserved YAML indicator', () => {
+  for (const indicator of ['&', '*', '!', '|', '>', '@', '%', '`']) {
+    assert.throws(() => parseYaml(`value: ${indicator}plain`), /reserved YAML indicator/);
+    assert.deepEqual(parseYaml(`value: "${indicator}plain"`), { value: `${indicator}plain` });
+  }
+});
+
 test('comments and blank lines are ignored; # inside plain text after a space starts a comment', () => {
   assert.deepEqual(parseYaml('# top\n\na: 1  # one\nb: c#d\n'), { a: 1, b: 'c#d' });
 });

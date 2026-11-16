@@ -1,5 +1,5 @@
 // Which index pages the Pages site has: the top page with every card, one
-// page per original gallery at examples/<gallery>/, and one page per
+// page per original gallery, and one page per
 // technology at tech/<technology>/, each with only its own cards.
 
 // group: a map library whose gallery is recreated, a directory of examples
@@ -22,9 +22,14 @@ export const galleries = [
   { id: 'opfs', label: 'OPFS', group: 'experiment' },
   { id: 'wasm', label: 'WebAssembly', group: 'experiment' },
   { id: 'htmlcanvas', label: 'HTML-in-Canvas', group: 'experiment' },
+  { id: '30DayMapChallenge', label: '30DayMapChallenge 2026', group: 'other' },
   { id: 'legacy', label: '既存の例', group: 'other' },
 ] as const;
 export type GalleryId = typeof galleries[number]['id'];
+
+export const galleryPath = (id: GalleryId): string => id === '30DayMapChallenge'
+  ? '30DayMapChallenge/2026/'
+  : `examples/${id}/`;
 
 // The rows of gallery links; the technology row is built from techniques.
 export const galleryGroups = [
@@ -64,7 +69,7 @@ export function indexPages<T extends { dir: string; api?: string }>(rows: T[]): 
   const pages: IndexPage<T>[] = [{ path: 'index.html', gallery: null, rows }];
   for (const { id } of galleries) {
     const own = rows.filter(({ dir }) => galleryOf(dir) === id);
-    if (own.length) pages.push({ path: `examples/${id}/index.html`, gallery: id, rows: own });
+    if (own.length) pages.push({ path: `${galleryPath(id)}index.html`, gallery: id, rows: own });
   }
   for (const { id } of techniques) {
     const own = rows.filter((r) => techniquesOf(r).includes(id));

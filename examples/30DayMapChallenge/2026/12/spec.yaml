@@ -1,0 +1,123 @@
+id: 30DayMapChallenge-2026-12
+request: >-
+  30DayMapChallenge 2026 の「Power」。世界銀行の電力アクセス率を国別ポリゴンへ結合し、1990–2024年の変化を独自描画器で比較する。
+requirements:
+  - id: power-access-data
+    need: 実在する国別電力アクセス率を地理ポリゴンへ結合して表示する
+    rationale: WDI `EG.ELC.ACCS.ZS` は人口に占める電気アクセス人口の割合で、2024年は Natural Earth の212か国に結合できる
+  - id: historical-comparison
+    need: 1990年から2024年まで年を選び、固定色尺度で変化を比べられる
+    rationale: 2026-10 WDI スナップショットの各年値を収録し、値のない国を独立した No Data 色で残す
+  - id: no-data
+    need: データのない国を0%と混同しない
+    rationale: 欠損値を PWR1 内の明示的な sentinel として保持し、灰色で描く
+    unmeasured: 欠損を含む年の件数と灰色ピクセルをブラウザ検査する
+  - id: navigation
+    need: ドラッグ移動、ホイール拡大縮小、年スライダーで地図を操作できる
+  - id: source-disclosure
+    need: 指標の意味、出典、集計値の注意、Natural Earth 境界と World Bank の非承認を表示する
+    unmeasured: ページの説明文と帰属リンクをブラウザ検査する
+  - id: quick-start
+    need: ページを開くと世界全体の国別電力アクセスが表示される
+evaluation:
+  budgets:
+    - {metric: joined_country_2024, min: 200, unit: countries, requirement: power-access-data}
+    - {metric: joined_country_1990, min: 80, unit: countries, requirement: historical-comparison}
+    - {metric: rendered_country_count, min: 250, unit: countries, requirement: power-access-data}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: navigation}
+    - {metric: year_change_frame_ms, stat: p95, max: 100, unit: ms, requirement: historical-comparison}
+    - {metric: year_change_cpu_ms, stat: p95, max: 8, unit: ms, requirement: historical-comparison}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 1000000, unit: B, requirement: quick-start}
+  gates: [2024 data joins at least 200 Natural Earth countries, 1990 data joins at least 80, missing values visibly distinct, fixed 0–100 percent scale, source and indicator caveats visible]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/12/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-global-access
+      what: 2024年の電力アクセス率を国別地物に初期描画する
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 表示年を固定して地図を80フレーム移動・拡大縮小する
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: year-selector
+      what: 年スライダーを1990年から2024年まで1年ごとに更新する
+      metrics: [year_change_frame_ms, year_change_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/12/bake.ts]
+  sources:
+    - id: worldbank-wdi-2026-10-01-data
+      origin: >-
+        World Bank World Development Indicators release snapshot 2026-10-01. Indicator `EG.ELC.ACCS.ZS`, Access to electricity (% of population), annual values 1990–2024. This is a population access share, not grid topology, reliability, or electricity generation mix.
+      license: >-
+        CC BY 4.0 with the World Bank's mandatory dispute terms. Attribution: The World Bank: World Development Indicators: World Population Prospects, United Nations (UN); Statistical databases and publications from national statistical offices (NSOs); Eurostat: Demographic Statistics; Population and Vital Statistics Report, UN Statistics Division. The World Bank does not endorse this copy.
+      url: https://databank.worldbank.org/source/world-development-indicators
+    - id: ne-countries
+      origin: Natural Earth 10m Admin 0 countries v5.1.1; `ADM0_A3` is the WDI join code.
+      license: Public domain; attribution appreciated.
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-12/countries.json
+    - data/baked/30DayMapChallenge-2026-12/geometry.bin
+    - data/baked/30DayMapChallenge-2026-12/access.bin
+    - data/baked/30DayMapChallenge-2026-12/stats.json
+  preparation:
+    - >-
+      Select WDI `EG.ELC.ACCS.ZS` annual rows for 1990–2024 from the local 2026-10-01 Parquet release; join ISO3 `country_code` to Natural Earth 10m `ADM0_A3`. Preserve nulls and decimal percentage precision in PWR1 year-major records.
+    - >-
+      Project each Natural Earth country ring to Equal Earth, simplify to 0.35 px tolerance at the benchmark width, and normalize geometry to [0,1]. Preserve holes and multipart shapes; render with a custom Canvas 2D map.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Path2D + Dedicated Worker + OffscreenCanvas
+    language: TypeScript
+    gpu: none
+    code:
+      - examples/30DayMapChallenge/2026/12/index.html
+      - examples/30DayMapChallenge/2026/12/main.ts
+      - examples/30DayMapChallenge/2026/12/renderer.ts
+      - examples/30DayMapChallenge/2026/12/renderer.worker.ts
+      - examples/30DayMapChallenge/2026/12/power.ts
+    dependencies: []
+    why: >-
+      A few hundred simplified country outlines can be filled directly with Canvas 2D paths. A fixed 0–100 scale and a slider make historical country coverage legible without a general map engine.
+  alternatives:
+    - option: use WDI renewable electricity output share
+      rejected_because: The selected local 2026-10 WDI release has no redistributable renewable-electricity-output series; access to electricity is a verified power-related indicator in the same source.
+    - option: build a power-grid line map
+      rejected_because: The local open-data catalog has no vetted global transmission-network source; country-level access data is available with a clear license and coverage.
+    - option: WebGL2 country mesh
+      rejected_because: Canvas 2D directly renders the simplified country count under the frame budget and permits lightweight per-year recoloring.
+  not_doing: [grid routes or power plants, reliability and outage duration, generation mix, population-weighted world average, country picking]
+performance_knowledge:
+  - claim: >-
+      Compact geometry and a year-indexed access table are loaded once. A dedicated worker retains Path2D country outlines and rasterizes year changes into OffscreenCanvas; the main thread composites the bitmap during navigation.
+    evidence: >-
+      Chrome/Xvfb 1280×800, three runs: pan/zoom frame p95 0.88 ms, draw CPU p95 0.055 ms, year-change frame p95 68.11 ms and postMessage CPU p95 0.11 ms; 13 requests per run, with no new request on year changes.
+    applies_when: >-
+      A country choropleth contains 258 world polygons, a 35-year series, and no live data requests or spatial edits.
+verification:
+  checks:
+    - id: coverage-by-year
+      what: The WDI values join to enough actual country geometries in the early and latest years.
+      how: Compare decoded PWR1 values for 1990 and 2024 to the bake statistics.
+      expected: At least 80 in 1990 and 200 in 2024.
+    - id: missing-and-known-values
+      what: No-data countries remain distinct and real WDI values remain attached to the right ISO3 code.
+      how: Inspect no-data count and check Japan, China, India, USA and DRC samples.
+      expected: Known countries have 2024 values; no-data count is positive in 1990.
+    - id: map-pixels
+      what: A populated country and a no-data country use distinct colors on screen.
+      how: Sample pixels in the projected Japan and Canada regions at the 1990 and 2024 views.
+      expected: Populated and missing classes differ from each other and the ocean.
+    - id: source-disclosure
+      what: The page explains electricity access, source release, license and its limits.
+      how: Inspect visible text and source links in the browser benchmark.
+      expected: WDI indicator code, 2026-10-01, CC BY 4.0, non-endorsement and indicator caveat are present.

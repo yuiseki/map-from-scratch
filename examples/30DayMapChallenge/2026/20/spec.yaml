@@ -1,0 +1,150 @@
+id: 30DayMapChallenge-2026-20
+request: >-
+  30DayMapChallenge 2026「Hexagons」。Konturの実在するH3解像度4人口グリッドを、六角形セルの形を保った回転可能な3D地球儀として表示する。各セルの色と放射方向の高さで、元の人口推計を読み取れるようにする。
+requirements:
+  - id: global-h3-cells
+    need: H3解像度4の全セルを、形状を保ち地球上の位置に置いて表示する
+    rationale: 71,283個の元ポリゴンの頂点をWeb MercatorからWGS84へ変換し、単位球面に直接投影する。分割された日付変更線のMultiPolygonはパーツごとに保持する
+  - id: monotone-population-encoding
+    need: セル色と高さが人口推計に対応する
+    rationale: log1p(population)/log1p(22,732,635) の対数スケールを共通強度にし、色と半径に単調に反映する
+  - id: rotate-zoom-inspect
+    need: 地球を回転・拡大縮小し、セルを選択して元のグリッド値を確認できる
+    rationale: ポインタドラッグ・ホイール・ボタンで視点を操作し、球面レイと可視セル中心の最近傍検索でH3 IDと元値を表示する
+  - id: true-globe-visibility
+    need: 地球の輪郭と前面の六角形を識別でき、背面セルが前面に描かれない
+    rationale: WebGL2の球面背景フラグメントと深度バッファで球面シルエットと水平線を作り、背面を隠す
+  - id: estimate-interpretation
+    need: 推計値・解像度・0値/欠損の有無・出典・ライセンスを確認できる
+    rationale: 約22 kmのモデル推計で国勢調査値ではないこと、今回のスナップショットに0値と欠損行が無いこと、Kontur帰属とCC BYを画面に表示する
+    unmeasured: >-
+      The browser check verifies visible data interpretation and attribution text; legal attribution quality cannot be reduced to a numeric renderer budget.
+  - id: offline-runtime
+    need: 地図データはローカル同梱データから表示する
+    rationale: GeoParquetをベイクしたJSON一つを同一originから読み、外部地図・タイル・SDKを使わない
+evaluation:
+  budgets:
+    - {metric: hex_cell_count, min: 71283, max: 71283, unit: cells, requirement: global-h3-cells}
+    - {metric: population_total, min: 8031924024, max: 8031924024, unit: estimated people, requirement: monotone-population-encoding}
+    - {metric: triangle_count, min: 700000, unit: triangles, requirement: true-globe-visibility}
+    - {metric: outline_edge_count, min: 400000, unit: edges, requirement: global-h3-cells}
+    - {metric: gpu_buffer_bytes, max: 32000000, unit: B, requirement: true-globe-visibility}
+    - {metric: visible_cell_low, min: 1, unit: estimated people, requirement: monotone-population-encoding}
+    - {metric: visible_cell_high, min: 10, unit: estimated people per cell, requirement: monotone-population-encoding}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: offline-runtime}
+    - {metric: cpu_ms, stat: p95, max: 8, unit: ms, requirement: rotate-zoom-inspect}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: rotate-zoom-inspect}
+    - {metric: code_gzip_bytes, max: 40000, unit: B, requirement: offline-runtime}
+    - {metric: data_gzip_bytes, max: 4000000, unit: B, requirement: offline-runtime}
+  gates: [Kontur 2023-11-01 snapshot verified as 71,283 unique H3 cells / estimated population sum 8,031,924,024 / min 1 / max 22,732,635, CC BY attribution visible, hardware WebGL2 globe, zero/missing source state stated accurately, runtime requests same-origin only]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/20/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 90000
+  scenarios:
+    - id: initial-global-h3-globe
+      what: Parse the frozen grid, upload one batched WebGL2 mesh, and draw the initial globe
+      metrics: [first_frame_ms]
+    - id: drag-zoom-inspect
+      what: Rotate/zoom the globe for 72 frames, test cell selection, and inspect GPU readback pixels
+      metrics: [cpu_ms, frame_ms, gpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/20/bake.ts]
+  sources:
+    - id: kontur-population-2023-11-01-22km
+      origin: >-
+        Kontur Population global 22km/H3 resolution-4 grid, release 2023-11-01, frozen local GeoParquet conversion of the source GeoPackage. HDX metadata modified 2026-05-07; the release date identifies the version, not a census date. The source has 71,283 unique H3 records, population total 8,031,924,024, min 1 and max 22,732,635. All values are positive integers and no population or geometry values are null. Source geometry is 71,265 Polygon and 18 MultiPolygon in EPSG:3857, with no interior rings. MultiPolygon components preserve antimeridian splitting.
+      license: >-
+        HDX source license metadata identifies Creative Commons Attribution International (CC BY), id cc-by. Attribute “Kontur Population dataset © Kontur”, link the Kontur dataset page and identify this work as an edited GeoPackage-to-GeoParquet and WGS84 renderer derivative. Do not imply Kontur endorsement.
+      url: https://www.kontur.io/datasets/population-dataset/
+  outputs:
+    - data/baked/30DayMapChallenge-2026-20/kontur.json
+    - data/baked/30DayMapChallenge-2026-20/stats.json
+  preparation:
+    - >-
+      Read every row from the frozen local GeoParquet and assert 71,283 distinct H3 keys, exact population sum/min/max, zero zero-valued rows, zero null values/geometries, 3857 projected source metadata and no interior rings. Preserve all cells and their estimate values.
+    - >-
+      Convert each outer Polygon/MultiPolygon ring coordinate from EPSG:3857 metres using WGS84/Pseudo-Mercator inverse equations; round lon/lat to 1e-5 degree. Remove the repeated closing coordinate and keep MultiPolygon parts separate, so dateline edges do not form a world-spanning chord.
+    - >-
+      Ship a compact same-origin JSON feature array; each cell stores its H3 key, original integer population, and one or more longitude/latitude rings. `stats.json` records the source revision, projected bounds and exact output counts; it is not a runtime request.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/20/index.html
+      - examples/30DayMapChallenge/2026/20/main.ts
+      - examples/30DayMapChallenge/2026/20/renderer.ts
+      - examples/30DayMapChallenge/2026/20/globe.ts
+      - examples/30DayMapChallenge/2026/20/bench.ts
+      - examples/30DayMapChallenge/2026/20/style.css
+    dependencies: []
+    why: >-
+      A single static 71k-cell global mesh needs a globe depth buffer, radial cell height and batched drawing. WebGL2 projects lon/lat cell vertices onto a sphere in one vertex buffer and redraws the same mesh as camera uniforms change. Shader-generated sphere pixels provide ocean context and horizon depth without a general map engine.
+  alternatives:
+    - option: Canvas 2D equirectangular hexagon map
+      rejected_because: The requested rotatable 3D globe and radial cell height need spherical depth, occlusion and an orbit camera.
+    - option: H3 runtime JavaScript package or a general map SDK
+      rejected_because: The source polygons already contain exact cell boundaries, and the dedicated renderer needs neither H3 indexing at runtime nor general map features.
+  not_doing: [terrain, census interpretation, individual precision, border basemap, city labels, population forecasting, sub-cell interpolation, globe-to-flat projection switching, street zoom, runtime external services]
+performance_knowledge:
+  - claim: A static global H3 mesh can be rotated with one WebGL2 indexed batch after a single upload.
+    evidence: >-
+      Three capped Chrome 156 runs on ANGLE/NVIDIA GeForce RTX 3060 (1280×800) passed all nine browser checks and twelve budgets. p50 first frame 857.03 ms; p95 CPU draw 0.060 ms, frame 1.980 ms, GPU 1.020 ms; 30,229,040 GPU buffer bytes; gzip data 2,668,475 B and code 12,348 B. The mesh uses one vertex upload and two indexed draw calls (top and side batches), with 32-bit triangle indices and no geometry regeneration during camera motion. Screenshot visually inspected. Pixel checks redraw before readback because the default WebGL drawing buffer is not guaranteed to persist across tasks.
+    applies_when: >-
+      One frozen global population grid is visible at overview scale. It does not establish performance for streaming, mobile devices, street-level zoom, or much finer H3 resolutions.
+verification:
+  checks:
+    - id: complete-kontur-snapshot
+      what: All source cells and values are present once, with the verified aggregate.
+      how: Compare page-baked IDs, cell count, population sum, and zero/missing states against the checked local snapshot profile.
+      expected: 71,283 unique cells; sum 8,031,924,024; every cell positive.
+    - id: visible-3d-globe
+      what: The page draws a spherical limb and colored H3 geometry with no GL error.
+      how: Read actual WebGL pixels around the globe silhouette and count drawn cell pixels after initial render.
+      expected: Non-empty limb and cell pixels; all cells are batched into an indexed 3D surface.
+    - id: low-and-high-population-pixels
+      what: Actual low and high population cells use visibly ordered colors.
+      how: Find real front-side min/max cells from the baked values and sample each projected cell-center pixel.
+      expected: The high-population sample is visibly brighter than the low-population sample.
+    - id: geographic-east-north-orientation
+      what: The opening globe preserves east/right and north/up orientation.
+      how: Project Cairo (31.24°E, 30.04°N) and Dakar (17.45°W, 14.69°N) in the opening camera.
+      expected: Cairo lies east/right and north/up of Dakar, both on the visible hemisphere.
+    - id: drag-rotation-and-zoom-controls
+      what: Drag rotates around both axes, zoom changes scale, reset restores the opening view.
+      how: Exercise the camera with synthetic pointer-equivalent deltas, zoom delta, and reset; compare a known cell's projected pixels.
+      expected: Camera and cell position change, zoom changes, reset restores the saved orientation.
+    - id: click-inspects-original-grid-value
+      what: Selecting a visible cell reports its H3 key and original estimated population.
+      how: Dispatch a pointer click at a known visible high-population cell center.
+      expected: Selection H3 and population match the frozen source record.
+    - id: source-and-estimate-disclosures
+      what: Users can identify the data provider, attribution terms, resolution, and estimate limitations.
+      how: Inspect visible page text and attribution links.
+      expected: Kontur, CC BY, ~22 km H3 r4, model estimate (not census), and absent zero/missing rows are stated.
+    - id: no-runtime-external-requests
+      what: The renderer has no map-service or cross-origin runtime dependency.
+      how: Inspect Resource Timing entries after load and draw.
+      expected: All runtime resource requests are same-origin.
+    - id: camera-frames-no-webgl-errors
+      what: Repeated camera updates complete without WebGL errors.
+      how: Render 72 rotated/zoomed views and query WebGL error state after draw calls.
+      expected: No WebGL error.
+  harness:
+    - webglcontextlost is an error
+    - info.gpu must be hardware, not software rendering
+footprint:
+  code:
+    - examples/30DayMapChallenge/2026/20/index.html
+    - examples/30DayMapChallenge/2026/20/main.ts
+    - examples/30DayMapChallenge/2026/20/renderer.ts
+    - examples/30DayMapChallenge/2026/20/globe.ts
+    - examples/30DayMapChallenge/2026/20/style.css
+  data: [data/baked/30DayMapChallenge-2026-20/kontur.json]

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>12 · Power · 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#09151e;color:#f2efe5;font:14px/1.5 system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.panel{position:absolute;top:16px;left:16px;width:min(405px,calc(100% - 32px));padding:17px 19px;background:#10232bed;border:1px solid #566b72;border-radius:13px;box-shadow:0 12px 36px #0008;backdrop-filter:blur(9px)}.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#d6a4d9}.title{font-size:25px;font-weight:760;margin:2px 0 2px}.sub{font-size:12px;color:#d0d8d3;margin:0}.counts{font-size:12px;color:#e9c57f;margin:12px 0 1px}.release{font-size:10px;color:#9fb2b4;margin:0}.timeline{display:flex;align-items:center;gap:10px;margin-top:17px}.timeline output{min-width:44px;font-size:21px;font-weight:700;color:#ffd883;font-variant-numeric:tabular-nums}.timeline input{width:100%;accent-color:#efa75d}.play{flex:none;padding:7px 11px;border:1px solid #778a8c;border-radius:7px;background:#1a3944;color:#eff0e6;font:inherit;font-size:11px;cursor:pointer}.play:hover{background:#29505a}.coverage{font-size:11px;color:#b6c7c4;margin:4px 0 12px}.legend{display:flex;align-items:center;gap:8px;font-size:10px;color:#c8d3cc}.gradient{height:9px;flex:1;border-radius:6px;background:linear-gradient(90deg,#31134d,#d34e46,#ffd373)}.legend .nodata{width:11px;height:11px;background:#516370;border:1px solid #93a2a8;border-radius:2px}.source-status{font-size:10px;color:#bcc9c6;margin:13px 0 0;padding-top:10px;border-top:1px solid #43585e}.controls{font-size:10px;color:#94aaa9;margin:9px 0 0}.credit{position:absolute;bottom:12px;right:13px;max-width:min(850px,calc(100% - 26px));padding:7px 10px;background:#10232bed;border:1px solid #566b72;border-radius:8px;color:#c0cfca;font-size:9px}.credit a{color:#d5dca8}.error{position:absolute;left:16px;bottom:16px;padding:12px;background:#401b21;color:white}@media(max-width:600px){.panel{left:9px;top:9px;padding:13px;width:min(380px,calc(100% - 18px))}.title{font-size:21px}.credit{left:9px;right:9px;bottom:8px;font-size:8px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="世界の国別電力アクセス率を示す地図。ドラッグで移動、ホイールで拡大縮小できます"></canvas>
+  <aside class="panel">
+    <div class="eyebrow">30DayMapChallenge · Day 12</div>
+    <div class="title">Power</div>
+    <p class="sub">電気につながる人の割合。電力へのアクセスが、地図の色を変えていく。</p>
+    <p id="counts" class="counts">地図を読み込み中</p>
+    <p id="release" class="release"></p>
+    <div class="timeline"><output id="year-value" for="year">2024</output><input id="year" type="range" min="1990" max="2024" value="2024" aria-label="表示年"><button id="play" class="play" type="button" aria-pressed="false">▶ 再生</button></div>
+    <p id="coverage" class="coverage"></p>
+    <div class="legend"><span>0%</span><i class="gradient"></i><span>100%</span><i class="nodata"></i><span>No Data</span></div>
+    <p id="source-status" class="source-status"></p>
+    <p class="controls">年を選択 · ドラッグで移動 · ホイールで拡大縮小</p>
+  </aside>
+  <footer class="credit">出典: <a href="https://data.worldbank.org/indicator/EG.ELC.ACCS.ZS" target="_blank" rel="noreferrer">World Bank WDI · EG.ELC.ACCS.ZS</a> · 2026-10-01 · CC BY 4.0 · World Bank does not endorse this copy · 境界: <a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer">Natural Earth 10m</a> Public Domain</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

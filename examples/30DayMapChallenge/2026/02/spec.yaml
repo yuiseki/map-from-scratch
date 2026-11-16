@@ -1,0 +1,128 @@
+id: 30DayMapChallenge-2026-02
+request: >-
+  30DayMapChallenge 2026 の「Lines」。1980 年以降の熱帯低気圧の観測位置を
+  ストームごとの線としてつなぎ、盆地別に色分けした世界地図を表示する。
+requirements:
+  - id: storm-tracks
+    need: IBTrACS の観測点をストーム識別子ごとに時刻順でつなぐ
+    rationale: 各 SID 内の隣接記録から線分を作り、SID 間を接続しない
+  - id: basin-colors
+    need: 7 盆地を凡例付きで区別できる
+    rationale: 各 agency の風速・気圧定義に依存しない色分けを行う
+  - id: antimeridian
+    need: 日付変更線を越えるストームを世界地図上で誤接続しない
+    rationale: 緯度を補間して ±180 度で線分を分割する
+    unmeasured: antimeridian の正しさは幾何単体テストで検証する
+  - id: responsive-map
+    need: PC ブラウザで地図を移動・拡大縮小できる
+    unmeasured: 操作時 frame p95 16.7 ms 以内
+  - id: quick-start
+    need: ページを開いて全世界の経路をすぐ見られる
+    unmeasured: 初回描画 1 秒以内
+
+evaluation:
+  budgets:
+    - {metric: segment_count, min: 303826, unit: segments, requirement: storm-tracks}
+    - {metric: basin_count, min: 7, unit: basins, requirement: basin-colors}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-map}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 24000, unit: B, requirement: quick-start}
+  gates: [全 source 観測の妥当性検査, antimeridian check, 実画面に線が表示される, ハードウェア GPU, エラーなし]
+
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/02/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-world
+      what: 全ストーム線を描いて readPixels で GPU 完了を待つ
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 地図を80フレーム移動・拡大縮小して描画する
+      metrics: [frame_ms, gpu_ms]
+
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/02/bake.ts]
+  sources:
+    - id: ibtracs-since1980
+      origin: >-
+        NOAA/NCEI IBTrACS v04r01 since 1980 GeoParquet; 311,935 observations
+        and 5,010 SID across seven basins, source snapshot downloaded 2026-10-25.
+      license: >-
+        IBTrACS Terms of Use (WDC full and open access; WMO Resolution 40
+        guidance for commercial use). Credit NOAA/NCEI; cite Gahtan et al. 2024
+        dataset DOI 10.25921/82ty-9e16 and Knapp et al. 2010 BAMS DOI
+        10.1175/2009BAMS2755.1.
+      url: https://www.ncei.noaa.gov/products/international-best-track-archive
+    - id: ne-countries
+      origin: Natural Earth 10m Admin 0 countries v5.1.1, geographic context
+      license: Public domain
+  outputs:
+    - data/baked/30DayMapChallenge-2026-02/land.bin
+    - data/baked/30DayMapChallenge-2026-02/tracks.bin
+    - data/baked/30DayMapChallenge-2026-02/stats.json
+  preparation:
+    - >-
+      GeoParquet の SID, ISO_TIME, LAT, LON, BASIN を使い、記録のない値を除外し
+      SID・時刻順に並べ、各 SID 内の連続点だけを線分にする。LON が 180 度より
+      大きい値は 360 度を引いて CRS84 の経度範囲に正規化する。
+    - >-
+      ±180 度をまたぐ線分は緯度を補間して二分し、Equal Earth 座標を
+      16-bit に量子化して GPU 用セグメントへ焼き込む。
+
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2
+    language: TypeScript
+    gpu: hardware
+    code:
+      - examples/30DayMapChallenge/2026/02/index.html
+      - examples/30DayMapChallenge/2026/02/main.ts
+      - examples/30DayMapChallenge/2026/02/renderer.ts
+      - examples/30DayMapChallenge/2026/02/tracks.ts
+    dependencies: []
+    why: >-
+      静的な大量線分を一括 GPU 描画し、専用シェーダーで画面ピクセル幅の
+      線に展開する。実行時の地図エンジンやネットワーク取得を使わない。
+  alternatives:
+    - option: Canvas 2D の全線個別パス描画
+      rejected_because: 多数の線を毎フレーム CPU 投影・描画しないため
+  not_doing: [時系列アニメーション, 台風強度の符号化, 個別ストーム検索, ラベル]
+
+performance_knowledge:
+  - id: instanced-screen-width-segments
+    finding: >-
+      303,826 本のセグメントを1回の instanced draw call で描き、画面幅 1.4 px の
+      線を頂点シェーダーで展開する。地図投影はシェーダー内で行う。
+    evidence: >-
+      RTX 3060 / Xvfb / 1280×800 / 3 runs / 240 camera frames で frame_ms p95
+      0.580 ms、gpu_ms p95 0.342 ms、first_frame_ms p50 515.5 ms、JS heap
+      p50 1.326 MB、コード gzip 6,215 B、データ gzip 約1,760,000 B。
+    applies_when: 数十万の静的な経路セグメントを同じ細さで重ねて描く場合
+
+verification:
+  checks:
+    - id: antimeridian
+      what: 日付変更線を越える線分が世界幅の短い2本になる
+      how: 単体テストで ±180 度端点と緯度補間を照合する
+      expected: 2 segments, neither spans more than 180 degrees of longitude
+    - id: source-counts
+      what: 固定した IBTrACS スナップショットの観測・SID・線分数を保持する
+      how: bake stats と renderer がアップロードした線分数を比較する
+      expected: 311935 observations, 5010 SID, 303826 segments
+    - id: basin-class
+      what: 7 basin クラスを不正な値なしで GPU に渡す
+      how: bake validation と renderer の basin 集計を比較する
+      expected: EP, NA, NI, SA, SI, SP, WP only
+    - id: tracks-visible
+      what: 経路の線が背景・陸地から区別できる
+      how: 実画面の輝度しきい値を越えるピクセルを数える
+      expected: 1000 pixels or more
+  harness:
+    - webglcontextlost はエラー
+    - info.gpu がソフトウェア描画なら失敗

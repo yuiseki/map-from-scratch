@@ -1,0 +1,115 @@
+id: 30DayMapChallenge-2026-24
+request: >-
+  30DayMapChallenge 2026「Network」。2022年の東京都バスルート線とバス停を別ソース層として地図に描き、事業者カバレッジと停留所の記録系統数を比較する。系統表記とルート線を結合したり、運行頻度や現況を推測したりしない。
+requirements:
+  - id: two-source-geographic-network
+    need: N07のLineStringとP11の停留所Pointを固定東京都範囲の同じ地図上に描く
+    rationale: 両資料は同じ2022年のKSJバス資料群だが、ソース上で別々の地物として提供される
+  - id: source-supported-memberships-only
+    need: 停留所の記録系統表記と停留所との関係だけをP11から作る
+    rationale: P11のroutes/kinds配列は対応するが、N07は系統名や共通キーを持たない
+  - id: operator-coverage
+    need: 元データの事業者名でフィルタリングし、各事業者の線数・停留所数を比べる
+    rationale: 運行量ではなく2022年資料中の掲載範囲を比較する
+    unmeasured: 事業者選択時の描画レイヤー・件数一致はブラウザ検査未実施
+  - id: inspect-stop-record
+    need: 停留所を選択して元ID・名称・事業者・n_routes・routes・kindsを確認する
+    rationale: 描画記号を元の記録内容へたどれるようにする
+    unmeasured: マウス・タッチ選択からの全source fields表示はブラウザ検査未実施
+  - id: dedicated-accessible-renderer
+    need: Canvas 2Dの独自描画器で、パン・ズーム・選択をポインターとキーボードから操作する
+    rationale: 静的な地理的線・点データを外部地図エンジンなしに描く
+  - id: historical-snapshot-caveats
+    need: 2022年の資料であること、時刻表・頻度・現在の運行を表さないことを画面に明記する
+    rationale: source layerには現況やダイヤ情報がない
+    unmeasured: 表示上の開示文言とruntime外部通信0件はブラウザ検査未実施
+evaluation:
+  budgets:
+    - {metric: source_route_lines_in_extent, min: 9545, max: 9545, unit: lines, requirement: two-source-geographic-network}
+    - {metric: source_bus_stops_in_extent, min: 6664, max: 6664, unit: stops, requirement: two-source-geographic-network}
+    - {metric: stop_route_memberships, min: 15286, max: 15286, unit: memberships, requirement: source-supported-memberships-only}
+    - {metric: operator_count, min: 57, max: 57, unit: operators in each source layer, requirement: operator-coverage}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: dedicated-accessible-renderer}
+    - {metric: frame_ms, stat: p95, max: 33.4, unit: ms, requirement: dedicated-accessible-renderer}
+    - {metric: draw_cpu_ms, stat: p95, max: 16.7, unit: ms, requirement: dedicated-accessible-renderer}
+    - {metric: code_gzip_bytes, max: 40000, unit: B, requirement: dedicated-accessible-renderer}
+    - {metric: data_gzip_bytes, max: 5000000, unit: B, requirement: dedicated-accessible-renderer}
+  gates: [N07線とP11点を別レイヤーとして表示, 出典付きP11の停留所-系統表記関係だけを示す, 現況・時刻表・頻度・N07対応を主張しない, 事業者選択と停留所詳細選択が動作, 両データ出典とCC BY 4.0を表示, 外部の地図サービス通信なし]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/24/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: fixed-area-network
+      what: 東京の固定範囲のN07線とP11停留所を描画する
+      metrics: [first_frame_ms]
+    - id: operator-and-inspection
+      what: 事業者を絞り込み、停留所を選択してソース項目を読む
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: pan-and-zoom-network
+      what: キーボード・ポインターの移動と拡大縮小を繰り返す
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/24/bake.ts]
+  sources:
+    - id: hf:ksj-n07-bus-route-greater-tokyo
+      origin: 国土数値情報 N07 バスルートデータ2022年版。東京都のprefecture 13を使用。LineString 17,540本、固定範囲に交差する線9,545本。
+      license: >-
+        CC BY 4.0。出典：「国土数値情報（バスルートデータ）」（国土交通省）（https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N07-v2_0.html）を加工して作成。
+    - id: hf:ksj-p11-bus-stop-jp
+      origin: 国土数値情報 P11 バス停留所データ2022年版。東京都のprefecture 13を使用。Point 12,389点、固定範囲内6,664点。
+      license: >-
+        CC BY 4.0。出典：「国土数値情報（バス停留所データ）」（国土交通省）（https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P11-v3_0.html）を加工して作成。
+  outputs: [data/baked/30DayMapChallenge-2026-24/network.json, data/baked/30DayMapChallenge-2026-24/stats.json]
+  preparation:
+    - N07とP11を個別に読み、東京の固定bbox (139.55–139.95 E, 35.52–35.82 N)へ絞る。N07線のgeometry extent交差とP11点のbbox包含を別々に判定する。
+    - EPSG:6668の経度・緯度を描画時にEPSG:3857へ変換する。`n_routes`は元の`routes[]`長と一致することを検査し、並行配列`kinds[]`の順序を保つ。
+    - N07とP11のIDはjoinしない。P11内でのみ完全一致の(operator, route label)表記群とstop-id incidenceを構成し、系統表記の共有以上の意味を与えない。
+    - 同じsource idの完全一致N07重複行は一件だけ保持し、同一idに異なる内容があればエラーとする。P11停留所レコードはsource idで保持する。
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver + native keyboard events
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/24/index.html, examples/30DayMapChallenge/2026/24/main.ts, examples/30DayMapChallenge/2026/24/renderer.ts, examples/30DayMapChallenge/2026/24/network.ts]
+    dependencies: []
+    why: >-
+      数千本の線と数千の点を一つの固定範囲で描くためCanvas 2Dを用いる。ソースが持つ地理形状・属性を維持し、外部ベースマップや地図SDKは使わない。
+  alternatives:
+    - option: N07線形とP11停留所IDを推測で接続する
+      rejected_because: 両データに共通キーがなく、誤った経路のトポロジーを作るため
+    - option: 同名系統の停留所を順番付きroute lineへ変換する
+      rejected_because: P11には停留所順序・方向がなく、同一表記は空間的な経路を確定しないため
+    - option: 時刻表・運行頻度・現在の運行を可視化する
+      rejected_because: 2022 N07/P11 source rowsにこれらの属性がないため
+  not_doing: [N07/P11間のline-to-stop join, 停留所順序と方向, 時刻表, 頻度, 運行容量, 現在の運行保証, 外部地図タイル]
+performance_knowledge:
+  - id: static-network-canvas-three-run-measurement
+    finding: >-
+      N07線の空間形状とP11停留所点をCanvas 2Dで別々に再描画する。1280×800相当の3-run harness計測で、初回描画p50 304.5 ms、描画CPU p95 12.13 ms、フレーム間隔p95 15.78 ms、データgzip 1,458,086 B、配信コードgzip 10,230 Bとなり各budget内だった。
+    evidence: >-
+      `results/30DayMapChallenge-2026-24/latest.json`。2026-11-05に資源上限付きで3反復。3反復すべてのsource/schema/filter/attribution checksと予算がPASSし、外部origin requestは0件。最大フレーム間隔は84.35 msでp95 budgetとは別に長いtailが観測された。
+    applies_when: 東京都の固定AOIに含まれる2022年KSJ N07線形とP11停留所を表示する。
+verification:
+  checks:
+    - id: source-layers-stay-distinct
+      what: N07線形とP11点が独立のsourceレコード群として保たれる
+      how: bake統計と描画source種類を照合する
+      expected: N07 geometryからP11 stop IDを推定しない
+    - id: stop-membership-is-source-backed
+      what: P11 route/kinds配列の位置ごとの対応を保つ
+      how: 元行schema検証と停留所詳細の操作を確認する
+      expected: n_routes equals routes.length equals kinds.length
+    - id: operator-coverage-filter
+      what: 事業者フィルターが元のoperator文字列で両レイヤーを限定する
+      how: ブラウザで選択前後のsource feature数と表示を比較する
+      expected: 選択事業者以外の地物が消え、各件数が選択事業者のsource数と一致する
+    - id: dated-sources-attribution-and-caveats
+      what: 2022 snapshot、両原典credit、CC BY 4.0と推論限界を表示する
+      how: ブラウザDOMとリンク先、外部リクエストを確認する
+      expected: 現況/頻度/方向を主張せず、実行時の外部地図通信なし

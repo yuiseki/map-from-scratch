@@ -1,0 +1,130 @@
+id: 30DayMapChallenge-2026-19
+request: >-
+  30DayMapChallenge 2026「Senses: Smell」。東京の実在施設候補とJMAの時刻付き風観測を示し、仮定に基づく風下の広がりを地図化する。臭気・濃度・曝露の実測と誤認させない。
+requirements:
+  - id: traceable-site-and-observation
+    need: 実在する施設と風観測の地点・時刻・出典が追える
+    rationale: 東京都下水道局が紹介する芝浦水再生センターを2026-08-31 OSM snapshotのway/23690250で描き、東京気象台の2026-11-04 18時観測（北北西・1.9 m/s）を併記する
+  - id: oriented-illustrative-corridor
+    need: 観測風の吹く向きに沿った風下域を示す
+    rationale: 方位角を正しく反転し、施設中心から5 km、距離に比例して幅が広がる扇形を描く。長さ・幅は説明用の仮定
+  - id: model-limitations-visible
+    need: 推定域を臭気の実測や健康・規制情報と誤認させない
+    rationale: 臭気放出量、鉛直気象、乱流、建物流、臭気測定がないため濃度・到達時刻・リスクを推定しないと画面に明記する
+    unmeasured: Page text states which model inputs are missing; it does not validate real-world plume dynamics.
+  - id: readable-geographic-context
+    need: 発生源候補、観測所、風向、風下扇形を同一の地理範囲で読める
+    rationale: OSM由来の道路・水路の限定的な背景をCanvas 2Dで描き、選択施設と気象観測地点、距離目盛り、北矢印を重ねる
+  - id: source-credit-and-no-runtime-fetch
+    need: 原資料と利用条件を示し、外部地図サービスに依存しない
+    rationale: JMA・東京都下水道局・OSMの出典をリンクし、ODbL帰属を表示する。描画データはローカル同梱
+    unmeasured: Source links and request origins are browser checks; the legal applicability of source terms is not adjudicated by a numeric metric.
+evaluation:
+  budgets:
+    - {metric: candidate_facilities, min: 1, max: 1, unit: features, requirement: traceable-site-and-observation}
+    - {metric: wind_observation_count, min: 1, max: 1, unit: observations, requirement: traceable-site-and-observation}
+    - {metric: plume_length_m, min: 5000, max: 5000, unit: m, requirement: oriented-illustrative-corridor}
+    - {metric: roads, min: 8353, max: 8353, unit: lines, requirement: readable-geographic-context}
+    - {metric: road_vertices, min: 17978, max: 17978, unit: vertices, requirement: readable-geographic-context}
+    - {metric: waterways, min: 689, max: 689, unit: lines, requirement: readable-geographic-context}
+    - {metric: waterway_vertices, min: 2515, max: 2515, unit: vertices, requirement: readable-geographic-context}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: readable-geographic-context}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: readable-geographic-context}
+    - {metric: first_frame_ms, stat: p50, max: 1200, unit: ms, requirement: readable-geographic-context}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: readable-geographic-context}
+    - {metric: data_gzip_bytes, max: 160000, unit: B, requirement: readable-geographic-context}
+  gates: [source way/23690250 verified against Tokyo Sewerage Bureau facility information, JMA Tokyo 2026-11-04 18:00 observation is 北北西 1.9 m/s, wind vector points SSE, 5 km wedge has source at origin, page states assumptions and no odor/concentration/exposure inference, OSM/JMA/Tokyo attribution links visible, no external runtime requests]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/19/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-static-map
+      what: Render OSM context, source outline, measured wind marker and illustrative downwind fan
+      metrics: [first_frame_ms]
+    - id: pan-and-redraw
+      what: Drag the map and redraw visible geometry and labels
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: credits-and-pixels
+      what: Check source, plume, legend, attribution and caveats in rendered pixels/page text
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/19/bake.ts]
+  sources:
+    - id: osm-tokyo23-src-2026-08
+      origin: Frozen Tokyo 23 wards OpenStreetMap snapshot, planet cut 2026-08-31. Extract way/23690250 and generalized roads/waterways inside fixed WGS84 bounds 139.64–139.86°E, 35.58–35.72°N. Source geometry table declares EPSG:3857; transform to WGS84 for baked output.
+      license: ODbL-1.0, © OpenStreetMap contributors. Derived geometry is attributed and distributed under the applicable share-alike terms.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+    - id: jma-tokyo-hourly-wind-2026-11-04
+      origin: Tokyo station hourly record at 18:00 on 2026-11-04. The official hourly page shows 北北西, 1.9 m/s. Station location rounded to 139.75°E, 35.69°N from JMA ClimatView. Data is frozen from the JMA page; it may be revised after publication.
+      license: JMA homepage data is available under Japan's Public Data License 1.0 unless otherwise marked. Attribute source and say the data was edited/processed; do not imply JMA endorsement.
+      url: https://www.data.jma.go.jp/stats/etrn/view/hourly_s1.php?prec_no=44&block_no=47662&year=2026&month=11&day=04&view=
+    - id: tokyo-sewerage-shibaura-center
+      origin: Tokyo Metropolitan Government Bureau of Sewerage page identifying the facility, function and address; used only to substantiate that the mapped candidate is a wastewater center, not an odor emission.
+      license: Tokyo Metropolitan Government website terms; cite the source page and do not present derived transport illustration as a government result.
+      url: https://www.gesui.metro.tokyo.lg.jp/pr/kouhou/shisetsu/44986
+  outputs: [data/baked/30DayMapChallenge-2026-19/smell.json, data/baked/30DayMapChallenge-2026-19/stats.json]
+  preparation:
+    - Query only way/23690250 and roads/waterways within the fixed AOI from the frozen local OSM Parquet. Simplify geometry before JSON serialization, convert EPSG:3857 to WGS84, and remove all unrelated tags.
+    - Freeze one JMA Tokyo hourly observation; map station wind-from degrees to a downwind vector using the opposite bearing. Keep observation location separate from the facility.
+    - Do not derive odor emission, concentration, decay, exposure, arrival time, or a plume probability from the available inputs.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/19/index.html, examples/30DayMapChallenge/2026/19/main.ts, examples/30DayMapChallenge/2026/19/renderer.ts, examples/30DayMapChallenge/2026/19/smell.ts, examples/30DayMapChallenge/2026/19/style.css, examples/30DayMapChallenge/2026/19/bench.ts]
+    dependencies: []
+    why: A single static facility, one station observation, and a small generalized context fit a direct Canvas 2D renderer; dynamic GPU work or a general map engine adds no required capability.
+  alternatives:
+    - option: Use a CFD or Gaussian dispersion concentration model
+      rejected_because: Source rate, stack characteristics and atmospheric stability inputs are not available; displaying concentration would imply unsupported precision.
+    - option: Load online map tiles or runtime services
+      rejected_because: The snapshot and selected source are baked into a static page; runtime network access would add no needed data.
+  not_doing: [measured odor, plume concentration, emission rate, exposure, health risk, regulatory exceedance, arrival time, source switching, forecasting, annual wind climatology, runtime external services]
+performance_knowledge:
+  - claim: A static, generalized AOI can be rendered without a map library or runtime network requests.
+    evidence: Three browser runs on 2026-11-05 measured frame p95 2.895 ms, draw CPU p95 2.02 ms, first frame p50 48.615 ms, code gzip 10,849 B, and the shipped smell.json gzip 155,812 B. All 12 budgets and 8 browser checks passed; the sidecar stats.json is not a runtime asset and is excluded from the data footprint.
+    applies_when: The single frozen observation and single facility candidate are used.
+verification:
+  checks:
+    - id: facility-and-observation-provenance
+      what: The mapped source, observation, provenance, date and meteorological wind-from label are visible.
+      how: Inspect baked source metadata, station metadata, JMA source link and visible observation label in the browser.
+      expected: Shibaura facility and Tokyo station are distinct; 北北西 and 1.9 m/s appear with 2026-11-04 18:00 JST.
+    - id: measured-site-and-candidate-not-conflated
+      what: The facility candidate and the meteorological observation are represented at separate locations.
+      how: Compare the station and source coordinates, and inspect the station marker pixels.
+      expected: The station is more than 5 km from the candidate and has a visible blue marker.
+    - id: downwind-fan-is-warm-and-upwind-is-not
+      what: The wedge is downwind of the source for a north-northwest wind.
+      how: Compare rendered RGB pixels inside the southeast fan and upwind of the source.
+      expected: The southeast fan is warm colored; the upwind sample is not warmer than the background.
+    - id: facility-outline-reaches-canvas
+      what: The mapped facility geometry is visible on the canvas.
+      how: Sample the rendered pixel at the source geometry center.
+      expected: The source outline pixel is distinguishable from the cool background.
+    - id: model-limits-and-credit-visible
+      what: Users can distinguish the illustration from measured odor or exposure and find the data sources.
+      how: Inspect visible caveat text and links in the rendered page.
+      expected: The constant-wind assumption, 5 km length, 250 m + 12% widening rule, no emission/concentration/exposure claim, separated station, JMA attribution, Tokyo facility source, and OSM ODbL credit appear.
+    - id: pointer-drag-pans-the-map
+      what: Pointer dragging pans the map.
+      how: Dispatch a pointer drag and compare the source screen position.
+      expected: The source moves by the drag displacement.
+    - id: zoom-controls-change-map-scale
+      what: Zoom controls adjust map scale.
+      how: Click the zoom-in control and inspect renderer zoom state.
+      expected: Zoom level increases.
+    - id: no-runtime-external-requests
+      what: The page runs on local baked data only.
+      how: Check Resource Timing entries after initial rendering.
+      expected: All requests remain same-origin.
+footprint:
+  code: [examples/30DayMapChallenge/2026/19/index.html, examples/30DayMapChallenge/2026/19/main.ts, examples/30DayMapChallenge/2026/19/renderer.ts, examples/30DayMapChallenge/2026/19/smell.ts, examples/30DayMapChallenge/2026/19/style.css, examples/30DayMapChallenge/2026/19/bench.ts]
+  data: [data/baked/30DayMapChallenge-2026-19/smell.json]

@@ -1,0 +1,122 @@
+id: 30DayMapChallenge-2026-07
+request: >-
+  30DayMapChallenge 2026 の「10 minute map」。上野駅から歩行可能な道路を一様速度の経路探索でたどり、10分以内に到達できる道路を到達時間別に描く。
+requirements:
+  - id: walkable-network
+    need: OSM歩行可能道路を接続グラフに変換し、上野駅からの経路距離を計算する
+    rationale: 徒歩圏を直線バッファでなく実際の道路接続に沿って表現する
+  - id: ten-minute-frontier
+    need: 10分以内に到達できる道路と範囲外の道路を区別し、到達時間で色分けする
+    rationale: 道路網上の徒歩圏とその境界を読み取れるようにする
+  - id: time-assumption
+    need: 出発地、歩行速度の仮定、推定所要時間の性質を画面に表示する
+    rationale: 実測の徒歩時間とルーティング結果を誤認しないようにする
+    unmeasured: 出典・速度仮定・推定の開示はブラウザベンチマークの文字列チェックで確認する
+  - id: navigation
+    need: 地図をドラッグ移動、ホイールで拡大縮小できる
+    rationale: 経路網と10分境界を細部まで確認できる
+  - id: quick-start
+    need: 初期画面で上野駅を中心とした10分圏を表示する
+    unmeasured: 初回描画はベンチマークで計測する
+evaluation:
+  budgets:
+    - {metric: graph_node_count, min: 1000, unit: junctions, requirement: walkable-network}
+    - {metric: graph_edge_count, min: 1000, unit: street-segments, requirement: walkable-network}
+    - {metric: reached_node_count, min: 100, unit: junctions, requirement: ten-minute-frontier}
+    - {metric: reachable_segment_count, min: 100, unit: street-segments, requirement: ten-minute-frontier}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 4, unit: ms, requirement: navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+  gates: [OSM pedestrian graph, ten-minute walk frontier, speed assumption and estimate disclaimer, OSM attribution and ODbL notice]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/07/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-walkshed
+      what: 上野駅を起点にした歩行ネットワークと10分圏を描く
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 80フレーム地図をパン・ズームしてネットワーク表示を更新する
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/07/bake.ts]
+  sources:
+    - id: hf:osm-tokyo23-src-2026-08
+      origin: >-
+        `planet_osm_line` GeoParquet lines from the OpenStreetMap planet snapshot of 2026-08-31,
+        cut to the Tokyo 23 wards; source coordinates use EPSG:3857 metres. Spatially select the
+        2.6 km square around Ueno Station and retain ways with pedestrian-compatible highway,
+        access and foot tags.
+      license: >-
+        Open Database License 1.0 (ODbL); the extract and derived graph remain ODbL.
+        Attribution: © OpenStreetMap contributors, available under the Open Database License 1.0.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs:
+    - data/baked/30DayMapChallenge-2026-07/walkshed.bin
+    - data/baked/30DayMapChallenge-2026-07/stats.json
+  preparation:
+    - >-
+      Select source GeoParquet rows whose EPSG:3857 bbox intersects a 2,600 m square centered
+      at Ueno Station (139.7774, 35.7138), decode LineString coordinates, clip each line segment
+      to that square, and connect shared OSM vertex coordinates rounded to centimetres. Exclude
+      explicit foot=no/private and general access=no/private unless foot access is explicitly permitted;
+      include mapped walkable highways and explicit pedestrian overrides.
+    - >-
+      Run Dijkstra from the nearest eligible graph node with 1.2 m/s assumed walking speed and
+      ten-minute budget. Convert EPSG:3857 projected distances to ground distance with cos(latitude),
+      include the station-to-network snap distance, and clip the frontier edge at the remaining time.
+      Quantize road endpoints and endpoint arrival times into aligned 12-byte W10M records. This is
+      an ODbL-derived database and an estimated walkshed, not a live routing service or measured travel time.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Path2D
+    language: TypeScript
+    gpu: none
+    code:
+      - examples/30DayMapChallenge/2026/07/index.html
+      - examples/30DayMapChallenge/2026/07/main.ts
+      - examples/30DayMapChallenge/2026/07/renderer.ts
+    dependencies: []
+    why: A local custom Canvas 2D renderer strokes a precomputed network graph directly; a dedicated Dijkstra bake computes walk-time cost once, so pan and zoom only redraw cached paths.
+  alternatives:
+    - option: straight-line circle or radius buffer
+      rejected_because: A circle crosses water, rail yards and disconnected street blocks, so it does not represent a walkable network.
+    - option: live geocoding and route API
+      rejected_because: External routing would make the map depend on an opaque network service and unversioned travel-time assumptions.
+  not_doing: [turn restrictions, slopes, traffic lights, live routing, user-selectable origin]
+performance_knowledge:
+  - claim: >-
+      Restricting the OSM source to a local 2.6 km square and baking graph traversal into quantized line segments keeps pan and zoom independent of route search.
+    evidence: >-
+      Chrome 156, Xvfb, 1280×800, 3 runs: 4,790 source line ways, 12,780 graph
+      nodes and 16,080 edges; 1,127 reached nodes and 1,376 reachable segments.
+      First-frame p50 79.9 ms; draw plus next requestAnimationFrame p95 1.715 ms;
+      draw CPU p95 0.085 ms. Code gzip 3,894 B and baked data gzip 108,700 B.
+      One offscreen pixel readback verifies the red origin marker separately.
+    applies_when: >-
+      The map displays a single origin and walk-time threshold over a fixed OSM snapshot with uniform assumed speed.
+verification:
+  checks:
+    - id: connected-origin
+      what: The origin snaps to the local walking graph and reaches a substantial number of junctions.
+      how: Compare the station snap distance and Dijkstra reachable-node count to baked statistics.
+      expected: Station snap within 100 m and at least 100 reachable junctions.
+    - id: ten-minute-frontier
+      what: Reachable roads include a clipped 10-minute frontier and unreachable context roads.
+      how: Inspect W10M edge reachability records and the rendered time bands.
+      expected: More than 100 reachable segments and at least one outside-frontier segment.
+    - id: origin-pixel
+      what: The station marker is visibly rendered at the map center.
+      how: Read a 1-pixel sample through an offscreen canvas after drawing.
+      expected: The sample is the high-contrast red origin marker.
+    - id: source-disclosure
+      what: The source date, attribution, ODbL and estimated-speed caveat are visible.
+      how: Inspect the page footer and the stated assumed walking speed.
+      expected: OSM contributors, 2026-08-31, ODbL 1.0, and estimate label are shown.

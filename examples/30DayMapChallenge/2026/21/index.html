@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f0e7">
+  <title>OpenStreetMapの記述 — 30DayMapChallenge 2026 / 21</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="東京・渋谷から代々木周辺のOpenStreetMapデータ。矢印キーで移動、プラスとマイナスで拡大縮小、角括弧で施設を巡回できます。"></canvas>
+  <main class="panel">
+    <p class="eyebrow">30DAYMAPCHALLENGE · 21 / OPENSTREETMAP</p>
+    <h1>地図は、タグの集積でできている。</h1>
+    <p class="intro">渋谷から代々木へ。コミュニティが記録した道、線路、建物、緑、水、施設を、元のOSMタグのまま読み解く。</p>
+    <div class="date-line"><span class="dot"></span> OpenStreetMap snapshot · 2026.08.31</div>
+    <fieldset class="layers" aria-label="地図カテゴリ">
+      <legend>表示するデータ</legend>
+      <label><input type="checkbox" data-category="road" checked><i class="swatch road"></i>道路 <small data-count="road">—</small></label>
+      <label><input type="checkbox" data-category="railway" checked><i class="swatch railway"></i>鉄道 <small data-count="railway">—</small></label>
+      <label><input type="checkbox" data-category="building" checked><i class="swatch building"></i>建物 <small data-count="building">—</small></label>
+      <label><input type="checkbox" data-category="water" checked><i class="swatch water"></i>水域 <small data-count="water">—</small></label>
+      <label><input type="checkbox" data-category="green" checked><i class="swatch green"></i>緑地 <small data-count="green">—</small></label>
+      <label><input type="checkbox" data-category="public-place" checked><i class="swatch public"></i>公共・生活施設 <small data-count="public-place">—</small></label>
+    </fieldset>
+    <div class="map-controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">全体表示</button>
+      <button id="feature-prev" type="button" aria-label="前の施設">‹</button>
+      <button id="feature-next" type="button" aria-label="次の施設">›</button>
+      <span>ドラッグ / 矢印で移動 · ホイール / ±で拡大 · [ ] で施設選択</span>
+    </div>
+    <section class="selection" aria-live="polite" aria-label="選択中の地物">
+      <div class="selection-label">選択した地物 · 元データとタグ</div>
+      <div id="feature-info"><p class="empty">地図上を選択するか、施設をキーボードで巡回できます。</p></div>
+    </section>
+    <div class="coordinate-row"><canvas id="scale-bar" width="180" height="28" aria-label="EPSG:3857 projected scale bar"></canvas><span id="coordinate">座標を読み込み中…</span></div>
+    <p class="caveat">矩形で切り出した一部です。行政界ではなく、都市全体の網羅性も示しません。OpenStreetMapはコミュニティが編集する地図で、法定測量成果や完全性の保証ではありません。</p>
+  </main>
+  <footer class="attribution">
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
+    <span>·</span><span>ODbL 1.0 · share-alike</span>
+    <span>·</span><span>抽出範囲: 渋谷–代々木の矩形（WGS84 139.685–139.715°E / 35.650–35.675°N）</span>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

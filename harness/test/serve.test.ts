@@ -21,6 +21,7 @@ test('the server answers Range requests with 206 and the right bytes', async () 
   writeFileSync(join(dir, 'a.bin'), Buffer.from(Array.from({ length: 100 }, (_, i) => i)));
   writeFileSync(join(dir, 'm.ts'), 'const x: number = 1;\nexport default x;\n');
   writeFileSync(join(dir, 'd.wasm'), Buffer.from([0, 97, 115, 109]));
+  writeFileSync(join(dir, 'sheet.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   const server = await serve(dir);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {
@@ -46,6 +47,10 @@ test('the server answers Range requests with 206 and the right bytes', async () 
     const wasm = await fetch(`${base}/d.wasm`);
     assert.equal(wasm.headers.get('content-type'), 'application/wasm');
     await wasm.arrayBuffer();
+
+    const svg = await fetch(`${base}/sheet.svg`);
+    assert.equal(svg.headers.get('content-type'), 'image/svg+xml');
+    assert.match(await svg.text(), /<svg/);
   } finally {
     server.close();
   }

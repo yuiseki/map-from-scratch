@@ -98,6 +98,9 @@ function inline(text: string, lineNo: number): Yaml {
     if (t.slice(end).trim() !== '') throw new Error(`yaml line ${lineNo}: unexpected text after value`);
     return v;
   }
+  if (/^[&*!|>@%`]/.test(t)) {
+    throw new Error(`yaml line ${lineNo}: plain scalar starts with a reserved YAML indicator; quote it`);
+  }
   return scalar(t);
 }
 

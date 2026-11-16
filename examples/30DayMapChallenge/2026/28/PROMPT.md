@@ -1,0 +1,24 @@
+# Day 28 implementation prompt — Senses: Feeling
+
+Create an original map for **30DayMapChallenge 2026 · 28 Senses: Feeling**. Use real geographic data to map the spatial presence of vegetation as a carefully labeled *physical proxy for green respite*. This is not a map of anyone's actual emotions, psychological state, park access, or quality of experience. The challenge does not require a fictional map.
+
+## Source and interpretation
+
+- Read `.agents/skills/yuiseki-open-data/SKILL.md` and the catalog section for `hf:esa-worldcover-tokyo-2021-100m`. Before selecting fields or processing, inspect the exact local dataset card, license and attribution, schema, raster-to-table representation, class definitions, pixel counts, CRS, AOI coverage and null/nodata conventions. Confirm that all redistribution and derived-map display terms are compatible.
+- Candidate local input: `/sata_hdd_24tb/hf_data/esa-worldcover-tokyo-2021-100m/data/parquet/esa_worldcover_tokyo_2021_v200_100m.parquet` (resolve the actual path from the catalog/card before using it). The HF dataset id is `yuiseki/esa-worldcover-tokyo-2021-100m`. The catalog describes 2021 100 m cell polygons with per-class pixel counts, `valid_pixels`, `nodata_pixels`, `dominant_class`, `dominant_share`, and EPSG:4326 geometry; verify these details against the source.
+- Choose an exact fixed, compact Tokyo AOI and record its bbox/selection method. Use actual source cells and classes only. A green-share index may sum the source counts for documented tree cover, shrubland, grassland and wetland classes, divided by valid pixels. Decide and document explicitly whether cropland contributes; do not merge it into vegetation without explaining that choice. Preserve no-data and cells without valid pixels as their own states rather than zero green.
+- The main encoding should be the documented green-cover share from 0 to 1, not a claim that the places feel good, restful, safe, accessible or healthy. State the numerator, denominator, included ESA WorldCover classes and source year visibly. No individual or survey-level data is involved. Include appropriate geographic orientation, ordered legend, one selected cell's raw class counts, scale/coordinate context, source links and exact ESA/Copernicus attribution from the card.
+
+## Dedicated renderer
+
+- Build a renderer specifically for the selected WorldCover cell data. Do not use MapLibre, Leaflet, deck.gl, D3 geo, Three.js, Cesium, map tiles, external APIs, a generic map engine or generated imagery. Use WebGL2 instanced grid cells if volume measurements justify it; a source-specific Canvas2D renderer is acceptable if it meets the documented frame budget. Do not use both merely as interchangeable implementations.
+- Provide pan, zoom, reset, resize and accessible source-cell inspection. Initialize the map centered on the selected AOI, show cell scale correctly, and avoid interpreting a 100 m land-cover cell as a park boundary or exact visitor experience.
+- If reading a derived raster/pixel table, preserve source pixel-count semantics. Handle antimeridian/CRS and invalid geometry only if relevant to actual inputs; test the actual edge cases rather than assuming.
+
+## Engineering and evidence
+
+- TDD: add failing tests first for source count validation, class aggregation and numerator/denominator, zero versus no-data, AOI selection, coordinate/geometry transform, serialization, and picking. The implementation and small synthetic test fixtures must not introduce fictional display features.
+- Add deterministic bake, source/statistics sidecar, `spec.yaml`, `README.md`, detailed `REQUEST.md`, dedicated renderer, browser benchmark and browser checks. Document exact source table/path, fields, class ids/names, source year, CRS, AOI and selection rule, row/cell/pixel counts, valid/nodata totals, attribution/license, all aggregation steps and limitations.
+- Browser checks must verify exact source totals, rendered green-share classes and no-data state in real pixels, selected source-cell fields, pan/zoom/reset, legend and caveat, source credit, and no off-origin runtime data/map requests. Run three capped measurements, capture a 1280×800 screenshot and visually inspect it. Report misses/failures and distinguish measurement of the renderer from whole-page/network latency.
+- All real-data processing, bakes, tests, build/type checks, browser checks and benchmarks must use `systemd-run --user --scope -q -p MemoryMax=8G -p MemorySwapMax=0 -p CPUQuota=400% -- <command>`. Never delete `tmp`.
+- Do not use image generation. Do not update shared TODO, commit or push. Defer browser measurements until the parent confirms that Day27's browser run has finished. Report source evidence, test/typecheck/bake results, ready-to-run browser commands, exact caveats and file paths to the parent.

@@ -1,0 +1,110 @@
+id: 30DayMapChallenge-2026-11
+request: >-
+  30DayMapChallenge 2026 の「Senses: Sound」。東京23区の道路・鉄道の分布から相対的な音の強さをモデル化し、独自のCanvas描画器とWeb Audio合成音で場所ごとのサウンドスケープを表す。
+requirements:
+  - id: real-geography
+    need: 東京23区の実在する道路と鉄道を地理的位置に沿って表示する
+    rationale: OSM 2026-08-31 の道路・鉄道線データから密度グリッドを生成する
+  - id: modeled-sound
+    need: 地点ごとに道路・鉄道の強さが異なる合成音を再生できる
+    rationale: クリック地点の2チャンネル密度からWeb Audioの交通ノイズと鉄道低音を調整する
+    unmeasured: 道路音と鉄道音の別チャンネルを保持し、選択地点の値が異なる合成音へ反映されることをソース・ブラウザ検査で確認する
+  - id: model-disclosure
+    need: 表示と再生音が実測値ではなくOSM線密度によるモデルであること、デシベルを表さないことを明記する
+    unmeasured: 出典とモデルの説明文をブラウザベンチマークで確認する
+  - id: navigation
+    need: 地図をドラッグ移動、ホイールで拡大縮小し、クリック地点を選べる
+  - id: quick-start
+    need: 東京23区の道路・鉄道サウンドスケープが初回表示される
+evaluation:
+  budgets:
+    - {metric: road_ways, min: 1000, unit: OSM-ways, requirement: real-geography}
+    - {metric: rail_ways, min: 100, unit: OSM-ways, requirement: real-geography}
+    - {metric: road_cells, min: 1000, unit: grid-cells, requirement: real-geography}
+    - {metric: rail_cells, min: 250, unit: grid-cells, requirement: real-geography}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: navigation}
+    - {metric: draw_cpu_ms, stat: p95, max: 4, unit: ms, requirement: navigation}
+    - {metric: first_frame_ms, stat: p50, max: 1000, unit: ms, requirement: quick-start}
+    - {metric: code_gzip_bytes, max: 32000, unit: B, requirement: quick-start}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: quick-start}
+  gates: [real Tokyo road and railway geography, different generated road and rail sound channels, no measured dB claim, OSM attribution and ODbL]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/11/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-soundscape
+      what: OSMの道路・鉄道グリッドを東京23区の範囲に初期描画する
+      metrics: [first_frame_ms]
+    - id: pan-and-zoom
+      what: 合成済みグリッドを80フレーム移動・拡大縮小する
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/11/bake.ts]
+  sources:
+    - id: hf:osm-tokyo23-src-2026-08
+      origin: >-
+        `planet_osm_line` GeoParquet from the 2026-08-31 OpenStreetMap snapshot covering Tokyo's 23 wards; source geometry uses EPSG:3857.
+      license: >-
+        Open Database License 1.0 (ODbL); this derived grid remains ODbL. Attribution: © OpenStreetMap contributors, available under the Open Database License 1.0.
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs:
+    - data/baked/30DayMapChallenge-2026-11/soundscape.bin
+    - data/baked/30DayMapChallenge-2026-11/stats.json
+  preparation:
+    - >-
+      Select OSM highway classes from motorway through service and railway classes rail, subway, light_rail, monorail, tram and funicular in the Tokyo 23-ward bounding box. Sample projected line segments every 28 m and sum class-weighted length into a 320x320 grid covering 139.55–139.92 E, 35.52–35.82 N. Road and rail channels are stored separately in uint16 cells.
+    - >-
+      Render the channels as a custom Canvas 2D heat field. At a user-selected cell, synthesize filtered noise and low-frequency oscillation with Web Audio. The model represents mapped line density and class only; it is not acoustic propagation, measured sound pressure, a dB scale, or a recording.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Web Audio API
+    language: TypeScript
+    gpu: none
+    code:
+      - examples/30DayMapChallenge/2026/11/index.html
+      - examples/30DayMapChallenge/2026/11/main.ts
+      - examples/30DayMapChallenge/2026/11/renderer.ts
+      - examples/30DayMapChallenge/2026/11/soundscape.ts
+    dependencies: []
+    why: A 320x320 two-channel grid is small enough for Canvas 2D; direct Web Audio synthesis makes the sound responsive without downloading recordings or playing unlicensed source audio.
+  alternatives:
+    - option: measured noise stations
+      rejected_because: No vetted, spatially complete Tokyo noise measurement dataset is registered in the open-data catalog for this task.
+    - option: ambient sound recordings
+      rejected_because: Recordings do not establish a reliable acoustic value for every map cell and would introduce separate licensing and download costs.
+    - option: generic map engine
+      rejected_because: A fixed local grid and simple camera need no general-purpose map engine.
+  not_doing: [measured dB, acoustic propagation or barriers, building noise, ambient recordings, live OSM requests]
+performance_knowledge:
+  - claim: >-
+      Baking the fixed OSM line network into a compact two-channel raster makes pan and zoom redraw independent of source way count.
+    evidence: Pending browser benchmark.
+    applies_when: The map displays the fixed 320x320 line-density field and synthesizes audio only for the selected cell.
+verification:
+  checks:
+    - id: source-coverage
+      what: The baked OSM source contains substantial road and railway coverage across the Tokyo extent.
+      how: Compare source way and occupied cell counts to baked stats.
+      expected: At least 1,000 road ways, 100 railway ways, 1,000 road cells and 250 railway cells.
+    - id: channel-separation
+      what: The map and audio model retain separate road and rail channels.
+      how: Decode the fixed-width grid and assert both channels are nonzero in the map.
+      expected: Both channel cell counts exceed their declared minimum.
+    - id: real-place-rendered
+      what: A known Tokyo place maps to an occupied road or rail cell that is visible on screen.
+      how: Check the Shibuya grid values and read the rendered canvas pixel at that coordinate.
+      expected: At least one channel is present and the screen pixel contains map color.
+    - id: model-disclosure
+      what: Users can distinguish modeled sound from measured noise.
+      how: Browser benchmark checks the visible model disclaimer and data-source link.
+      expected: Explicitly says modeled/generated, not measured, and no dB values.
+    - id: audio-synthesis
+      what: The browser can provide the user-gesture sound control and Web Audio API for synthesized sound.
+      how: Check AudioContext availability and run unit tests for separate bounded road and railway synthesis parameters.
+      expected: Web Audio is available and each channel independently changes its sound parameters.

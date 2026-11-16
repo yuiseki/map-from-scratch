@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1419">
+  <title>16 · Collaborative map — 30DayMapChallenge 2026</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#0b1419;color:#e8eee7}*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}#map{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}#panel{position:absolute;z-index:2;left:18px;top:18px;width:min(380px,calc(100vw - 36px));padding:18px 18px 15px;border:1px solid #465a5c;border-radius:15px;background:linear-gradient(145deg,#11252aef,#101b20f2);box-shadow:0 20px 60px #0009;max-height:calc(100vh - 36px);overflow:auto;backdrop-filter:blur(10px)}.eyebrow{font:10px ui-monospace,monospace;letter-spacing:.18em;color:#f3c577}h1{font-size:23px;letter-spacing:.01em;margin:9px 0 8px;line-height:1.2}p{font-size:12px;line-height:1.62;color:#c3d0cc;margin:8px 0}.muted{color:#8ca3a2;font-size:10px}.section-label{display:flex;justify-content:space-between;align-items:center;margin-top:14px;color:#9bb2b1;font-size:10px}.section-label strong{color:#f6d597;font:600 11px ui-monospace,monospace}.row{display:flex;align-items:center;gap:10px;margin:4px 0}input[type=range]{flex:1;accent-color:#ffc66e;min-width:100px}button{font:inherit;color:#dce8e1;background:#1b3339;border:1px solid #51686b;border-radius:7px;padding:6px 9px;cursor:pointer}button:hover{background:#28454b}button:focus-visible,input:focus-visible,canvas:focus-visible,summary:focus-visible{outline:2px solid #ffd37d;outline-offset:2px}#timeline{display:block;width:100%;height:64px;cursor:pointer;touch-action:manipulation}.legend{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;color:#b5c5c2;font-size:10px}.legend span{display:flex;align-items:center;gap:5px}.legend i{width:8px;height:8px;display:inline-block;border-radius:50%}#selected{min-height:37px;padding:9px 10px;border-left:2px solid #ffcb73;background:#15282d;color:#e2e7da;font-size:11px;line-height:1.55}#counts{margin-top:8px;font:10px ui-monospace,monospace;color:#aec1bf}#status{font:10px ui-monospace,monospace;color:#a5b8b5;margin-top:8px}details{font-size:10px;margin-top:11px}summary{color:#c7d4c5;cursor:pointer}#prompt{white-space:pre-wrap;max-height:160px;overflow:auto;color:#afc0bb;font-size:9px;line-height:1.5}footer{position:absolute;right:12px;bottom:10px;z-index:2;max-width:min(660px,calc(100vw - 24px));padding:7px 10px;border:1px solid #364a4d;border-radius:7px;background:#0b1518ed;color:#aebeba;font-size:9px;line-height:1.5;text-align:right}footer a{color:#a8e0cf}.map-key{color:#f7d184;font:10px ui-monospace,monospace}@media(max-width:720px){#panel{left:8px;top:8px;width:min(370px,calc(100vw - 16px));padding:12px 13px 10px;max-height:48vh;border-radius:12px}h1{font-size:18px;margin:6px 0}.eyebrow{font-size:9px}p{font-size:10px;line-height:1.45;margin:6px 0}.section-label{margin-top:8px}#timeline{height:48px}.legend{margin:5px 0;gap:7px}#selected{min-height:31px;padding:7px;font-size:10px}#status{display:none}details{margin-top:6px}footer{font-size:8px;right:6px;bottom:6px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="OpenStreetMap 渋谷地区の2025年建物編集を、約40メートル四方の格子で月ごとに累積表示する地図。矢印キーで格子を選べます。"></canvas>
+  <section id="panel" aria-label="地図の説明と操作">
+    <div class="eyebrow">30DAYMAPCHALLENGE · DAY 16</div>
+    <h1>地図に残る、みんなの手。</h1>
+    <p>渋谷の建物に加わった OpenStreetMap の編集を、2025年の月ごとに追います。セルの色は、選んだ月までに記録された編集件数です。</p>
+    <div class="section-label"><label for="month">表示する月</label><strong id="month-label">2025年 1月までの累積</strong></div>
+    <div class="row"><button id="previous" type="button" aria-label="前の月">‹</button><input id="month" type="range" min="0" max="11" step="1" value="0" aria-label="累積する最後の月"><button id="next" type="button" aria-label="次の月">›</button></div>
+    <canvas id="timeline" role="img" aria-label="2025年の月ごとの建物編集件数。クリックで表示月を変更"></canvas>
+    <div class="legend"><span><i style="background:#67d6b5"></i>新規</span><span><i style="background:#65bdff"></i>形状変更</span><span><i style="background:#ffb86b"></i>属性変更</span><span><i style="background:#d49cff"></i>未分類</span></div>
+    <div id="selected" aria-live="polite">セルを選ぶと、そこに集まった編集種別が表示されます。</div>
+    <div id="status">位置データを読み込み中</div>
+    <div id="counts">記録を読み込み中</div>
+    <p class="muted">格子は約38 × 46 m。点はAPIが返す地物の重心を格子にまとめた位置で、編集の正確な範囲ではありません。位置を伴わない削除10件は地図から除外。種別は1件で重なる場合があります。個別投稿者や手作業・自動編集の区別は保持せず、件数を編集者の人数や地図の品質として扱いません。</p>
+    <p class="muted">地図を選択し、矢印キーで格子を移動できます。月スライダーはキーボードでも操作できます。</p>
+    <details><summary>制作プロンプトを読む</summary><pre id="prompt">読み込み中</pre></details>
+  </section>
+  <footer>データ：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · 履歴取得：<a href="https://ohsome.org/" target="_blank" rel="noreferrer">ohsome API</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">ODbL 1.0</a>（データベースの派生物には共有継承条件が適用されます）<br>対象：渋谷の約1 km² · 2025年 · 建物編集 · centroid集計 · 地図表示は OpenStreetMap / ohsome の公式サービスではありません</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

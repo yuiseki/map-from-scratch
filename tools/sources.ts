@@ -130,6 +130,52 @@ const SOURCES: Record<string, Source> = {
     remote: 'https://huggingface.co/datasets/yuiseki/ucdp-ged/resolve/main/parquet/26.1/ged.parquet',
     copy: true,
   },
+  // IBTrACS v04r01 since 1980. NOAA/NCEI terms; cite dataset and BAMS paper.
+  'ibtracs-since1980': {
+    out: 'ibtracs_since1980.parquet',
+    local: '/sata_hdd_24tb/hf_data/ibtracs-v04r01/data/parquet/since1980/ibtracs.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ibtracs-v04r01/resolve/main/parquet/since1980/ibtracs.parquet',
+    copy: true,
+  },
+  // World Bank World Development Indicators, selected redistributable annual series.
+  'worldbank-wdi-2026-10-01-data': {
+    out: 'worldbank_wdi_2026_10_01_data.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/worldbank-wdi/data/parquet/2026-10-01/data.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/worldbank-wdi/resolve/main/parquet/2026-10-01/data.parquet',
+    copy: true,
+  },
+  'worldbank-wdi-basic-annual': {
+    out: 'worldbank_wdi_basic_annual.parquet',
+    local: '/sata_hdd_24tb/www/html/static/worldbank/wdi_basic_annual.parquet',
+    remote: 'https://z.yuiseki.net/static/worldbank/wdi_basic_annual.parquet',
+    copy: true,
+  },
+  // MLIT monthly aggregated presence and broad home-area category counts, CC BY 4.0.
+  'mlit-fromto-city-2022-01': {
+    out: 'mlit_monthly_fromto_city.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/monthly_fromto_city.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/monthly_fromto_city.parquet',
+    copy: true,
+  },
+  // MLIT National People Flow Open Data, monthly 1 km mesh presence counts (2019–2021).
+  'mlit-mesh1km-2022-01': {
+    out: 'mlit_monthly_mesh1km.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/monthly_mdp_mesh1km.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/monthly_mdp_mesh1km.parquet',
+    copy: true,
+  },
+  'mlit-attribute-mesh1km-2022-01': {
+    out: 'mlit_attribute_mesh1km.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/attribute_mesh1km.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/attribute_mesh1km.parquet',
+    copy: true,
+  },
+  'mlit-city-master-2022-01': {
+    out: 'mlit_prefcode_citycode_master.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-1km-fromto-2022-01/data/parquet/prefcode_citycode_master.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-1km-fromto-2022-01/resolve/main/parquet/prefcode_citycode_master.parquet',
+    copy: true,
+  },
   // Natural Earth 10m admin 0, v5.1.1. Public domain.
   'ne-countries': {
     out: 'ne_10m_admin_0_countries.geojson',
@@ -163,6 +209,20 @@ const SOURCES: Record<string, Source> = {
     out: 'usgs_2025_m45.geojson',
     local: '/sata_hdd_24tb/hf_data/usgs-earthquake-catalog-2025-m45/data/raw/2026-10-25/comcat-2025-m45-us-net.geojson',
     remote: 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2025-01-01&endtime=2026-01-01&minmagnitude=4.5&eventtype=earthquake',
+    copy: true,
+  },
+  // GEBCO 2026 15 arc-second eastern Hokkaido extract; signed metre values.
+  'gebco-hokkaido-east-2026': {
+    out: 'gebco_2026_hokkaido_east_15as.parquet',
+    local: '/sata_hdd_24tb/hf_data/gebco-2026-hokkaido-east-15as/data/elevation.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/gebco-2026-hokkaido-east-15as/resolve/main/data/elevation.parquet',
+    copy: true,
+  },
+  // OurAirports frozen at 2026-08-31 (public domain; attribution requested).
+  'ourairports-2026-08': {
+    out: 'ourairports_2026_08_airports.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/ourairports-2026-08/data/parquet/airports.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ourairports-2026-08/resolve/main/parquet/airports.parquet',
     copy: true,
   },
   // Akita prefecture kumadas wildlife sightings (bear, boar, deer) 2022-2026. CC BY 4.0.
@@ -209,6 +269,77 @@ const SOURCES: Record<string, Source> = {
     local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23-260831.osm.pbf',
     copy: true,
   },
+  // Frozen OSM point table for the Tokyo 23 wards, EPSG:3857 GeoParquet;
+  // its extracted city boundary is from the same ODbL snapshot.
+  'osm-tokyo23-points': {
+    out: 'tokyo23_osm_points.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/parquet/planet_osm_point.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_point.parquet',
+    copy: true,
+  },
+  // Frozen Tokyo 23-ward OSM line table, EPSG:3857 GeoParquet; ODbL-derived.
+  'osm-tokyo23-lines': {
+    out: 'tokyo23_osm_lines.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/parquet/planet_osm_line.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_line.parquet',
+    copy: true,
+  },
+  // Frozen Tokyo 23-ward OSM polygon table, EPSG:3857 GeoParquet; ODbL-derived.
+  'osm-tokyo23-polygons': {
+    out: 'tokyo23_osm_polygons.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/parquet/planet_osm_polygon.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/parquet/planet_osm_polygon.parquet',
+    copy: true,
+  },
+  'osm-tokyo23-boundary': {
+    out: 'tokyo23_osm_boundary.geojson',
+    local: '/sata_hdd_24tb/hf_data/__published/osm-tokyo23-src-2026-08/data/tokyo23_osm_boundary.geojson',
+    remote: 'https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08/resolve/main/data/tokyo23_osm_boundary.geojson',
+    copy: true,
+  },
+  // GSI DEM10B around Mount Fuji, 100-pixel aggregates (~95.55 m),
+  // EPSG:3857. GSI Content Terms / Japan PDL1.0 with mandatory attribution.
+  'gsi-dem-fuji-100m': {
+    out: 'gsi_dem_fuji_100m.parquet',
+    local: '/sata_hdd_24tb/hf_data/gsi-dem-fuji-z14-100m-2026-10-25/data/elevation_100m.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/gsi-dem-fuji-z14-100m-2026-10-25/resolve/main/data/elevation_100m.parquet',
+    copy: true,
+  },
+  // 2020 census total population by 250 m JGD2011 mesh; CC BY 4.0.
+  'estat-census-mesh-250m-2020-jgd2011': {
+    out: 'estat_census_mesh_250m_2020_T001142.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/estat-census-mesh-250m-2020/data/parquet/T001142.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/estat-census-mesh-250m-2020/resolve/main/data/parquet/T001142.parquet',
+    copy: true,
+  },
+  // MLIT FY2025 urban-planning park areas; PDL1.0 / CC BY 4.0.
+  'mlit-toshi-keikaku-parks-2025': {
+    out: 'mlit_toshi_keikaku_kouen_2025.parquet',
+    local: '/sata_hdd_24tb/hf_data/__published/mlit-toshi-keikaku-jp/data/parquet/fy2025/kouen.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/mlit-toshi-keikaku-jp/resolve/main/data/parquet/fy2025/kouen.parquet',
+    copy: true,
+  },
+  // KSJ N07 Tokyo bus route lines, 2022 edition (CC BY 4.0).
+  'ksj-n07-bus-route-tokyo-2022': {
+    out: 'ksj_n07_bus_route_tokyo_2022.parquet',
+    local: '/sata_hdd_24tb/hf_data/ksj-n07-bus-route-greater-tokyo/data/parquet/prefectures/13.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ksj-n07-bus-route-greater-tokyo/resolve/main/data/parquet/prefectures/13.parquet',
+    copy: true,
+  },
+  // KSJ P11 Tokyo bus stops, 2022 edition (CC BY 4.0).
+  'ksj-p11-bus-stops-tokyo-2022': {
+    out: 'ksj_p11_bus_stops_tokyo_2022.parquet',
+    local: '/sata_hdd_24tb/hf_data/ksj-p11-bus-stop-jp/data/parquet/prefectures/13.parquet',
+    remote: 'https://huggingface.co/datasets/yuiseki/ksj-p11-bus-stop-jp/resolve/main/data/parquet/prefectures/13.parquet',
+    copy: true,
+  },
+  // MLIT National Land Numerical Information schools, 2023 Tokyo GeoParquet; CC BY 4.0.
+  'ksj-p29-schools-tokyo-2023': {
+    out: 'ksj_p29_schools_tokyo_2023.parquet',
+    local: '/sata_hdd_24tb/www/html/static/ksj/P29/P29-23_13_GML.parquet',
+    remote: 'https://z.yuiseki.net/static/ksj/P29/P29-23_13_GML.parquet',
+    copy: true,
+  },
   // kepler.gl demo datasets (commit 49c3101)
   'kepler-earthquakes': {
     out: 'kepler_earthquakes.csv',
@@ -253,6 +384,22 @@ const SOURCES: Record<string, Source> = {
     copy: true,
   },
 };
+
+// GHSL R2023A epoch 2020 Japan/East Asia tiles, converted to GeoParquet.
+// Population and built-up grids have distinct geotransforms; consumers must
+// align by geometry rather than assuming identical cell row/column indices.
+for (const product of ['population', 'built_surface'] as const) {
+  for (const tile of ['R5_C32', 'R5_C33', 'R6_C31', 'R6_C32', 'R6_C33']) {
+    const id = `ghsl-${product}-${tile}`;
+    const filename = `${tile}.parquet`;
+    SOURCES[id] = {
+      out: `ghsl_${product}_${filename}`,
+      local: `/sata_hdd_24tb/hf_data/ghsl-japan-core-2020-30arcsec/data/parquet/${product}/${filename}`,
+      remote: `https://huggingface.co/datasets/yuiseki/ghsl-japan-core-2020-30arcsec/resolve/main/data/parquet/${product}/${filename}`,
+      copy: true,
+    };
+  }
+}
 
 export function source(name: string): string {
   const s = SOURCES[name];

@@ -1,0 +1,48 @@
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #080f1d; color: #e8edf0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+#marks, #map { position: fixed; inset: 0; width: 100%; height: 100%; }
+#marks { z-index: 0; pointer-events: none; }
+#map { z-index: 1; touch-action: none; cursor: grab; outline: none; background: transparent; }
+#map:active { cursor: grabbing; }
+.panel { position: fixed; z-index: 2; top: 18px; left: 18px; width: min(370px, calc(100vw - 36px)); padding: 17px 18px 14px; border: 1px solid rgba(151, 183, 194, .25); border-radius: 14px; background: rgba(10, 20, 35, .92); box-shadow: 0 14px 45px rgba(0, 0, 0, .28); backdrop-filter: blur(12px); }
+.eyebrow { margin: 0 0 8px; color: #9db5bd; font-size: 9px; font-weight: 800; letter-spacing: .15em; }
+h1 { margin: 0; color: #f4f0dd; font-size: 25px; line-height: 1.15; font-weight: 650; }
+.intro { margin: 7px 0 15px; color: #b1c1c6; font-size: 11px; line-height: 1.5; }
+.timeline-label { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; color: #c7d4d6; font-size: 10px; }
+.timeline-label strong { color: #f3d2a0; font-variant-numeric: tabular-nums; font-size: 11px; }
+input[type="range"] { width: 100%; height: 22px; margin: 5px 0 0; accent-color: #faad72; cursor: pointer; }
+.timeline-foot { display: flex; justify-content: space-between; color: #899ca5; font-size: 9px; }
+.legend { margin-top: 14px; padding: 10px 11px; border-radius: 9px; background: rgba(135, 163, 181, .08); }
+.legend-title { margin-bottom: 7px; color: #c9d4d7; font-size: 10px; font-weight: 650; }
+.formula { display: block; margin: 2px 0; color: #91a8b0; font-size: 8px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.ring-key { display: flex; align-items: center; gap: 9px; color: #9eb2bb; font-size: 9px; }
+.rings { color: #faad72; font-size: 22px; line-height: 1; }
+.depth-keys { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-top: 8px; color: #a9b9be; font-size: 9px; }
+.depth-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.depth-keys i { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.shallow { color: #2ef5ca; background: #2ef5ca; }
+.intermediate { color: #ffbe57; background: #ffbe57; }
+.deep { color: #cd74ff; background: #cd74ff; }
+.selected { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(150, 180, 190, .18); }
+.selected h2 { margin: 0 0 7px; color: #9eb2bb; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.selected dl { display: grid; grid-template-columns: 105px 1fr; gap: 4px 8px; margin: 0; font-size: 10px; }
+.selected dt { color: #8599a2; }
+.selected dd { margin: 0; color: #e8e4d4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.controls { display: flex; gap: 6px; margin-top: 12px; }
+button { min-width: 33px; height: 30px; padding: 0 9px; border: 1px solid #39505d; border-radius: 7px; background: #172738; color: #e0e7e9; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+button:hover, button:focus-visible { border-color: #f0b37c; background: #203448; outline: none; }
+.keyboard { margin: 8px 0 0; color: #8599a2; font-size: 9px; line-height: 1.45; }
+.notice { position: fixed; z-index: 1; left: 18px; bottom: 48px; display: grid; gap: 4px; width: min(510px, calc(100vw - 36px)); padding: 9px 12px; border-left: 2px solid #e28e67; border-radius: 0 8px 8px 0; background: rgba(16, 24, 37, .88); }
+.notice strong { color: #f0c0a2; font-size: 10px; }
+.notice span { color: #b3c0c5; font-size: 9px; line-height: 1.45; }
+.credits { position: fixed; z-index: 2; right: 14px; bottom: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: min(750px, 60vw); padding: 6px 9px; border-radius: 6px; background: rgba(10, 20, 35, .82); color: #869ba4; font-size: 8px; }
+.credits a { color: #b8ccd0; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.credits a:hover { color: #ffe0b5; }
+@media (max-width: 700px) {
+  .panel { top: 8px; left: 8px; width: min(345px, calc(100vw - 16px)); padding: 13px; }
+  h1 { font-size: 21px; }
+  .intro { margin-bottom: 9px; }
+  .selected dl { grid-template-columns: 95px 1fr; }
+  .notice { left: 8px; bottom: 47px; width: calc(100vw - 16px); }
+  .credits { left: 8px; right: 8px; bottom: 7px; justify-content: flex-start; max-width: none; font-size: 7px; }
+}

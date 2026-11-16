@@ -47,10 +47,13 @@ if [[ "${1:-}" != --no-check ]]; then
     for source in maplibre leaflet deckgl d3 mapbox cesium openglobus tangram forge3d kepler luma threejs webgpu opfs wasm htmlcanvas; do
       [[ "$id" == "$source-"* ]] && site_dir=".cache/site/examples/$source/${id#"$source-"}"
     done
+    if [[ "$id" == 30DayMapChallenge-2026-* ]]; then
+      site_dir=".cache/site/examples/30DayMapChallenge/2026/${id##*-}"
+    fi
     [[ -d "$site_dir" || -d ".cache/site/baselines/$id" ]] || continue
     # An example with no bench scenarios never reports done, so it can only
     # time out here (08-10, 18-24).
-    spec=$(grep -l "^id: $id\$" examples/*/spec.yaml examples/*/*/spec.yaml baselines/*/spec.yaml 2>/dev/null | head -1)
+    spec=$(grep -l "^id: $id\$" examples/*/spec.yaml examples/*/*/spec.yaml examples/*/*/*/spec.yaml baselines/*/spec.yaml 2>/dev/null | head -1)
     [[ -n "$spec" ]] && grep -q '^  scenarios: \[\]' "$spec" && { echo "site check skipped (no bench scenarios): $id"; continue; }
     bin/mfs bench "$id" -n 1 --site >/tmp/mfs-site-check.log 2>&1 </dev/null && continue
     # One run is the first load of a fresh browser, and a budget's p50 over

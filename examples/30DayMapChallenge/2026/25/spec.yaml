@@ -1,0 +1,151 @@
+id: 30DayMapChallenge-2026-25
+request: >-
+  30DayMapChallenge 2026「Is this a map?」。USGS ComCat 2025 M4.5+地震の震央位置を保ち、マグニチュードと深さを別々の視覚チャンネルにした同心円のアフターイメージで、地図表現の慣習を崩す。
+requirements:
+  - id: exact-source-events
+    need: 選択した実データの全記録、位置、マグニチュード、深さ、時刻を失わず保持する
+    rationale: ローカルのUSGS ComCat 2025 GeoParquetからpreferred network us、type earthquake、M4.5+の8,502件だけを読み、event_id・longitude・latitude・mag・depth_km・timeを出力する。ID一覧のSHA-256で全ID保持を検証する
+  - id: global-location-and-artistic-traces
+    need: 地球上の位置がわかる全世界図を、通常の点図とは異なるアフターイメージとして描く
+    rationale: Natural Earth海岸線と15度経緯線を背景にし、各震央にマグニチュードで半径と強度が単調増加する3本の同心円を描く
+  - id: depth-is-independent
+    need: 深さをマグニチュードと混同せず独立に読める
+    rationale: 深さはshallow <70 km、intermediate 70–300 km、deep >=300 kmの3色に割り当て、凡例で区切り値を明記する
+    unmeasured: 色カテゴリと凡例の科学的な読みやすさは、数値性能指標では証明できないため、ブラウザ検証と視覚レビューで確認する
+  - id: exact-time-and-selection
+    need: 時刻をたどり、選択地点の元記録を識別できる
+    rationale: キーボード操作可能なrange inputで時系列順の記録をたどり、選択時刻までを表示する。選択パネルにUSGS ID、UTC時刻、座標、mag、depth_kmを示す
+    unmeasured: キーボード操作性と選択テキストの完全一致は機能チェックで検証し、単一の数値性能予算では表さない
+  - id: honest-interpretation-and-credit
+    need: 記号を物理的な地震波、揺れ、予測や危険度と誤認させず、出典と利用条件を示す
+    rationale: 数式と画面寸法を公開し、波紋は設計上のスクリーン記号だと表示する。USGS ComCatの public-domain acknowledgement とNatural Earthのpublic-domain creditを記す
+    unmeasured: Source terms, catalog completeness, and the physical meaning of an artistic symbol require provenance text and cartographic review rather than a numeric benchmark.
+  - id: local-only-rendering
+    need: 描画器は専用で、実行時に外部タイル・API・地図ライブラリを使わない
+    rationale: Canvas 2DとWebGL2でベイク済みデータだけを描き、外部リクエストを行わない
+  - id: responsive-map-performance
+    need: 8,502件の全球表示と操作でJavaScriptの円弧生成を避け、ブラウザ内で全震央リングを描画する
+    rationale: 深度色、強度、半径、source indexをGPU instance bufferに一度詰め、WebGL2 instanced drawで時刻cutoff以下の全リングを描く。目標をframe p95 16.7 ms、JavaScript draw p95 8 msとし、達成可否をブラウザ実測で記録する
+evaluation:
+  budgets:
+    - {metric: source_events, min: 8502, max: 8502, unit: events, requirement: exact-source-events}
+    - {metric: unique_event_ids, min: 8502, max: 8502, unit: ids, requirement: exact-source-events}
+    - {metric: coastline_parts, min: 100, unit: parts, requirement: global-location-and-artistic-traces}
+    - {metric: visible_events, min: 8502, max: 8502, unit: events, requirement: global-location-and-artistic-traces}
+    - {metric: coastline_pixels, min: 80, unit: pixels, requirement: global-location-and-artistic-traces}
+    - {metric: graticule_pixels, min: 2000, unit: pixels, requirement: global-location-and-artistic-traces}
+    - {metric: afterimage_pixels, min: 300, unit: pixels, requirement: global-location-and-artistic-traces}
+    - {metric: shallow_depth_pixels, min: 10, unit: pixels, requirement: depth-is-independent}
+    - {metric: intermediate_depth_pixels, min: 10, unit: pixels, requirement: depth-is-independent}
+    - {metric: deep_depth_pixels, min: 10, unit: pixels, requirement: depth-is-independent}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: responsive-map-performance}
+    - {metric: draw_cpu_ms, stat: p95, max: 8, unit: ms, requirement: responsive-map-performance}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: responsive-map-performance}
+    - {metric: code_gzip_bytes, max: 35000, unit: B, requirement: local-only-rendering}
+    - {metric: data_gzip_bytes, max: 500000, unit: B, requirement: local-only-rendering}
+  gates: [source artifact is GeoParquet only, event count is exactly 8,502 and sorted-ID digest matches in browser, Natural Earth outlines are documented public-domain data, the formula and depth thresholds are visible, rings are explicitly not physical or hazard geometry, source credit is visible, no runtime off-origin requests]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/25/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: global-afterimage
+      what: Initial render of the complete 2025 source snapshot, country context and three-ring glyph field
+      metrics: [first_frame_ms]
+    - id: map-redraw
+      what: Redraw after changing the chronological cutoff and camera zoom
+      metrics: [frame_ms, draw_cpu_ms]
+    - id: pixels-selection-and-provenance
+      what: Canvas readback, ID digest, timeline selection, disclosures, credit and request origins
+      metrics: []
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/25/bake.ts]
+  sources:
+    - id: hf:usgs-comcat-2025-m45
+      origin: Local parquet/earthquakes.parquet. USGS FDSN Event service 2.8.2 snapshot retrieved 2026-10-25. The query spans 2025-01-01T00:00:00Z to 2025-12-31T23:59:59.999Z; selection keeps type=earthquake, preferred net=us and magnitude >=4.5. 8,502 rows, 5 row groups, 573,830 bytes. CRS OGC:CRS84 (2D point); depth_km separately stored in kilometres positive downward. Retain event_id, point longitude/latitude, mag, depth_km, and time (Unix milliseconds UTC).
+      license: USGS-authored/produced source data is U.S. public domain; USGS requests acknowledgement. Retained net/sources/ids identifiers do not claim to relicense separately linked products.
+      url: https://huggingface.co/datasets/yuiseki/usgs-comcat-2025-m45
+    - id: natural-earth-v5.1.1-admin-0-10m
+      origin: Country outlines used only as global geographic context. Geometry is preprocessed and antimeridian-split at bake time.
+      license: Public domain.
+      url: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/
+  outputs: [data/baked/30DayMapChallenge-2026-25/events.json, data/baked/30DayMapChallenge-2026-25/coastlines.json, data/baked/30DayMapChallenge-2026-25/stats.json]
+  preparation:
+    - Query only the local USGS ComCat GeoParquet, not its parallel GeoJSON. Verify selected row count, unique IDs, exact time range, CRS and source field ranges; preserve source times as epoch milliseconds.
+    - Sort by source time then event ID and encode the six preserved fields as compact rows. Record a SHA-256 over sorted original event IDs in the sidecar.
+    - Read Natural Earth admin-0 country outlines from the documented public-domain 1:10m source, retain exterior rings and split at the antimeridian.
+    - Do not interpret display radii as distance, travel time, physical seismic waves or hazard footprints.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: WebGL2 instanced ring renderer + Canvas 2D geographic context + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/25/index.html, examples/30DayMapChallenge/2026/25/main.ts, examples/30DayMapChallenge/2026/25/renderer.ts, examples/30DayMapChallenge/2026/25/webgl.ts, examples/30DayMapChallenge/2026/25/field.ts, examples/30DayMapChallenge/2026/25/style.css, examples/30DayMapChallenge/2026/25/bench.ts]
+    dependencies: []
+    why: The fixed global view maps naturally to one static instance buffer with 25,506 thin rings; one instanced WebGL2 draw keeps circle construction off the JavaScript redraw path while uniforms control camera and time cutoff. The capped benchmark uses Chrome's software WebGL fallback, so this field remains none (no hardware GPU requirement); api records WebGL2 explicitly.
+  alternatives:
+    - option: Canvas 2D ring paths
+      rejected_because: The 8,502-event redraw measured above 30 ms of JavaScript path creation even after grouping ring strokes; instance attributes keep geometry generation off the redraw path.
+    - option: MapLibre, basemap tiles or runtime ComCat API
+      rejected_because: The example needs one frozen snapshot and no online map service; external runtime calls would make the map nondeterministic and add unnecessary code.
+  not_doing: [physical wave propagation, shaking estimates, ground-motion attenuation, forecasts, hazard contours, risk/exposure, complete earthquake inventory, magnitude conversion, event clustering, external runtime services, general-purpose map engine]
+performance_knowledge:
+  - id: instanced-static-earthquake-rings
+    finding: One static instance buffer and one instanced draw keep 25,506 ring geometries out of the JavaScript redraw path; depth, magnitude, source index and source position remain per instance.
+    evidence: >-
+      Three capped Chrome 156/Xvfb runs at 1280×800 passed all 15 budgets and 11 browser checks. Frame p95 6.96 ms, JavaScript draw p95 5.65 ms, first frame p50 533.5 ms; harness code gzip 13,881 B and data gzip 421,815 B. Screenshot visually reviewed for global context, afterimage field, legend, selection and attribution.
+    applies_when: One frozen global point snapshot has many simple ring glyphs and only camera, time cutoff and selection change during interaction. This measurement does not establish mobile GPU or larger-snapshot performance.
+verification:
+  checks:
+    - id: frozen-source-count-and-id-preservation
+      what: The selected full snapshot count and every event ID survive baking unchanged.
+      how: Compare the rendered record count, unique ID count, and SHA-256 of sorted event IDs to the bake sidecar.
+      expected: Exactly 8,502 records and unique IDs with matching digest.
+    - id: global-geography-and-afterimage-pixels
+      what: Geographic context and colored afterimage marks reached the canvas.
+      how: Read actual canvas pixels and count coastline/graticule and depth-colored pixels.
+      expected: Context exceeds 2,000 pixels and colored glyphs exceed 300 pixels.
+    - id: depth-is-visible-as-a-separate-screen-channel
+      what: Shallow, intermediate and deep source-depth bands reach the canvas in their separate hues.
+      how: Count actual read-back pixels matching each depth palette channel.
+      expected: Each depth hue has at least 10 distinguishable pixels.
+    - id: selected-event-retains-source-fields
+      what: Selected timeline record exposes original USGS ID, exact time, position, magnitude and depth.
+      how: Select a known chronological index and compare panel text to the loaded source-preserving record.
+      expected: All values match with source epoch milliseconds converted only for display.
+    - id: keyboard-accessible-time-sweep-control
+      what: The native keyboard-operable range control reveals events cumulatively.
+      how: Set the first event cutoff and verify one event is shown, then return to the latest event.
+      expected: First index shows exactly one source event and the control has an accessible label.
+    - id: time-control-keeps-source-dates
+      what: The visible cutoff date is based on original source timestamps.
+      how: Select the last source record and inspect its displayed UTC date.
+      expected: The latest timestamp remains on 2025-12-31.
+    - id: artistic-encoding-and-limitations-disclosed
+      what: Radius, intensity and depth encodings and their nonphysical meaning are visible.
+      how: Inspect page copy and legend.
+      expected: Equations, depth thresholds and explicit no-wave/no-hazard interpretation are shown.
+    - id: usgs-and-natural-earth-attribution
+      what: Public-domain credit and both data sources are visible.
+      how: Inspect text and source links.
+      expected: USGS ComCat acknowledgement and Natural Earth public-domain credit appear.
+    - id: zoom-control-changes-map-scale
+      what: Zoom button changes renderer scale.
+      how: Dispatch zoom-in and compare camera state.
+      expected: Zoom increases.
+    - id: pointer-drag-pans-global-view
+      what: Dragging shifts the global camera centre.
+      how: Dispatch a pointer drag and compare camera state.
+      expected: Both camera centre coordinates change by the drag displacement in world units.
+    - id: no-runtime-external-requests
+      what: Static page has no requests to third-party hosts.
+      how: Inspect Resource Timing entries after render.
+      expected: All runtime requests are same-origin.
+footprint:
+  code: [examples/30DayMapChallenge/2026/25/index.html, examples/30DayMapChallenge/2026/25/main.ts, examples/30DayMapChallenge/2026/25/renderer.ts, examples/30DayMapChallenge/2026/25/webgl.ts, examples/30DayMapChallenge/2026/25/field.ts, examples/30DayMapChallenge/2026/25/style.css, examples/30DayMapChallenge/2026/25/bench.ts]
+  data: [data/baked/30DayMapChallenge-2026-25/events.json, data/baked/30DayMapChallenge-2026-25/coastlines.json, data/baked/30DayMapChallenge-2026-25/stats.json]

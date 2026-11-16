@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>28 · Senses: Feeling — Tokyo Green Cover</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" aria-label="東京の土地被覆から緑被率を示す地図。セルを選択して元ピクセル数を確認できます"></canvas>
+  <aside id="panel" aria-label="凡例とデータ説明">
+    <header>
+      <p class="eyebrow">30 DAY MAP CHALLENGE · 28 · SENSES: FEELING</p>
+      <h1>緑がある場所</h1>
+      <p class="subhead">東京の緑被率 · 物理的な代理指標</p>
+    </header>
+    <p id="status" role="status">WorldCover のセルを読み込んでいます…</p>
+    <div class="legend" aria-label="有効な元ピクセルに占める緑被率">
+      <p class="legend-title">緑被率 · 2021年</p>
+      <span class="legend-row"><i class="swatch band-0"></i>0%</span>
+      <span class="legend-row"><i class="swatch band-1"></i>&gt;0–10%</span>
+      <span class="legend-row"><i class="swatch band-2"></i>&gt;10–25%</span>
+      <span class="legend-row"><i class="swatch band-3"></i>&gt;25–50%</span>
+      <span class="legend-row"><i class="swatch band-4"></i>&gt;50–75%</span>
+      <span class="legend-row"><i class="swatch band-5"></i>&gt;75–100%</span>
+      <span class="legend-row nodata-row"><i class="swatch nodata"></i>NoData · 対象範囲 0セル</span>
+    </div>
+    <p class="formula">(樹木 10 + 低木 20 + 草地 30 + 湿地 90) ÷ 有効ピクセル数。農地 40 は含めません。</p>
+    <section id="selection" aria-live="polite">
+      <h2>セルを選択</h2>
+      <p>100個の10 mピクセルの構成を調べられます。</p>
+    </section>
+    <nav class="controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">範囲をリセット</button>
+    </nav>
+    <p id="coordinates" class="context">座標 · —</p>
+    <p id="scale" class="context">縮尺 · —</p>
+    <p class="caveat">この地図は土地被覆の構成を示します。人の感情、休息の感じ方、公園の境界・利用可能性・安全性や体験の質は測定していません。約100 mのセルは元衛星画像の10×10ピクセル集計です。</p>
+    <footer>
+      <a href="https://doi.org/10.5281/zenodo.7254221">ESA WorldCover 10 m 2021 v200</a> · CC BY 4.0<br>
+      © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium.
+    </footer>
+    <p class="controls-note">ドラッグで移動 · ホイールまたはボタンで拡大縮小 · セルをクリックして調査</p>
+  </aside>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

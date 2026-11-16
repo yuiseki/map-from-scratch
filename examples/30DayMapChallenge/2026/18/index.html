@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="2020年国勢調査の250 mメッシュから、東京の75歳以上女性人口にあるゼロ・秘匿・行なしを区別して描きます。">
+  <title>NULL — 東京の人口メッシュの空白 | 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#102027;color:#e8e5da;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}#map{display:block;width:100vw;height:100vh;touch-action:none;cursor:grab}#map[data-dragging=true]{cursor:grabbing}#map:focus-visible{outline:2px solid #f3df83;outline-offset:-3px}
+    .panel{position:fixed;z-index:2;border:1px solid #667781;border-radius:12px;background:#14262deF;box-shadow:0 12px 36px #07111677;backdrop-filter:blur(12px)}header{top:14px;left:14px;width:min(435px,calc(100vw - 28px));padding:15px 17px}header .eyebrow{margin:0 0 6px;color:#c2d5d0;font:10px ui-monospace,monospace;letter-spacing:.08em}h1{margin:0;color:#f2eee1;font-size:21px;line-height:1.25}header .subtitle{margin:6px 0 11px;color:#b5c5c4;font-size:12px;line-height:1.45}.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}.legend-item{display:flex;align-items:center;gap:8px;color:#e0e5db;font-size:11px}.swatch{width:16px;height:13px;flex:none;border:1px solid #a0abb0;border-radius:2px}.swatch.positive{background:linear-gradient(135deg,#1f8590,#daf3d5)}.swatch.zero{background:#f3df83;color:#544c2b;font:700 9px monospace;text-align:center}.swatch.suppressed{background:repeating-linear-gradient(135deg,#d98250 0 4px,#4e2d27 4px 6px)}.swatch.missing{background:#18242b;border:1px dashed #82919a}.count{font:10px ui-monospace,monospace}.count.positive{color:#9dcbb3}.count.zero{color:#f3df83}.count.suppressed{color:#efa37b}.count.missing{color:#a7b6bc}
+    .controls{position:fixed;z-index:2;right:14px;top:14px;display:flex;gap:6px}.controls button{width:38px;height:36px;border:1px solid #657780;border-radius:8px;background:#172a31eF;color:#f2eee1;font-size:17px;cursor:pointer}.controls button:last-child{width:auto;padding:0 12px;font-size:11px}.controls button:hover{background:#29434b}.selection{left:14px;bottom:108px;padding:9px 12px;color:#f4e8ad;font:11px ui-monospace,monospace;max-width:min(520px,calc(100vw - 28px));overflow-wrap:anywhere}.footer{left:14px;right:14px;bottom:10px;padding:8px 11px;color:#b9c6c6;font-size:10px;line-height:1.45}.footer p{margin:2px 0}.footer a{color:#badfdb}#status{color:#f2eee1}#stats{color:#91a6ab;font:10px ui-monospace,monospace}.note{color:#d4a082}details{display:inline-block;margin-left:10px}summary{display:inline;cursor:pointer;color:#c4d8d4}#prompt{white-space:pre-wrap;max-height:180px;max-width:min(700px,90vw);overflow:auto;margin:7px 0 0;padding:8px;background:#0e1a20;border:1px solid #596b72;font-size:10px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:650px){header{top:8px;left:8px;width:calc(100vw - 16px);padding:11px 12px}.controls{right:10px;top:auto;bottom:115px}.controls button{height:32px;width:34px}h1{font-size:18px}.legend{gap:4px 7px}.legend-item{font-size:10px}.footer{left:7px;right:7px;bottom:5px;padding:6px 8px;font-size:9px}.selection{left:8px;bottom:113px;font-size:10px}}
+  </style>
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="application" aria-label="東京都心の250 m人口メッシュ地図。ドラッグで移動、ホイールで拡大縮小、クリックで格子の状態を確認できます。Homeで全体表示に戻ります。">
+    令和2年国勢調査の250 mメッシュを表示。公表値、ゼロ、秘匿、人口記録がない格子を区別します。
+  </canvas>
+  <header class="panel">
+    <p class="eyebrow">30DAYMAPCHALLENGE 2026　/　18 · NULL</p>
+    <h1>東京の「ない」を地図にする</h1>
+    <p class="subtitle"><span id="status">読み込み中</span> — 75歳以上女性人口を、空白・秘匿・ゼロ・正値に分けて表示。</p>
+    <div class="legend" aria-label="凡例">
+      <div class="legend-item"><span class="swatch positive"></span><span>正の公表値 <span id="positive-count" class="count positive"></span></span></div>
+      <div class="legend-item"><span class="swatch zero">0</span><span>公表されたゼロ <span id="zero-count" class="count zero"></span></span></div>
+      <div class="legend-item"><span class="swatch suppressed"></span><span>秘匿 * <span id="suppressed-count" class="count suppressed"></span></span></div>
+      <div class="legend-item"><span class="swatch missing"></span><span>行なし <span id="missing-count" class="count missing"></span></span></div>
+    </div>
+    <p id="stats" class="count" style="margin:9px 0 0"></p>
+  </header>
+  <nav class="controls" aria-label="地図操作">
+    <button id="zoom-in" type="button" aria-label="拡大">＋</button><button id="zoom-out" type="button" aria-label="縮小">−</button><button id="reset" type="button">全体</button>
+  </nav>
+  <div id="selected" class="panel selection" role="status" aria-live="polite">メッシュを選ぶと、公表状態と値を表示します。</div>
+  <div class="panel footer">
+    <p><span id="footer-detail">東京都心の固定範囲 · 139.65–139.78°E / 35.62–35.72°N · 250 m JISメッシュ</span>　<span>ドラッグで移動 / ホイールで拡大 / Homeで戻る</span></p>
+    <p id="stats-copy">空白は元表に行がない状態です。総務省統計局の説明では人口がないメッシュはレコードなし、秘匿対象は * で表章されます。</p>
+    <p>出典：<a href="https://www.e-stat.go.jp/help/data-definition-information/downloaddata/T001142.pdf" target="_blank" rel="noreferrer">e-Stat T001142（令和2年国勢調査・JGD2011）</a>を加工して作成 · CC BY 4.0 · <a href="https://www.stat.go.jp/data/mesh/pdf/ryuijikou.pdf" target="_blank" rel="noreferrer">秘匿・特例表章の説明</a> · <a href="https://www.e-stat.go.jp/terms-of-use" target="_blank" rel="noreferrer">e-Stat利用規約</a></p>
+    <details><summary>制作プロンプト</summary><pre id="prompt">読み込み中</pre></details>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

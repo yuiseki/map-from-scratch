@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>10 · Prompting only · 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d28;color:#f2eee0;font:14px/1.5 system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}.panel{position:absolute;top:18px;left:18px;width:min(410px,calc(100% - 36px));padding:17px 19px;background:#10212cee;border:1px solid #657b79;border-radius:12px;box-shadow:0 12px 36px #00101a80;backdrop-filter:blur(9px)}.eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#9ed3cb}.title{font-size:21px;font-weight:700;margin:3px 0 5px}.sub{margin:0;color:#d2d7ca;font-size:12px}.counts{margin:10px 0 2px;color:#f4d5a4;font-size:12px}.source-counts{margin:0;color:#aebcb8;font-size:10px}.legend{display:flex;flex-wrap:wrap;gap:7px 12px;margin:11px 0 5px;color:#d9dfd3;font-size:10px}.legend span{display:flex;align-items:center;gap:5px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%}.service{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #fff4d4}.prompt{margin-top:12px;border-top:1px solid #526964;padding-top:9px}.prompt summary{cursor:pointer;color:#e9c98b;font-size:11px}.prompt p{font-size:10px;max-height:210px;overflow:auto;color:#d1d8ce;white-space:pre-wrap}.credit{position:absolute;right:14px;bottom:14px;max-width:min(560px,calc(100% - 28px));padding:7px 10px;background:#10212ce8;border:1px solid #526964;border-radius:8px;color:#c6d4ce;font-size:10px}.error{position:absolute;left:16px;bottom:16px;padding:12px;background:#401b21;color:white}
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="OurAirports の実在する空港・飛行場を示す世界地図。ドラッグで移動、ホイールで拡大縮小、ダブルクリックで全体表示に戻ります"></canvas>
+  <aside class="panel">
+    <div class="eyebrow">30DayMapChallenge · Day 10</div>
+    <div class="title">Prompting only</div>
+    <p class="sub">世界の空港・飛行場を規模と用途で描く。線で結ばれていない場所の距離も、空の地理です。</p>
+    <p id="counts" class="counts">地図を読み込み中</p>
+    <p id="source-counts" class="source-counts"></p>
+    <div class="legend" aria-label="凡例">
+      <span><i class="dot" style="background:#f4a261"></i>大規模空港</span>
+      <span><i class="dot" style="background:#e88750"></i>中規模空港</span>
+      <span><i class="dot" style="background:#d66a4d"></i>小規模空港</span>
+      <span><i class="dot" style="background:#76c9c2"></i>水上飛行場</span>
+      <span><i class="dot" style="background:#98c8dc"></i>ヘリポート</span>
+      <span><i class="dot" style="background:#f1d27a"></i>気球飛行場</span>
+      <span><i class="service"></i>定期便あり</span>
+    </div>
+    <details class="prompt"><summary>この地図を作ったプロンプト</summary><p id="prompt-text"></p></details>
+  </aside>
+  <footer class="credit">データ: <a href="https://ourairports.com/data/" target="_blank" rel="noreferrer" style="color:#b6d8d0">OurAirports</a> 2026-08-31 · Public domain（帰属表示） · 地形: <a href="https://www.naturalearthdata.com/" target="_blank" rel="noreferrer" style="color:#b6d8d0">Natural Earth</a> 10m · AI コードエージェントが単一プロンプトから描画器を実装</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>09 · Urban-rural · 30DayMapChallenge 2026</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#091114;color:#e8f1eb;font:14px/1.45 system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}.panel{position:absolute;top:16px;left:16px;max-width:385px;padding:18px 20px;background:rgba(10,24,29,.95);border:1px solid #29434a;border-radius:14px;box-shadow:0 16px 48px #05090b80}.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8bc9bb}h1{font-size:21px;margin:2px 0 8px}.summary{color:#bacac8;margin:0 0 12px}.count{font-weight:650;color:#f0f5f0}.secondary{font-size:12px;color:#a7bab8;margin-top:4px}.legend-title{font-size:11px;color:#c3d2cf;margin-top:13px}.gradient{height:12px;margin:5px 0 4px;border-radius:99px;background:linear-gradient(90deg,#2baead,#52bda0,#d9ae58,#f56b32)}.ends{display:flex;justify-content:space-between;color:#a9bfbb;font-size:11px}.note{color:#9fb4b2;font-size:11px;margin:11px 0 0}.attribution{position:absolute;right:12px;bottom:12px;max-width:min(820px,calc(100% - 24px));padding:8px 11px;background:#0b171be8;border:1px solid #29434a;border-radius:8px;color:#b9c9c6;font-size:10px}.attribution a{color:#a5d7c3}.error{position:absolute;bottom:16px;left:16px;background:#32141a;padding:12px;color:white}
+  </style>
+</head>
+<body>
+  <canvas id="map" aria-label="GHSLの人口推計と建成地面積から見る日本の都市・農村の連続分布"></canvas>
+  <section class="panel">
+    <div class="eyebrow">30DayMapChallenge · Day 09</div>
+    <h1>Urban–rural / 境界のゆらぎ</h1>
+    <p class="summary">人口密度と建成地は、都市／農村を一本の線に分けられるでしょうか。</p>
+    <div id="counts" class="count">読み込み中…</div>
+    <div id="population" class="secondary"></div>
+    <div class="legend-title">色相 · 建成地面積比　／　明るさ · 人口密度</div>
+    <div class="gradient"></div>
+    <div class="ends"><span>低密度・低建成</span><span>高密度・高建成</span></div>
+    <p class="note">GHSLの2020年モデル推計で、国勢調査の実数ではありません。格子は30秒角（約1 km）。ドラッグで移動、ホイールで拡大縮小。</p>
+  </section>
+  <footer class="attribution">
+    <a href="https://human-settlement.emergency.copernicus.eu/ghs_pop2023.php">人口: GHS-POP R2023A E2020 推計</a> ·
+    <a href="https://human-settlement.emergency.copernicus.eu/ghs_buS2023.php">建成地: GHS-BUILT-S R2023A E2020 面積モデル</a> ·
+    © European Union, European Commission, JRC, GHSL R2023A. DOI:
+    <a href="https://doi.org/10.2905/2FF68A52-5B5B-4A22-8F40-C41DA8332CFE">GHS-POP</a> /
+    <a href="https://doi.org/10.2905/9F06F36F-4B11-47EC-ABB0-4F8B7B1D72EA">GHS-BUILT-S</a> ·
+    5タイルを加工して日本域を抽出。29.0995°Nより南は含まず、沖縄本島などは表示されません。
+    Natural Earth 1:10m国境で抽出（Public domain）。JRCの推奨帰属を記載、JRCの承認を示すものではありません。<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

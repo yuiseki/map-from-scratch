@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>02 · Lines — 30DayMapChallenge 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #091116; color: #e7f1f3; font: 14px/1.45 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  aside { position: fixed; top: 16px; left: 16px; width: min(320px, calc(100vw - 32px)); padding: 16px; border: 1px solid #ffffff24; border-radius: 12px; background: #101e26ed; box-shadow: 0 12px 40px #0005; pointer-events: none; }
+  h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: .01em; }
+  p { margin: 0; color: #a9bec5; }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; margin: 14px 0 12px; }
+  .row { display: flex; align-items: center; gap: 8px; color: #d8e5e8; font-size: 12px; }
+  .swatch { width: 16px; height: 2px; border-radius: 2px; background: var(--c); box-shadow: 0 0 7px color-mix(in srgb, var(--c), transparent 45%); }
+  .note { font-size: 11px; }
+  footer { position: fixed; right: 14px; bottom: 12px; max-width: calc(100vw - 28px); color: #adc0c5; font-size: 11px; text-align: right; text-shadow: 0 1px 3px #000; pointer-events: none; }
+  a { color: #b8e4ef; pointer-events: auto; }
+</style>
+<canvas id="map" aria-label="1980年以降の熱帯低気圧の経路図"></canvas>
+<aside>
+  <h1>02 · Lines</h1>
+  <p>1980年以降に記録された熱帯低気圧の経路</p>
+  <div class="legend" aria-label="盆地別の凡例">
+    <div class="row"><i class="swatch" style="--c:#f58c5c"></i>東部太平洋 · EP</div>
+    <div class="row"><i class="swatch" style="--c:#f0c566"></i>北大西洋 · NA</div>
+    <div class="row"><i class="swatch" style="--c:#a1c97a"></i>北インド洋 · NI</div>
+    <div class="row"><i class="swatch" style="--c:#59c7ba"></i>南大西洋 · SA</div>
+    <div class="row"><i class="swatch" style="--c:#61b0e8"></i>南インド洋 · SI</div>
+    <div class="row"><i class="swatch" style="--c:#9c94e8"></i>南太平洋 · SP</div>
+    <div class="row"><i class="swatch" style="--c:#e680bb"></i>西部太平洋 · WP</div>
+  </div>
+  <p class="note">ドラッグで移動、ホイールで拡大。線は観測地点をつないだ経路です。</p>
+</aside>
+<footer><a href="https://www.ncei.noaa.gov/products/international-best-track-archive">NOAA’s IBTrACS data (v04r01)</a> · accessed 2026-10-25 · <span id="stats">Loading…</span></footer>
+<script type="module" src="./main.ts"></script>
+</html>

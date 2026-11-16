@@ -1,0 +1,95 @@
+id: 30DayMapChallenge-2026-21
+request: >-
+  30DayMapChallenge 2026「OpenStreetMap」。凍結したOSM東京データの道路・鉄道・建物・水域・緑地・公共施設タグを専用描画器で見せ、元OSM IDとタグを調べられる地図を作る。
+requirements:
+  - id: frozen-osm-subject
+    need: 2026-08-31のOSMスナップショットを主題とした実在東京エリアの地図
+    rationale: OSM由来の道路・鉄道・建物・水/緑地・公共施設を元IDとタグ付きでレンダリングし、出典分類と描画分類を分ける
+    unmeasured: 元ID、タグ、source table、データ時点とODbL noticeはベイク統計とブラウザー検査で照合する
+  - id: category-inspection
+    need: カテゴリを操作して表示を切り替え、地物の元IDと取得できたOSMタグを確認できる
+    rationale: 6カテゴリのチェックボックス、クリック選択、キーボードで巡回選択を用意する
+    unmeasured: 各カテゴリのピクセル表示・トグル・選択時のタグ文字列をブラウザー検査する
+  - id: map-navigation-context
+    need: 広域初期表示からパン・ズームで詳細を確認し、縮尺と座標を読む
+    rationale: Canvas 2Dの専用投影器でWeb Mercator範囲を描画し、マウスとキーボードを受け付ける
+    unmeasured: パン/ズーム後の画面変化と縮尺・座標表示をブラウザー検査し、再描画性能に数値予算を置く
+  - id: osm-license-scope
+    need: © OpenStreetMap contributors、ODbL 1.0、share-alike、矩形範囲と網羅性の限界を明示する
+    rationale: ローカルに凍結されたOSM派生GeoParquetのみを使い、帰属とライセンス、非測量・非完全性の説明を常時表示する
+    unmeasured: ライセンス文言とリンク、日付、非公式矩形、community-mapped caveatをブラウザー検査する
+evaluation:
+  budgets:
+    - {metric: rendered_features, min: 1000, unit: source-rows, requirement: frozen-osm-subject}
+    - {metric: rendered_vertices, min: 10000, unit: vertices, requirement: frozen-osm-subject}
+    - {metric: frame_ms, stat: p95, max: 16.7, unit: ms, requirement: map-navigation-context}
+    - {metric: draw_cpu_ms, stat: p95, max: 10, unit: ms, requirement: map-navigation-context}
+    - {metric: first_frame_ms, stat: p50, max: 1500, unit: ms, requirement: frozen-osm-subject}
+    - {metric: code_gzip_bytes, max: 40000, unit: B, requirement: category-inspection}
+    - {metric: data_gzip_bytes, max: 12000000, unit: B, requirement: frozen-osm-subject}
+  gates: [visible OSM-derived roads, rail, buildings, water, green and public-place categories; original table/id/tag inspection; ODbL attribution and scope caveat; no runtime map service requests]
+benchmarks:
+  runtime: browser
+  page: examples/30DayMapChallenge/2026/21/index.html
+  viewport: {width: 1280, height: 800, device_scale_factor: 1, mobile: false}
+  cpu_throttle: 1
+  display: xvfb
+  iterations: 3
+  timeout_ms: 60000
+  scenarios:
+    - id: initial-osm-view
+      what: Baked Shibuya–Yoyogi extractの全カテゴリを読み、初回フレームを描画
+      metrics: [first_frame_ms]
+    - id: pan-zoom-and-category-toggle
+      what: 固定された連続パン・ズーム再描画とレイヤー切替中の操作応答を測る
+      metrics: [frame_ms, draw_cpu_ms]
+datasets:
+  bake: [node, examples/30DayMapChallenge/2026/21/bake.ts]
+  sources:
+    - id: hf:osm-tokyo23-src-2026-08
+      origin: >-
+        Local frozen 2026-08-31 Tokyo 23 wards extract from OpenStreetMap planet; osm2pgsql point, line, polygon and roads GeoParquet tables, GeoParquet 1.1.0, EPSG:3857.
+      license: >-
+        Open Database License 1.0 (ODbL), derivative database from © OpenStreetMap contributors. Share-alike terms apply to the OSM-derived extract. https://www.openstreetmap.org/copyright
+      url: https://huggingface.co/datasets/yuiseki/osm-tokyo23-src-2026-08
+  outputs: [data/baked/30DayMapChallenge-2026-21/osm.bin, data/baked/30DayMapChallenge-2026-21/stats.json]
+  preparation:
+    - >-
+      Read the local dataset card, ODbL notice and GeoParquet metadata before querying. Four published source table sizes are 306,642 points, 347,735 lines, 1,437,105 polygons and 33,113 roads rows. The `geo` key declares `way` WKB, EPSG:3857 Pseudo-Mercator, with bbox covering; row groups are spatially Hilbert-ordered.
+    - >-
+      The repeatable bbox is west/east=139.685/139.715, south/north=35.650/35.675 WGS84, transformed by DuckDB spatial with geometry_always_xy=true to x=15549663.07145842..15553002.656182218, y=4252568.169330002..4255993.530861105 EPSG:3857. It is a Shibuya–Yoyogi rectangular extract, not an administrative boundary.
+    - >-
+      Filter point public-place tags, roads highway/railway, line waterway, polygon building/water/green tags by bbox covering. Intersect lines and polygons with the fixed envelope, topology-preserving simplify polygon output at 0.4 m and linear output at 1.2 m; point geometry is unchanged. Keep source table and signed osm_id, available tag columns, and extended osm2pgsql hstore JSON. Keep OSM-derived result under ODbL 1.0.
+architecture_selection:
+  chosen:
+    platform: browser
+    api: Canvas 2D + Pointer Events + ResizeObserver
+    language: TypeScript
+    gpu: none
+    code: [examples/30DayMapChallenge/2026/21/index.html, examples/30DayMapChallenge/2026/21/main.ts, examples/30DayMapChallenge/2026/21/renderer.ts, examples/30DayMapChallenge/2026/21/osm.ts, examples/30DayMapChallenge/2026/21/style.css, examples/30DayMapChallenge/2026/21/PROMPT.md]
+    dependencies: []
+    why: >-
+      The capped local bbox query selects a few thousand mixed features in one fixed 3.3×3.4 km viewport. Canvas can draw the clipped paths and point marks directly; its hit tests use the same projected coordinates. A general-purpose renderer, raster basemap or runtime data network would obscure the OSM source itself.
+  alternatives:
+    - option: MapLibre, Leaflet or public OSM tiles
+      rejected_because: The challenge asks for OSM data as the subject, and runtime tiles would mix a changing remote style/data snapshot with the frozen extract.
+    - option: WebGL2 mesh renderer
+      rejected_because: Canvas is selected for source path drawing and is measured against the 16.7 ms redraw budget; move to GPU only if the measured budget fails.
+    - option: Draw every source table record or imply complete ward coverage
+      rejected_because: A named rectangular subset keeps the feature volume inspectable and must not imply citywide completeness.
+  not_doing: [official ward boundary, census/survey accuracy, exhaustive city coverage, public OSM services, generic map styling, real-time editing/synchronization]
+performance_knowledge:
+  - claim: >-
+      The local OSM GeoParquet bbox covering fields let DuckDB prune spatially sorted row groups for a small, reproducible Tokyo view; direct fixed-table extraction avoids a runtime tile engine and preserves original tag inspection.
+    evidence: >-
+      The repeatable bbox bake selects 19,948 rows and 105,147 vertices (3,617,535 payload bytes): 543 roads-table rows, 27 line rows, 15,257 polygon rows, and 4,121 point rows. Rendered category counts are 355 road, 188 railway, 44 water, 14,958 building, 282 green and 4,121 public-place features. Six category Canvas caches are composited for ordinary redraws; a spatial index limits cache generation and hit testing. Three browser runs: draw CPU p95 0.14 ms, frame p95 1.295 ms, first frame p50 365.545 ms, code gzip 15,340 B and data gzip 1,490,000 B; all seven budgets and seven browser checks pass. The 1280×800 screenshot was reviewed.
+    applies_when: One fixed Shibuya–Yoyogi rectangular extract at the frozen 2026-08-31 snapshot; not the whole Tokyo 23 wards.
+verification:
+  checks:
+    - {id: source-rows-and-original-ids, what: "Confirm frozen OSM rows and selected original identity", how: "Compare baked stats and source-table/id exposed by selection", expected: "Every baked feature keeps source table and signed osm_id without identity reassignment"}
+    - {id: six-osm-category-pixels, what: "Confirm each source-derived category reaches visible canvas pixels", how: "Read actual rendered canvas pixels at geography-derived sample features", expected: "Each enabled category has visible pixels for roads, railway, building, water, green and public-place"}
+    - {id: category-controls-work, what: "Toggle each accessible category on/off", how: "Dispatch keyboard change events and compare screen pixels/counts", expected: "Only the selected category disappears and can be restored"}
+    - {id: feature-inspection-preserves-tags, what: "Inspect one source feature and expose its OSM identity and tags", how: "Select a known source-backed feature by keyboard and read the inspection panel", expected: "Correct source table/id and only present OSM tags are shown"}
+    - {id: pan-zoom-scale-coordinate, what: "Navigate and inspect map scale/coordinates", how: "Keyboard-pan and zoom then compare screen pixels and readouts", expected: "Map changes, projected scale bar and WGS84 coordinate readout update"}
+    - {id: attribution-odbl-snapshot-scope, what: "Show provenance, license and limits", how: "Check page text and copyright link", expected: "Contributor credit, ODbL share-alike, 2026-08-31, rectangle-not-boundary and completeness caveat visible"}
+    - {id: no-runtime-map-services, what: "Ensure the renderer only loads its baked local data", how: "Inspect browser resource entries", expected: "No off-origin map, tile or feature requests"}

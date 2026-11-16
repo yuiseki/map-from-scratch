@@ -1,0 +1,9 @@
+# Day 13 map brief / creation prompt
+
+Create a map for **30DayMapChallenge 2026 · 13 Interactions** using a dedicated renderer written from scratch. The official theme invites “Interactions between things, or maybe the result would be an interactive map?” Use real, licensed data and make the map itself respond meaningfully to user input.
+
+Use MLIT's 2019–2021 monthly 全国の人流オープンデータ. Draw real Japanese municipality destinations, placed at an explicitly approximate center derived from the dataset's 1 km mesh locations. Selecting a municipality should reveal its monthly average people-present composition by the four published residence-area categories: same municipality, another municipality in the same prefecture, another prefecture in the same regional block, and another regional block. Let the reader change month, weekday/holiday/all-days, and daytime/late-night/all-day. Encode the selected category's share on all municipality marks and make the selected municipality's four-way composition legible.
+
+**Interpretation constraints:** `from_area` contains only four broad categories; it has no origin municipality or person-level trajectory. Do not draw exact source-to-destination routes, imply individual tracking, call counts unique people, or describe suppressed (<10) values as zero. Disclose that this is aggregated monthly average presence derived from mobile-device location data, and that municipality points are approximate averages of mesh centers, not official centroids.
+
+Use the catalogued CC BY 4.0 terms and the requested Japanese credit, declare processing, and say the result is not published/endorsed by MLIT. Build a purpose-made Canvas 2D map with interaction, keyboard-accessible controls, hit testing, and no map-engine runtime dependency. Do not use generated imagery.

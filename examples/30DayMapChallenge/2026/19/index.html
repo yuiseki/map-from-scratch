@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eaf0ed">
+  <title>風が運ぶかもしれない範囲 — 30DayMapChallenge 2026 Day 19</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" tabindex="0" role="img" aria-label="芝浦水再生センターと、気象庁東京の風観測から描いた仮定上の風下域。地図をドラッグして移動、ホイールで拡大縮小できます。"></canvas>
+  <main class="panel">
+    <p class="eyebrow">30DAYMAPCHALLENGE · 19 / SENSES</p>
+    <h1>風が運ぶかもしれない範囲</h1>
+    <p class="summary">芝浦水再生センターを施設候補として表示。JMA東京観測所は約6.2 km離れています。</p>
+    <div class="wind"><span class="wind-icon" aria-hidden="true">↘</span><div><strong>北北西から 1.9 m/s</strong><small>気象庁 東京 · 2026年11月4日 18:00 JST</small></div></div>
+    <div class="legend"><span class="swatch" aria-hidden="true"></span><span><strong>仮定した風下域</strong><small>長さ 5 km · 半幅 250 m + 距離の12%</small></span></div>
+    <p class="assumption">風向一定の模式図です。観測風速は表示のみで、到達時間や濃度の計算には使っていません。</p>
+    <div class="controls" aria-label="地図操作">
+      <button id="zoom-in" type="button" aria-label="拡大">＋</button>
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="reset" type="button">全体表示</button>
+    </div>
+  </main>
+  <aside class="notice" id="notice">
+    <strong>これは臭気の観測図ではありません。</strong>
+    <span>排出量・大気安定度・乱流・地形・建物の影響は未計算です。色は濃度、到達時刻、曝露、健康リスクを示しません。施設がこの時刻に臭気を出したことも確認されていません。</span>
+  </aside>
+  <footer class="credits">
+    <a href="https://www.gesui.metro.tokyo.lg.jp/pr/kouhou/shisetsu/44986" target="_blank" rel="noreferrer">東京都下水道局「芝浦水再生センター」</a>
+    <span>·</span>
+    <a href="https://www.data.jma.go.jp/stats/etrn/view/hourly_s1.php?prec_no=44&amp;block_no=47662&amp;year=2026&amp;month=11&amp;day=04&amp;view=" target="_blank" rel="noreferrer">気象庁 東京の時間別観測</a>
+    <span>·</span>
+    <a href="https://www.data.jma.go.jp/cpd/monitor/dailyview/graph_mkhtml_d.php?d=13&amp;e=0&amp;k=0&amp;m=8&amp;n=47662&amp;r=1&amp;s=5&amp;y=2026" target="_blank" rel="noreferrer">観測点位置</a>
+    <span>·</span>
+    <a href="https://www.openstreetmap.org/way/23690250" target="_blank" rel="noreferrer">© OpenStreetMap contributors · ODbL</a>
+  </footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

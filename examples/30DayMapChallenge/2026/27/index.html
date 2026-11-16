@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Day 27 · 千代田区の人口メッシュを WebGPU で描く</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="map" aria-label="千代田区の2020年国勢調査 250m 人口メッシュ地図"></canvas>
+  <aside id="panel" aria-label="地図の凡例とデータ説明">
+    <header>
+      <p class="eyebrow">30 DAY MAP CHALLENGE · 27 NEW TOOL</p>
+      <h1>千代田区 · 250m人口メッシュ</h1>
+      <p class="subhead">2020年国勢調査 · 0～14歳人口</p>
+    </header>
+    <p class="instructions">ドラッグで移動 · ホイールで拡大縮小 · セルをクリックで値を確認</p>
+    <div class="legend" aria-label="人口階級の凡例">
+      <span class="legend-row"><i class="swatch count-1"></i>1–2人</span>
+      <span class="legend-row"><i class="swatch count-2"></i>3–10人</span>
+      <span class="legend-row"><i class="swatch count-3"></i>11–30人</span>
+      <span class="legend-row"><i class="swatch count-4"></i>31–100人</span>
+      <span class="legend-row"><i class="swatch count-5"></i>101人以上</span>
+      <span class="legend-row"><i class="swatch zero"></i>明示的な0人</span>
+      <span class="legend-row"><i class="swatch suppressed"></i>秘匿（*）</span>
+      <span class="legend-row"><i class="swatch no-row"></i>表に行なし</span>
+      <span class="legend-row"><i class="swatch unavailable"></i>値なし・不明</span>
+    </div>
+    <section id="selection" aria-live="polite">
+      <h2>セルを選択</h2>
+      <p>250mメッシュ単位の集計値です。</p>
+    </section>
+    <p class="caveat">2020年10月1日の国勢調査値です。現在人口や個人の所在を示すものではありません。秘匿値（*）は表示用に0へ置換していません。</p>
+    <p id="status" role="status">WebGPU を初期化しています…</p>
+    <footer>出典：政府統計の総合窓口(e-Stat)「令和2年国勢調査」（総務省統計局）を加工して作成。行政界：2020年国勢調査小地域境界（CC BY 4.0）。</footer>
+  </aside>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

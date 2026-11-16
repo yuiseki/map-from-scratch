@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13 · Interactions — 30DayMapChallenge 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #101e27; color: #e7f1f3; font: 14px/1.45 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  aside { position: fixed; top: 14px; left: 14px; bottom: 14px; width: min(360px, calc(100vw - 28px)); padding: 16px; overflow-y: auto; border: 1px solid #ffffff24; border-radius: 12px; background: #101e26ed; box-shadow: 0 12px 40px #0005; }
+  h1 { margin: 0 0 4px; font-size: 19px; letter-spacing: .01em; }
+  h2 { margin: 18px 0 7px; font-size: 14px; }
+  p { margin: 0; color: #a9bec5; }
+  label { display: block; margin-top: 13px; color: #c7d9dc; font-size: 12px; }
+  input, select { width: 100%; margin-top: 5px; accent-color: #70dfc3; color: #ecf7f7; }
+  select { padding: 7px 9px; border: 1px solid #47616a; border-radius: 6px; background: #1c313a; }
+  .month-readout { float: right; color: #70dfc3; font-weight: 700; }
+  #selected-name { margin-top: 16px; font-size: 16px; font-weight: 700; }
+  #selected-total { margin: 3px 0 10px; font-size: 12px; color: #b5c8ce; }
+  .flow-row { display: grid; grid-template-columns: minmax(130px, 1fr) 66px 62px; align-items: center; gap: 7px; margin: 8px 0; color: #cfdee0; font-size: 11px; }
+  .flow-row b { text-align: right; font-variant-numeric: tabular-nums; }
+  .track { height: 5px; overflow: hidden; border-radius: 4px; background: #ffffff17; }
+  .track i { display: block; height: 100%; }
+  .legend { display: grid; gap: 5px; margin-top: 15px; color: #c3d3d7; font-size: 11px; }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 9px; height: 9px; border-radius: 50%; }
+  .note { margin-top: 14px; padding-top: 11px; border-top: 1px solid #ffffff20; font-size: 11px; }
+  #status { margin-top: 12px; color: #70dfc3; font-size: 11px; }
+  footer { position: fixed; right: 14px; bottom: 12px; max-width: calc(100vw - 390px); color: #adc0c5; font-size: 10px; text-align: right; text-shadow: 0 1px 3px #000; pointer-events: none; }
+  a { color: #b8e4ef; pointer-events: auto; }
+  @media (max-width: 700px) { aside { top: 8px; left: 8px; bottom: 8px; width: min(318px, calc(100vw - 16px)); padding: 12px; } footer { display: none; } }
+</style>
+<canvas id="map" aria-label="全国の市区町村別人流カテゴリの地図"></canvas>
+<aside>
+  <h1>13 · Interactions</h1>
+  <p>人がいる場所と、その人たちの居住地カテゴリ</p>
+  <label for="month">月 <span class="month-readout" id="month-text"></span></label>
+  <input id="month" type="range" min="0" max="35" value="34" step="1" aria-label="年月">
+  <label for="day-type">曜日区分</label>
+  <select id="day-type"><option value="0">休日</option><option value="1">平日</option><option value="2" selected>全日</option></select>
+  <label for="timezone">時間帯</label>
+  <select id="timezone"><option value="0" selected>昼間（11時〜14時）</option><option value="1">深夜（1時〜4時）</option><option value="2">終日</option></select>
+  <div id="selected-name" aria-live="polite">地図上の市区町村を選択</div>
+  <div id="selected-total"></div>
+  <div id="breakdown"></div>
+  <div class="legend" aria-label="居住地カテゴリ">
+    <span><i class="swatch" style="background:#70dfc3"></i>同じ市区町村</span>
+    <span><i class="swatch" style="background:#66b7ef"></i>同じ都道府県の別市区町村</span>
+    <span><i class="swatch" style="background:#ffc46b"></i>同じ地方ブロックの別都道府県</span>
+    <span><i class="swatch" style="background:#ff797c"></i>別の地方ブロック</span>
+    <span>点の大きさ: 公表区分値の合計 / 色: 市区町村外の割合</span>
+  </div>
+  <p class="note">値はスマートフォン位置情報由来の月平均滞在人口の集計です。発地は4つの広域カテゴリまでで、元の市区町村や個人の移動経路は含みません。10人未満は非公表です。点は1 kmメッシュ中心の平均位置で、境界や公式の市区町村中心点ではありません。出典データを加工した独自表示で、国土交通省の公開・承認を示すものではありません。</p>
+  <div id="status"></div>
+</aside>
+<footer>出典：<a href="https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto">「全国の人流オープンデータ」（国土交通省）（https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto）</a>を加工して作成 · CC BY 4.0 · 市区町村境界: Natural Earth (Public Domain)</footer>
+<script type="module" src="./main.ts"></script>
+</html>
